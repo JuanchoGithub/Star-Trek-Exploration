@@ -1,0 +1,5 @@
+{
+  "name": "Star Trek: Space Exploration",
+  "description": "A browser-based, turn-based game where you captain a Federation starship. Explore the galaxy, manage your ship and crew, and navigate complex diplomatic and combat encounters. Based on the provided game design document.",
+  "requestFramePermissions": []
+}
