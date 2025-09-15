@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PlayerTurnActions } from '../types';
+import type { PlayerTurnActions, Position } from '../types';
 import { WeaponIcon, TorpedoIcon, EvasiveManeuverIcon, DamageControlIcon, ScanIcon, RetreatIcon, HailIcon } from './Icons';
 
 interface CommandConsoleProps {
@@ -23,6 +23,8 @@ interface CommandConsoleProps {
   hasTarget: boolean;
   hasEnemy: boolean;
   playerTurnActions: PlayerTurnActions;
+  navigationTarget: Position | null;
+  playerShipPosition: Position;
 }
 
 const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, className?: string, isActive?: boolean}> = ({ onClick, disabled, children, className="", isActive=false }) => (
@@ -50,11 +52,25 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
     onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo, onEvasiveManeuvers, canTakeEvasive,
     onInitiateDamageControl, onScanTarget, onInitiateRetreat, onHailTarget,
-    retreatingTurn, currentTurn, isRepairMode, isTargetFriendly, hasDamagedSystems, isTargetScanned, hasTarget, hasEnemy, playerTurnActions
+    retreatingTurn, currentTurn, isRepairMode, isTargetFriendly, hasDamagedSystems, isTargetScanned, hasTarget, hasEnemy, 
+    playerTurnActions, navigationTarget, playerShipPosition
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
   
+  const getEndTurnButtonText = () => {
+    if (playerTurnActions.combat) {
+        return "End Turn & Fire";
+    }
+    if (navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y)) {
+        return "End Turn & Move";
+    }
+    if (playerTurnActions.evasive) {
+        return "End Turn & Evade";
+    }
+    return "End Turn";
+  }
+
   return (
     <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
@@ -98,7 +114,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         onClick={() => onEndTurn()}
         className="w-full mt-2 p-3 font-bold rounded transition-all bg-orange-600 hover:bg-orange-500 text-white flex-shrink-0"
       >
-        End Turn
+        {getEndTurnButtonText()}
       </button>
     </div>
   );

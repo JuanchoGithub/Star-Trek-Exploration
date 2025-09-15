@@ -168,6 +168,7 @@ const App: React.FC = () => {
                     onStartAwayMission={onStartAwayMission}
                     onHailTarget={onHailTarget}
                     playerTurnActions={playerTurnActions}
+                    navigationTarget={navigationTarget}
                   />
               </div>
           </div>

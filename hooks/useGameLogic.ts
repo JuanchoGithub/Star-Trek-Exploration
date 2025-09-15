@@ -250,6 +250,26 @@ export const useGameLogic = () => {
         setGameState(prev => ({ ...prev, logs: [message, ...prev.logs] }));
     }, []);
 
+    // Effect to manage docking status based on proximity
+    useEffect(() => {
+        if (!isDocked) return;
+
+        const starbase = gameState.currentSector.entities.find(e => e.type === 'starbase');
+        
+        // If there's no starbase in the sector, we can't be docked.
+        if (!starbase) {
+            setIsDocked(false);
+            return;
+        }
+
+        const distance = calculateDistance(gameState.player.ship.position, starbase.position);
+        if (distance > 1) {
+            setIsDocked(false);
+            addLog("Undocked: Moved out of range of the starbase.");
+        }
+    }, [gameState.turn, gameState.currentSector.entities, isDocked, addLog]);
+
+
     const saveGame = useCallback(() => {
         try {
             localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
@@ -524,6 +544,7 @@ export const useGameLogic = () => {
          setCurrentView('sector');
          setNavigationTarget(null);
          setSelectedTargetId(null);
+         setIsDocked(false);
          setGameState(prev => {
             const newPlayerShip = { ...prev.player.ship };
             newPlayerShip.dilithium.current--;

@@ -1,6 +1,7 @@
 import React from 'react';
-import type { GameState, Entity, Ship, PlayerTurnActions } from '../types';
+import type { GameState, Entity, Ship, PlayerTurnActions, Position } from '../types';
 import CommandConsole from './CommandConsole';
+import { WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -21,6 +22,24 @@ interface PlayerHUDProps {
   onStartAwayMission: () => void;
   onHailTarget: () => void;
   playerTurnActions: PlayerTurnActions;
+  navigationTarget: Position | null;
+}
+
+const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
+    if (subsystem.maxHealth === 0) return null;
+
+    const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
+    let color = 'text-green-400';
+    if (healthPercentage < 60) color = 'text-yellow-400';
+    if (healthPercentage < 25) color = 'text-red-400';
+
+    return (
+        <div className={`flex items-center gap-2 ${color}`}>
+            {icon}
+            <span className="flex-grow">{name}</span>
+            <span className="font-bold">{Math.round(healthPercentage)}%</span>
+        </div>
+    )
 }
 
 const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
@@ -31,10 +50,22 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     let stats = null;
     if (target.type === 'ship') {
         stats = (
-            <div className="text-sm mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                <span className="text-gray-400">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
-                <span className="text-gray-400">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
-            </div>
+            <>
+                <div className="text-sm mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                    <span className="text-gray-400">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
+                    <span className="text-gray-400">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
+                </div>
+                {target.scanned && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                         <h4 className="text-sm font-bold text-gray-400 mb-2">Subsystems</h4>
+                         <div className="space-y-1 text-sm">
+                            <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
+                            <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
+                            <SubsystemStatusDisplay subsystem={target.subsystems.shields} name="Shields" icon={<ShieldIcon className="w-5 h-5"/>} />
+                         </div>
+                    </div>
+                )}
+            </>
         )
     }
 
@@ -76,7 +107,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes,
     isRepairMode, onInitiateDamageControl, onSelectRepairTarget,
     onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions
+    playerTurnActions, navigationTarget
 }) => {
     const playerShip = gameState.player.ship;
 
@@ -87,6 +118,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     const hasDamagedSystems = playerShip.hull < playerShip.maxHull || Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth);
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
     const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
+    const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
 
     return (
         <>
@@ -99,7 +131,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             <p className="text-sm text-gray-500">Click an object on the map to select it.</p>
                         </div>
                     )}
-                    {target?.type === 'starbase' && !isDocked && (
+                    {isAdjacentToStarbase && !isDocked && (
                         <div className="bg-gray-900 p-3 rounded text-center">
                             <button onClick={onDockWithStarbase} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Initiate Docking</button>
                         </div>
@@ -147,6 +179,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             hasTarget={!!target}
                             hasEnemy={hasEnemy}
                             playerTurnActions={playerTurnActions}
+                            navigationTarget={navigationTarget}
+                            playerShipPosition={playerShip.position}
                         />
                     )}
                 </div>
