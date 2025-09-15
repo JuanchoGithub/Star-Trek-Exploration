@@ -1,5 +1,6 @@
+
 import React from 'react';
-import type { GameState, Entity } from './types';
+import type { GameState, Entity, Ship } from './types';
 import { useGameLogic } from './hooks/useGameLogic';
 import SectorView from './components/SectorView';
 import PlayerHUD from './components/PlayerHUD';
@@ -11,8 +12,10 @@ const App: React.FC = () => {
     gameState,
     gameLog,
     selectedTargetId,
+    selectedSubsystem,
     currentView,
-    setSelectedTargetId,
+    handleSelectTarget,
+    handleSelectSubsystem,
     handleEndTurn,
     handleEnergyChange,
     handleFirePhasers,
@@ -53,11 +56,15 @@ const App: React.FC = () => {
             {currentView === 'sector' ? (
                 <SectorView
                     entities={gameState.currentSector.entities}
-                    selectedTargetId={selectedTargetId}
-                    onSelectTarget={setSelectedTargetId}
                     playerShip={playerShip}
+                    selectedTargetId={selectedTargetId}
+                    onSelectTarget={handleSelectTarget}
                     navigationTarget={gameState.navigationTarget}
                     onSetNavigationTarget={handleSetNavigationTarget}
+                    // FIX: Removed incorrect type assertion. `targetEntity` is of type `Entity` and should be passed as such.
+                    targetEntity={targetEntity}
+                    selectedSubsystem={selectedSubsystem}
+                    onSelectSubsystem={handleSelectSubsystem}
                 />
             ) : (
                 <QuadrantView 

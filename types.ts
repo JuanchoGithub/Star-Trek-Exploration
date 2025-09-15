@@ -1,5 +1,10 @@
 import React from 'react';
 
+export interface Subsystem {
+  health: number;
+  maxHealth: number;
+}
+
 export interface Ship {
   id: string;
   name: string;
@@ -20,6 +25,11 @@ export interface Ship {
   };
   faction: string;
   isEvasive: boolean;
+  subsystems: {
+    weapons: Subsystem;
+    engines: Subsystem;
+    shields: Subsystem; // Represents the shield generator itself
+  };
 }
 
 export interface Planet {

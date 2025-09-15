@@ -18,6 +18,20 @@ interface PlayerHUDProps {
   onSetView: (view: 'sector' | 'quadrant') => void;
 }
 
+const SubsystemStatus: React.FC<{label: string; health: number; maxHealth: number}> = ({ label, health, maxHealth }) => {
+    const healthPercentage = (health / maxHealth) * 100;
+    let color = 'text-green-400';
+    if (healthPercentage < 60) color = 'text-yellow-400';
+    if (healthPercentage < 25) color = 'text-red-500';
+
+    return (
+        <div className="flex justify-between text-xs">
+            <span>{label}:</span>
+            <span className={`font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
+        </div>
+    );
+}
+
 const PlayerHUD: React.FC<PlayerHUDProps> = ({ 
   gameState, 
   onEnergyChange, 
@@ -62,12 +76,16 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             </button>
         </div>
         {target && currentView === 'sector' ? (
-          <div className="text-orange-300">
-            <p>Name: {target.name}</p>
+          <div className="text-orange-300 space-y-1">
+            <p className="font-bold text-base">{target.name}</p>
             {target.type === 'ship' && (
               <>
-                <p>Hull: {target.hull}%</p>
-                <p>Shields: {target.shields.fore}</p>
+                <p className="text-sm">Hull: {target.hull}%, Shields: {target.shields.fore}</p>
+                <div className="pt-1 mt-1 border-t border-gray-700">
+                    <SubsystemStatus label="Weapons" {...target.subsystems.weapons} />
+                    <SubsystemStatus label="Engines" {...target.subsystems.engines} />
+                    <SubsystemStatus label="Shield Gen" {...target.subsystems.shields} />
+                </div>
               </>
             )}
           </div>

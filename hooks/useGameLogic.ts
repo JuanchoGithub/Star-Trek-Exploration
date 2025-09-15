@@ -40,6 +40,11 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
             powerAllocation: { weapons: 50, shields: 30, engines: 20 },
             faction: 'Klingon',
             isEvasive: false,
+            subsystems: {
+                weapons: { health: 100, maxHealth: 100 },
+                engines: { health: 100, maxHealth: 100 },
+                shields: { health: 100, maxHealth: 100 },
+            },
         });
     }
 
@@ -79,6 +84,11 @@ const createInitialGameState = (): GameState => {
         powerAllocation: { weapons: 34, shields: 33, engines: 33 },
         faction: 'Federation',
         isEvasive: false,
+        subsystems: {
+            weapons: { health: 100, maxHealth: 100 },
+            engines: { health: 100, maxHealth: 100 },
+            shields: { health: 100, maxHealth: 100 },
+        },
       },
       quadrantPosition: startPos,
     },
@@ -99,6 +109,7 @@ export const useGameLogic = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameLog, setGameLog] = useState<string[]>([]);
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [selectedSubsystem, setSelectedSubsystem] = useState<'weapons' | 'engines' | 'shields' | null>(null);
   const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
 
   const turnRef = useRef(1);
@@ -132,6 +143,16 @@ export const useGameLogic = () => {
     setGameLog(prev => [`Turn ${turnRef.current}: ${message}`, ...prev].slice(0, 50));
   }, []);
 
+  const handleSelectTarget = useCallback((id: string | null) => {
+    setSelectedTargetId(id);
+    setSelectedSubsystem(null);
+  }, []);
+
+  const handleSelectSubsystem = useCallback((subsystem: 'weapons' | 'engines' | 'shields' | null) => {
+    setSelectedSubsystem(subsystem);
+    if(subsystem) addToLog(`Targeting computer locking on enemy ${subsystem}.`);
+  }, [addToLog]);
+
   const handleSetView = useCallback((view: 'sector' | 'quadrant') => {
       setCurrentView(view);
   }, []);
@@ -158,32 +179,27 @@ export const useGameLogic = () => {
         if (!prev) return null;
         const newState = JSON.parse(JSON.stringify(prev)) as GameState;
 
-        // Consume Dilithium
         newState.player.ship.dilithium -= 1;
-
-        // Update old sector's entity state
         const oldPos = newState.player.quadrantPosition;
         newState.quadrantMap[oldPos.qy][oldPos.qx].entities = newState.currentSector.entities;
         
-        // Move player
         newState.player.quadrantPosition = pos;
-        newState.player.ship.position = { x: 2, y: 5 }; // Reset to entry point
+        newState.player.ship.position = { x: 2, y: 5 };
         
-        // Generate new sector if unvisited
         const targetSectorState = newState.quadrantMap[pos.qy][pos.qx];
         if (!targetSectorState.visited) {
             targetSectorState.visited = true;
             targetSectorState.entities = generateSectorEntities(false);
             addToLog("We are the first Federation ship to enter this sector.");
         } else {
-            // Re-load entities if visited
-             targetSectorState.entities = generateSectorEntities(true); // For now, make visited sectors empty
+             targetSectorState.entities = generateSectorEntities(true);
              addToLog("Entering previously charted space.");
         }
         
         newState.currentSector.entities = targetSectorState.entities;
         newState.navigationTarget = null;
         setSelectedTargetId(null);
+        setSelectedSubsystem(null);
         
         return newState;
     });
@@ -249,64 +265,78 @@ export const useGameLogic = () => {
       const newState: GameState = JSON.parse(JSON.stringify(prev));
       const playerShip = newState.player.ship;
 
-      // 1. Player Movement (only if an action wasn't taken)
+      const getSystemEfficiency = (ship: Ship, system: 'weapons' | 'engines' | 'shields') => {
+        const sub = ship.subsystems[system];
+        return sub.health / sub.maxHealth;
+      };
+
       if (!actionTaken && newState.navigationTarget) {
         const target = newState.navigationTarget;
         const currentPos = playerShip.position;
-
+        const engineEfficiency = getSystemEfficiency(playerShip, 'engines');
         const enginePower = playerShip.powerAllocation.engines;
-        const movesPerTurn = Math.floor(enginePower / 33);
+        const movesPerTurn = Math.floor((enginePower / 33) * engineEfficiency);
 
-        for (let i = 0; i < movesPerTurn; i++) {
-            if (currentPos.x === target.x && currentPos.y === target.y) {
-                break;
+        if (engineEfficiency <= 0) {
+            addToLog("Engines are offline! Cannot move.");
+        } else {
+            for (let i = 0; i < movesPerTurn; i++) {
+                if (currentPos.x === target.x && currentPos.y === target.y) break;
+                const dx = target.x - currentPos.x;
+                const dy = target.y - currentPos.y;
+                if (Math.abs(dx) > Math.abs(dy)) currentPos.x += Math.sign(dx);
+                else if (dy !== 0) currentPos.y += Math.sign(dy);
+                else if (dx !== 0) currentPos.x += Math.sign(dx);
             }
-            const dx = target.x - currentPos.x;
-            const dy = target.y - currentPos.y;
-            if (Math.abs(dx) > Math.abs(dy)) currentPos.x += Math.sign(dx);
-            else if (dy !== 0) currentPos.y += Math.sign(dy);
-            else if (dx !== 0) currentPos.x += Math.sign(dx);
-        }
-        addToLog(`Moving to new coordinates: (${currentPos.x}, ${currentPos.y}).`);
-        
-        if (currentPos.x === target.x && currentPos.y === target.y) {
-            newState.navigationTarget = null;
-            addToLog(`Navigation target reached.`);
+            if(movesPerTurn > 0) addToLog(`Moving to new coordinates: (${currentPos.x}, ${currentPos.y}).`);
+            if (currentPos.x === target.x && currentPos.y === target.y) {
+                newState.navigationTarget = null;
+                addToLog(`Navigation target reached.`);
+            }
         }
       }
 
-      // 2. AI Actions
       newState.currentSector.entities.forEach(entity => {
         if (entity.type === 'ship' && entity.faction !== 'Federation' && entity.hull > 0) {
           const aiShip = entity as Ship;
           const distance = Math.abs(aiShip.position.x - playerShip.position.x) + Math.abs(aiShip.position.y - playerShip.position.y);
           const attackRange = 6;
           
-          if(distance <= attackRange) {
-            addToLog(`${aiShip.name} is firing at the Endeavour.`);
+          if(distance <= attackRange && getSystemEfficiency(aiShip, 'weapons') > 0) {
             if (playerShip.isEvasive && Math.random() < 0.5) {
                 addToLog(`The attack from ${aiShip.name} missed due to our evasive maneuvers!`);
                 return;
             }
-            const baseDamage = 15;
+
+            const targetableSubsystems = (['weapons', 'engines', 'shields'] as const)
+                .filter(sub => playerShip.subsystems[sub].health > 0);
+            const aiTargetSubsystem = targetableSubsystems[Math.floor(Math.random() * targetableSubsystems.length)];
+            
+            addToLog(`${aiShip.name} is firing on our ${aiTargetSubsystem} systems.`);
+            
+            const aiWeaponEfficiency = getSystemEfficiency(aiShip, 'weapons');
+            const baseDamage = Math.round(15 * (0.5 + aiWeaponEfficiency * 0.5));
             const damage = Math.round(baseDamage * (aiShip.powerAllocation.weapons / 100 + 0.5));
-            let damageToHull = 0;
+
             if (playerShip.shields.fore > 0) {
               const shieldDamage = Math.min(playerShip.shields.fore, damage);
               playerShip.shields.fore -= shieldDamage;
-              damageToHull = damage - shieldDamage;
               addToLog(`Our shields absorbed ${shieldDamage} damage. Shield strength at ${playerShip.shields.fore}.`);
             } else {
-              damageToHull = damage;
-            }
+              const targetSub = playerShip.subsystems[aiTargetSubsystem];
+              const damageToSubsystem = Math.min(targetSub.health, Math.round(damage * 0.75));
+              targetSub.health -= damageToSubsystem;
+              const damageToHull = damage - damageToSubsystem;
+              
+              addToLog(`Direct hit to ${aiTargetSubsystem}! System integrity at ${targetSub.health}%.`);
 
-            if (damageToHull > 0) {
-              playerShip.hull = Math.max(0, playerShip.hull - damageToHull);
-              addToLog(`We took ${damageToHull} damage to hull. Hull integrity at ${playerShip.hull}%.`);
+              if (damageToHull > 0) {
+                playerShip.hull = Math.max(0, playerShip.hull - damageToHull);
+                addToLog(`We took ${damageToHull} damage to hull. Hull integrity at ${playerShip.hull}%.`);
+              }
+              if (playerShip.hull <= 0) addToLog("CRITICAL: Hull breach! The Endeavour has been destroyed!");
             }
-            if (playerShip.hull <= 0) addToLog("CRITICAL: Hull breach! The Endeavour has been destroyed!");
-
-          } else {
+          } else if (getSystemEfficiency(aiShip, 'engines') > 0) {
             const dx = playerShip.position.x - aiShip.position.x;
             const dy = playerShip.position.y - aiShip.position.y;
             if (Math.abs(dx) > Math.abs(dy)) aiShip.position.x += Math.sign(dx);
@@ -316,21 +346,27 @@ export const useGameLogic = () => {
         }
       });
 
-      // 3. Shield Regeneration
       newState.currentSector.entities.forEach(entity => {
         if (entity.type === 'ship') {
           const ship = entity as Ship;
-          const regenAmount = Math.round(10 * (ship.powerAllocation.shields / 100));
-          ship.shields.fore = Math.min(ship.maxShields.fore, ship.shields.fore + regenAmount);
-          ship.shields.aft = Math.min(ship.maxShields.aft, ship.shields.aft + regenAmount);
+          const shieldGenEfficiency = getSystemEfficiency(ship, 'shields');
+          if (shieldGenEfficiency > 0) {
+            const regenAmount = Math.round(10 * (ship.powerAllocation.shields / 100) * shieldGenEfficiency);
+            ship.shields.fore = Math.min(ship.maxShields.fore, ship.shields.fore + regenAmount);
+            ship.shields.aft = Math.min(ship.maxShields.aft, ship.shields.aft + regenAmount);
+          }
         }
       });
-      const playerRegen = Math.round(15 * (newState.player.ship.powerAllocation.shields / 100));
-      playerShip.shields.fore = Math.min(playerShip.maxShields.fore, playerShip.shields.fore + playerRegen);
-      playerShip.shields.aft = Math.min(playerShip.maxShields.aft, playerShip.shields.aft + playerRegen);
-      if (playerRegen > 0) addToLog(`Shields regenerated by ${playerRegen} points.`);
+      const playerShieldGenEfficiency = getSystemEfficiency(playerShip, 'shields');
+      if (playerShieldGenEfficiency > 0) {
+        const playerRegen = Math.round(15 * (newState.player.ship.powerAllocation.shields / 100) * playerShieldGenEfficiency);
+        playerShip.shields.fore = Math.min(playerShip.maxShields.fore, playerShip.shields.fore + playerRegen);
+        playerShip.shields.aft = Math.min(playerShip.maxShields.aft, playerShip.shields.aft + playerRegen);
+        if (playerRegen > 0) addToLog(`Shields regenerated by ${playerRegen} points.`);
+      } else {
+        addToLog(`Shield generators are offline. No regeneration.`);
+      }
 
-      // 4. Increment Turn & Reset states
       newState.turn += 1;
       playerShip.isEvasive = false;
       newState.currentSector.entities.forEach(e => {
@@ -343,6 +379,12 @@ export const useGameLogic = () => {
 
   const handleFirePhasers = useCallback(() => {
     if (!gameState || !selectedTargetId || gameState.player.ship.isEvasive) return;
+    
+    const playerWeaponHealth = gameState.player.ship.subsystems.weapons.health;
+    if (playerWeaponHealth <= 0) {
+        addToLog("Phaser array is offline!");
+        return;
+    }
 
     const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
     if (!target || target.type !== 'ship') {
@@ -350,52 +392,66 @@ export const useGameLogic = () => {
       return;
     }
     
-    const attacker = gameState.player.ship;
-    const baseDamage = 20;
-    const damage = Math.round(baseDamage * (attacker.powerAllocation.weapons / 100 + 0.5));
-    
-    addToLog(`Firing phasers at ${target.name}.`);
-    
-    const newTargetState = { ...target };
-    let damageToHull = 0;
-
-    if (newTargetState.shields.fore > 0) {
-      const shieldDamage = Math.min(newTargetState.shields.fore, damage);
-      newTargetState.shields.fore -= shieldDamage;
-      damageToHull = damage - shieldDamage;
-      addToLog(`${target.name} shields absorbed ${shieldDamage} damage. Shield strength at ${newTargetState.shields.fore}.`);
-    } else {
-      damageToHull = damage;
-    }
-
-    if (damageToHull > 0) {
-      newTargetState.hull = Math.max(0, newTargetState.hull - damageToHull);
-      addToLog(`${target.name} took ${damageToHull} damage to hull. Hull integrity at ${newTargetState.hull}%.`);
-    }
-
     setGameState(prev => {
         if (!prev) return null;
         const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+        const attacker = newState.player.ship;
         const targetIndex = newState.currentSector.entities.findIndex(e => e.id === selectedTargetId);
-        if (targetIndex !== -1) {
-            if (newTargetState.hull <= 0) {
-                addToLog(`${newTargetState.name} has been destroyed!`);
-                newState.currentSector.entities.splice(targetIndex, 1);
-                setSelectedTargetId(null);
-            } else {
-                newState.currentSector.entities[targetIndex] = newTargetState;
+        const newTargetState = newState.currentSector.entities[targetIndex] as Ship & { type: 'ship' };
+
+        const weaponEfficiency = attacker.subsystems.weapons.health / attacker.subsystems.weapons.maxHealth;
+        const baseDamage = 20 * (0.5 + weaponEfficiency * 0.5);
+        const damage = Math.round(baseDamage * (attacker.powerAllocation.weapons / 100 + 0.5));
+        
+        addToLog(`Firing phasers at ${newTargetState.name}.`);
+        
+        if (selectedSubsystem) {
+            const subsystem = newTargetState.subsystems[selectedSubsystem];
+            const damageToSubsystem = Math.min(subsystem.health, damage);
+            subsystem.health -= damageToSubsystem;
+            const overflowDamage = damage - damageToSubsystem;
+            addToLog(`Phasers hit ${newTargetState.name}'s ${selectedSubsystem}! System integrity at ${subsystem.health}%.`);
+            if (overflowDamage > 0) {
+                newTargetState.hull = Math.max(0, newTargetState.hull - overflowDamage);
+                addToLog(`The blast penetrated the hull for ${overflowDamage} damage! Hull integrity at ${newTargetState.hull}%.`);
             }
+        } else {
+            let damageToHull = 0;
+            if (newTargetState.shields.fore > 0) {
+              const shieldDamage = Math.min(newTargetState.shields.fore, damage);
+              newTargetState.shields.fore -= shieldDamage;
+              damageToHull = damage - shieldDamage;
+              addToLog(`${newTargetState.name} shields absorbed ${shieldDamage} damage. Shield strength at ${newTargetState.shields.fore}.`);
+            } else {
+              damageToHull = damage;
+            }
+            if (damageToHull > 0) {
+              newTargetState.hull = Math.max(0, newTargetState.hull - damageToHull);
+              addToLog(`${newTargetState.name} took ${damageToHull} damage to hull. Hull integrity at ${newTargetState.hull}%.`);
+            }
+        }
+
+        if (newTargetState.hull <= 0) {
+            addToLog(`${newTargetState.name} has been destroyed!`);
+            newState.currentSector.entities.splice(targetIndex, 1);
+            setSelectedTargetId(null);
+            setSelectedSubsystem(null);
+        } else {
+            newState.currentSector.entities[targetIndex] = newTargetState;
         }
         return newState;
     });
     
     handleEndTurn(true);
-
-  }, [gameState, selectedTargetId, addToLog, handleEndTurn]);
+  }, [gameState, selectedTargetId, selectedSubsystem, addToLog, handleEndTurn]);
 
   const handleLaunchTorpedo = useCallback(() => {
     if (!gameState || !selectedTargetId || gameState.player.ship.torpedoes <= 0 || gameState.player.ship.isEvasive) return;
 
+    if (gameState.player.ship.subsystems.weapons.health <= 0) {
+        addToLog("Torpedo launcher is offline!");
+        return;
+    }
     const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
     if (!target || target.type !== 'ship') {
       addToLog("Invalid target for torpedo launch.");
@@ -412,35 +468,47 @@ export const useGameLogic = () => {
       if (targetIndex === -1) return newState;
       const newTargetState = newState.currentSector.entities[targetIndex] as Ship & { type: 'ship' };
       const baseDamage = 50;
-      let damageToHull = 0;
+
       if (newTargetState.shields.fore > 0) {
-        const torpedoDamageVsShields = Math.round(baseDamage / 2);
-        const shieldDamage = Math.min(newTargetState.shields.fore, torpedoDamageVsShields);
+        const shieldDamage = Math.min(newTargetState.shields.fore, baseDamage);
         newTargetState.shields.fore -= shieldDamage;
-        const damageAbsorbed = shieldDamage * 2;
-        damageToHull = Math.max(0, baseDamage - damageAbsorbed);
-        addToLog(`${target.name} shields partially absorbed torpedo impact. Shield strength at ${newTargetState.shields.fore}.`);
+        addToLog(`${target.name} shields absorbed the torpedo blast. Shield strength at ${newTargetState.shields.fore}.`);
+      } else if (selectedSubsystem) {
+        const subsystem = newTargetState.subsystems[selectedSubsystem];
+        const damageToSubsystem = Math.min(subsystem.health, baseDamage);
+        subsystem.health -= damageToSubsystem;
+        const overflowDamage = Math.max(0, baseDamage - damageToSubsystem);
+        addToLog(`Direct torpedo hit on ${newTargetState.name}'s ${selectedSubsystem}! System integrity at ${subsystem.health}%.`);
+        if (overflowDamage > 0) {
+          newTargetState.hull = Math.max(0, newTargetState.hull - overflowDamage);
+          addToLog(`The explosion tears through the hull for ${overflowDamage} damage! Hull integrity at ${newTargetState.hull}%.`);
+        }
       } else {
-        damageToHull = baseDamage;
+        newTargetState.hull = Math.max(0, newTargetState.hull - baseDamage);
+        addToLog(`${target.name} took a direct hit of ${baseDamage} damage to hull. Hull integrity at ${newTargetState.hull}%.`);
       }
-      if (damageToHull > 0) {
-        newTargetState.hull = Math.max(0, newTargetState.hull - damageToHull);
-        addToLog(`${target.name} took a direct hit of ${damageToHull} damage to hull. Hull integrity at ${newTargetState.hull}%.`);
-      }
+      
       if (newTargetState.hull <= 0) {
           addToLog(`${newTargetState.name} has been destroyed!`);
           newState.currentSector.entities.splice(targetIndex, 1);
           setSelectedTargetId(null);
+          setSelectedSubsystem(null);
       } else {
           newState.currentSector.entities[targetIndex] = newTargetState;
       }
       return newState;
     });
     handleEndTurn(true);
-  }, [gameState, selectedTargetId, addToLog, handleEndTurn]);
+  }, [gameState, selectedTargetId, selectedSubsystem, addToLog, handleEndTurn]);
 
   const handleEvasiveManeuvers = useCallback(() => {
       if (!gameState || gameState.player.ship.isEvasive) return;
+
+      if (gameState.player.ship.subsystems.engines.health <= 0) {
+          addToLog("Engines are offline! Cannot perform evasive maneuvers!");
+          return;
+      }
+
       addToLog(`U.S.S. Endeavour is taking evasive maneuvers!`);
       setGameState(prev => {
           if (!prev) return null;
@@ -458,6 +526,7 @@ export const useGameLogic = () => {
     );
     if (hostileShips.length === 0) {
       setSelectedTargetId(null);
+      setSelectedSubsystem(null);
       addToLog("No hostile targets in sensor range.");
       return;
     }
@@ -465,6 +534,7 @@ export const useGameLogic = () => {
     let nextTargetIndex = (currentTargetIndex === -1) ? 0 : (currentTargetIndex + 1) % hostileShips.length;
     const nextTarget = hostileShips[nextTargetIndex];
     setSelectedTargetId(nextTarget.id);
+    setSelectedSubsystem(null);
     addToLog(`Targeting systems locked on: ${nextTarget.name}.`);
   }, [gameState, selectedTargetId, addToLog]);
 
@@ -473,14 +543,17 @@ export const useGameLogic = () => {
     setGameState(createInitialGameState());
     setGameLog([]);
     setSelectedTargetId(null);
+    setSelectedSubsystem(null);
   };
   
   return {
     gameState,
     gameLog,
     selectedTargetId,
+    selectedSubsystem,
     currentView,
-    setSelectedTargetId,
+    handleSelectTarget,
+    handleSelectSubsystem,
     handleEndTurn,
     handleEnergyChange,
     handleFirePhasers,

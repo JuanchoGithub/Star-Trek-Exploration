@@ -1,6 +1,7 @@
+
 import React from 'react';
 import type { Entity, Ship } from '../types';
-import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon } from './Icons';
+import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -9,6 +10,10 @@ interface SectorViewProps {
   onSelectTarget: (id: string | null) => void;
   navigationTarget: { x: number; y: number } | null;
   onSetNavigationTarget: (pos: { x: number; y: number } | null) => void;
+  // FIX: targetEntity should be of type Entity, not just Ship, to allow checking its 'type' property.
+  targetEntity?: Entity;
+  selectedSubsystem: 'weapons' | 'engines' | 'shields' | null;
+  onSelectSubsystem: (subsystem: 'weapons' | 'engines' | 'shields') => void;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -34,8 +39,33 @@ const getPath = (start: { x: number; y: number }, end: { x: number; y: number } 
   return path;
 };
 
+const SubsystemTarget: React.FC<{
+    subsystem: 'weapons' | 'engines' | 'shields';
+    health: number;
+    maxHealth: number;
+    isSelected: boolean;
+    positionClass: string;
+    onSelect: () => void;
+    children: React.ReactNode;
+}> = ({ subsystem, health, maxHealth, isSelected, positionClass, onSelect, children }) => {
+    const healthPercentage = (health / maxHealth) * 100;
+    let color = 'text-green-400';
+    if (healthPercentage < 60) color = 'text-yellow-400';
+    if (healthPercentage < 25) color = 'text-red-500';
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget }) => {
+    return (
+        <div
+            className={`absolute ${positionClass} transform transition-all cursor-pointer p-1 rounded-full bg-black bg-opacity-50 hover:bg-opacity-75 ${isSelected ? 'ring-2 ring-yellow-400' : 'ring-1 ring-gray-600'}`}
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            title={`${subsystem.charAt(0).toUpperCase() + subsystem.slice(1)}: ${Math.round(healthPercentage)}%`}
+        >
+            <div className={color}>{children}</div>
+        </div>
+    );
+};
+
+
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, targetEntity, selectedSubsystem, onSelectSubsystem }) => {
   const sectorSize = { width: 12, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
 
@@ -49,12 +79,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   return (
     <div className="bg-black border-2 border-cyan-400 p-2 rounded-md h-[450px]">
       <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
-        {/* Background Grid */}
         {gridCells.map((_, index) => (
           <div key={index} className="border border-cyan-900 border-opacity-50"></div>
         ))}
 
-        {/* Clickable Overlay for Navigation */}
         <div className="absolute inset-0 grid grid-cols-12 grid-rows-10 z-10">
             {gridCells.map((_, index) => {
                 const x = index % sectorSize.width;
@@ -69,7 +97,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             })}
         </div>
 
-        {/* Navigation Path and Target */}
         {navigationTarget && (
             <>
             {path.map((pos, i) => (
@@ -97,7 +124,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             </>
         )}
 
-        {/* Entities */}
         {allEntities.map((entity) => {
             const isSelected = entity.id === selectedTargetId;
             const isPlayer = entity.id === playerShip.id;
@@ -122,9 +148,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 ${!isPlayer ? 'cursor-pointer' : 'cursor-pointer'}`}
                     style={{ left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
                     onClick={(e) => {
-                         e.stopPropagation(); // Prevent grid click when clicking on an entity
+                         e.stopPropagation();
                          if (isPlayer) {
-                            onSetNavigationTarget(null); // Clicking player ship cancels navigation
+                            onSetNavigationTarget(null);
                          } else {
                             onSelectTarget(entity.id);
                          }
@@ -133,7 +159,16 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     <div className={`relative ${factionColor}`}>
                         {icon}
                         {isSelected && (
-                            <div className="absolute inset-0 border-2 border-yellow-400 rounded-full animate-ping"></div>
+                            <>
+                                <div className="absolute inset-0 border-2 border-yellow-400 rounded-full animate-ping"></div>
+                                {targetEntity && targetEntity.type === 'ship' && (
+                                    <>
+                                    <SubsystemTarget subsystem="weapons" {...targetEntity.subsystems.weapons} isSelected={selectedSubsystem === 'weapons'} positionClass="-top-6 -left-3 -translate-x-1/2" onSelect={() => onSelectSubsystem('weapons')}><WeaponIcon className="w-5 h-5"/></SubsystemTarget>
+                                    <SubsystemTarget subsystem="engines" {...targetEntity.subsystems.engines} isSelected={selectedSubsystem === 'engines'} positionClass="-top-6 -right-3 translate-x-1/2" onSelect={() => onSelectSubsystem('engines')}><EngineIcon className="w-5 h-5"/></SubsystemTarget>
+                                    <SubsystemTarget subsystem="shields" {...targetEntity.subsystems.shields} isSelected={selectedSubsystem === 'shields'} positionClass="bottom-0 -right-5 translate-x-1/2" onSelect={() => onSelectSubsystem('shields')}><ShieldIcon className="w-5 h-5"/></SubsystemTarget>
+                                    </>
+                                )}
+                            </>
                         )}
                         <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                     </div>
