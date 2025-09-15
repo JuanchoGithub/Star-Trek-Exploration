@@ -65,6 +65,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState }) => {
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-red-500" />
         <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-cyan-500" />
         <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-yellow-500" />
+        <StatusBar label="Crew Morale" value={ship.crewMorale.current} max={ship.crewMorale.max} colorClass="bg-purple-500" />
         <div className="flex justify-between items-center">
             <span className="font-bold text-sm">Torpedoes</span>
             <div className="flex items-center gap-1">

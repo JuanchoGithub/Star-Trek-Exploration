@@ -1,5 +1,5 @@
 import React from 'react';
-import { WeaponIcon, CycleTargetIcon, TorpedoIcon, EvasiveManeuverIcon, DamageControlIcon, ScanIcon, RetreatIcon } from './Icons';
+import { WeaponIcon, CycleTargetIcon, TorpedoIcon, EvasiveManeuverIcon, DamageControlIcon, ScanIcon, RetreatIcon, HailIcon } from './Icons';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
@@ -10,6 +10,7 @@ interface CommandConsoleProps {
   onInitiateDamageControl: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
+  onHailTarget: () => void;
   retreatingTurn: number | null;
   currentTurn: number;
   isRepairMode: boolean;
@@ -20,6 +21,7 @@ interface CommandConsoleProps {
   torpedoCount: number;
   isQuadrantView: boolean;
   isTargetFriendly: boolean;
+  isTargetHostile: boolean;
   hasDamagedSystems: boolean;
   isTargetScanned: boolean;
   hasTarget: boolean;
@@ -58,11 +60,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     onInitiateDamageControl,
     onScanTarget,
     onInitiateRetreat,
+    onHailTarget,
     retreatingTurn,
     currentTurn,
     isRepairMode,
     isQuadrantView,
     isTargetFriendly,
+    isTargetHostile,
     hasDamagedSystems,
     isTargetScanned,
     hasTarget,
@@ -72,11 +76,18 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   
   return (
     <div className="flex flex-col space-y-2 mt-auto">
+      {hasTarget && !isTargetFriendly && !isTargetHostile && (
+         <CommandButton onClick={onHailTarget} disabled={isQuadrantView || isRepairMode || isRetreating} className="bg-teal-600 hover:bg-teal-500">
+            <HailIcon className="w-5 h-5" />
+            <span className="flex-grow">Hail Vessel</span>
+        </CommandButton>
+      )}
+
       {hasTarget && !isTargetScanned && !isTargetFriendly ? (
-        <CommandButton onClick={onScanTarget} disabled={isQuadrantView || isRepairMode || isRetreating} className="bg-teal-600 hover:bg-teal-500">
+        <CommandButton onClick={onScanTarget} disabled={isQuadrantView || isRepairMode || isRetreating} className="bg-sky-600 hover:bg-sky-500">
             <ScanIcon className="w-5 h-5" />
             <span className="flex-grow">Scan Target</span>
-            <span className="bg-teal-900 text-teal-200 text-xs font-bold px-2 py-1 rounded-full">1 Turn</span>
+            <span className="bg-sky-900 text-sky-200 text-xs font-bold px-2 py-1 rounded-full">Free Action</span>
         </CommandButton>
       ) : (
         <>

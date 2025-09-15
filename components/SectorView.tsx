@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Entity, Ship } from '../types';
-import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon } from './Icons';
+import type { Entity, Ship, SectorState } from '../types';
+import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -9,10 +9,10 @@ interface SectorViewProps {
   onSelectTarget: (id: string | null) => void;
   navigationTarget: { x: number; y: number } | null;
   onSetNavigationTarget: (pos: { x: number; y: number } | null) => void;
-  // FIX: targetEntity should be of type Entity, not just Ship, to allow checking its 'type' property.
   targetEntity?: Entity;
   selectedSubsystem: 'weapons' | 'engines' | 'shields' | null;
   onSelectSubsystem: (subsystem: 'weapons' | 'engines' | 'shields') => void;
+  sector: SectorState;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -64,7 +64,7 @@ const SubsystemTarget: React.FC<{
 };
 
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, targetEntity, selectedSubsystem, onSelectSubsystem }) => {
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, targetEntity, selectedSubsystem, onSelectSubsystem, sector }) => {
   const sectorSize = { width: 12, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
 
@@ -76,7 +76,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const path = getPath(playerShip.position, navigationTarget);
 
   return (
-    <div className="bg-black border-2 border-cyan-400 p-2 rounded-md h-[450px]">
+    <div className="bg-black border-2 border-cyan-400 p-2 rounded-md h-[450px] relative">
+      {sector.hasNebula && (
+        <div className="absolute inset-0 bg-purple-900 opacity-30 z-0 pointer-events-none"></div>
+      )}
       <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
         {gridCells.map((_, index) => (
           <div key={index} className="border border-cyan-900 border-opacity-50"></div>
@@ -136,10 +139,14 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     icon = <PlayerShipIcon className="w-8 h-8"/>;
                     factionColor = 'text-blue-400';
                 } else {
-                    icon = <EnemyShipIcon className="w-8 h-8"/>;
                     if (entity.faction === 'Klingon' || entity.faction === 'Romulan') {
+                        icon = <EnemyShipIcon className="w-8 h-8"/>;
                         factionColor = 'text-red-500';
-                    } else if (entity.faction === 'Independent') {
+                    } else if (entity.faction === 'Pirate') {
+                        icon = <EnemyShipIcon className="w-8 h-8"/>;
+                        factionColor = 'text-orange-500';
+                    } else { // Independent
+                        icon = <NeutralShipIcon className="w-8 h-8"/>;
                         factionColor = 'text-gray-300';
                     }
                     if (!entity.scanned) {
@@ -149,20 +156,21 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             } else if (entity.type === 'starbase') {
                 icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;
                 factionColor = 'text-cyan-300';
-            } else {
+            } else if (entity.type === 'asteroid_field') {
+                icon = <AsteroidFieldIcon className="w-12 h-12 text-gray-500" />;
+                 factionColor = 'text-gray-400';
+            } else { // Planet
                 icon = <PlanetIcon className="w-10 h-10 text-green-500" />;
             }
             
             return (
                 <div
                     key={entity.id}
-                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 ${!isPlayer ? 'cursor-pointer' : 'cursor-pointer'}`}
+                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 ${!isPlayer ? 'cursor-pointer' : 'cursor-default'}`}
                     style={{ left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
                     onClick={(e) => {
                          e.stopPropagation();
-                         if (isPlayer) {
-                            onSetNavigationTarget(null);
-                         } else {
+                         if (!isPlayer && entity.type !== 'asteroid_field') {
                             onSelectTarget(entity.id);
                          }
                     }}

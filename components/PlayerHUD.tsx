@@ -8,8 +8,8 @@ interface PlayerHUDProps {
   gameState: GameState;
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
   onEndTurn: () => void;
-  onFirePhasers: () => void;
-  onLaunchTorpedo: () => void;
+  onFirePhasers: (targetId: string) => void;
+  onLaunchTorpedo: (targetId: string) => void;
   onCycleTargets: () => void;
   onEvasiveManeuvers: () => void;
   target?: Entity;
@@ -24,6 +24,8 @@ interface PlayerHUDProps {
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
+  onStartAwayMission: () => void;
+  onHailTarget: () => void;
 }
 
 const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
@@ -94,16 +96,21 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     onResupplyTorpedoes,
     onScanTarget,
     onInitiateRetreat,
+    onStartAwayMission,
+    onHailTarget,
 }) => {
 
     const playerShip = gameState.player.ship;
     const canFire = playerShip.energy.current >= 10 && playerShip.subsystems.weapons.health > 0;
     const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
-    const canCycleTargets = gameState.currentSector.entities.filter(e => e.type === 'ship' && e.faction !== 'Federation').length > 1;
+    const canCycleTargets = gameState.currentSector.entities.filter(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate')).length > 1;
     const canTakeEvasive = playerShip.energy.current >= 20 && playerShip.subsystems.engines.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
+    const isTargetHostile = target?.faction === 'Klingon' || target?.faction === 'Romulan' || target?.faction === 'Pirate';
     const hasDamagedSystems = playerShip.hull < playerShip.maxHull || Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth);
-    const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && e.faction !== 'Federation');
+    const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
+    const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
+
 
     return (
         <div className="bg-gray-800 border-2 border-blue-400 p-2 rounded-md h-full flex flex-col">
@@ -133,6 +140,14 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         </div>
                     </div>
                 )}
+
+                {isOrbitingPlanet && !hasEnemy && (
+                    <div className="bg-gray-900 p-3 rounded mt-4 text-center">
+                        <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
+                        <button onClick={onStartAwayMission} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Beam Down Away Team</button>
+                    </div>
+                )}
+
             </div>
 
             <div className="mt-auto pt-2">
@@ -141,13 +156,14 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 ) : (
                     <CommandConsole 
                         onEndTurn={onEndTurn}
-                        onFirePhasers={onFirePhasers}
-                        onLaunchTorpedo={onLaunchTorpedo}
+                        onFirePhasers={() => target && onFirePhasers(target.id)}
+                        onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
                         onCycleTargets={onCycleTargets}
                         onEvasiveManeuvers={onEvasiveManeuvers}
                         onInitiateDamageControl={onInitiateDamageControl}
                         onScanTarget={onScanTarget}
                         onInitiateRetreat={onInitiateRetreat}
+                        onHailTarget={onHailTarget}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
                         isRepairMode={isRepairMode}
@@ -158,6 +174,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         torpedoCount={playerShip.torpedoes.current}
                         isQuadrantView={currentView === 'quadrant'}
                         isTargetFriendly={!!isTargetFriendly}
+                        isTargetHostile={!!isTargetHostile}
                         hasDamagedSystems={hasDamagedSystems}
                         isTargetScanned={!!target?.scanned}
                         hasTarget={!!target}
