@@ -8,6 +8,56 @@ import AwayMissionDialog from './components/AwayMissionDialog';
 import HailDialog from './components/HailDialog';
 import OfficerCounselDialog from './components/OfficerCounselDialog';
 import StatusLine from './components/StatusLine';
+import ShipStatus from './components/ShipStatus';
+
+interface GameMenuProps {
+    onSaveGame: () => void;
+    onLoadGame: () => void;
+    onExportSave: () => void;
+    onImportSave: (jsonString: string) => void;
+    onClose: () => void;
+}
+
+const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onClose }) => {
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result;
+            if (typeof text === 'string') {
+                onImportSave(text);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
+    return (
+        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+            <div className="bg-gray-800 border-2 border-blue-400 p-6 rounded-md w-full max-w-sm">
+                <h3 className="text-xl font-bold text-blue-300 mb-4 text-center">Game Menu</h3>
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={onSaveGame} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Save Game</button>
+                    <button onClick={onLoadGame} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Load Game</button>
+                    <button onClick={onExportSave} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Export Save</button>
+                    <button onClick={handleImportClick} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Import Save</button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                </div>
+                <div className="mt-6 text-center">
+                     <button onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded">Close</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const App: React.FC = () => {
   const {
@@ -22,11 +72,11 @@ const App: React.FC = () => {
     officerCounsel,
     targetEntity,
     selectedSubsystem,
+    playerTurnActions,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
     onLaunchTorpedo,
-    onCycleTargets,
     onEvasiveManeuvers,
     onSelectTarget,
     onSetNavigationTarget,
@@ -46,73 +96,99 @@ const App: React.FC = () => {
     onCloseOfficerCounsel,
     onProceedFromCounsel,
     onSelectSubsystem,
+    saveGame,
+    loadGame,
+    exportSave,
+    importSave,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
+  const [isGameMenuOpen, setGameMenuOpen] = useState(false);
 
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
 
   return (
-    <main className="bg-gray-900 text-gray-100 min-h-screen p-4 font-sans flex flex-col">
-      <header className="mb-4 text-center">
-        <h1 className="text-4xl font-bold text-cyan-300 tracking-wider">Starship Endeavour</h1>
-      </header>
-      <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
-        <div className="md:col-span-2 min-h-0">
-          {currentView === 'sector' ? (
-            <SectorView
-              sector={gameState.currentSector}
-              entities={gameState.currentSector.entities}
-              playerShip={gameState.player.ship}
-              selectedTargetId={selectedTargetId}
-              onSelectTarget={onSelectTarget}
-              navigationTarget={navigationTarget}
-              onSetNavigationTarget={onSetNavigationTarget}
-              targetEntity={targetEntity}
-              selectedSubsystem={selectedSubsystem}
-              onSelectSubsystem={onSelectSubsystem}
-            />
-          ) : (
-            <QuadrantView 
-              quadrantMap={gameState.quadrantMap}
-              playerPosition={gameState.player.position}
-              onWarp={onWarp}
-            />
-          )}
-        </div>
-        <div className="min-h-0">
-          <PlayerHUD
-            gameState={gameState}
-            onEnergyChange={onEnergyChange}
-            onEndTurn={onEndTurn}
-            onFirePhasers={onFirePhasers}
-            onLaunchTorpedo={onLaunchTorpedo}
-            onCycleTargets={onCycleTargets}
-            onEvasiveManeuvers={onEvasiveManeuvers}
-            target={target}
-            currentView={currentView}
-            onSetView={onSetView}
-            isDocked={isDocked}
-            onDockWithStarbase={onDockWithStarbase}
-            onRechargeDilithium={onRechargeDilithium}
-            onResupplyTorpedoes={onResupplyTorpedoes}
-            isRepairMode={isRepairMode}
-            onInitiateDamageControl={onInitiateDamageControl}
-            onSelectRepairTarget={onSelectRepairTarget}
-            onScanTarget={onScanTarget}
-            onInitiateRetreat={onInitiateRetreat}
-            onStartAwayMission={onStartAwayMission}
-            onHailTarget={onHailTarget}
-          />
-        </div>
-        <div className="md:col-span-3 min-h-0">
+    <main className="bg-gray-900 text-gray-100 h-screen p-4 font-sans flex flex-col">
+      <div className="flex-grow grid grid-cols-[3fr_1fr] gap-4 min-h-0">
+          {/* Left Column: Map/HUD */}
+          <div className="flex flex-col min-h-0">
+              {/* Top Section: Tabs + Map */}
+              <div className="flex flex-grow min-h-0">
+                  {/* Vertical Tabs */}
+                  <div className="flex flex-col w-10 flex-shrink-0">
+                      <button onClick={() => onSetView('sector')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-tl-md ${currentView === 'sector' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                          <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Sector View</span>
+                      </button>
+                      <button onClick={() => onSetView('quadrant')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                          <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Quadrant Map</span>
+                      </button>
+                  </div>
+                  {/* Map Container */}
+                  <div className="flex-grow min-h-0">
+                      {currentView === 'sector' ? (
+                          <SectorView
+                          sector={gameState.currentSector}
+                          entities={gameState.currentSector.entities}
+                          playerShip={gameState.player.ship}
+                          selectedTargetId={selectedTargetId}
+                          onSelectTarget={onSelectTarget}
+                          navigationTarget={navigationTarget}
+                          onSetNavigationTarget={onSetNavigationTarget}
+                          targetEntity={targetEntity}
+                          selectedSubsystem={selectedSubsystem}
+                          onSelectSubsystem={onSelectSubsystem}
+                          />
+                      ) : (
+                          <QuadrantView 
+                          quadrantMap={gameState.quadrantMap}
+                          playerPosition={gameState.player.position}
+                          onWarp={onWarp}
+                          />
+                      )}
+                  </div>
+              </div>
+              {/* Bottom Section: HUD */}
+              <div className="flex-shrink-0 pt-4">
+                <PlayerHUD
+                    gameState={gameState}
+                    onEndTurn={onEndTurn}
+                    onFirePhasers={onFirePhasers}
+                    onLaunchTorpedo={onLaunchTorpedo}
+                    onEvasiveManeuvers={onEvasiveManeuvers}
+                    target={target}
+                    isDocked={isDocked}
+                    onDockWithStarbase={onDockWithStarbase}
+                    onRechargeDilithium={onRechargeDilithium}
+                    onResupplyTorpedoes={onResupplyTorpedoes}
+                    isRepairMode={isRepairMode}
+                    onInitiateDamageControl={onInitiateDamageControl}
+                    onSelectRepairTarget={onSelectRepairTarget}
+                    onScanTarget={onScanTarget}
+                    onInitiateRetreat={onInitiateRetreat}
+                    onStartAwayMission={onStartAwayMission}
+                    onHailTarget={onHailTarget}
+                    playerTurnActions={playerTurnActions}
+                  />
+              </div>
+          </div>
+          
+          {/* Right Column: Ship Status */}
+          <div className="flex flex-col">
+              <ShipStatus 
+                  gameState={gameState} 
+                  onEnergyChange={onEnergyChange} 
+              />
+          </div>
+      </div>
+      
+      <div className="flex-shrink-0 pt-4">
            <StatusLine 
-            ship={gameState.player.ship}
             latestLog={gameState.logs[0] || "Welcome to the U.S.S. Endeavour."}
             onToggleLog={() => setShowLogPanel(true)}
+            onOpenGameMenu={() => setGameMenuOpen(true)}
           />
-        </div>
       </div>
+
       {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} />}
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
       {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} />}
@@ -128,6 +204,15 @@ const App: React.FC = () => {
                 </button>
             </div>
         </div>
+      )}
+      {isGameMenuOpen && (
+          <GameMenu 
+              onSaveGame={saveGame}
+              onLoadGame={loadGame}
+              onExportSave={exportSave}
+              onImportSave={importSave}
+              onClose={() => setGameMenuOpen(false)}
+          />
       )}
       {gameState.gameOver && (
           <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 p-8 text-center">

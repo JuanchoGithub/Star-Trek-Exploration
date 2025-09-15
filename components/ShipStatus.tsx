@@ -1,6 +1,7 @@
 import React from 'react';
-import type { GameState, ShipSubsystems, Ship } from '../types';
+import type { GameState, ShipSubsystems } from '../types';
 import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon } from './Icons';
+import EnergyAllocator from './EnergyAllocator';
 
 interface StatusBarProps {
   label: string;
@@ -52,21 +53,21 @@ const SubsystemStatus: React.FC<{subsystems: ShipSubsystems}> = ({ subsystems })
 
 interface ShipStatusProps {
   gameState: GameState;
+  onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange }) => {
   const { ship } = gameState.player;
   const evasiveText = ship.evasive ? <span className="text-green-400 font-bold ml-2">(Evasive)</span> : null;
 
   return (
-    <div className="bg-gray-900 p-3 rounded">
-      <h3 className="text-lg font-bold text-blue-300 mb-3">U.S.S. Endeavour Status {evasiveText}</h3>
+    <div className="bg-gray-900 p-3 rounded h-full flex flex-col">
+      <h3 className="text-lg font-bold text-blue-300 mb-3">U.S.S. Endeavour Systems</h3>
       <div className="space-y-3">
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-red-500" />
         <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-cyan-500" />
         <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-yellow-500" />
         <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-pink-500" />
-        <StatusBar label="Crew Morale" value={ship.crewMorale.current} max={ship.crewMorale.max} colorClass="bg-purple-500" />
         <div className="flex justify-between items-center">
             <span className="font-bold text-sm">Torpedoes</span>
             <div className="flex items-center gap-1">
@@ -75,6 +76,9 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState }) => {
             </div>
         </div>
         <SubsystemStatus subsystems={ship.subsystems} />
+      </div>
+       <div className="mt-auto pt-3">
+        <EnergyAllocator allocation={ship.energyAllocation} onEnergyChange={onEnergyChange} />
       </div>
     </div>
   );

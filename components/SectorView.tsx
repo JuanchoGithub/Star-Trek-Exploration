@@ -76,7 +76,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const path = getPath(playerShip.position, navigationTarget);
 
   return (
-    <div className="bg-black border-2 border-cyan-400 p-2 rounded-md h-[450px] relative">
+    <div className="bg-black border-2 border-cyan-400 p-2 rounded-r-md h-full relative">
       {sector.hasNebula && (
         <div className="absolute inset-0 bg-purple-900 opacity-30 z-0 pointer-events-none"></div>
       )}

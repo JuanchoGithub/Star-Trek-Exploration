@@ -6,6 +6,7 @@ import { awayMissionTemplates, hailResponses, counselAdvice } from '../data/cont
 const SECTOR_WIDTH = 12;
 const SECTOR_HEIGHT = 10;
 const QUADRANT_SIZE = 8;
+const SAVE_GAME_KEY = 'star_trek_savegame';
 
 // Helper to generate a unique ID
 const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -219,7 +220,20 @@ const createInitialGameState = (): GameState => {
 const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
 
 export const useGameLogic = () => {
-    const [gameState, setGameState] = useState<GameState>(createInitialGameState);
+    const [gameState, setGameState] = useState<GameState>(() => {
+        const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
+        if (savedStateJSON) {
+            try {
+                const savedState = JSON.parse(savedStateJSON);
+                if (savedState.player && savedState.turn) {
+                    return savedState;
+                }
+            } catch (e) {
+                console.error("Could not parse saved state, starting new game.", e);
+            }
+        }
+        return createInitialGameState();
+    });
     const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
     const [navigationTarget, setNavigationTarget] = useState<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
@@ -235,6 +249,70 @@ export const useGameLogic = () => {
     const addLog = useCallback((message: string) => {
         setGameState(prev => ({ ...prev, logs: [message, ...prev.logs] }));
     }, []);
+
+    const saveGame = useCallback(() => {
+        try {
+            localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
+            addLog('Game state saved successfully.');
+        } catch (error) {
+            console.error("Failed to save game:", error);
+            addLog('Error: Could not save game state.');
+        }
+    }, [gameState, addLog]);
+
+    const loadGame = useCallback(() => {
+        try {
+            const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
+            if (savedStateJSON) {
+                const savedState: GameState = JSON.parse(savedStateJSON);
+                if (savedState.player && savedState.turn) {
+                    setGameState(savedState);
+                    addLog('Game state loaded successfully.');
+                } else {
+                    addLog('Error: Invalid save data found.');
+                }
+            } else {
+                addLog('No saved game found to load.');
+            }
+        } catch (error) {
+            console.error("Failed to load game:", error);
+            addLog('Error: Could not load game state.');
+        }
+    }, [addLog]);
+
+    const exportSave = useCallback(() => {
+        try {
+            const stateJSON = JSON.stringify(gameState, null, 2);
+            const blob = new Blob([stateJSON], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `startrek-save-turn-${gameState.turn}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            addLog('Save file exported.');
+        } catch (error) {
+            console.error("Failed to export save:", error);
+            addLog('Error: Could not export save file.');
+        }
+    }, [gameState, addLog]);
+
+    const importSave = useCallback((jsonString: string) => {
+        try {
+            const newState: GameState = JSON.parse(jsonString);
+            if (newState.player && newState.turn && newState.quadrantMap) {
+                setGameState(newState);
+                addLog('Game state imported successfully.');
+            } else {
+                addLog('Error: The imported file is not a valid save file.');
+            }
+        } catch (error) {
+            console.error("Failed to import save:", error);
+            addLog('Error: Could not parse the imported save file.');
+        }
+    }, [addLog]);
 
     const onEndTurn = useCallback(() => {
     setGameState(prev => {
@@ -484,18 +562,12 @@ export const useGameLogic = () => {
     }, [addLog, gameState.currentSector.entities, selectedSubsystem]);
     
     const onEvasiveManeuvers = useCallback(() => {
-        addLog('Evasive maneuvers enabled for next turn.');
-        setPlayerTurnActions(prev => ({ ...prev, evasive: true }));
+        setPlayerTurnActions(prev => {
+            const isEvasive = !prev.evasive;
+            addLog(isEvasive ? 'Evasive maneuvers enabled for next turn.' : 'Evasive maneuvers disabled.');
+            return { ...prev, evasive: isEvasive };
+        });
     }, [addLog]);
-
-    const onCycleTargets = useCallback(() => {
-         const enemies = gameState.currentSector.entities.filter(e => e.type === 'ship' && e.faction !== 'Federation' && e.faction !== 'Independent');
-         if (enemies.length === 0) return;
-         const currentTargetIndex = selectedTargetId ? enemies.findIndex(e => e.id === selectedTargetId) : -1;
-         const nextTarget = enemies[(currentTargetIndex + 1) % enemies.length];
-         setSelectedTargetId(nextTarget.id);
-         addLog(`Target locked: ${nextTarget.name}`);
-    }, [addLog, gameState.currentSector.entities, selectedTargetId]);
 
     const onDockWithStarbase = useCallback(() => {
         setIsDocked(true);
@@ -624,11 +696,11 @@ export const useGameLogic = () => {
         officerCounsel,
         targetEntity,
         selectedSubsystem,
+        playerTurnActions,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,
         onLaunchTorpedo,
-        onCycleTargets,
         onEvasiveManeuvers,
         onSelectTarget,
         onSetNavigationTarget,
@@ -648,5 +720,9 @@ export const useGameLogic = () => {
         onCloseOfficerCounsel,
         onProceedFromCounsel,
         onSelectSubsystem: setSelectedSubsystem,
+        saveGame,
+        loadGame,
+        exportSave,
+        importSave,
     };
 };

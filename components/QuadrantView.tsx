@@ -12,7 +12,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
     const quadrantSize = { width: 8, height: 8 };
 
     return (
-        <div className="bg-black border-2 border-cyan-400 p-2 rounded-md h-[450px] flex flex-col">
+        <div className="bg-black border-2 border-cyan-400 p-2 rounded-r-md h-full flex flex-col">
             <h2 className="text-xl font-bold text-cyan-300 mb-2 text-center">Quadrant Map</h2>
             <div className="grid grid-cols-8 grid-rows-8 h-full gap-1 flex-grow">
                 {quadrantMap.flat().map((sector, index) => {

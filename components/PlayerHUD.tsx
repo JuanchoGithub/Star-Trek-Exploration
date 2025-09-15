@@ -1,20 +1,14 @@
 import React from 'react';
-import type { GameState, Entity, Ship } from '../types';
-import ShipStatus from './ShipStatus';
-import EnergyAllocator from './EnergyAllocator';
+import type { GameState, Entity, Ship, PlayerTurnActions } from '../types';
 import CommandConsole from './CommandConsole';
 
 interface PlayerHUDProps {
   gameState: GameState;
-  onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
   onEndTurn: () => void;
   onFirePhasers: (targetId: string) => void;
-  onLaunchTorpedo: (targetId: string) => void;
-  onCycleTargets: () => void;
+  onLaunchTorpedo: (targetId:string) => void;
   onEvasiveManeuvers: () => void;
   target?: Entity;
-  currentView: 'sector' | 'quadrant';
-  onSetView: (view: 'sector' | 'quadrant') => void;
   isDocked: boolean;
   onRechargeDilithium: () => void;
   onDockWithStarbase: () => void;
@@ -26,11 +20,12 @@ interface PlayerHUDProps {
   onInitiateRetreat: () => void;
   onStartAwayMission: () => void;
   onHailTarget: () => void;
+  playerTurnActions: PlayerTurnActions;
 }
 
 const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     if (target.type === 'ship' && !target.scanned) {
-        return <div className="bg-gray-900 p-3 rounded mt-4"><h3 className="text-lg font-bold text-yellow-300 mb-1">Target: Unknown Ship</h3><p className="text-sm text-gray-400">Scan to reveal details.</p></div>
+        return <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center"><h3 className="text-lg font-bold text-yellow-300 mb-1">Target: Unknown Ship</h3><p className="text-sm text-gray-400">Scan to reveal details.</p></div>
     }
     
     let stats = null;
@@ -44,8 +39,9 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     }
 
     return (
-        <div className="bg-gray-900 p-3 rounded mt-4">
+        <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center">
             <h3 className="text-lg font-bold text-yellow-300 mb-1">Target: {target.name}</h3>
+            <p className="text-sm text-gray-500">{target.faction} {target.type}</p>
             {stats}
         </div>
     );
@@ -60,8 +56,8 @@ const RepairPanel: React.FC<{onSelectRepairTarget: (subsystem: 'weapons' | 'engi
     ] as const;
 
     return (
-        <div className="bg-gray-900 p-3 rounded mt-4">
-            <h3 className="text-lg font-bold text-yellow-400 mb-3">Damage Control</h3>
+        <div className="bg-gray-900 p-3 rounded h-full">
+            <h3 className="text-lg font-bold text-yellow-400 mb-3 text-center">Damage Control</h3>
             <div className="space-y-2">
                 {systems.map(sys => (
                     <button key={sys.key} onClick={() => onSelectRepairTarget(sys.key)} disabled={sys.disabled}
@@ -75,114 +71,87 @@ const RepairPanel: React.FC<{onSelectRepairTarget: (subsystem: 'weapons' | 'engi
     )
 };
 
-
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
-    gameState,
-    onEnergyChange,
-    onEndTurn,
-    onFirePhasers,
-    onLaunchTorpedo,
-    onCycleTargets,
-    onEvasiveManeuvers,
-    target,
-    currentView,
-    onSetView,
-    isDocked,
-    onRechargeDilithium,
-    onDockWithStarbase,
-    isRepairMode,
-    onInitiateDamageControl,
-    onSelectRepairTarget,
-    onResupplyTorpedoes,
-    onScanTarget,
-    onInitiateRetreat,
-    onStartAwayMission,
-    onHailTarget,
+    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers,
+    target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes,
+    isRepairMode, onInitiateDamageControl, onSelectRepairTarget,
+    onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
+    playerTurnActions
 }) => {
-
     const playerShip = gameState.player.ship;
+
     const canFire = playerShip.energy.current >= 10 && playerShip.subsystems.weapons.health > 0;
     const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
-    const canCycleTargets = gameState.currentSector.entities.filter(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate')).length > 1;
     const canTakeEvasive = playerShip.energy.current >= 20 && playerShip.subsystems.engines.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
-    const isTargetHostile = target?.faction === 'Klingon' || target?.faction === 'Romulan' || target?.faction === 'Pirate';
     const hasDamagedSystems = playerShip.hull < playerShip.maxHull || Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth);
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
     const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
 
-
     return (
-        <div className="bg-gray-800 border-2 border-blue-400 p-2 rounded-md h-full flex flex-col">
-            <div className="flex justify-around mb-2">
-                <button onClick={() => onSetView('sector')} className={`px-4 py-1 rounded font-bold ${currentView === 'sector' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300'}`}>Sector View</button>
-                <button onClick={() => onSetView('quadrant')} className={`px-4 py-1 rounded font-bold ${currentView === 'quadrant' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300'}`}>Quadrant Map</button>
-            </div>
-            
-            <div className="overflow-y-auto pr-2 flex-grow">
-                <ShipStatus gameState={gameState} />
-                <EnergyAllocator allocation={playerShip.energyAllocation} onEnergyChange={onEnergyChange} />
-                
-                {target && <TargetInfo target={target} />}
-
-                {target?.type === 'starbase' && !isDocked && (
-                    <div className="bg-gray-900 p-3 rounded mt-4 text-center">
-                        <button onClick={onDockWithStarbase} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Initiate Docking</button>
-                    </div>
-                )}
-        
-                {isDocked && (
-                    <div className="bg-gray-900 p-3 rounded mt-4 text-center">
-                        <h3 className="text-lg font-bold text-blue-300 mb-3">Starbase Operations</h3>
-                        <div className="space-y-2">
-                            <button onClick={onRechargeDilithium} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
-                            <button onClick={onResupplyTorpedoes} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
+        <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Column 1: Contextual Info & Operations */}
+                <div className="flex flex-col space-y-2">
+                    {target ? <TargetInfo target={target} /> : (
+                         <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center text-center">
+                            <h3 className="text-lg font-bold text-gray-400">No Target Selected</h3>
+                            <p className="text-sm text-gray-500">Click an object on the map to select it.</p>
                         </div>
-                    </div>
-                )}
+                    )}
+                    {target?.type === 'starbase' && !isDocked && (
+                        <div className="bg-gray-900 p-3 rounded text-center">
+                            <button onClick={onDockWithStarbase} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Initiate Docking</button>
+                        </div>
+                    )}
+                    {isDocked && (
+                        <div className="bg-gray-900 p-3 rounded text-center">
+                            <h3 className="text-lg font-bold text-blue-300 mb-3">Starbase Operations</h3>
+                            <div className="space-y-2">
+                                <button onClick={onRechargeDilithium} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
+                                <button onClick={onResupplyTorpedoes} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
+                            </div>
+                        </div>
+                    )}
+                    {isOrbitingPlanet && !hasEnemy && (
+                        <div className="bg-gray-900 p-3 rounded text-center">
+                            <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
+                            <button onClick={onStartAwayMission} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Beam Down Away Team</button>
+                        </div>
+                    )}
+                </div>
 
-                {isOrbitingPlanet && !hasEnemy && (
-                    <div className="bg-gray-900 p-3 rounded mt-4 text-center">
-                        <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
-                        <button onClick={onStartAwayMission} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Beam Down Away Team</button>
-                    </div>
-                )}
-
+                {/* Column 2: Command & Control */}
+                <div className="flex flex-col h-full">
+                    {isRepairMode ? (
+                        <RepairPanel ship={playerShip} onSelectRepairTarget={onSelectRepairTarget} onCancel={onInitiateDamageControl} />
+                    ) : (
+                        <CommandConsole 
+                            onEndTurn={onEndTurn}
+                            onFirePhasers={() => target && onFirePhasers(target.id)}
+                            onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
+                            onEvasiveManeuvers={onEvasiveManeuvers}
+                            onInitiateDamageControl={onInitiateDamageControl}
+                            onScanTarget={onScanTarget}
+                            onInitiateRetreat={onInitiateRetreat}
+                            onHailTarget={onHailTarget}
+                            retreatingTurn={playerShip.retreatingTurn}
+                            currentTurn={gameState.turn}
+                            isRepairMode={isRepairMode}
+                            canFire={!!target && !isTargetFriendly && canFire}
+                            canLaunchTorpedo={!!target && !isTargetFriendly && canLaunchTorpedo}
+                            canTakeEvasive={canTakeEvasive}
+                            isTargetFriendly={!!isTargetFriendly}
+                            hasDamagedSystems={hasDamagedSystems}
+                            isTargetScanned={!!target?.scanned}
+                            hasTarget={!!target}
+                            hasEnemy={hasEnemy}
+                            playerTurnActions={playerTurnActions}
+                        />
+                    )}
+                </div>
             </div>
-
-            <div className="mt-auto pt-2">
-                 {isRepairMode ? (
-                    <RepairPanel ship={playerShip} onSelectRepairTarget={onSelectRepairTarget} onCancel={onInitiateDamageControl} />
-                ) : (
-                    <CommandConsole 
-                        onEndTurn={onEndTurn}
-                        onFirePhasers={() => target && onFirePhasers(target.id)}
-                        onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
-                        onCycleTargets={onCycleTargets}
-                        onEvasiveManeuvers={onEvasiveManeuvers}
-                        onInitiateDamageControl={onInitiateDamageControl}
-                        onScanTarget={onScanTarget}
-                        onInitiateRetreat={onInitiateRetreat}
-                        onHailTarget={onHailTarget}
-                        retreatingTurn={playerShip.retreatingTurn}
-                        currentTurn={gameState.turn}
-                        isRepairMode={isRepairMode}
-                        canFire={!!target && !isTargetFriendly && canFire}
-                        canLaunchTorpedo={!!target && !isTargetFriendly && canLaunchTorpedo}
-                        canCycleTargets={canCycleTargets}
-                        canTakeEvasive={canTakeEvasive}
-                        torpedoCount={playerShip.torpedoes.current}
-                        isQuadrantView={currentView === 'quadrant'}
-                        isTargetFriendly={!!isTargetFriendly}
-                        isTargetHostile={!!isTargetHostile}
-                        hasDamagedSystems={hasDamagedSystems}
-                        isTargetScanned={!!target?.scanned}
-                        hasTarget={!!target}
-                        hasEnemy={hasEnemy}
-                    />
-                )}
-            </div>
-        </div>
+        </>
     );
 };
 
