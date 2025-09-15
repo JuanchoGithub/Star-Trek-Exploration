@@ -25,11 +25,19 @@ const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, colorClass }) 
   );
 };
 
-const SubsystemStatus: React.FC<{subsystems: ShipSubsystems}> = ({ subsystems }) => {
+const SubsystemStatus: React.FC<{
+  subsystems: ShipSubsystems;
+  allocation: { weapons: number; shields: number; engines: number };
+  maxShields: number;
+}> = ({ subsystems, allocation, maxShields }) => {
+    const weaponBonus = (20 * (allocation.weapons / 100)).toFixed(1);
+    const shieldBonus = ((allocation.shields / 100) * (maxShields * 0.1)).toFixed(1);
+    const engineBonus = (allocation.engines / 5).toFixed(0); // Represents a fictional evasion bonus for UI feedback
+
     const systems = [
-        { name: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons },
-        { name: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields },
-        { name: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines },
+        { name: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons, bonus: `+${weaponBonus} DMG`, bonusColor: 'text-red-400' },
+        { name: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields, bonus: `+${shieldBonus} REG/t`, bonusColor: 'text-cyan-400' },
+        { name: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines, bonus: `+${engineBonus} EVA`, bonusColor: 'text-green-400' },
     ];
     return (
         <div className="grid grid-cols-3 gap-2 mt-3">
@@ -40,10 +48,11 @@ const SubsystemStatus: React.FC<{subsystems: ShipSubsystems}> = ({ subsystems })
                 if (healthPercentage < 25) color = 'text-red-500';
 
                 return (
-                    <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-gray-800 ${color}`}>
-                        {system.icon}
-                        <span className="text-xs mt-1">{system.name}</span>
-                        <span className="text-xs font-bold">{Math.round(healthPercentage)}%</span>
+                    <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-gray-800`}>
+                        <div className={color}>{system.icon}</div>
+                        <span className="text-xs mt-1 text-gray-300">{system.name}</span>
+                        <span className={`text-sm font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
+                        <span className={`text-xs font-bold ${system.bonusColor}`}>{system.bonus}</span>
                     </div>
                 );
             })}
@@ -54,9 +63,10 @@ const SubsystemStatus: React.FC<{subsystems: ShipSubsystems}> = ({ subsystems })
 interface ShipStatusProps {
   gameState: GameState;
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
+  onDistributeEvenly: () => void;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDistributeEvenly }) => {
   const { ship } = gameState.player;
   const evasiveText = ship.evasive ? <span className="text-green-400 font-bold ml-2">(Evasive)</span> : null;
 
@@ -75,10 +85,18 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange }) =>
                 <span className="font-bold text-orange-400">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
             </div>
         </div>
-        <SubsystemStatus subsystems={ship.subsystems} />
+        <SubsystemStatus 
+            subsystems={ship.subsystems} 
+            allocation={ship.energyAllocation}
+            maxShields={ship.maxShields}
+        />
       </div>
        <div className="mt-auto pt-3">
-        <EnergyAllocator allocation={ship.energyAllocation} onEnergyChange={onEnergyChange} />
+        <EnergyAllocator 
+            allocation={ship.energyAllocation} 
+            onEnergyChange={onEnergyChange} 
+            onDistributeEvenly={onDistributeEvenly}
+        />
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ interface EnergyAllocatorProps {
     engines: number;
   };
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
+  onDistributeEvenly: () => void;
 }
 
 const Slider: React.FC<{ label: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; icon: React.ReactNode; }> = ({ label, value, onChange, icon }) => (
@@ -27,7 +28,7 @@ const Slider: React.FC<{ label: string; value: number; onChange: (e: React.Chang
 );
 
 
-const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange }) => {
+const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange, onDistributeEvenly }) => {
   return (
     <div className="bg-gray-900 p-3 rounded">
       <h3 className="text-lg font-bold text-blue-300 mb-3">Energy Allocation</h3>
@@ -50,6 +51,14 @@ const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyC
           value={allocation.engines}
           onChange={(e) => onEnergyChange('engines', parseInt(e.target.value, 10))}
         />
+      </div>
+      <div className="mt-4 text-center">
+        <button 
+            onClick={onDistributeEvenly} 
+            className="text-xs text-blue-300 hover:text-blue-200 border border-blue-400 rounded-full px-3 py-1 transition-colors"
+        >
+            Distribute Evenly
+        </button>
       </div>
     </div>
   );

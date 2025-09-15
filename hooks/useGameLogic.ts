@@ -499,31 +499,65 @@ export const useGameLogic = () => {
     });
     }, [addLog, playerTurnActions, navigationTarget, selectedTargetId]);
 
-    const onEnergyChange = useCallback((type: 'weapons' | 'shields' | 'engines', value: number) => {
+    const onEnergyChange = useCallback((changedKey: 'weapons' | 'shields' | 'engines', value: number) => {
         setGameState(prev => {
-            const newAlloc = { ...prev.player.ship.energyAllocation, [type]: value };
-            const total = newAlloc.weapons + newAlloc.shields + newAlloc.engines;
-            if (total > 100) {
-                const excess = total - 100;
-                // A simple way to handle excess is to reduce the other sliders
-                // This logic can be improved for better UX
-                if (type !== 'weapons') newAlloc.weapons = Math.max(0, newAlloc.weapons - excess/2);
-                if (type !== 'shields') newAlloc.shields = Math.max(0, newAlloc.shields - excess/2);
-                if (type !== 'engines') newAlloc.engines = Math.max(0, newAlloc.engines - excess/2);
+            const oldAlloc = prev.player.ship.energyAllocation;
+            if (oldAlloc[changedKey] === value) return prev;
+            
+            const newAlloc = { ...oldAlloc };
+            const oldValue = oldAlloc[changedKey];
+            const clampedNewValue = Math.max(0, Math.min(100, value));
+            
+            const otherKeys = (['weapons', 'shields', 'engines'] as const).filter(k => k !== changedKey);
+            const [key1, key2] = otherKeys;
+            const val1 = oldAlloc[key1];
+            const val2 = oldAlloc[key2];
+            const totalOtherVal = val1 + val2;
 
-                const keys = ['weapons', 'shields', 'engines'] as const;
-                let currentTotal = newAlloc.weapons + newAlloc.shields + newAlloc.engines;
-                for (const key of keys) {
-                    if (currentTotal > 100) {
-                        const reduction = Math.min(newAlloc[key], currentTotal - 100);
-                        newAlloc[key] -= reduction;
-                        currentTotal -= reduction;
-                    }
-                }
+            const intendedDiff = clampedNewValue - oldValue;
+            
+            let actualDiff = intendedDiff;
+            if (intendedDiff > 0) { // Increasing slider, can't take more than what other sliders have
+                actualDiff = Math.min(intendedDiff, totalOtherVal);
             }
+            
+            const finalNewValue = oldValue + actualDiff;
+            newAlloc[changedKey] = finalNewValue;
+
+            const toDistribute = -actualDiff;
+
+            if (totalOtherVal > 0) {
+                newAlloc[key1] = val1 + Math.round(toDistribute * (val1 / totalOtherVal));
+                newAlloc[key2] = val2 + Math.round(toDistribute * (val2 / totalOtherVal));
+            } else { // Both other sliders are 0, distribute evenly (they'll stay 0)
+                newAlloc[key1] = val1 + Math.floor(toDistribute / 2);
+                newAlloc[key2] = val2 + Math.ceil(toDistribute / 2);
+            }
+
+            // Final pass to ensure the sum is exactly 100 due to rounding
+            const sum = newAlloc.weapons + newAlloc.shields + newAlloc.engines;
+            if (sum !== 100) {
+                newAlloc[changedKey] += (100 - sum);
+            }
+
             return { ...prev, player: { ...prev.player, ship: { ...prev.player.ship, energyAllocation: newAlloc } } };
         });
     }, []);
+
+    const onDistributeEvenly = useCallback(() => {
+        setGameState(prev => ({
+            ...prev,
+            player: {
+                ...prev.player,
+                ship: {
+                    ...prev.player.ship,
+                    energyAllocation: { weapons: 34, shields: 33, engines: 33 }
+                }
+            }
+        }));
+        addLog("Energy allocation reset to default distribution.");
+    }, [addLog]);
+
 
     const onSelectTarget = useCallback((id: string | null) => {
         setSelectedTargetId(id);
@@ -749,5 +783,6 @@ export const useGameLogic = () => {
         loadGame,
         exportSave,
         importSave,
+        onDistributeEvenly,
     };
 };

@@ -100,6 +100,7 @@ const App: React.FC = () => {
     loadGame,
     exportSave,
     importSave,
+    onDistributeEvenly,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -178,6 +179,7 @@ const App: React.FC = () => {
               <ShipStatus 
                   gameState={gameState} 
                   onEnergyChange={onEnergyChange} 
+                  onDistributeEvenly={onDistributeEvenly}
               />
           </div>
       </div>
