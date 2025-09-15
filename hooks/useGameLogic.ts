@@ -46,6 +46,7 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
                 engines: { health: 100, maxHealth: 100 },
                 shields: { health: 100, maxHealth: 100 },
             },
+            repairTarget: null,
         });
     } else if (Math.random() < 0.40) { // 40% chance of a starbase if no enemy (was 25%)
         entities.push({
@@ -102,6 +103,7 @@ const createInitialGameState = (): GameState => {
             engines: { health: 100, maxHealth: 100 },
             shields: { health: 100, maxHealth: 100 },
         },
+        repairTarget: null,
       },
       quadrantPosition: startPos,
     },
@@ -125,6 +127,7 @@ export const useGameLogic = () => {
   const [selectedSubsystem, setSelectedSubsystem] = useState<'weapons' | 'engines' | 'shields' | null>(null);
   const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
   const [isDockedWith, setIsDockedWith] = useState<string | null>(null);
+  const [isRepairMode, setIsRepairMode] = useState<boolean>(false);
 
 
   const turnRef = useRef(1);
@@ -166,7 +169,7 @@ export const useGameLogic = () => {
     );
     if (starbase && isDockedWith !== starbase.id) {
         setIsDockedWith(starbase.id);
-        addToLog(`Docking successful with ${starbase.name}. Welcome aboard, Captain.`);
+        addToLog(`Docking with ${starbase.name} complete. Use 'Starbase Operations' to recharge dilithium.`);
     } else if (!starbase && isDockedWith) {
         setIsDockedWith(null);
         addToLog(`U.S.S. Endeavour has departed the starbase.`);
@@ -186,6 +189,7 @@ export const useGameLogic = () => {
 
   const handleSetView = useCallback((view: 'sector' | 'quadrant') => {
       setCurrentView(view);
+      setIsRepairMode(false); // Exit repair mode when switching views
   }, []);
 
   const handleWarpToSector = useCallback((pos: { qx: number; qy: number }) => {
@@ -291,6 +295,7 @@ export const useGameLogic = () => {
   }, []);
 
   const handleEndTurn = useCallback((actionTaken: boolean = false) => {
+    setIsRepairMode(false); // Always exit repair mode at end of turn
     setGameState(prev => {
       if (!prev) return null;
 
@@ -301,6 +306,17 @@ export const useGameLogic = () => {
         const sub = ship.subsystems[system];
         return sub.health / sub.maxHealth;
       };
+      
+      // Process Player Ship Repairs
+      if (playerShip.repairTarget) {
+        const system = playerShip.subsystems[playerShip.repairTarget];
+        // Repair amount is based on engine power, simulating engineering crew effort
+        const repairAmount = 10 + Math.floor(playerShip.powerAllocation.engines / 10);
+        const oldHealth = system.health;
+        system.health = Math.min(system.maxHealth, system.health + repairAmount);
+        addToLog(`Damage control teams repaired ${playerShip.repairTarget} by ${system.health - oldHealth} points. Integrity at ${system.health}%.`);
+        playerShip.repairTarget = null;
+      }
 
       if (!actionTaken && newState.navigationTarget) {
         const target = newState.navigationTarget;
@@ -339,34 +355,56 @@ export const useGameLogic = () => {
                 addToLog(`The attack from ${aiShip.name} missed due to our evasive maneuvers!`);
                 return;
             }
-
-            const targetableSubsystems = (['weapons', 'engines', 'shields'] as const)
-                .filter(sub => playerShip.subsystems[sub].health > 0);
-            const aiTargetSubsystem = targetableSubsystems[Math.floor(Math.random() * targetableSubsystems.length)];
             
-            addToLog(`${aiShip.name} is firing on our ${aiTargetSubsystem} systems.`);
+            addToLog(`${aiShip.name} is firing!`);
             
             const aiWeaponEfficiency = getSystemEfficiency(aiShip, 'weapons');
             const baseDamage = Math.round(15 * (0.5 + aiWeaponEfficiency * 0.5));
             const damage = Math.round(baseDamage * (aiShip.powerAllocation.weapons / 100 + 0.5));
 
-            if (playerShip.shields.fore > 0) {
-              const shieldDamage = Math.min(playerShip.shields.fore, damage);
-              playerShip.shields.fore -= shieldDamage;
-              addToLog(`Our shields absorbed ${shieldDamage} damage. Shield strength at ${playerShip.shields.fore}.`);
-            } else {
-              const targetSub = playerShip.subsystems[aiTargetSubsystem];
-              const damageToSubsystem = Math.min(targetSub.health, Math.round(damage * 0.75));
-              targetSub.health -= damageToSubsystem;
-              const damageToHull = damage - damageToSubsystem;
-              
-              addToLog(`Direct hit to ${aiTargetSubsystem}! System integrity at ${targetSub.health}%.`);
+            const bleedThroughRatio = 0.2; // 20% of damage bleeds through shields
+            const bleedThroughDamage = Math.round(damage * bleedThroughRatio);
+            const shieldDirectedDamage = damage - bleedThroughDamage;
 
-              if (damageToHull > 0) {
-                playerShip.hull = Math.max(0, playerShip.hull - damageToHull);
-                addToLog(`We took ${damageToHull} damage to hull. Hull integrity at ${playerShip.hull}%.`);
-              }
-              if (playerShip.hull <= 0) addToLog("CRITICAL: Hull breach! The Endeavour has been destroyed!");
+            let overflowDamage = 0;
+
+            if (playerShip.shields.fore > 0) {
+                const absorbedDamage = Math.min(playerShip.shields.fore, shieldDirectedDamage);
+                playerShip.shields.fore -= absorbedDamage;
+                overflowDamage = shieldDirectedDamage - absorbedDamage; 
+                addToLog(`Our shields absorbed ${absorbedDamage} damage. Shield strength at ${playerShip.shields.fore}.`);
+            } else {
+                overflowDamage = shieldDirectedDamage;
+            }
+
+            const totalDamageToInternals = bleedThroughDamage + overflowDamage;
+
+            if (totalDamageToInternals > 0) {
+                const targetableSubsystems = (['weapons', 'engines', 'shields'] as const)
+                    .filter(sub => playerShip.subsystems[sub].health > 0);
+                const aiTargetSubsystem = targetableSubsystems[Math.floor(Math.random() * targetableSubsystems.length)];
+
+                if (aiTargetSubsystem) {
+                    addToLog(`The attack bypassed our shields, hitting our ${aiTargetSubsystem} systems.`);
+                    const targetSub = playerShip.subsystems[aiTargetSubsystem];
+                    
+                    const damageToSubsystem = Math.min(targetSub.health, Math.round(totalDamageToInternals * 0.75));
+                    targetSub.health -= damageToSubsystem;
+                    addToLog(`Direct hit to ${aiTargetSubsystem}! System integrity at ${targetSub.health}%.`);
+                    
+                    const damageToHull = totalDamageToInternals - damageToSubsystem;
+                    if (damageToHull > 0) {
+                        playerShip.hull = Math.max(0, playerShip.hull - damageToHull);
+                        addToLog(`We took ${damageToHull} damage to hull. Hull integrity at ${playerShip.hull}%.`);
+                    }
+                } else {
+                    playerShip.hull = Math.max(0, playerShip.hull - totalDamageToInternals);
+                    addToLog(`Direct hit to the hull for ${totalDamageToInternals} damage! Hull integrity at ${playerShip.hull}%.`);
+                }
+
+                if (playerShip.hull <= 0) {
+                    addToLog("CRITICAL: Hull breach! The Endeavour has been destroyed!");
+                }
             }
           } else if (getSystemEfficiency(aiShip, 'engines') > 0) {
             const dx = playerShip.position.x - aiShip.position.x;
@@ -550,8 +588,52 @@ export const useGameLogic = () => {
       });
       handleEndTurn(true);
   }, [gameState, addToLog, handleEndTurn]);
+  
+  const handleInitiateDamageControl = useCallback(() => {
+      setIsRepairMode(prev => !prev);
+  }, []);
 
-    const handleRechargeDilithium = useCallback(() => {
+  const handleSelectRepairTarget = useCallback((system: 'weapons' | 'engines' | 'shields') => {
+      if (!gameState) return;
+      const targetSystem = gameState.player.ship.subsystems[system];
+      if (targetSystem.health >= targetSystem.maxHealth) {
+          addToLog(`${system.charAt(0).toUpperCase() + system.slice(1)} systems are already at full integrity.`);
+          setIsRepairMode(false);
+          return;
+      }
+
+      addToLog(`Damage control teams assigned to repair ${system}.`);
+      setGameState(prev => {
+          if (!prev) return null;
+          const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+          newState.player.ship.repairTarget = system;
+          return newState;
+      });
+      handleEndTurn(true);
+  }, [gameState, addToLog, handleEndTurn]);
+
+  const handleDockWithStarbase = useCallback(() => {
+    if (!gameState || !selectedTargetId) return;
+
+    const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+    if (!target || target.type !== 'starbase') {
+        addToLog("Docking command failed: Target is not a starbase.");
+        return;
+    }
+
+    addToLog(`Helm, setting course for ${target.name}. Initiating docking procedures.`);
+    
+    setGameState(prev => {
+        if (!prev) return null;
+        const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+        newState.navigationTarget = target.position;
+        return newState;
+    });
+
+    handleEndTurn(false);
+  }, [gameState, selectedTargetId, addToLog, handleEndTurn]);
+
+  const handleRechargeDilithium = useCallback(() => {
         if (!isDockedWith) {
             addToLog("Cannot recharge: We are not docked at a starbase.");
             return;
@@ -564,7 +646,6 @@ export const useGameLogic = () => {
 
             if (dilithiumNeeded === 0) {
                 addToLog("Dilithium crystals are already at maximum capacity.");
-                // We return here so we don't waste a turn.
                 return newState;
             }
 
@@ -573,9 +654,32 @@ export const useGameLogic = () => {
             return newState;
         });
 
-        // Recharging takes a turn, even if we just log that we are full.
-        // Let's change the logic to only end turn if an action was taken.
         if (gameState && gameState.player.ship.dilithium < gameState.player.ship.maxDilithium) {
+            handleEndTurn(true);
+        }
+    }, [isDockedWith, gameState, addToLog, handleEndTurn]);
+
+    const handleResupplyTorpedoes = useCallback(() => {
+        if (!isDockedWith) {
+            addToLog("Cannot resupply: We are not docked at a starbase.");
+            return;
+        }
+        setGameState(prev => {
+            if (!prev) return null;
+            const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+            const playerShip = newState.player.ship;
+
+            if (playerShip.torpedoes >= 10) { // Assuming max is 10
+                addToLog("Torpedo bays are already fully stocked.");
+                return newState;
+            }
+
+            playerShip.torpedoes = 10;
+            addToLog(`Photon torpedoes resupplied to maximum capacity.`);
+            return newState;
+        });
+
+        if (gameState && gameState.player.ship.torpedoes < 10) {
             handleEndTurn(true);
         }
     }, [isDockedWith, gameState, addToLog, handleEndTurn]);
@@ -606,6 +710,7 @@ export const useGameLogic = () => {
     setSelectedTargetId(null);
     setSelectedSubsystem(null);
     setIsDockedWith(null);
+    setIsRepairMode(false);
   };
   
   return {
@@ -615,6 +720,7 @@ export const useGameLogic = () => {
     selectedSubsystem,
     currentView,
     isDockedWith,
+    isRepairMode,
     handleSelectTarget,
     handleSelectSubsystem,
     handleEndTurn,
@@ -628,5 +734,9 @@ export const useGameLogic = () => {
     handleSetView,
     handleWarpToSector,
     handleRechargeDilithium,
+    handleDockWithStarbase,
+    handleInitiateDamageControl,
+    handleSelectRepairTarget,
+    handleResupplyTorpedoes,
   };
 };

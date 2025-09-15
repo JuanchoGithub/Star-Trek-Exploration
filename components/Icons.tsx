@@ -96,3 +96,9 @@ export const DilithiumIcon: React.FC<SVGProps> = (props) => (
         <path d="M12 2l-5 9h10l-5-9zm-7 10l5 9h4l5-9h-14z" />
     </svg>
 );
+
+export const DamageControlIcon: React.FC<SVGProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.664 1.206-.861a7.5 7.5 0 10-9.28 9.28c.197.466.477.89.861 1.206l3.03-2.496m-2.496-3.03l-4.286 3.486A2.652 2.652 0 013 17.25L8.83 11.42m2.59 3.75l4.286-3.486" />
+    </svg>
+);

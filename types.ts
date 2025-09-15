@@ -30,6 +30,7 @@ export interface Ship {
     engines: Subsystem;
     shields: Subsystem; // Represents the shield generator itself
   };
+  repairTarget: 'weapons' | 'engines' | 'shields' | null;
 }
 
 export interface Planet {

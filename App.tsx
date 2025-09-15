@@ -14,6 +14,7 @@ const App: React.FC = () => {
     selectedSubsystem,
     currentView,
     isDockedWith,
+    isRepairMode,
     handleSelectTarget,
     handleSelectSubsystem,
     handleEndTurn,
@@ -27,6 +28,10 @@ const App: React.FC = () => {
     handleSetView,
     handleWarpToSector,
     handleRechargeDilithium,
+    handleDockWithStarbase,
+    handleInitiateDamageControl,
+    handleSelectRepairTarget,
+    handleResupplyTorpedoes,
   } = useGameLogic();
 
   if (!gameState) {
@@ -90,6 +95,11 @@ const App: React.FC = () => {
             onSetView={handleSetView}
             isDocked={!!isDockedWith}
             onRechargeDilithium={handleRechargeDilithium}
+            onDockWithStarbase={handleDockWithStarbase}
+            isRepairMode={isRepairMode}
+            onInitiateDamageControl={handleInitiateDamageControl}
+            onSelectRepairTarget={handleSelectRepairTarget}
+            onResupplyTorpedoes={handleResupplyTorpedoes}
           />
         </div>
       </main>
