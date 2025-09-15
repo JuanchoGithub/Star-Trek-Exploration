@@ -108,7 +108,7 @@ const App: React.FC = () => {
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
 
   return (
-    <main className="bg-gray-900 text-gray-100 h-screen p-4 font-sans flex flex-col">
+    <main className={`bg-gray-900 text-gray-100 h-screen p-4 font-sans flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
       <div className="flex-grow grid grid-cols-[3fr_1fr] gap-4 min-h-0">
           {/* Left Column: Map/HUD */}
           <div className="flex flex-col min-h-0">

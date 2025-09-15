@@ -130,4 +130,5 @@ export interface GameState {
   logs: string[];
   gameOver: boolean;
   gameWon: boolean;
+  redAlert: boolean;
 }

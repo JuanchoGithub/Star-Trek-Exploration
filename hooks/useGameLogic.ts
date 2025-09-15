@@ -214,6 +214,7 @@ const createInitialGameState = (): GameState => {
     logs: ["Captain's Log, Stardate 47458.2. We have entered the Typhon Expanse."],
     gameOver: false,
     gameWon: false,
+    redAlert: false,
   };
 };
 
@@ -344,6 +345,7 @@ export const useGameLogic = () => {
         const playerShip = player.ship;
         const isRetreating = playerShip.retreatingTurn !== null;
         const pendingDamage: { targetId: string; damage: number; isTorpedo: boolean; subsystem?: 'weapons' | 'engines' | 'shields' }[] = [];
+        let redAlertThisTurn = false;
 
         // --- Player Action Phase ---
         if (isRetreating) {
@@ -404,6 +406,7 @@ export const useGameLogic = () => {
                     const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
                     pendingDamage.push({ targetId: playerShip.id, damage: aiDamage, isTorpedo: false });
                     logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
+                    redAlertThisTurn = true;
                 }
                 if (distance > 2) { // Move closer
                     aiShip.position = moveOneStep(aiShip.position, playerShip.position);
@@ -489,6 +492,7 @@ export const useGameLogic = () => {
         next.turn++;
         logs.unshift(`Turn ${next.turn} begins.`);
         next.logs = [...logs.reverse(), ...prev.logs];
+        next.redAlert = redAlertThisTurn;
         setPlayerTurnActions({});
 
         return next;
