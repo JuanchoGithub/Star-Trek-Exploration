@@ -24,6 +24,7 @@ interface PlayerHUDProps {
   onSelectRepairTarget: (system: 'weapons' | 'engines' | 'shields') => void;
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
+  onInitiateRetreat: () => void;
 }
 
 const SubsystemStatus: React.FC<{label: string; health: number; maxHealth: number}> = ({ label, health, maxHealth }) => {
@@ -58,7 +59,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
   onInitiateDamageControl,
   onSelectRepairTarget,
   onResupplyTorpedoes,
-  onScanTarget
+  onScanTarget,
+  onInitiateRetreat
 }) => {
   const playerShip = gameState.player.ship;
   const canCycleTargets = gameState.currentSector.entities.some(e => {
@@ -68,7 +70,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
 
   const isTargetScanned = !target || target.type !== 'ship' || target.scanned;
   const canPerformActions = !playerShip.isEvasive && currentView === 'sector';
-  const canFirePhasers = !!target && target.type === 'ship' && canPerformActions && isTargetScanned;
+  const canFirePhasers = !!target && target.type === 'ship' && canPerformActions && isTargetScanned && !playerShip.retreatingTurn;
   const canLaunchTorpedo = canFirePhasers && playerShip.torpedoes > 0;
   const isTargetFriendly = target?.type === 'starbase' || (target?.type === 'ship' && target.faction === 'Federation');
 
@@ -183,6 +185,9 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             onEvasiveManeuvers={onEvasiveManeuvers}
             onInitiateDamageControl={onInitiateDamageControl}
             onScanTarget={onScanTarget}
+            onInitiateRetreat={onInitiateRetreat}
+            retreatingTurn={playerShip.retreatingTurn}
+            currentTurn={gameState.turn}
             isTargetScanned={isTargetScanned}
             isRepairMode={isRepairMode}
             canFire={canFirePhasers}
@@ -194,6 +199,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             isTargetFriendly={isTargetFriendly}
             hasDamagedSystems={Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth)}
             hasTarget={!!target && target.type === 'ship'}
+            hasEnemy={canCycleTargets}
           />
         </>
       )}

@@ -3,7 +3,7 @@ import React from 'react';
 type SVGProps = React.SVGProps<SVGSVGElement>;
 
 export const PlayerShipIcon: React.FC<SVGProps> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+  <svg xmlns="http://www.w.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
     <path d="M12 2L2.5 21.5h19L12 2zm0 4.24L17.76 19.5H6.24L12 6.24z"/>
   </svg>
 );
@@ -69,6 +69,12 @@ export const TorpedoIcon: React.FC<SVGProps> = (props) => (
 export const EvasiveManeuverIcon: React.FC<SVGProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
+    </svg>
+);
+
+export const RetreatIcon: React.FC<SVGProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0110.5 3h6a2.25 2.25 0 012.25 2.25v13.5A2.25 2.25 0 0116.5 21h-6a2.25 2.25 0 01-2.25-2.25V15m-3 0l3-3m0 0l-3-3m3 3H3" />
     </svg>
 );
 

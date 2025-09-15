@@ -33,6 +33,7 @@ const App: React.FC = () => {
     handleSelectRepairTarget,
     handleResupplyTorpedoes,
     handleScanTarget,
+    handleInitiateRetreat,
   } = useGameLogic();
 
   if (!gameState) {
@@ -102,6 +103,7 @@ const App: React.FC = () => {
             onSelectRepairTarget={handleSelectRepairTarget}
             onResupplyTorpedoes={handleResupplyTorpedoes}
             onScanTarget={handleScanTarget}
+            onInitiateRetreat={handleInitiateRetreat}
           />
         </div>
       </main>

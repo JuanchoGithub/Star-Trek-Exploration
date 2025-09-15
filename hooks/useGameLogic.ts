@@ -48,6 +48,7 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
             },
             repairTarget: null,
             scanned: false,
+            retreatingTurn: null,
         });
     } else if (Math.random() < 0.40) { // 40% chance of a starbase if no enemy (was 25%)
         entities.push({
@@ -106,6 +107,7 @@ const createInitialGameState = (): GameState => {
         },
         repairTarget: null,
         scanned: true,
+        retreatingTurn: null,
       },
       quadrantPosition: startPos,
     },
@@ -249,6 +251,10 @@ export const useGameLogic = () => {
   const handleSetNavigationTarget = useCallback((pos: { x: number; y: number } | null) => {
     setGameState(prev => {
         if (!prev) return null;
+        if(prev.player.ship.retreatingTurn) {
+            addToLog("Cannot set course while retreating!");
+            return prev;
+        }
         const newState = JSON.parse(JSON.stringify(prev)) as GameState;
         if (pos && (pos.x === newState.player.ship.position.x && pos.y === newState.player.ship.position.y)) {
              newState.navigationTarget = null;
@@ -304,6 +310,50 @@ export const useGameLogic = () => {
       const newState: GameState = JSON.parse(JSON.stringify(prev));
       const playerShip = newState.player.ship;
 
+      // Handle Retreat
+      if (playerShip.retreatingTurn !== null) {
+          if (newState.turn >= playerShip.retreatingTurn) {
+              // --- Execute Retreat ---
+              addToLog("Emergency warp successful! We have escaped the sector.");
+              const oldPos = newState.player.quadrantPosition;
+              newState.quadrantMap[oldPos.qy][oldPos.qx].entities = newState.currentSector.entities.filter(e => e.id !== playerShip.id);
+
+              // Find valid adjacent sectors
+              const adjacentSectors = [];
+              for(let dx = -1; dx <= 1; dx++) {
+                  for(let dy = -1; dy <=1; dy++) {
+                      if((dx === 0 && dy === 0) || (dx !== 0 && dy !== 0)) continue;
+                      const nx = oldPos.qx + dx;
+                      const ny = oldPos.qy + dy;
+                      if(nx >= 0 && nx < QUADRANT_SIZE.width && ny >= 0 && ny < QUADRANT_SIZE.height) {
+                          adjacentSectors.push({qx: nx, qy: ny});
+                      }
+                  }
+              }
+              const retreatTo = adjacentSectors[Math.floor(Math.random() * adjacentSectors.length)];
+              newState.player.quadrantPosition = retreatTo;
+              
+              const targetSectorState = newState.quadrantMap[retreatTo.qy][retreatTo.qx];
+              if (!targetSectorState.visited) {
+                  targetSectorState.visited = true;
+                  targetSectorState.entities = generateSectorEntities(false);
+              }
+              newState.currentSector.entities = targetSectorState.entities;
+              
+              playerShip.position = { x: 2, y: 5 };
+              playerShip.retreatingTurn = null;
+              newState.navigationTarget = null;
+              setSelectedTargetId(null);
+              setSelectedSubsystem(null);
+              
+              newState.turn +=1;
+              return newState;
+          } else {
+             const turnsLeft = playerShip.retreatingTurn - newState.turn;
+             addToLog(`Warp drive charging for retreat... Escape in ${turnsLeft} turn(s).`);
+          }
+      }
+
       const getSystemEfficiency = (ship: Ship, system: 'weapons' | 'engines' | 'shields') => {
         const sub = ship.subsystems[system];
         return sub.health / sub.maxHealth;
@@ -320,7 +370,8 @@ export const useGameLogic = () => {
         playerShip.repairTarget = null;
       }
 
-      if (!actionTaken && newState.navigationTarget) {
+      // Player Movement (only if not retreating)
+      if (!actionTaken && newState.navigationTarget && playerShip.retreatingTurn === null) {
         const target = newState.navigationTarget;
         const currentPos = playerShip.position;
         const engineEfficiency = getSystemEfficiency(playerShip, 'engines');
@@ -346,6 +397,7 @@ export const useGameLogic = () => {
         }
       }
 
+      // AI Logic
       newState.currentSector.entities.forEach(entity => {
         if (entity.type === 'ship' && entity.faction !== 'Federation' && entity.hull > 0) {
           const aiShip = entity as Ship;
@@ -418,6 +470,7 @@ export const useGameLogic = () => {
         }
       });
 
+      // Shield Regeneration
       newState.currentSector.entities.forEach(entity => {
         if (entity.type === 'ship') {
           const ship = entity as Ship;
@@ -439,6 +492,7 @@ export const useGameLogic = () => {
         addToLog(`Shield generators are offline. No regeneration.`);
       }
 
+      // End of turn cleanup
       newState.turn += 1;
       playerShip.isEvasive = false;
       newState.currentSector.entities.forEach(e => {
@@ -450,7 +504,7 @@ export const useGameLogic = () => {
   }, [addToLog]);
 
   const handleFirePhasers = useCallback(() => {
-    if (!gameState || !selectedTargetId || gameState.player.ship.isEvasive) return;
+    if (!gameState || !selectedTargetId || gameState.player.ship.isEvasive || gameState.player.ship.retreatingTurn) return;
     
     const playerWeaponHealth = gameState.player.ship.subsystems.weapons.health;
     if (playerWeaponHealth <= 0) {
@@ -518,7 +572,7 @@ export const useGameLogic = () => {
   }, [gameState, selectedTargetId, selectedSubsystem, addToLog, handleEndTurn]);
 
   const handleLaunchTorpedo = useCallback(() => {
-    if (!gameState || !selectedTargetId || gameState.player.ship.torpedoes <= 0 || gameState.player.ship.isEvasive) return;
+    if (!gameState || !selectedTargetId || gameState.player.ship.torpedoes <= 0 || gameState.player.ship.isEvasive || gameState.player.ship.retreatingTurn) return;
 
     if (gameState.player.ship.subsystems.weapons.health <= 0) {
         addToLog("Torpedo launcher is offline!");
@@ -574,7 +628,7 @@ export const useGameLogic = () => {
   }, [gameState, selectedTargetId, selectedSubsystem, addToLog, handleEndTurn]);
 
   const handleEvasiveManeuvers = useCallback(() => {
-      if (!gameState || gameState.player.ship.isEvasive) return;
+      if (!gameState || gameState.player.ship.isEvasive || gameState.player.ship.retreatingTurn) return;
 
       if (gameState.player.ship.subsystems.engines.health <= 0) {
           addToLog("Engines are offline! Cannot perform evasive maneuvers!");
@@ -590,6 +644,25 @@ export const useGameLogic = () => {
       });
       handleEndTurn(true);
   }, [gameState, addToLog, handleEndTurn]);
+
+    const handleInitiateRetreat = useCallback(() => {
+        if (!gameState || gameState.player.ship.retreatingTurn) return;
+        if (gameState.player.ship.subsystems.engines.health <= 0) {
+            addToLog("Cannot retreat, engines are offline!");
+            return;
+        }
+        
+        addToLog("Warp drive charging for emergency retreat! Escape in 3 turns.");
+        setGameState(prev => {
+            if(!prev) return null;
+            const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+            newState.player.ship.retreatingTurn = newState.turn + 3;
+            newState.navigationTarget = null; // Cancel any movement
+            return newState;
+        });
+
+        handleEndTurn(true);
+    }, [gameState, addToLog, handleEndTurn]);
 
   const handleScanTarget = useCallback(() => {
     if (!gameState || !selectedTargetId) return;
@@ -767,5 +840,6 @@ export const useGameLogic = () => {
     handleSelectRepairTarget,
     handleResupplyTorpedoes,
     handleScanTarget,
+    handleInitiateRetreat,
   };
 };

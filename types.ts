@@ -32,10 +32,11 @@ export interface Ship {
   };
   repairTarget: 'weapons' | 'engines' | 'shields' | null;
   scanned: boolean;
+  retreatingTurn: number | null;
 }
 
 export interface Planet {
-  id: string;
+  id:string;
   name: string;
   type: 'planet';
   position: { x: number; y: number };
