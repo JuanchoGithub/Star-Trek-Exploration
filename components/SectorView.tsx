@@ -129,6 +129,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
             let icon;
             let factionColor = 'text-gray-400';
+            let entityName = entity.name;
+
             if (entity.type === 'ship') {
                 if (isPlayer) {
                     icon = <PlayerShipIcon className="w-8 h-8"/>;
@@ -136,6 +138,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 } else {
                     icon = <EnemyShipIcon className="w-8 h-8"/>;
                     factionColor = 'text-red-500';
+                    if (!entity.scanned) {
+                        entityName = 'Unknown Ship';
+                    }
                 }
             } else if (entity.type === 'starbase') {
                 icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;
@@ -163,7 +168,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                         {isSelected && (
                             <>
                                 <div className="absolute inset-0 border-2 border-yellow-400 rounded-full animate-ping"></div>
-                                {targetEntity && targetEntity.type === 'ship' && (
+                                {targetEntity && targetEntity.type === 'ship' && targetEntity.scanned && (
                                     <>
                                     <SubsystemTarget subsystem="weapons" {...targetEntity.subsystems.weapons} isSelected={selectedSubsystem === 'weapons'} positionClass="-top-6 -left-3 -translate-x-1/2" onSelect={() => onSelectSubsystem('weapons')}><WeaponIcon className="w-5 h-5"/></SubsystemTarget>
                                     <SubsystemTarget subsystem="engines" {...targetEntity.subsystems.engines} isSelected={selectedSubsystem === 'engines'} positionClass="-top-6 -right-3 translate-x-1/2" onSelect={() => onSelectSubsystem('engines')}><EngineIcon className="w-5 h-5"/></SubsystemTarget>
@@ -174,7 +179,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                         )}
                         <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                     </div>
-                    <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-yellow-400' : ''}`}>{entity.name}</span>
+                    <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-yellow-400' : ''}`}>{entityName}</span>
                     {entity.type === 'ship' && (
                         <div className="w-10 h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
                             <div className="h-full bg-green-500" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>

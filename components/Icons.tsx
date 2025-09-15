@@ -102,3 +102,10 @@ export const DamageControlIcon: React.FC<SVGProps> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.664 1.206-.861a7.5 7.5 0 10-9.28 9.28c.197.466.477.89.861 1.206l3.03-2.496m-2.496-3.03l-4.286 3.486A2.652 2.652 0 013 17.25L8.83 11.42m2.59 3.75l4.286-3.486" />
     </svg>
 );
+
+export const ScanIcon: React.FC<SVGProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m-7.07-2.93l.707-.707m12.728 0l-.707-.707M3 12h1m16 0h1m-2.93-7.07l-.707.707m0 12.728l.707.707" />
+    </svg>
+);

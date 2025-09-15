@@ -47,6 +47,7 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
                 shields: { health: 100, maxHealth: 100 },
             },
             repairTarget: null,
+            scanned: false,
         });
     } else if (Math.random() < 0.40) { // 40% chance of a starbase if no enemy (was 25%)
         entities.push({
@@ -104,6 +105,7 @@ const createInitialGameState = (): GameState => {
             shields: { health: 100, maxHealth: 100 },
         },
         repairTarget: null,
+        scanned: true,
       },
       quadrantPosition: startPos,
     },
@@ -588,6 +590,32 @@ export const useGameLogic = () => {
       });
       handleEndTurn(true);
   }, [gameState, addToLog, handleEndTurn]);
+
+  const handleScanTarget = useCallback(() => {
+    if (!gameState || !selectedTargetId) return;
+    const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+    if (!target || target.type !== 'ship') {
+        addToLog("Scan failed: Invalid target.");
+        return;
+    }
+    
+    addToLog(`Initiating detailed sensor scan on ${target.name}...`);
+
+    setGameState(prev => {
+        if (!prev) return null;
+        const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+        const targetIndex = newState.currentSector.entities.findIndex(e => e.id === selectedTargetId);
+        if (targetIndex !== -1) {
+            const entity = newState.currentSector.entities[targetIndex];
+            if (entity.type === 'ship') {
+                entity.scanned = true;
+            }
+        }
+        return newState;
+    });
+
+    handleEndTurn(true);
+  }, [gameState, selectedTargetId, addToLog, handleEndTurn]);
   
   const handleInitiateDamageControl = useCallback(() => {
       setIsRepairMode(prev => !prev);
@@ -738,5 +766,6 @@ export const useGameLogic = () => {
     handleInitiateDamageControl,
     handleSelectRepairTarget,
     handleResupplyTorpedoes,
+    handleScanTarget,
   };
 };

@@ -3,7 +3,7 @@ import type { GameState, Entity, Ship } from '../types';
 import ShipStatus from './ShipStatus';
 import EnergyAllocator from './EnergyAllocator';
 import CommandConsole from './CommandConsole';
-import { TargetIcon, QuadrantIcon, SectorIcon, DilithiumIcon, TorpedoIcon } from './Icons';
+import { TargetIcon, QuadrantIcon, SectorIcon, DilithiumIcon, TorpedoIcon, ScanIcon } from './Icons';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -23,6 +23,7 @@ interface PlayerHUDProps {
   onInitiateDamageControl: () => void;
   onSelectRepairTarget: (system: 'weapons' | 'engines' | 'shields') => void;
   onResupplyTorpedoes: () => void;
+  onScanTarget: () => void;
 }
 
 const SubsystemStatus: React.FC<{label: string; health: number; maxHealth: number}> = ({ label, health, maxHealth }) => {
@@ -56,7 +57,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
   isRepairMode,
   onInitiateDamageControl,
   onSelectRepairTarget,
-  onResupplyTorpedoes
+  onResupplyTorpedoes,
+  onScanTarget
 }) => {
   const playerShip = gameState.player.ship;
   const canCycleTargets = gameState.currentSector.entities.some(e => {
@@ -64,8 +66,9 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     return e.faction !== 'Federation' && e.hull > 0;
   });
 
+  const isTargetScanned = !target || target.type !== 'ship' || target.scanned;
   const canPerformActions = !playerShip.isEvasive && currentView === 'sector';
-  const canFirePhasers = !!target && target.type === 'ship' && canPerformActions;
+  const canFirePhasers = !!target && target.type === 'ship' && canPerformActions && isTargetScanned;
   const canLaunchTorpedo = canFirePhasers && playerShip.torpedoes > 0;
   const isTargetFriendly = target?.type === 'starbase' || (target?.type === 'ship' && target.faction === 'Federation');
 
@@ -144,15 +147,22 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         </button>
                     </div>
                 ) : target.type === 'ship' ? (
-                    <div className="text-orange-300 space-y-1">
-                        <p className="font-bold text-base">{target.name}</p>
-                        <p className="text-sm">Hull: {target.hull}%, Shields: {target.shields.fore}</p>
-                        <div className="pt-1 mt-1 border-t border-gray-700">
-                            <SubsystemStatus label="Weapons" {...target.subsystems.weapons} />
-                            <SubsystemStatus label="Engines" {...target.subsystems.engines} />
-                            <SubsystemStatus label="Shield Gen" {...target.subsystems.shields} />
+                    isTargetScanned ? (
+                        <div className="text-orange-300 space-y-1">
+                            <p className="font-bold text-base">{target.name}</p>
+                            <p className="text-sm">Hull: {target.hull}%, Shields: {target.shields.fore}</p>
+                            <div className="pt-1 mt-1 border-t border-gray-700">
+                                <SubsystemStatus label="Weapons" {...target.subsystems.weapons} />
+                                <SubsystemStatus label="Engines" {...target.subsystems.engines} />
+                                <SubsystemStatus label="Shield Gen" {...target.subsystems.shields} />
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="text-orange-300 space-y-1">
+                            <p className="font-bold text-base">Unknown Vessel</p>
+                            <p className="text-sm text-gray-400">Scan required for detailed analysis.</p>
+                        </div>
+                    )
                 ) : (
                     <div className="text-gray-300 space-y-1">
                         <p className="font-bold text-base">{target.name}</p>
@@ -172,6 +182,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             onCycleTargets={onCycleTargets}
             onEvasiveManeuvers={onEvasiveManeuvers}
             onInitiateDamageControl={onInitiateDamageControl}
+            onScanTarget={onScanTarget}
+            isTargetScanned={isTargetScanned}
             isRepairMode={isRepairMode}
             canFire={canFirePhasers}
             canLaunchTorpedo={canLaunchTorpedo}
@@ -181,6 +193,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             isQuadrantView={currentView === 'quadrant'}
             isTargetFriendly={isTargetFriendly}
             hasDamagedSystems={Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth)}
+            hasTarget={!!target && target.type === 'ship'}
           />
         </>
       )}

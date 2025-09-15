@@ -31,6 +31,7 @@ export interface Ship {
     shields: Subsystem; // Represents the shield generator itself
   };
   repairTarget: 'weapons' | 'engines' | 'shields' | null;
+  scanned: boolean;
 }
 
 export interface Planet {
