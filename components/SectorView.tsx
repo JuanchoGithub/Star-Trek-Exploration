@@ -137,7 +137,11 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     factionColor = 'text-blue-400';
                 } else {
                     icon = <EnemyShipIcon className="w-8 h-8"/>;
-                    factionColor = 'text-red-500';
+                    if (entity.faction === 'Klingon' || entity.faction === 'Romulan') {
+                        factionColor = 'text-red-500';
+                    } else if (entity.faction === 'Independent') {
+                        factionColor = 'text-gray-300';
+                    }
                     if (!entity.scanned) {
                         entityName = 'Unknown Ship';
                     }

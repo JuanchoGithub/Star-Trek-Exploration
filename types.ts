@@ -1,77 +1,98 @@
-import React from 'react';
+// types.ts
+
+export interface Position {
+    x: number;
+    y: number;
+}
+
+export interface QuadrantPosition {
+    qx: number;
+    qy: number;
+}
 
 export interface Subsystem {
-  health: number;
-  maxHealth: number;
+    health: number;
+    maxHealth: number;
 }
 
-export interface Ship {
-  id: string;
-  name: string;
-  hull: number;
-  maxHull: number;
-  shields: { fore: number; aft: number; };
-  maxShields: { fore: number; aft: number; };
-  energy: number;
-  maxEnergy: number;
-  torpedoes: number;
-  dilithium: number;
-  maxDilithium: number;
-  position: { x: number; y: number };
-  powerAllocation: {
-    weapons: number;
-    shields: number;
-    engines: number;
-  };
-  faction: string;
-  isEvasive: boolean;
-  subsystems: {
+export interface ShipSubsystems {
     weapons: Subsystem;
     engines: Subsystem;
-    shields: Subsystem; // Represents the shield generator itself
-  };
-  repairTarget: 'weapons' | 'engines' | 'shields' | null;
-  scanned: boolean;
-  retreatingTurn: number | null;
+    shields: Subsystem;
 }
 
-export interface Planet {
-  id:string;
-  name: string;
-  type: 'planet';
-  position: { x: number; y: number };
+export type Faction = 'Federation' | 'Klingon' | 'Romulan' | 'Independent';
+
+interface BaseEntity {
+    id: string;
+    name: string;
+    position: Position;
+    faction?: Faction;
+    scanned?: boolean;
 }
 
-export interface Starbase {
-  id: string;
-  name: string;
-  type: 'starbase';
-  faction: 'Federation';
-  position: { x: number; y: number };
+export interface Ship extends BaseEntity {
+    type: 'ship';
+    maxHull: number;
+    hull: number;
+    maxShields: number;
+    shields: number;
+    energy: {
+        current: number;
+        max: number;
+    };
+    energyAllocation: {
+        weapons: number;
+        shields: number;
+        engines: number;
+    };
+    subsystems: ShipSubsystems;
+    torpedoes: {
+        current: number;
+        max: number;
+    };
+    dilithium: {
+        current: number;
+        max: number;
+    };
+    scanned: boolean;
+    faction: Faction;
+    isCloaked?: boolean;
+    evasive: boolean;
+    retreatingTurn: number | null;
+    repairTarget: 'weapons' | 'engines' | 'shields' | 'hull' | null;
 }
 
-export type Entity = (Ship & { type: 'ship' }) | Planet | Starbase;
+export interface Starbase extends BaseEntity {
+    type: 'starbase';
+    faction: 'Federation';
+}
+
+export interface Planet extends BaseEntity {
+    type: 'planet';
+}
+
+export type Entity = Ship | Starbase | Planet;
+
+export interface Sector {
+    entities: Entity[];
+}
 
 export interface SectorState {
-  visited: boolean;
-  entities: Entity[];
+    visited: boolean;
+    hasEnemies: boolean;
+    hasStarbase: boolean;
+    hasPlanet: boolean;
+    hasNeutral: boolean;
 }
 
 export interface GameState {
-  turn: number;
-  player: {
-    rank: string;
-    xp: number;
-    ship: Ship;
-    quadrantPosition: { qx: number; qy: number };
-  };
-  factions: {
-    [key: string]: { reputation: number };
-  };
-  currentSector: {
-    size: { width: number; height: number };
-    entities: Entity[];
-  };
-  navigationTarget: { x: number; y: number } | null;
-  quadrantMap: SectorState[][];
+    player: {
+        ship: Ship;
+        quadrantPosition: QuadrantPosition;
+    };
+    currentSector: Sector;
+    quadrantMap: SectorState[][];
+    turn: number;
+    navigationTarget: Position | null;
 }
