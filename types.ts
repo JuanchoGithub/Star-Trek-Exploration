@@ -39,7 +39,15 @@ export interface Planet {
   position: { x: number; y: number };
 }
 
-export type Entity = (Ship & { type: 'ship' }) | Planet;
+export interface Starbase {
+  id: string;
+  name: string;
+  type: 'starbase';
+  faction: 'Federation';
+  position: { x: number; y: number };
+}
+
+export type Entity = (Ship & { type: 'ship' }) | Planet | Starbase;
 
 export interface SectorState {
   visited: boolean;

@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { Entity, Ship } from '../types';
-import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
+import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -138,6 +137,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     icon = <EnemyShipIcon className="w-8 h-8"/>;
                     factionColor = 'text-red-500';
                 }
+            } else if (entity.type === 'starbase') {
+                icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;
+                factionColor = 'text-cyan-300';
             } else {
                 icon = <PlanetIcon className="w-10 h-10 text-green-500" />;
             }

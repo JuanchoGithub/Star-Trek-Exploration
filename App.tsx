@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { GameState, Entity, Ship } from './types';
 import { useGameLogic } from './hooks/useGameLogic';
@@ -14,6 +13,7 @@ const App: React.FC = () => {
     selectedTargetId,
     selectedSubsystem,
     currentView,
+    isDockedWith,
     handleSelectTarget,
     handleSelectSubsystem,
     handleEndTurn,
@@ -26,6 +26,7 @@ const App: React.FC = () => {
     handleSetNavigationTarget,
     handleSetView,
     handleWarpToSector,
+    handleRechargeDilithium,
   } = useGameLogic();
 
   if (!gameState) {
@@ -87,6 +88,8 @@ const App: React.FC = () => {
             target={targetEntity}
             currentView={currentView}
             onSetView={handleSetView}
+            isDocked={!!isDockedWith}
+            onRechargeDilithium={handleRechargeDilithium}
           />
         </div>
       </main>

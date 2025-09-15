@@ -20,6 +20,13 @@ export const PlanetIcon: React.FC<SVGProps> = (props) => (
   </svg>
 );
 
+export const StarbaseIcon: React.FC<SVGProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M12 2c-1.1 0-2 .9-2 2v2.05A7.002 7.002 0 005.95 12H3.9c-1.1 0-2 .9-2 2s.9 2 2 2h2.05c.58 2.84 2.89 5.15 5.73 5.73V20c0 1.1.9 2 2 2s2-.9 2-2v-2.28c2.84-.58 5.15-2.89 5.73-5.73H20c1.1 0 2-.9 2-2s-.9-2-2-2h-2.28A7.002 7.002 0 0014.05 6.05V4c0-1.1-.9-2-2-2zm0 5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>
+    </svg>
+);
+
+
 export const WeaponIcon: React.FC<SVGProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.82m5.84-2.56a12.02 12.02 0 0 0-5.84 0m5.84 0a12.02 12.02 0 0 1-5.84 0M12 12v9m-9-9h18" />
@@ -81,5 +88,11 @@ export const QuadrantIcon: React.FC<SVGProps> = (props) => (
 export const SectorIcon: React.FC<SVGProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-2.25-1.313M21 7.5v2.25m0-2.25l-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3l2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0-2.25l2.25 1.313M12 12.75l-2.25 1.313M9 21l2.25-1.313M9 21v-2.25m0 2.25l2.25 1.313M12 15.75l2.25-1.313M12 15.75l-2.25-1.313m0 0l-2.25 1.313m2.25-1.313l2.25 1.313m0 0l2.25-1.313m-2.25 1.313V21m-2.25-4.5l-2.25 1.313m-2.25-1.313l2.25-1.313m2.25 1.313l2.25 1.313" />
+    </svg>
+);
+
+export const DilithiumIcon: React.FC<SVGProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M12 2l-5 9h10l-5-9zm-7 10l5 9h4l5-9h-14z" />
     </svg>
 );

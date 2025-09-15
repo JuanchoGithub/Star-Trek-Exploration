@@ -5,7 +5,7 @@ const SECTOR_SIZE = { width: 12, height: 10 };
 const QUADRANT_SIZE = { width: 8, height: 8 };
 
 const generateSectorEntities = (isExplored: boolean): Entity[] => {
-    if (isExplored) return []; // Return to an empty sector
+    if (isExplored) return []; // Should only be called for brand new, empty sectors.
     
     const entities: Entity[] = [];
     const numPlanets = Math.floor(Math.random() * 3) + 1; // 1-3 planets
@@ -22,7 +22,8 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
         });
     }
 
-    if (Math.random() > 0.5) { // 50% chance of an enemy
+    const hasEnemy = Math.random() > 0.5; // 50% chance of an enemy
+    if (hasEnemy) {
         entities.push({
             id: 'klingon-bird-of-prey',
             type: 'ship',
@@ -46,7 +47,19 @@ const generateSectorEntities = (isExplored: boolean): Entity[] => {
                 shields: { health: 100, maxHealth: 100 },
             },
         });
+    } else if (Math.random() < 0.40) { // 40% chance of a starbase if no enemy (was 25%)
+        entities.push({
+            id: `starbase-${Date.now()}`,
+            type: 'starbase',
+            name: `Starbase ${Math.floor(Math.random() * 100) + 1}`,
+            faction: 'Federation',
+            position: {
+                x: Math.floor(Math.random() * SECTOR_SIZE.width),
+                y: Math.floor(Math.random() * SECTOR_SIZE.height)
+            },
+        });
     }
+
 
     return entities;
 }
@@ -111,6 +124,8 @@ export const useGameLogic = () => {
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [selectedSubsystem, setSelectedSubsystem] = useState<'weapons' | 'engines' | 'shields' | null>(null);
   const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
+  const [isDockedWith, setIsDockedWith] = useState<string | null>(null);
+
 
   const turnRef = useRef(1);
   useEffect(() => {
@@ -142,6 +157,22 @@ export const useGameLogic = () => {
   const addToLog = useCallback((message: string) => {
     setGameLog(prev => [`Turn ${turnRef.current}: ${message}`, ...prev].slice(0, 50));
   }, []);
+
+  useEffect(() => {
+    if (!gameState) return;
+    const playerPos = gameState.player.ship.position;
+    const starbase = gameState.currentSector.entities.find(
+        e => e.type === 'starbase' && e.position.x === playerPos.x && e.position.y === playerPos.y
+    );
+    if (starbase && isDockedWith !== starbase.id) {
+        setIsDockedWith(starbase.id);
+        addToLog(`Docking successful with ${starbase.name}. Welcome aboard, Captain.`);
+    } else if (!starbase && isDockedWith) {
+        setIsDockedWith(null);
+        addToLog(`U.S.S. Endeavour has departed the starbase.`);
+    }
+  }, [gameState?.player.ship.position, gameState?.currentSector.entities, isDockedWith, addToLog]);
+
 
   const handleSelectTarget = useCallback((id: string | null) => {
     setSelectedTargetId(id);
@@ -181,6 +212,7 @@ export const useGameLogic = () => {
 
         newState.player.ship.dilithium -= 1;
         const oldPos = newState.player.quadrantPosition;
+        // Persist the current state of the sector we are leaving
         newState.quadrantMap[oldPos.qy][oldPos.qx].entities = newState.currentSector.entities;
         
         newState.player.quadrantPosition = pos;
@@ -192,7 +224,7 @@ export const useGameLogic = () => {
             targetSectorState.entities = generateSectorEntities(false);
             addToLog("We are the first Federation ship to enter this sector.");
         } else {
-             targetSectorState.entities = generateSectorEntities(true);
+             // FIX: Do not regenerate entities for a visited sector. The existing entities will be loaded.
              addToLog("Entering previously charted space.");
         }
         
@@ -519,6 +551,35 @@ export const useGameLogic = () => {
       handleEndTurn(true);
   }, [gameState, addToLog, handleEndTurn]);
 
+    const handleRechargeDilithium = useCallback(() => {
+        if (!isDockedWith) {
+            addToLog("Cannot recharge: We are not docked at a starbase.");
+            return;
+        }
+        setGameState(prev => {
+            if (!prev) return null;
+            const newState = JSON.parse(JSON.stringify(prev)) as GameState;
+            const playerShip = newState.player.ship;
+            const dilithiumNeeded = playerShip.maxDilithium - playerShip.dilithium;
+
+            if (dilithiumNeeded === 0) {
+                addToLog("Dilithium crystals are already at maximum capacity.");
+                // We return here so we don't waste a turn.
+                return newState;
+            }
+
+            playerShip.dilithium = playerShip.maxDilithium;
+            addToLog(`Dilithium crystals recharged to maximum capacity.`);
+            return newState;
+        });
+
+        // Recharging takes a turn, even if we just log that we are full.
+        // Let's change the logic to only end turn if an action was taken.
+        if (gameState && gameState.player.ship.dilithium < gameState.player.ship.maxDilithium) {
+            handleEndTurn(true);
+        }
+    }, [isDockedWith, gameState, addToLog, handleEndTurn]);
+
   const handleCycleTargets = useCallback(() => {
     if (!gameState) return;
     const hostileShips = gameState.currentSector.entities.filter(
@@ -544,6 +605,7 @@ export const useGameLogic = () => {
     setGameLog([]);
     setSelectedTargetId(null);
     setSelectedSubsystem(null);
+    setIsDockedWith(null);
   };
   
   return {
@@ -552,6 +614,7 @@ export const useGameLogic = () => {
     selectedTargetId,
     selectedSubsystem,
     currentView,
+    isDockedWith,
     handleSelectTarget,
     handleSelectSubsystem,
     handleEndTurn,
@@ -564,5 +627,6 @@ export const useGameLogic = () => {
     handleSetNavigationTarget,
     handleSetView,
     handleWarpToSector,
+    handleRechargeDilithium,
   };
 };
