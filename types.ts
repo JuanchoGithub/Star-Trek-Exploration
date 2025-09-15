@@ -35,6 +35,7 @@ export interface Ship extends BaseEntity {
   energy: { current: number; max: number };
   energyAllocation: { weapons: number; shields: number; engines: number };
   torpedoes: { current: number; max: number };
+  dilithium: { current: number; max: number };
   evasive: boolean;
   retreatingTurn: number | null;
   crewMorale: { current: number; max: number };
@@ -111,6 +112,7 @@ export interface PlayerTurnActions {
     combat?: {
         type: 'phasers' | 'torpedoes';
         targetId: string;
+        subsystem?: 'weapons' | 'engines' | 'shields';
     };
     evasive?: boolean;
 }

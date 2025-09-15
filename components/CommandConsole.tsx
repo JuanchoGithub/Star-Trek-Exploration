@@ -72,7 +72,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     hasTarget,
     hasEnemy,
 }) => {
-  const isRetreating = retreatingTurn !== null;
+  const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
+  const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
   
   return (
     <div className="flex flex-col space-y-2 mt-auto">
@@ -108,13 +109,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <CommandButton onClick={onEvasiveManeuvers} disabled={!canTakeEvasive || isQuadrantView || isRepairMode || isRetreating} className="bg-green-700 hover:bg-green-600">
           <EvasiveManeuverIcon className="w-5 h-5" /> Evasive
         </CommandButton>
-        <CommandButton onClick={onInitiateDamageControl} disabled={!hasDamagedSystems || isQuadrantView || !canTakeEvasive || isRetreating} className="bg-yellow-700 hover:bg-yellow-600" isActive={isRepairMode}>
+        <CommandButton onClick={onInitiateDamageControl} disabled={!hasDamagedSystems || isQuadrantView || isRetreating || isRepairMode} className="bg-yellow-700 hover:bg-yellow-600" isActive={isRepairMode}>
           <DamageControlIcon className="w-5 h-5" /> Repairs
         </CommandButton>
       </div>
        <CommandButton onClick={onInitiateRetreat} disabled={isQuadrantView || isRepairMode || !hasEnemy || isRetreating} className="bg-indigo-700 hover:bg-indigo-600">
           <RetreatIcon className="w-5 h-5" /> 
-          {isRetreating ? `Retreating (${retreatingTurn - currentTurn} turns)` : 'Initiate Retreat'}
+          {isRetreating ? `Retreating (${turnsToRetreat} turns)` : 'Initiate Retreat'}
       </CommandButton>
       <button 
         onClick={() => onEndTurn()}

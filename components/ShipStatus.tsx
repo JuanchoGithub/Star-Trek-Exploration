@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GameState, ShipSubsystems, Ship } from '../types';
-import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon } from './Icons';
 
 interface StatusBarProps {
   label: string;
@@ -65,6 +65,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState }) => {
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-red-500" />
         <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-cyan-500" />
         <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-yellow-500" />
+        <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-pink-500" />
         <StatusBar label="Crew Morale" value={ship.crewMorale.current} max={ship.crewMorale.max} colorClass="bg-purple-500" />
         <div className="flex justify-between items-center">
             <span className="font-bold text-sm">Torpedoes</span>

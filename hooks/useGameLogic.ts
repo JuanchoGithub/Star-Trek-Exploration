@@ -98,7 +98,7 @@ const generateSectorContent = (sector: SectorState): SectorState => {
                 position,
                 hull: 60, maxHull: 60, shields: 20, maxShields: 20,
                 energy: { current: 50, max: 50 }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
-                torpedoes: { current: 4, max: 4 }, scanned: false, evasive: false, retreatingTurn: null,
+                torpedoes: { current: 4, max: 4 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 } },
                 crewMorale: { current: 100, max: 100 },
             });
@@ -111,7 +111,7 @@ const generateSectorContent = (sector: SectorState): SectorState => {
                 position,
                 hull: 40, maxHull: 40, shields: 10, maxShields: 10,
                 energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                torpedoes: { current: 2, max: 2 }, scanned: false, evasive: false, retreatingTurn: null,
+                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
                 crewMorale: { current: 100, max: 100 },
             });
@@ -124,7 +124,7 @@ const generateSectorContent = (sector: SectorState): SectorState => {
                 position,
                 hull: 30, maxHull: 30, shields: 0, maxShields: 0,
                 energy: { current: 20, max: 20 }, energyAllocation: { weapons: 0, shields: 0, engines: 100 },
-                torpedoes: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                torpedoes: { current: 0, max: 0 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 0, maxHealth: 0 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 0, maxHealth: 0 } },
                 crewMorale: { current: 100, max: 100 },
             });
@@ -159,6 +159,7 @@ const createInitialGameState = (): GameState => {
     energy: { current: 100, max: 100 },
     energyAllocation: { weapons: 34, shields: 33, engines: 33 },
     torpedoes: { current: 10, max: 10 },
+    dilithium: { current: 20, max: 20 },
     scanned: true,
     evasive: false,
     retreatingTurn: null,
@@ -243,45 +244,50 @@ export const useGameLogic = () => {
         const logs: string[] = [];
         const { player, currentSector } = next;
         const playerShip = player.ship;
+        const isRetreating = playerShip.retreatingTurn !== null;
+        const pendingDamage: { targetId: string; damage: number; isTorpedo: boolean; subsystem?: 'weapons' | 'engines' | 'shields' }[] = [];
 
         // --- Player Action Phase ---
-        // 1. Evasive Maneuvers
-        if (playerTurnActions.evasive) {
-            playerShip.evasive = true;
-            playerShip.energy.current = Math.max(0, playerShip.energy.current - 15);
-            logs.push("U.S.S. Endeavour is performing evasive maneuvers.");
+        if (isRetreating) {
+            logs.push("Attempting to retreat, cannot take other actions.");
         } else {
-            playerShip.evasive = false;
-        }
-
-        // 2. Navigation
-        if (navigationTarget) {
-            const currentPos = playerShip.position;
-            if (currentPos.x !== navigationTarget.x || currentPos.y !== navigationTarget.y) {
-                playerShip.position = moveOneStep(currentPos, navigationTarget);
-                logs.push(`Moving to ${playerShip.position.x}, ${playerShip.position.y}.`);
+             // 1. Evasive Maneuvers
+            if (playerTurnActions.evasive) {
+                playerShip.evasive = true;
+                playerShip.energy.current = Math.max(0, playerShip.energy.current - 15);
+                logs.push("U.S.S. Endeavour is performing evasive maneuvers.");
+            } else {
+                playerShip.evasive = false;
             }
-            if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
-                setNavigationTarget(null);
-                 logs.push(`Arrived at navigation target.`);
-            }
-        }
 
-        // 3. Combat
-        const pendingDamage: { targetId: string; damage: number; isTorpedo: boolean }[] = [];
-        if (playerTurnActions.combat) {
-            const target = currentSector.entities.find(e => e.id === playerTurnActions.combat.targetId) as Ship;
-            if (target) {
-                if (playerTurnActions.combat.type === 'phasers') {
-                    const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
-                    playerShip.energy.current -= 10;
-                    pendingDamage.push({ targetId: target.id, damage: baseDamage, isTorpedo: false });
-                    logs.push(`Firing phasers at ${target.name}.`);
-                } else if (playerTurnActions.combat.type === 'torpedoes') {
-                     if (playerShip.torpedoes.current > 0) {
-                        playerShip.torpedoes.current--;
-                        pendingDamage.push({ targetId: target.id, damage: 50, isTorpedo: true });
-                        logs.push(`Launching torpedo at ${target.name}.`);
+            // 2. Navigation
+            if (navigationTarget) {
+                const currentPos = playerShip.position;
+                if (currentPos.x !== navigationTarget.x || currentPos.y !== navigationTarget.y) {
+                    playerShip.position = moveOneStep(currentPos, navigationTarget);
+                    logs.push(`Moving to ${playerShip.position.x}, ${playerShip.position.y}.`);
+                }
+                if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
+                    setNavigationTarget(null);
+                     logs.push(`Arrived at navigation target.`);
+                }
+            }
+
+            // 3. Combat
+            if (playerTurnActions.combat) {
+                const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId) as Ship;
+                if (target) {
+                    if (playerTurnActions.combat.type === 'phasers') {
+                        const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
+                        playerShip.energy.current -= 10;
+                        pendingDamage.push({ targetId: target.id, damage: baseDamage, isTorpedo: false, subsystem: playerTurnActions.combat.subsystem });
+                        logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
+                    } else if (playerTurnActions.combat.type === 'torpedoes') {
+                         if (playerShip.torpedoes.current > 0) {
+                            playerShip.torpedoes.current--;
+                            pendingDamage.push({ targetId: target.id, damage: 50, isTorpedo: true, subsystem: playerTurnActions.combat.subsystem });
+                            logs.push(`Launching torpedo at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
+                        }
                     }
                 }
             }
@@ -294,7 +300,7 @@ export const useGameLogic = () => {
             const aiShip = entity as Ship;
             const isHostile = ['Klingon', 'Romulan', 'Pirate'].includes(aiShip.faction);
 
-            if (isHostile) {
+            if (isHostile && aiShip.subsystems.weapons.health > 0) {
                 const distance = calculateDistance(aiShip.position, playerShip.position);
                 if (distance <= 5) { // Firing range
                     const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
@@ -310,11 +316,12 @@ export const useGameLogic = () => {
         // --- Resolution Phase ---
         // 1. Apply Damage
         const entityMap = new Map<string, Entity>([...currentSector.entities, playerShip].map(e => [e.id, e]));
-        pendingDamage.forEach(({ targetId, damage, isTorpedo }) => {
+        pendingDamage.forEach(({ targetId, damage, isTorpedo, subsystem }) => {
             const target = entityMap.get(targetId) as Ship;
             if (!target) return;
 
             let hitChance = target.evasive ? 0.6 : 0.9;
+            if (isRetreating && target.id === playerShip.id) hitChance = 0.5; // Player is harder to hit when retreating
             if (Math.random() > hitChance) {
                 logs.push(`${target.name} evaded an attack!`);
                 return;
@@ -327,8 +334,19 @@ export const useGameLogic = () => {
             remainingDamage -= absorbedByShields / (isTorpedo ? 0.25 : 1);
             
             if (remainingDamage > 0) {
-                target.hull -= remainingDamage;
-                logs.push(`${target.name} takes ${Math.round(remainingDamage)} hull damage.`);
+                if (subsystem && target.subsystems[subsystem]) {
+                    const subsystemDamage = remainingDamage * 0.7;
+                    const hullDamage = remainingDamage * 0.3;
+                    target.hull -= hullDamage;
+                    target.subsystems[subsystem].health = Math.max(0, target.subsystems[subsystem].health - subsystemDamage);
+                    logs.push(`${target.name} takes ${Math.round(hullDamage)} hull damage and ${Math.round(subsystemDamage)} damage to ${subsystem}!`);
+                    if (target.subsystems[subsystem].health === 0) {
+                        logs.push(`CRITICAL HIT: ${target.name}'s ${subsystem} have been disabled!`);
+                    }
+                } else {
+                    target.hull -= remainingDamage;
+                    logs.push(`${target.name} takes ${Math.round(remainingDamage)} hull damage.`);
+                }
             } else {
                  logs.push(`${target.name}'s shields absorbed the hit.`);
             }
@@ -342,8 +360,16 @@ export const useGameLogic = () => {
                 ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount);
             }
         });
+        
+        // 3. Retreat Check
+        if (isRetreating && next.turn >= playerShip.retreatingTurn!) {
+            playerShip.retreatingTurn = null;
+            next.currentSector.entities = next.currentSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
+            logs.push("Retreat successful! We've escaped to a safe distance.");
+            setSelectedTargetId(null);
+        }
 
-        // 3. Remove destroyed ships & check for game over
+        // 4. Remove destroyed ships & check for game over
         const destroyedIds = new Set<string>();
         currentSector.entities.forEach(e => {
             if (e.type === 'ship' && e.hull <= 0) {
@@ -351,7 +377,7 @@ export const useGameLogic = () => {
                 destroyedIds.add(e.id);
             }
         });
-        if (destroyedIds.has(selectedTargetId)) {
+        if (selectedTargetId && destroyedIds.has(selectedTargetId)) {
             setSelectedTargetId(null);
         }
         next.currentSector.entities = currentSector.entities.filter(e => !destroyedIds.has(e.id));
@@ -412,11 +438,18 @@ export const useGameLogic = () => {
     }, [addLog]);
 
     const onWarp = useCallback((pos: QuadrantPosition) => {
-         addLog(`Warping to quadrant ${pos.qx}, ${pos.qy}.`);
+        if (gameState.player.ship.dilithium.current <= 0) {
+            addLog("Warp failed. Insufficient Dilithium crystals.");
+            return;
+        }
+         addLog(`Warping to quadrant ${pos.qx}, ${pos.qy}. Consumed 1 Dilithium.`);
          setCurrentView('sector');
          setNavigationTarget(null);
          setSelectedTargetId(null);
          setGameState(prev => {
+            const newPlayerShip = { ...prev.player.ship };
+            newPlayerShip.dilithium.current--;
+
             const newMap = prev.quadrantMap.map(row => [...row]);
             let sectorToWarpTo = newMap[pos.qy][pos.qx];
             
@@ -431,22 +464,24 @@ export const useGameLogic = () => {
 
             return {
                 ...prev,
-                player: { ...prev.player, position: pos },
+                player: { ...prev.player, ship: newPlayerShip, position: pos },
                 currentSector: sectorToWarpTo,
                 quadrantMap: newMap
             }
          })
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.dilithium.current]);
 
     const onFirePhasers = useCallback((targetId: string) => {
         addLog(`Phasers targeted at ${gameState.currentSector.entities.find(e=>e.id === targetId)?.name}. Awaiting turn end.`);
-        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId } }));
-    }, [addLog, gameState.currentSector.entities]);
+        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId, subsystem: selectedSubsystem || undefined } }));
+        setSelectedSubsystem(null);
+    }, [addLog, gameState.currentSector.entities, selectedSubsystem]);
     
     const onLaunchTorpedo = useCallback((targetId: string) => {
         addLog(`Torpedo targeted at ${gameState.currentSector.entities.find(e=>e.id === targetId)?.name}. Awaiting turn end.`);
-        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'torpedoes', targetId } }));
-    }, [addLog, gameState.currentSector.entities]);
+        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'torpedoes', targetId, subsystem: selectedSubsystem || undefined } }));
+        setSelectedSubsystem(null);
+    }, [addLog, gameState.currentSector.entities, selectedSubsystem]);
     
     const onEvasiveManeuvers = useCallback(() => {
         addLog('Evasive maneuvers enabled for next turn.');
@@ -466,7 +501,10 @@ export const useGameLogic = () => {
         setIsDocked(true);
         addLog('Docking successful. Welcome to Starbase.');
     }, [addLog]);
-    const onRechargeDilithium = useCallback(() => addLog('Dilithium recharged.'), [addLog]);
+    const onRechargeDilithium = useCallback(() => {
+        addLog('Dilithium crystals fully recharged.');
+        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, dilithium: { ...prev.player.ship.dilithium, current: prev.player.ship.dilithium.max } } } }));
+    }, [addLog]);
     const onResupplyTorpedoes = useCallback(() => {
         addLog('Torpedoes resupplied.');
          setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, torpedoes: { ...prev.player.ship.torpedoes, current: prev.player.ship.torpedoes.max } } } }));
@@ -489,7 +527,13 @@ export const useGameLogic = () => {
             return { ...prev, currentSector: { ...prev.currentSector, entities: newEntities } };
          });
     }, [addLog, selectedTargetId]);
-    const onInitiateRetreat = useCallback(() => addLog('Retreat initiated!'), [addLog]);
+    const onInitiateRetreat = useCallback(() => {
+        addLog('Retreat initiated! Evasive maneuvers for 3 turns.');
+        setGameState(prev => {
+            const newShip = { ...prev.player.ship, retreatingTurn: prev.turn + 3 };
+            return { ...prev, player: { ...prev.player, ship: newShip } };
+        });
+    }, [addLog]);
     const onStartAwayMission = useCallback(() => {
         const mission = awayMissionTemplates[0]; // For demo, always use the first mission
         if (!mission) return;

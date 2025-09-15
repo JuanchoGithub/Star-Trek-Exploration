@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Icon: React.FC<React.SVGProps<SVGSVGElement>> = ({ children, ...props }) => (
-    <svg xmlns="http://www.w.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
         {children}
     </svg>
 );
@@ -85,4 +85,8 @@ export const ScienceIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 
 export const EngineeringIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v4H9.5c-1.93 0-3.5 1.57-3.5 3.5S7.57 18 9.5 18H11v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-4h1.5c1.93 0 3.5-1.57 3.5-3.5S22.43 11 20.5 11z"/></Icon>
+);
+
+export const DilithiumIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}><path d="M12 2L4 8.5V15.5L12 22L20 15.5V8.5L12 2ZM18 14.5L12 19L6 14.5V9.5L12 5L18 9.5V14.5Z"/></Icon>
 );
