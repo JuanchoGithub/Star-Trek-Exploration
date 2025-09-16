@@ -78,6 +78,7 @@ const App: React.FC = () => {
     playerTurnActions,
     activeEvent,
     isWarping,
+    isTurnResolving,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -183,6 +184,7 @@ const App: React.FC = () => {
                     onHailTarget={onHailTarget}
                     playerTurnActions={playerTurnActions}
                     navigationTarget={navigationTarget}
+                    isTurnResolving={isTurnResolving}
                   />
               </div>
           </div>

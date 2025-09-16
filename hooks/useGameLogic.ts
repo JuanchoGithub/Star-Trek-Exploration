@@ -34,7 +34,7 @@ const moveOneStep = (start: Position, end: Position): Position => {
 };
 
 
-const generateSectorContent = (sector: SectorState): SectorState => {
+const generateSectorContent = (sector: SectorState, availablePlanetNames?: Record<PlanetClass, string[]>): SectorState => {
     const newEntities: Entity[] = [];
     const entityCount = Math.floor(Math.random() * 4) + 2; // 2 to 5 entities
     const takenPositions = new Set<string>();
@@ -88,8 +88,23 @@ const generateSectorContent = (sector: SectorState): SectorState => {
         } else if (entityTypeRoll < 0.4) { // ~30% chance for a planet
             const planetClasses: PlanetClass[] = ['M', 'J', 'L', 'D'];
             const planetClass = planetClasses[Math.floor(Math.random() * planetClasses.length)];
-            const nameList = planetNames[planetClass] || ['Unknown Planet'];
-            const name = nameList[Math.floor(Math.random() * nameList.length)];
+            
+            let name: string;
+            // New logic to handle unique names from a pool
+            if (availablePlanetNames) {
+                const nameList = availablePlanetNames[planetClass];
+                if (nameList && nameList.length > 0) {
+                    const nameIndex = Math.floor(Math.random() * nameList.length);
+                    name = nameList[nameIndex];
+                    nameList.splice(nameIndex, 1); // Remove used name from pool
+                } else {
+                    name = `Uncharted Planet ${uniqueId().substr(-4)}`; // Fallback if names run out
+                }
+            } else {
+                // Original behavior if no pool is provided
+                const nameList = planetNames[planetClass] || ['Unknown Planet'];
+                name = nameList[Math.floor(Math.random() * nameList.length)];
+            }
 
             newEntities.push({
                 id: uniqueId(),
@@ -159,6 +174,18 @@ const generateSectorContent = (sector: SectorState): SectorState => {
     };
 };
 
+const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
+    const newMap = JSON.parse(JSON.stringify(quadrantMap));
+    const availablePlanetNames: Record<PlanetClass, string[]> = JSON.parse(JSON.stringify(planetNames));
+
+    for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
+        for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
+            newMap[qy][qx] = generateSectorContent(newMap[qy][qx], availablePlanetNames);
+        }
+    }
+    return newMap;
+};
+
 
 const createInitialGameState = (): GameState => {
   // Create player ship
@@ -193,8 +220,8 @@ const createInitialGameState = (): GameState => {
     { id: 'officer-3', name: 'Lt. Cmdr. Singh', role: 'Engineering', personality: 'Cautious' },
   ];
 
-  // Create quadrant map
-  const quadrantMap: SectorState[][] = Array.from({ length: QUADRANT_SIZE }, () =>
+  // Create quadrant map shell
+  let quadrantMap: SectorState[][] = Array.from({ length: QUADRANT_SIZE }, () =>
     Array.from({ length: QUADRANT_SIZE }, () => ({
       entities: [],
       visited: false,
@@ -202,11 +229,13 @@ const createInitialGameState = (): GameState => {
     }))
   );
 
+  // Pregenerate the entire galaxy's content
+  quadrantMap = pregenerateGalaxy(quadrantMap);
+
   const playerPosition = { qx: Math.floor(QUADRANT_SIZE / 2), qy: Math.floor(QUADRANT_SIZE / 2) };
 
-  // Populate starting sector
+  // Get the pre-generated starting sector
   let startSector = quadrantMap[playerPosition.qy][playerPosition.qx];
-  startSector = generateSectorContent(startSector);
   startSector.visited = true;
 
   // Ensure starting sector has at least one planet for away missions and isn't a total deathtrap
@@ -222,10 +251,6 @@ const createInitialGameState = (): GameState => {
     });
   }
   startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
-
-
-  quadrantMap[playerPosition.qy][playerPosition.qx] = startSector;
-
 
   return {
     player: { ship: playerShip, position: playerPosition, crew: playerCrew },
@@ -269,6 +294,7 @@ export const useGameLogic = () => {
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
     const [activeEvent, setActiveEvent] = useState<{ beaconId: string; template: EventTemplate } | null>(null);
     const [isWarping, setIsWarping] = useState(false);
+    const [isTurnResolving, setIsTurnResolving] = useState(false);
 
 
     const addLog = useCallback((message: string) => {
@@ -317,9 +343,11 @@ export const useGameLogic = () => {
     // Effect to clear combat effects after they've been displayed
     useEffect(() => {
         if (gameState.combatEffects.length > 0) {
+            const maxDelay = Math.max(0, ...gameState.combatEffects.map(e => e.delay));
+            const totalAnimationTime = maxDelay + 1000; // 1000ms is phaser animation duration
             const timer = setTimeout(() => {
                 setGameState(prev => ({ ...prev, combatEffects: [] }));
-            }, 1000); // Duration of the phaser animation
+            }, totalAnimationTime);
             return () => clearTimeout(timer);
         }
     }, [gameState.combatEffects]);
@@ -390,103 +418,12 @@ export const useGameLogic = () => {
     }, [addLog]);
 
     const onEndTurn = useCallback(() => {
-    setGameState(prev => {
-        if (prev.gameOver) return prev;
+        if (isTurnResolving) return;
+        setIsTurnResolving(true);
 
-        const next = JSON.parse(JSON.stringify(prev)); // Deep copy to avoid mutation issues
-        const logs: string[] = [];
-        const { player, currentSector } = next;
-        const playerShip = player.ship;
-        const isRetreating = playerShip.retreatingTurn !== null;
-        const pendingDamage: { sourceId: string; targetId: string; damage: number; type: 'phaser' | 'torpedo'; subsystem?: 'weapons' | 'engines' | 'shields' }[] = [];
-        let redAlertThisTurn = false;
-
-        // --- Player Action Phase ---
-        if (isRetreating) {
-            logs.push("Attempting to retreat, cannot take other actions.");
-        } else {
-             // 1. Evasive Maneuvers
-            if (playerTurnActions.evasive) {
-                playerShip.evasive = true;
-                playerShip.energy.current = Math.max(0, playerShip.energy.current - 15);
-                logs.push("U.S.S. Endeavour is performing evasive maneuvers.");
-            } else {
-                playerShip.evasive = false;
-            }
-
-            // 2. Navigation
-            if (navigationTarget) {
-                const currentPos = playerShip.position;
-                if (currentPos.x !== navigationTarget.x || currentPos.y !== navigationTarget.y) {
-                    playerShip.position = moveOneStep(currentPos, navigationTarget);
-                    logs.push(`Moving to ${playerShip.position.x}, ${playerShip.position.y}.`);
-                }
-                if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
-                    setNavigationTarget(null);
-                     logs.push(`Arrived at navigation target.`);
-                }
-            }
-
-            // 3. Combat
-            if (playerTurnActions.combat) {
-                const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId) as Ship;
-                if (target) {
-                    if (playerTurnActions.combat.type === 'phasers') {
-                        const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
-                        playerShip.energy.current -= 10;
-                        pendingDamage.push({ sourceId: playerShip.id, targetId: target.id, damage: baseDamage, type: 'phaser', subsystem: playerTurnActions.combat.subsystem });
-                        logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
-                    } else if (playerTurnActions.combat.type === 'torpedoes') {
-                         if (playerShip.torpedoes.current > 0) {
-                            playerShip.torpedoes.current--;
-                            pendingDamage.push({ sourceId: playerShip.id, targetId: target.id, damage: 50, type: 'torpedo', subsystem: playerTurnActions.combat.subsystem });
-                            logs.push(`Launching torpedo at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
-                        }
-                    }
-                }
-            }
-        }
-        
-        // --- AI Phase ---
-        currentSector.entities.forEach((entity: Entity) => {
-            if (entity.type !== 'ship' || entity.id === playerShip.id) return;
-            
-            const aiShip = entity as Ship;
-            const isHostile = ['Klingon', 'Romulan', 'Pirate'].includes(aiShip.faction);
-
-            if (isHostile && aiShip.subsystems.weapons.health > 0) {
-                const distance = calculateDistance(aiShip.position, playerShip.position);
-                if (distance <= 5) { // Firing range
-                    const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
-                    pendingDamage.push({ sourceId: aiShip.id, targetId: playerShip.id, damage: aiDamage, type: 'phaser' });
-                    logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
-                    redAlertThisTurn = true;
-                }
-                if (distance > 2) { // Move closer
-                    aiShip.position = moveOneStep(aiShip.position, playerShip.position);
-                }
-            }
-        });
-
-        // --- Resolution Phase ---
-        // 0. Visual Effects
-        const phaserEffects: CombatEffect[] = pendingDamage
-            .filter(d => d.type === 'phaser')
-            .map(d => ({
-                type: 'phaser',
-                sourceId: d.sourceId,
-                targetId: d.targetId,
-            }));
-        next.combatEffects = phaserEffects;
-
-        // 1. Apply Damage
-        const entityMap = new Map<string, Entity>([...currentSector.entities, playerShip].map(e => [e.id, e]));
-        pendingDamage.forEach(({ targetId, damage, type, subsystem }) => {
-            const target = entityMap.get(targetId) as Ship;
-            if (!target) return;
-
+        const applyDamage = (target: Ship, damage: number, type: 'phaser' | 'torpedo', subsystem: 'weapons' | 'engines' | 'shields' | null, logs: string[]) => {
             let hitChance = target.evasive ? 0.6 : 0.9;
-            if (isRetreating && target.id === playerShip.id) hitChance = 0.5; // Player is harder to hit when retreating
+            if (target.retreatingTurn && target.id === 'player') hitChance = 0.5;
             if (Math.random() > hitChance) {
                 logs.push(`${target.name} evaded an attack!`);
                 return;
@@ -515,53 +452,157 @@ export const useGameLogic = () => {
             } else {
                  logs.push(`${target.name}'s shields absorbed the hit.`);
             }
-        });
+        };
 
-        // 2. Shield Regeneration
-        [playerShip, ...currentSector.entities].forEach(e => {
-            if (e.type === 'ship') {
-                const ship = e as Ship;
-                const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
-                ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount);
+        // --- Phase 1: Player Actions ---
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            if (next.gameOver) {
+                setIsTurnResolving(false);
+                return prev;
             }
-        });
-        
-        // 3. Retreat Check
-        if (isRetreating && next.turn >= playerShip.retreatingTurn!) {
-            playerShip.retreatingTurn = null;
-            next.currentSector.entities = next.currentSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
-            logs.push("Retreat successful! We've escaped to a safe distance.");
-            setSelectedTargetId(null);
-        }
+            const { player, currentSector } = next;
+            const playerShip = player.ship;
+            const logs: string[] = [];
+            const phaserEffects: CombatEffect[] = [];
 
-        // 4. Remove destroyed ships & check for game over
-        const destroyedIds = new Set<string>();
-        currentSector.entities.forEach(e => {
-            if (e.type === 'ship' && e.hull <= 0) {
-                logs.push(`${e.name} has been destroyed!`);
-                destroyedIds.add(e.id);
+            if (playerShip.retreatingTurn !== null) {
+                logs.push("Attempting to retreat, cannot take other actions.");
+            } else {
+                if (playerTurnActions.evasive) {
+                    playerShip.evasive = true;
+                    playerShip.energy.current = Math.max(0, playerShip.energy.current - 15);
+                    logs.push("U.S.S. Endeavour is performing evasive maneuvers.");
+                } else {
+                    playerShip.evasive = false;
+                }
+
+                if (navigationTarget) {
+                    if (playerShip.position.x !== navigationTarget.x || playerShip.position.y !== navigationTarget.y) {
+                        playerShip.position = moveOneStep(playerShip.position, navigationTarget);
+                        logs.push(`Moving to ${playerShip.position.x}, ${playerShip.position.y}.`);
+                    }
+                    if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
+                        setNavigationTarget(null);
+                        logs.push(`Arrived at navigation target.`);
+                    }
+                }
+                 if (playerTurnActions.combat) {
+                    const target = currentSector.entities.find((e: Entity) => e.id === playerTurnActions.combat!.targetId) as Ship;
+                    if (target) {
+                        if (playerTurnActions.combat.type === 'phasers') {
+                            const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
+                            playerShip.energy.current -= 10;
+                            phaserEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
+                            applyDamage(target, baseDamage, 'phaser', playerTurnActions.combat.subsystem || null, logs);
+                            logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
+                        } else if (playerTurnActions.combat.type === 'torpedoes') {
+                            if (playerShip.torpedoes.current > 0) {
+                                playerShip.torpedoes.current--;
+                                applyDamage(target, 50, 'torpedo', playerTurnActions.combat.subsystem || null, logs);
+                                logs.push(`Launching torpedo at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
+                            }
+                        }
+                    }
+                }
             }
+            next.logs = [...logs.reverse(), ...prev.logs];
+            next.combatEffects = phaserEffects;
+            return next;
         });
-        if (selectedTargetId && destroyedIds.has(selectedTargetId)) {
-            setSelectedTargetId(null);
-        }
-        next.currentSector.entities = currentSector.entities.filter(e => !destroyedIds.has(e.id));
-        
-        if (playerShip.hull <= 0) {
-            next.gameOver = true;
-            logs.push("CRITICAL: U.S.S. Endeavour has been destroyed. Game Over.");
-        }
 
-        // --- Cleanup ---
-        next.turn++;
-        logs.unshift(`Turn ${next.turn} begins.`);
-        next.logs = [...logs.reverse(), ...prev.logs];
-        next.redAlert = redAlertThisTurn || next.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
-        setPlayerTurnActions({});
+        // --- Phase 2: AI Movement ---
+        setTimeout(() => {
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                if (next.gameOver) {
+                    setIsTurnResolving(false);
+                    return prev;
+                }
+                const hostileAIShips = next.currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+                hostileAIShips.forEach((aiShip: Ship) => {
+                    const distance = calculateDistance(aiShip.position, next.player.ship.position);
+                    if (distance > 2 && aiShip.subsystems.engines.health > 0) {
+                        aiShip.position = moveOneStep(aiShip.position, next.player.ship.position);
+                    }
+                });
+                return { ...next, combatEffects: [] }; // Clear player effects
+            });
+        }, 1200); // Wait for player phaser animation to finish
 
-        return next;
-    });
-    }, [addLog, playerTurnActions, navigationTarget, selectedTargetId]);
+        // --- Phase 3: AI Firing & Turn Cleanup ---
+        setTimeout(() => {
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                if (next.gameOver) {
+                    setIsTurnResolving(false);
+                    return prev;
+                }
+                const logs: string[] = [];
+                const { player, currentSector } = next;
+                const playerShip = player.ship;
+                const phaserEffects: CombatEffect[] = [];
+                let redAlertThisTurn = false;
+                
+                const hostileAIShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+                hostileAIShips.forEach((aiShip: Ship, index: number) => {
+                    if (aiShip.subsystems.weapons.health > 0) {
+                        const distance = calculateDistance(aiShip.position, playerShip.position);
+                        if (distance <= 5) {
+                            const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
+                            phaserEffects.push({ type: 'phaser', sourceId: aiShip.id, targetId: playerShip.id, faction: aiShip.faction, delay: index * 250 });
+                            applyDamage(playerShip, aiDamage, 'phaser', null, logs);
+                            logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
+                            redAlertThisTurn = true;
+                        }
+                    }
+                });
+                next.combatEffects = phaserEffects;
+
+                [playerShip, ...currentSector.entities].forEach(e => {
+                    if (e.type === 'ship') {
+                        const ship = e as Ship;
+                        const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
+                        ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount);
+                    }
+                });
+
+                if (playerShip.retreatingTurn !== null && next.turn >= playerShip.retreatingTurn) {
+                    playerShip.retreatingTurn = null;
+                    next.currentSector.entities = next.currentSector.entities.filter((e: Entity) => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
+                    logs.push("Retreat successful! We've escaped to a safe distance.");
+                    setSelectedTargetId(null);
+                }
+
+                const destroyedIds = new Set<string>();
+                currentSector.entities.forEach(e => {
+                    if ((e.type === 'ship' || e.type === 'starbase') && e.hull <= 0) {
+                        logs.push(`${e.name} has been destroyed!`);
+                        destroyedIds.add(e.id);
+                    }
+                });
+                if (selectedTargetId && destroyedIds.has(selectedTargetId)) {
+                    setSelectedTargetId(null);
+                }
+                next.currentSector.entities = currentSector.entities.filter(e => !destroyedIds.has(e.id));
+                
+                if (playerShip.hull <= 0) {
+                    next.gameOver = true;
+                    logs.push("CRITICAL: U.S.S. Endeavour has been destroyed. Game Over.");
+                }
+
+                next.turn++;
+                logs.unshift(`Turn ${next.turn} begins.`);
+                next.logs = [...logs.reverse(), ...prev.logs];
+                next.redAlert = redAlertThisTurn || next.currentSector.entities.some((e: Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+                setPlayerTurnActions({});
+                
+                setIsTurnResolving(false);
+                return next;
+            });
+        }, 1700); // Wait for AI movement to be perceived
+
+    }, [addLog, playerTurnActions, navigationTarget, selectedTargetId, isTurnResolving]);
 
     const onEnergyChange = useCallback((changedKey: 'weapons' | 'shields' | 'engines', value: number) => {
         setGameState(prev => {
@@ -659,9 +700,7 @@ export const useGameLogic = () => {
                 let sectorToWarpTo = newMap[pos.qy][pos.qx];
                 
                 if (!sectorToWarpTo.visited) {
-                    sectorToWarpTo = generateSectorContent(sectorToWarpTo);
                     sectorToWarpTo.visited = true;
-                    newMap[pos.qy][pos.qx] = sectorToWarpTo;
                     next.logs.unshift(`Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`);
 
                     // Pirate Ambush Chance
@@ -915,6 +954,7 @@ export const useGameLogic = () => {
         playerTurnActions,
         activeEvent,
         isWarping,
+        isTurnResolving,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,

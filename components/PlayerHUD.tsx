@@ -24,6 +24,7 @@ interface PlayerHUDProps {
   onHailTarget: () => void;
   playerTurnActions: PlayerTurnActions;
   navigationTarget: Position | null;
+  isTurnResolving: boolean;
 }
 
 const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
@@ -112,7 +113,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes,
     isRepairMode, onInitiateDamageControl, onSelectRepairTarget,
     onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions, navigationTarget
+    playerTurnActions, navigationTarget, isTurnResolving
 }) => {
     const playerShip = gameState.player.ship;
 
@@ -186,6 +187,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             playerTurnActions={playerTurnActions}
                             navigationTarget={navigationTarget}
                             playerShipPosition={playerShip.position}
+                            isTurnResolving={isTurnResolving}
                         />
                     )}
                 </div>

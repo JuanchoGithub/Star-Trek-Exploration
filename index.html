@@ -74,10 +74,24 @@
       
       /* Combat FX Styles */
       .phaser-beam {
-          stroke: #ff4141;
           stroke-width: 3px;
-          filter: drop-shadow(0 0 3px #ff4141);
           animation: phaser-fire-animation 1s ease-out;
+      }
+      .phaser-beam.federation {
+          stroke: #ff4141; /* Red */
+          filter: drop-shadow(0 0 3px #ff4141);
+      }
+      .phaser-beam.klingon {
+          stroke: #daa520; /* Dark Yellow */
+          filter: drop-shadow(0 0 3px #daa520);
+      }
+      .phaser-beam.romulan {
+          stroke: #32cd32; /* Green */
+          filter: drop-shadow(0 0 3px #32cd32);
+      }
+      .phaser-beam.pirate {
+          stroke: #ffeb3b; /* Yellow */
+          filter: drop-shadow(0 0 3px #ffeb3b);
       }
 
       @keyframes phaser-fire-animation {

@@ -150,6 +150,8 @@ export type CombatEffect = {
     type: 'phaser';
     sourceId: string;
     targetId: string;
+    faction: string;
+    delay: number; // in milliseconds
 };
 
 export interface GameState {

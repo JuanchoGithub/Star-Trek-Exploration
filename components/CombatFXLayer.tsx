@@ -15,6 +15,16 @@ const getPercentageCoords = (gridPos: { x: number; y: number }) => {
     return { x: `${x}%`, y: `${y}%` };
 };
 
+const getPhaserClass = (faction: string): string => {
+    const factionClass = faction.toLowerCase();
+    const validFactions = ['federation', 'klingon', 'romulan', 'pirate'];
+    if (validFactions.includes(factionClass)) {
+        return `phaser-beam ${factionClass}`;
+    }
+    return 'phaser-beam federation'; // Default to federation red for others
+};
+
+
 const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
     const entityMap = new Map<string, Entity>(entities.map(e => [e.id, e]));
 
@@ -29,8 +39,19 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
 
                         const start = getPercentageCoords(source.position);
                         const end = getPercentageCoords(target.position);
+                        const phaserClass = getPhaserClass(effect.faction);
 
-                        return <line key={`${effect.sourceId}-${effect.targetId}-${index}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="phaser-beam" />;
+                        return (
+                            <line 
+                                key={`${effect.sourceId}-${effect.targetId}-${index}`} 
+                                x1={start.x} 
+                                y1={start.y} 
+                                x2={end.x} 
+                                y2={end.y} 
+                                className={phaserClass}
+                                style={{ animationDelay: `${effect.delay}ms` }}
+                            />
+                        );
                     }
                     return null;
                 })}
