@@ -71,6 +71,21 @@
         50% { opacity: 1; }
         55%, 100% { opacity: 0; }
       }
+      
+      /* Combat FX Styles */
+      .phaser-beam {
+          stroke: #ff4141;
+          stroke-width: 3px;
+          filter: drop-shadow(0 0 3px #ff4141);
+          animation: phaser-fire-animation 1s ease-out;
+      }
+
+      @keyframes phaser-fire-animation {
+          0% { opacity: 0; stroke-width: 0; }
+          20% { opacity: 1; stroke-width: 3px; }
+          80% { opacity: 1; }
+          100% { opacity: 0; }
+      }
 
     </style>
   <script type="importmap">

@@ -146,6 +146,12 @@ export interface EventTemplate {
     options: EventTemplateOption[];
 }
 
+export type CombatEffect = {
+    type: 'phaser';
+    sourceId: string;
+    targetId: string;
+};
+
 export interface GameState {
   player: {
     ship: Ship;
@@ -159,4 +165,5 @@ export interface GameState {
   gameOver: boolean;
   gameWon: boolean;
   redAlert: boolean;
+  combatEffects: CombatEffect[];
 }

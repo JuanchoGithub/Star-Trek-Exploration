@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../data/contentData';
 import { planetNames } from '../data/planetNames';
 
@@ -236,6 +236,7 @@ const createInitialGameState = (): GameState => {
     gameOver: false,
     gameWon: false,
     redAlert: false,
+    combatEffects: [],
   };
 };
 
@@ -313,6 +314,16 @@ export const useGameLogic = () => {
         }
     }, [gameState.player.ship.position, gameState.currentSector.entities, activeEvent]);
 
+    // Effect to clear combat effects after they've been displayed
+    useEffect(() => {
+        if (gameState.combatEffects.length > 0) {
+            const timer = setTimeout(() => {
+                setGameState(prev => ({ ...prev, combatEffects: [] }));
+            }, 1000); // Duration of the phaser animation
+            return () => clearTimeout(timer);
+        }
+    }, [gameState.combatEffects]);
+
 
     const saveGame = useCallback(() => {
         try {
@@ -387,7 +398,7 @@ export const useGameLogic = () => {
         const { player, currentSector } = next;
         const playerShip = player.ship;
         const isRetreating = playerShip.retreatingTurn !== null;
-        const pendingDamage: { targetId: string; damage: number; isTorpedo: boolean; subsystem?: 'weapons' | 'engines' | 'shields' }[] = [];
+        const pendingDamage: { sourceId: string; targetId: string; damage: number; type: 'phaser' | 'torpedo'; subsystem?: 'weapons' | 'engines' | 'shields' }[] = [];
         let redAlertThisTurn = false;
 
         // --- Player Action Phase ---
@@ -423,12 +434,12 @@ export const useGameLogic = () => {
                     if (playerTurnActions.combat.type === 'phasers') {
                         const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
                         playerShip.energy.current -= 10;
-                        pendingDamage.push({ targetId: target.id, damage: baseDamage, isTorpedo: false, subsystem: playerTurnActions.combat.subsystem });
+                        pendingDamage.push({ sourceId: playerShip.id, targetId: target.id, damage: baseDamage, type: 'phaser', subsystem: playerTurnActions.combat.subsystem });
                         logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
                     } else if (playerTurnActions.combat.type === 'torpedoes') {
                          if (playerShip.torpedoes.current > 0) {
                             playerShip.torpedoes.current--;
-                            pendingDamage.push({ targetId: target.id, damage: 50, isTorpedo: true, subsystem: playerTurnActions.combat.subsystem });
+                            pendingDamage.push({ sourceId: playerShip.id, targetId: target.id, damage: 50, type: 'torpedo', subsystem: playerTurnActions.combat.subsystem });
                             logs.push(`Launching torpedo at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
                         }
                     }
@@ -447,7 +458,7 @@ export const useGameLogic = () => {
                 const distance = calculateDistance(aiShip.position, playerShip.position);
                 if (distance <= 5) { // Firing range
                     const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
-                    pendingDamage.push({ targetId: playerShip.id, damage: aiDamage, isTorpedo: false });
+                    pendingDamage.push({ sourceId: aiShip.id, targetId: playerShip.id, damage: aiDamage, type: 'phaser' });
                     logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
                     redAlertThisTurn = true;
                 }
@@ -458,9 +469,19 @@ export const useGameLogic = () => {
         });
 
         // --- Resolution Phase ---
+        // 0. Visual Effects
+        const phaserEffects: CombatEffect[] = pendingDamage
+            .filter(d => d.type === 'phaser')
+            .map(d => ({
+                type: 'phaser',
+                sourceId: d.sourceId,
+                targetId: d.targetId,
+            }));
+        next.combatEffects = phaserEffects;
+
         // 1. Apply Damage
         const entityMap = new Map<string, Entity>([...currentSector.entities, playerShip].map(e => [e.id, e]));
-        pendingDamage.forEach(({ targetId, damage, isTorpedo, subsystem }) => {
+        pendingDamage.forEach(({ targetId, damage, type, subsystem }) => {
             const target = entityMap.get(targetId) as Ship;
             if (!target) return;
 
@@ -472,10 +493,10 @@ export const useGameLogic = () => {
             }
 
             let remainingDamage = damage;
-            const shieldDamage = isTorpedo ? remainingDamage * 0.25 : remainingDamage;
+            const shieldDamage = type === 'torpedo' ? remainingDamage * 0.25 : remainingDamage;
             const absorbedByShields = Math.min(target.shields, shieldDamage);
             target.shields -= absorbedByShields;
-            remainingDamage -= absorbedByShields / (isTorpedo ? 0.25 : 1);
+            remainingDamage -= absorbedByShields / (type === 'torpedo' ? 0.25 : 1);
             
             if (remainingDamage > 0) {
                 if (subsystem && target.subsystems[subsystem]) {

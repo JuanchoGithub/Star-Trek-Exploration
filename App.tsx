@@ -11,6 +11,7 @@ import StatusLine from './components/StatusLine';
 import ShipStatus from './components/ShipStatus';
 import EventDialog from './components/EventDialog';
 import WarpAnimation from './components/WarpAnimation';
+import CombatFXLayer from './components/CombatFXLayer';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -152,6 +153,12 @@ const App: React.FC = () => {
                           />
                       )}
                       {isWarping && <WarpAnimation />}
+                      {currentView === 'sector' && gameState.combatEffects.length > 0 && (
+                          <CombatFXLayer
+                              effects={gameState.combatEffects}
+                              entities={[...gameState.currentSector.entities, gameState.player.ship]}
+                          />
+                      )}
                   </div>
               </div>
               {/* Bottom Section: HUD */}
