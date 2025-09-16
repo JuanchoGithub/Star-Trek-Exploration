@@ -13,6 +13,7 @@ import ShipStatus from './components/ShipStatus';
 import EventDialog from './components/EventDialog';
 import WarpAnimation from './components/WarpAnimation';
 import CombatFXLayer from './components/CombatFXLayer';
+import AwayMissionResultDialog from './components/AwayMissionResultDialog';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -79,6 +80,7 @@ const App: React.FC = () => {
     activeEvent,
     isWarping,
     isTurnResolving,
+    awayMissionResult,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -110,6 +112,7 @@ const App: React.FC = () => {
     onDistributeEvenly,
     onSendAwayTeam,
     onToggleRedAlert,
+    onCloseAwayMissionResult,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -211,6 +214,7 @@ const App: React.FC = () => {
       </div>
 
       {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} />}
+      {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
       {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} />}
       {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}

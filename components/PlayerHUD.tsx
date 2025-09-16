@@ -1,9 +1,10 @@
 
 import React from 'react';
-import type { GameState, Entity, PlayerTurnActions, Position } from '../types';
+import type { GameState, Entity, PlayerTurnActions, Position, Planet } from '../types';
 import CommandConsole from './CommandConsole';
 import { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } from './Icons';
 import WireframeDisplay from './WireframeDisplay';
+import { planetTypes } from '../assets/planets/configs/planetTypes';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -18,7 +19,7 @@ interface PlayerHUDProps {
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
-  onStartAwayMission: () => void;
+  onStartAwayMission: (planetId: string) => void;
   onHailTarget: () => void;
   playerTurnActions: PlayerTurnActions;
   navigationTarget: Position | null;
@@ -61,6 +62,13 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
                         <p className="text-sm text-gray-500">{target.faction} {target.type}</p>
                     )}
                     
+                    {target.type === 'planet' && target.scanned && (
+                         <div className="text-sm mt-2">
+                             <span className="text-gray-400">Classification: </span>
+                             <span>{planetTypes[target.planetClass]?.name || 'Unknown'}</span>
+                         </div>
+                    )}
+
                     {target.type === 'ship' && !isUnscannedShip && (
                         <>
                             <div className="text-sm mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
@@ -96,7 +104,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
-    const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
+    const orbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1) as Planet | undefined;
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
 
     return (
@@ -125,10 +133,16 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             </div>
                         </div>
                     )}
-                    {isOrbitingPlanet && !hasEnemy && (
+                    {orbitingPlanet && !hasEnemy && (
                         <div className="bg-gray-900 p-3 rounded text-center">
                             <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
-                            <button onClick={onStartAwayMission} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Beam Down Away Team</button>
+                            <button 
+                                onClick={() => orbitingPlanet && onStartAwayMission(orbitingPlanet.id)} 
+                                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                disabled={orbitingPlanet.awayMissionCompleted}
+                            >
+                                {orbitingPlanet.awayMissionCompleted ? 'Planet Surveyed' : 'Beam Down Away Team'}
+                            </button>
                         </div>
                     )}
                 </div>

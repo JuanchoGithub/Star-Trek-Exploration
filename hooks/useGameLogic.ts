@@ -1,9 +1,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../data/contentData';
-import { planetNames } from '../data/planetNames';
+import { planetNames } from '../assets/planets/configs/planetNames';
+import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
 
 const SECTOR_WIDTH = 12;
 const SECTOR_HEIGHT = 10;
@@ -87,13 +88,13 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 isResolved: false,
             });
         } else if (entityTypeRoll < 0.4) { // ~30% chance for a planet
-            const planetClasses: PlanetClass[] = ['M', 'J', 'L', 'D'];
             const planetClass = planetClasses[Math.floor(Math.random() * planetClasses.length)];
+            const planetConfig = planetTypes[planetClass];
             
             let name: string;
             // New logic to handle unique names from a pool
             if (availablePlanetNames) {
-                const nameList = availablePlanetNames[planetClass];
+                const nameList = availablePlanetNames[planetConfig.typeName];
                 if (nameList && nameList.length > 0) {
                     const nameIndex = Math.floor(Math.random() * nameList.length);
                     name = nameList[nameIndex];
@@ -103,7 +104,7 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 }
             } else {
                 // Original behavior if no pool is provided
-                const nameList = planetNames[planetClass] || ['Unknown Planet'];
+                const nameList = planetNames[planetConfig.typeName] || ['Unknown Planet'];
                 name = nameList[Math.floor(Math.random() * nameList.length)];
             }
 
@@ -115,6 +116,7 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 position,
                 scanned: false,
                 planetClass: planetClass,
+                awayMissionCompleted: false,
             });
         } else if (entityTypeRoll < 0.55) { // 15% chance for an asteroid field
              newEntities.push({
@@ -258,6 +260,7 @@ const createInitialGameState = (): GameState => {
         position: { x: 2, y: 2 },
         scanned: true,
         planetClass: 'M',
+        awayMissionCompleted: false,
     });
   }
   startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
@@ -318,6 +321,8 @@ export const useGameLogic = () => {
     const [activeEvent, setActiveEvent] = useState<{ beaconId: string; template: EventTemplate } | null>(null);
     const [isWarping, setIsWarping] = useState(false);
     const [isTurnResolving, setIsTurnResolving] = useState(false);
+    const [awayMissionResult, setAwayMissionResult] = useState<string | null>(null);
+    const [activeMissionPlanetId, setActiveMissionPlanetId] = useState<string | null>(null);
 
 
     const addLog = useCallback((message: string) => {
@@ -1076,9 +1081,11 @@ export const useGameLogic = () => {
         });
     }, [addLog]);
 
-    const onStartAwayMission = useCallback(() => {
+    const onStartAwayMission = useCallback((planetId: string) => {
         const mission = awayMissionTemplates[0]; // For demo, always use the first mission
         if (!mission) return;
+
+        setActiveMissionPlanetId(planetId);
 
         const relevantOfficers = gameState.player.crew.filter(officer =>
             mission.options.some(option => option.role === officer.role)
@@ -1147,9 +1154,25 @@ export const useGameLogic = () => {
 
     const onChooseAwayMissionOption = useCallback((option: AwayMissionOption) => {
         const success = Math.random() < option.successChance;
-        addLog(success ? option.outcomes.success : option.outcomes.failure);
+        const resultMessage = success ? option.outcomes.success : option.outcomes.failure;
+        
+        setAwayMissionResult(resultMessage);
+        addLog(`Away Mission Debrief: ${resultMessage}`);
+
+        if (activeMissionPlanetId) {
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                const planet = next.currentSector.entities.find((e: Entity) => e.id === activeMissionPlanetId) as Planet | undefined;
+                if (planet) {
+                    planet.awayMissionCompleted = true;
+                }
+                return next;
+            });
+        }
+        
         setActiveAwayMission(null);
-    }, [addLog]);
+        setActiveMissionPlanetId(null);
+    }, [addLog, activeMissionPlanetId]);
 
     const onProceedFromCounsel = useCallback(() => {
         if (officerCounsel) {
@@ -1161,6 +1184,7 @@ export const useGameLogic = () => {
 
     const onCloseOfficerCounsel = useCallback(() => {
         setOfficerCounsel(null);
+        setActiveMissionPlanetId(null); // Clear planet target if mission is aborted
         addLog("Away mission aborted based on counsel.");
     }, [addLog]);
 
@@ -1288,6 +1312,7 @@ export const useGameLogic = () => {
         activeEvent,
         isWarping,
         isTurnResolving,
+        awayMissionResult,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,
@@ -1319,5 +1344,6 @@ export const useGameLogic = () => {
         onDistributeEvenly,
         onSendAwayTeam,
         onToggleRedAlert,
+        onCloseAwayMissionResult: () => setAwayMissionResult(null),
     };
 };

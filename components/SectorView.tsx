@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile } from '../types';
-import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon, TorpedoProjectileIcon } from './Icons';
+import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon, TorpedoProjectileIcon } from './Icons';
+import { planetTypes } from '../assets/planets/configs/planetTypes';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -198,21 +199,14 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 }
             } else { // Planet
                 const planet = entity as Planet;
-                switch (planet.planetClass) {
-                    case 'M':
-                        icon = <PlanetIconM className="w-10 h-10 text-green-500" />;
-                        break;
-                    case 'J':
-                        icon = <PlanetIconJ className="w-10 h-10 text-orange-400" />;
-                        break;
-                    case 'L':
-                        icon = <PlanetIconL className="w-10 h-10 text-yellow-600" />;
-                        break;
-                    case 'D':
-                        icon = <PlanetIconD className="w-10 h-10 text-gray-500" />;
-                        break;
-                    default:
-                        icon = <PlanetIconM className="w-10 h-10 text-green-500" />;
+                const planetConfig = planetTypes[planet.planetClass];
+                if (planetConfig) {
+                    const IconComponent = planetConfig.icon;
+                    icon = <IconComponent className={`w-10 h-10 ${planetConfig.colorClass}`} />;
+                } else {
+                    // Fallback to M-class if config not found
+                    const FallbackIcon = planetTypes['M'].icon;
+                    icon = <FallbackIcon className={`w-10 h-10 ${planetTypes['M'].colorClass}`} />;
                 }
             }
             

@@ -49,6 +49,7 @@ export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant,
 export interface Planet extends BaseEntity {
   type: 'planet';
   planetClass: PlanetClass;
+  awayMissionCompleted?: boolean;
 }
 
 export interface Starbase extends BaseEntity {

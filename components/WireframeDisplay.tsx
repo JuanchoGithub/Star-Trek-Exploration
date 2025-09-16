@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Entity, Planet } from '../types';
+import { planetTypes } from '../assets/planets/configs/planetTypes';
 
 interface WireframeDisplayProps {
     target: Entity;
@@ -11,42 +12,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             {children}
         </g>
     </svg>
-);
-
-const PlanetWireframeM: React.FC = () => (
-    <WireframeSVG>
-        <circle cx="50" cy="50" r="40" />
-        <ellipse cx="50" cy="50" rx="40" ry="15" />
-        <ellipse cx="50" cy="50" rx="25" ry="38" transform="rotate(30 50 50)" />
-        <ellipse cx="50" cy="50" rx="15" ry="40" transform="rotate(-30 50 50)" />
-    </WireframeSVG>
-);
-
-const PlanetWireframeJ: React.FC = () => (
-    <WireframeSVG>
-        <circle cx="50" cy="50" r="35" />
-        <ellipse cx="50" cy="50" rx="45" ry="15" transform="rotate(-15 50 50)" />
-        <line x1="15" y1="40" x2="85" y2="40" />
-        <line x1="20" y1="60" x2="80" y2="60" />
-    </WireframeSVG>
-);
-
-const PlanetWireframeL: React.FC = () => (
-    <WireframeSVG>
-        <circle cx="50" cy="50" r="40" />
-        <circle cx="35" cy="40" r="8" />
-        <circle cx="65" cy="60" r="12" />
-        <path d="M 20 70 Q 50 60 80 75" />
-    </WireframeSVG>
-);
-
-const PlanetWireframeD: React.FC = () => (
-     <WireframeSVG>
-        <circle cx="50" cy="50" r="40" />
-        <path d="M 30 25 L 45 45 L 30 60" />
-        <path d="M 60 20 L 75 40 L 60 55 L 75 70" />
-        <circle cx="55" cy="65" r="7" />
-    </WireframeSVG>
 );
 
 const StarbaseWireframe: React.FC = () => (
@@ -144,12 +109,14 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
     switch (target.type) {
         case 'planet':
             const planet = target as Planet;
-            switch (planet.planetClass) {
-                case 'M': wireframe = <PlanetWireframeM />; break;
-                case 'J': wireframe = <PlanetWireframeJ />; break;
-                case 'L': wireframe = <PlanetWireframeL />; break;
-                case 'D': wireframe = <PlanetWireframeD />; break;
-                default: wireframe = <PlanetWireframeM />; break;
+            const planetConfig = planetTypes[planet.planetClass];
+            if (planetConfig) {
+                const WireframeComponent = planetConfig.wireframe;
+                wireframe = <WireframeComponent />;
+            } else {
+                // Fallback to M-class if config not found
+                const FallbackWireframe = planetTypes['M'].wireframe;
+                wireframe = <FallbackWireframe />;
             }
             break;
         case 'starbase':
