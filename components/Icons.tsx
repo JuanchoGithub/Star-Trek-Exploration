@@ -52,8 +52,26 @@ export const PlayerShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) =
     </Icon>
 );
 
-export const EnemyShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const KlingonBirdOfPreyIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></Icon>
+);
+
+export const RomulanWarbirdIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <Icon {...props}>
+    <path d="M21 9c-2.17-1.67-4.56-3-7-3-2.44 0-4.83 1.33-7 3L2 14h5v3c0 1.66 1.34 3 3 3h4c1.66 0 3-1.34 3-3v-3h5l-5-5z" />
+  </Icon>
+);
+
+export const OrionPirateShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}>
+        <path d="M12 2L2 8 L5 12 L2 16 L12 22 L22 16 L19 12 L22 8 Z" />
+    </Icon>
+);
+
+export const UnknownShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}>
+        <path d="M12 2 L18 12 L12 22 L6 12 Z" />
+    </Icon>
 );
 
 export const NeutralShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (

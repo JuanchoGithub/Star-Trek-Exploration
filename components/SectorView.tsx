@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet } from '../types';
-import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon } from './Icons';
+import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -138,19 +138,23 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 if (isPlayer) {
                     icon = <PlayerShipIcon className="w-8 h-8"/>;
                     factionColor = 'text-blue-400';
-                } else {
-                    if (entity.faction === 'Klingon' || entity.faction === 'Romulan') {
-                        icon = <EnemyShipIcon className="w-8 h-8"/>;
+                } else if (!entity.scanned) { // Unscanned ships
+                    icon = <UnknownShipIcon className="w-8 h-8"/>;
+                    factionColor = 'text-yellow-400';
+                    entityName = 'Unknown Ship';
+                } else { // Scanned non-player ships
+                    if (entity.faction === 'Klingon') {
+                        icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
                         factionColor = 'text-red-500';
+                    } else if (entity.faction === 'Romulan') {
+                        icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
+                        factionColor = 'text-green-400';
                     } else if (entity.faction === 'Pirate') {
-                        icon = <EnemyShipIcon className="w-8 h-8"/>;
+                        icon = <OrionPirateShipIcon className="w-8 h-8"/>;
                         factionColor = 'text-orange-500';
                     } else { // Independent
                         icon = <NeutralShipIcon className="w-8 h-8"/>;
                         factionColor = 'text-gray-300';
-                    }
-                    if (!entity.scanned) {
-                        entityName = 'Unknown Ship';
                     }
                 }
             } else if (entity.type === 'starbase') {

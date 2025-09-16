@@ -89,6 +89,22 @@ const KlingonShipWireframe: React.FC = () => (
     </WireframeSVG>
 );
 
+const RomulanShipWireframe: React.FC = () => (
+    <WireframeSVG>
+        {/* Head */}
+        <path d="M 50 15 C 40 25, 40 40, 50 50" />
+        <path d="M 50 15 C 60 25, 60 40, 50 50" />
+        <line x1="50" y1="15" x2="50" y2="5" />
+        
+        {/* Body/Wings */}
+        <path d="M 50 50 C 10 50, 10 95, 50 95" />
+        <path d="M 50 50 C 90 50, 90 95, 50 95" />
+        
+        {/* Center line */}
+        <line x1="50" y1="50" x2="50" y2="95" />
+    </WireframeSVG>
+);
+
 const PirateShipWireframe: React.FC = () => (
     <WireframeSVG>
         <polygon points="50,15 80,40 70,85 30,85 20,40" />
@@ -143,8 +159,10 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
             wireframe = <AsteroidWireframe />;
             break;
         case 'ship':
-            if (target.faction === 'Klingon' || target.faction === 'Romulan') {
+            if (target.faction === 'Klingon') {
                 wireframe = <KlingonShipWireframe />;
+            } else if (target.faction === 'Romulan') {
+                wireframe = <RomulanShipWireframe />;
             } else if (target.faction === 'Pirate') {
                 wireframe = <PirateShipWireframe />;
             } else { // Independent / Federation
