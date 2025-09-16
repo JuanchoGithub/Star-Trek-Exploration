@@ -160,28 +160,28 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                  );
             }
             if (entity.type === 'ship') {
-                if (isPlayer) {
+                const shipEntity = entity as Ship;
+                 if (isPlayer) {
                     icon = <PlayerShipIcon className="w-8 h-8"/>;
-                    factionColor = 'text-blue-400';
-                } else if (!entity.scanned) { // Unscanned ships
+                } else if (!shipEntity.scanned) {
                     icon = <UnknownShipIcon className="w-8 h-8"/>;
-                    factionColor = 'text-yellow-400';
                     entityName = 'Unknown Ship';
-                } else { // Scanned non-player ships
-                    if (entity.faction === 'Klingon') {
-                        icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
-                        factionColor = 'text-red-500';
-                    } else if (entity.faction === 'Romulan') {
-                        icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
-                        factionColor = 'text-green-400';
-                    } else if (entity.faction === 'Pirate') {
-                        icon = <OrionPirateShipIcon className="w-8 h-8"/>;
-                        factionColor = 'text-orange-500';
-                    } else { // Independent
-                        icon = <NeutralShipIcon className="w-8 h-8"/>;
-                        factionColor = 'text-gray-300';
-                    }
+                } else {
+                    // This logic determines the icon shape based on original faction, even if captured
+                    if (shipEntity.name.includes('Klingon')) icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
+                    else if (shipEntity.name.includes('Romulan')) icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
+                    else if (shipEntity.name.includes('Pirate')) icon = <OrionPirateShipIcon className="w-8 h-8"/>;
+                    else icon = <NeutralShipIcon className="w-8 h-8"/>;
                 }
+
+                // This logic determines the color based on current faction
+                if (shipEntity.faction === 'Federation') factionColor = 'text-blue-400';
+                else if (shipEntity.faction === 'Klingon') factionColor = 'text-red-500';
+                else if (shipEntity.faction === 'Romulan') factionColor = 'text-green-400';
+                else if (shipEntity.faction === 'Pirate') factionColor = 'text-orange-500';
+                else if (!shipEntity.scanned) factionColor = 'text-yellow-400';
+                else factionColor = 'text-gray-300';
+
             } else if (entity.type === 'starbase') {
                 icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;
                 factionColor = 'text-cyan-300';

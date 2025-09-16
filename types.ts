@@ -40,6 +40,8 @@ export interface Ship extends BaseEntity {
   evasive: boolean;
   retreatingTurn: number | null;
   crewMorale: { current: number; max: number };
+  securityTeams: { current: number; max: number };
+  repairTarget: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter' | null;
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
@@ -133,8 +135,6 @@ export interface PlayerTurnActions {
         targetId: string;
         subsystem?: 'weapons' | 'engines' | 'shields';
     };
-    evasive?: boolean;
-    repair?: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter';
 }
 
 export interface EventTemplateOption {
@@ -175,10 +175,6 @@ export interface GameState {
     ship: Ship;
     position: QuadrantPosition;
     crew: BridgeOfficer[];
-    boardingParty: {
-        targetId: string;
-        strength: number;
-    } | null;
   };
   quadrantMap: SectorState[][];
   currentSector: SectorState;

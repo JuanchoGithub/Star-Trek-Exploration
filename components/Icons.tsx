@@ -163,7 +163,10 @@ export const HailIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 export const SecurityIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></Icon>
+    <Icon {...props} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="1" y1="23" x2="23" y2="1" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+    </Icon>
 );
 
 export const ScienceIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (

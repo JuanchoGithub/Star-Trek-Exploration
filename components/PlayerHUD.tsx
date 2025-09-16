@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { GameState, Entity, Ship, PlayerTurnActions, Position } from '../types';
 import CommandConsole from './CommandConsole';
-import { WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } from './Icons';
 import WireframeDisplay from './WireframeDisplay';
 
 interface PlayerHUDProps {
@@ -14,8 +14,7 @@ interface PlayerHUDProps {
   isDocked: boolean;
   onRechargeDilithium: () => void;
   onDockWithStarbase: () => void;
-  isRepairMode: boolean;
-  onInitiateDamageControl: () => void;
+  onStarbaseRepairs: () => void;
   onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void;
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
@@ -25,7 +24,7 @@ interface PlayerHUDProps {
   playerTurnActions: PlayerTurnActions;
   navigationTarget: Position | null;
   isTurnResolving: boolean;
-  onTransportAction: () => void;
+  onSendAwayTeam: (targetId: string, type: 'boarding' | 'strike') => void;
 }
 
 const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
@@ -45,7 +44,7 @@ const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: n
     )
 }
 
-const TargetInfo: React.FC<{target: Entity, isBoarding: boolean}> = ({target, isBoarding}) => {
+const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     const isUnscannedShip = target.type === 'ship' && !target.scanned;
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
@@ -57,7 +56,6 @@ const TargetInfo: React.FC<{target: Entity, isBoarding: boolean}> = ({target, is
                 </div>
                 <div className="h-full flex flex-col justify-center">
                     <h3 className="text-lg font-bold text-yellow-300 mb-1 truncate" title={name}>Target: {name}</h3>
-                     {isBoarding && <p className="text-sm font-bold text-orange-400 animate-pulse">BOARDING IN PROGRESS</p>}
                     {isUnscannedShip ? (
                         <p className="text-sm text-gray-400">Scan to reveal details.</p>
                     ) : (
@@ -76,6 +74,7 @@ const TargetInfo: React.FC<{target: Entity, isBoarding: boolean}> = ({target, is
                                 <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
                                 <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
                                 <SubsystemStatusDisplay subsystem={target.subsystems.shields} name="Shields" icon={<ShieldIcon className="w-5 h-5"/>} />
+                                <SubsystemStatusDisplay subsystem={target.subsystems.transporter} name="Transporter" icon={<TransporterIcon className="w-5 h-5"/>} />
                                 </div>
                             </div>
                         </>
@@ -90,8 +89,7 @@ const RepairPanel: React.FC<{
     onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void; 
     ship: Ship; 
     onCancel: () => void;
-    playerTurnActions: PlayerTurnActions;
-}> = ({ onSelectRepairTarget, ship, onCancel, playerTurnActions }) => {
+}> = ({ onSelectRepairTarget, ship, onCancel }) => {
     const systems = [
         { key: 'hull', name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
         { key: 'weapons', name: 'Weapons', ...ship.subsystems.weapons, disabled: ship.subsystems.weapons.health === ship.subsystems.weapons.maxHealth },
@@ -102,58 +100,63 @@ const RepairPanel: React.FC<{
 
     return (
         <div className="bg-gray-900 p-3 rounded h-full">
-            <h3 className="text-lg font-bold text-yellow-400 mb-3 text-center">Damage Control</h3>
+            <h3 className="text-lg font-bold text-yellow-400 mb-3 text-center">Assign Repair Crew</h3>
             <div className="space-y-2">
                 {systems.map(sys => {
-                    const isAssigned = playerTurnActions.repair === sys.key;
+                    const isAssigned = ship.repairTarget === sys.key;
                     return (
                         <button 
                             key={sys.key} 
                             onClick={() => onSelectRepairTarget(sys.key)} 
-                            disabled={sys.disabled}
+                            disabled={sys.disabled && !isAssigned}
                             className={`w-full text-left p-2 font-bold rounded transition-colors ${
-                                sys.disabled 
-                                ? 'bg-gray-600 disabled:cursor-not-allowed'
+                                sys.disabled && !isAssigned
+                                ? 'bg-gray-600 disabled:cursor-not-allowed text-gray-400'
                                 : isAssigned 
                                 ? 'bg-yellow-500 hover:bg-yellow-400 text-black' 
                                 : 'bg-yellow-700 hover:bg-yellow-600'
                             }`}
                         >
-                            {isAssigned ? 'Assigned to ' : 'Repair '} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
+                            {isAssigned ? 'Cancel Repair:' : 'Assign to:'} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
                         </button>
                     )
                 })}
             </div>
-             <button onClick={onCancel} className="w-full mt-2 p-2 font-bold rounded bg-gray-500 hover:bg-gray-400">Exit Repair Mode</button>
+             <button onClick={onCancel} className="w-full mt-2 p-2 font-bold rounded bg-gray-500 hover:bg-gray-400">Close Panel</button>
         </div>
     )
 };
 
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
     gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers,
-    target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes,
-    isRepairMode, onInitiateDamageControl, onSelectRepairTarget,
+    target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
+    onSelectRepairTarget,
     onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions, navigationTarget, isTurnResolving, onTransportAction,
+    playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam,
 }) => {
     const playerShip = gameState.player.ship;
+    const [isRepairPanelOpen, setRepairPanelOpen] = useState(false);
 
     const canFire = playerShip.energy.current >= 10 && playerShip.subsystems.weapons.health > 0;
-    const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0 && !gameState.player.boardingParty;
+    const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
     const canTakeEvasive = playerShip.energy.current >= 20 && playerShip.subsystems.engines.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
     const hasDamagedSystems = playerShip.hull < playerShip.maxHull || Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth);
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
     const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
-    const isBoardingTarget = gameState.player.boardingParty?.targetId === target?.id;
+
+    const handleSelectRepairTarget = (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => {
+        onSelectRepairTarget(subsystem);
+        setRepairPanelOpen(false);
+    };
 
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
-                    {target ? <TargetInfo target={target} isBoarding={isBoardingTarget} /> : (
+                    {target ? <TargetInfo target={target} /> : (
                          <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-gray-400">No Target Selected</h3>
                             <p className="text-sm text-gray-500">Click an object on the map to select it.</p>
@@ -168,7 +171,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         <div className="bg-gray-900 p-3 rounded text-center">
                             <h3 className="text-lg font-bold text-blue-300 mb-3">Starbase Operations</h3>
                             <div className="space-y-2">
-                                <button onClick={onRechargeDilithium} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
+                                <button onClick={onStarbaseRepairs} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Full Service Repairs & Recharge</button>
+                                <button onClick={onRechargeDilithium} className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
                                 <button onClick={onResupplyTorpedoes} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
                             </div>
                         </div>
@@ -183,12 +187,11 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
 
                 {/* Column 2: Command & Control */}
                 <div className="flex flex-col h-full">
-                    {isRepairMode ? (
+                    {isRepairPanelOpen ? (
                         <RepairPanel 
                             ship={playerShip} 
-                            onSelectRepairTarget={onSelectRepairTarget} 
-                            onCancel={onInitiateDamageControl} 
-                            playerTurnActions={playerTurnActions}
+                            onSelectRepairTarget={handleSelectRepairTarget} 
+                            onCancel={() => setRepairPanelOpen(false)} 
                         />
                     ) : (
                         <CommandConsole 
@@ -196,14 +199,13 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             onFirePhasers={() => target && onFirePhasers(target.id)}
                             onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
                             onEvasiveManeuvers={onEvasiveManeuvers}
-                            onInitiateDamageControl={onInitiateDamageControl}
+                            onInitiateDamageControl={() => setRepairPanelOpen(true)}
                             onScanTarget={onScanTarget}
                             onInitiateRetreat={onInitiateRetreat}
                             onHailTarget={onHailTarget}
-                            onTransportAction={onTransportAction}
+                            onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                             retreatingTurn={playerShip.retreatingTurn}
                             currentTurn={gameState.turn}
-                            isRepairMode={isRepairMode}
                             canFire={!!target && !isTargetFriendly && canFire}
                             canLaunchTorpedo={!!target && !isTargetFriendly && canLaunchTorpedo}
                             canTakeEvasive={canTakeEvasive}
@@ -218,7 +220,6 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             isTurnResolving={isTurnResolving}
                             playerShip={playerShip}
                             target={target}
-                            boardingParty={gameState.player.boardingParty}
                         />
                     )}
                 </div>

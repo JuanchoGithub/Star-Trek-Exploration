@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems } from '../types';
@@ -137,6 +138,8 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 torpedoes: { current: 4, max: 4 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 0, maxHealth: 0 } },
                 crewMorale: { current: 100, max: 100 },
+                securityTeams: { current: 5, max: 5 }, // AI ships have internal security
+                repairTarget: null,
             });
         } else if (entityTypeRoll < 0.85) { // 15% chance for a Pirate
             newEntities.push({
@@ -150,6 +153,8 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
                 crewMorale: { current: 100, max: 100 },
+                securityTeams: { current: 3, max: 3 },
+                repairTarget: null,
             });
         } else { // ~15% chance for a Trader
             newEntities.push({
@@ -163,6 +168,8 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 torpedoes: { current: 0, max: 0 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                 subsystems: { weapons: { health: 0, maxHealth: 0 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 0, maxHealth: 0 }, transporter: { health: 0, maxHealth: 0 } },
                 crewMorale: { current: 100, max: 100 },
+                securityTeams: { current: 1, max: 1 },
+                repairTarget: null,
             });
         }
     }
@@ -213,6 +220,8 @@ const createInitialGameState = (): GameState => {
     evasive: false,
     retreatingTurn: null,
     crewMorale: { current: 100, max: 100 },
+    securityTeams: { current: 3, max: 3 },
+    repairTarget: null,
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -254,7 +263,7 @@ const createInitialGameState = (): GameState => {
   startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
 
   return {
-    player: { ship: playerShip, position: playerPosition, crew: playerCrew, boardingParty: null },
+    player: { ship: playerShip, position: playerPosition, crew: playerCrew },
     quadrantMap,
     currentSector: startSector,
     turn: 1,
@@ -275,9 +284,16 @@ export const useGameLogic = () => {
             try {
                 const savedState = JSON.parse(savedStateJSON);
                 if (savedState.player && savedState.turn) {
-                    // Backwards compatibility for saves without boardingParty
-                    if (!savedState.player.boardingParty) {
-                        savedState.player.boardingParty = null;
+                    // Fix: Cast player object to any to handle deprecated 'boardingParty' property for backward compatibility.
+                    // Backwards compatibility for saves
+                    if ((savedState.player as any).boardingParty) { // remove old state
+                        delete (savedState.player as any).boardingParty;
+                    }
+                    if (!savedState.player.ship.securityTeams) {
+                        savedState.player.ship.securityTeams = { current: 3, max: 3 };
+                    }
+                    if (savedState.player.ship.repairTarget === undefined) {
+                         savedState.player.ship.repairTarget = null;
                     }
                     if (!savedState.player.ship.subsystems.transporter) {
                         savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
@@ -294,7 +310,6 @@ export const useGameLogic = () => {
     const [navigationTarget, setNavigationTarget] = useState<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
     const [isDocked, setIsDocked] = useState(false);
-    const [isRepairMode, setIsRepairMode] = useState(false);
     const [activeAwayMission, setActiveAwayMission] = useState<AwayMissionTemplate | null>(null);
     const [activeHail, setActiveHail] = useState<ActiveHail | null>(null);
     const [officerCounsel, setOfficerCounsel] = useState<ActiveCounselSession | null>(null);
@@ -377,9 +392,16 @@ export const useGameLogic = () => {
             if (savedStateJSON) {
                 const savedState: GameState = JSON.parse(savedStateJSON);
                 if (savedState.player && savedState.turn) {
-                    // Backwards compatibility for saves without boardingParty
-                    if (!savedState.player.boardingParty) {
-                        savedState.player.boardingParty = null;
+                    // Fix: Cast player object to any to handle deprecated 'boardingParty' property for backward compatibility.
+                    // Backwards compatibility for saves
+                    if ((savedState.player as any).boardingParty) {
+                        delete (savedState.player as any).boardingParty;
+                    }
+                     if (!savedState.player.ship.securityTeams) {
+                        savedState.player.ship.securityTeams = { current: 3, max: 3 };
+                    }
+                    if (savedState.player.ship.repairTarget === undefined) {
+                         savedState.player.ship.repairTarget = null;
                     }
                     if (!savedState.player.ship.subsystems.transporter) {
                         savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
@@ -436,14 +458,24 @@ export const useGameLogic = () => {
         if (isTurnResolving) return;
         setIsTurnResolving(true);
 
-        const applyDamage = (target: Ship, damage: number, type: 'phaser' | 'torpedo', subsystem: 'weapons' | 'engines' | 'shields' | null, logs: string[], sourceShipId?: string) => {
-            let hitChance = target.evasive ? 0.6 : 0.9;
-            if (target.retreatingTurn && target.id === 'player') hitChance = 0.5;
-            if (type === 'phaser' && Math.random() > hitChance) {
-                logs.push(`${target.name} evaded an attack!`);
+        const applyDamage = (target: Ship, damage: number, type: 'phaser' | 'torpedo', subsystem: 'weapons' | 'engines' | 'shields' | null, logs: string[], sourceShip: Ship) => {
+            // --- Hit Chance Calculation ---
+            let hitChance = type === 'phaser' ? 0.9 : 1.0; // Torpedo hit chance is handled separately
+            // Evasive maneuvers of target
+            if (target.evasive) {
+                hitChance *= (type === 'phaser' ? 0.6 : 0.3); // 40% phaser reduction, 70% torpedo reduction
+            }
+            // Evasive maneuvers of attacker (player only)
+            if (sourceShip.id === 'player' && sourceShip.evasive && type === 'phaser') {
+                hitChance *= 0.75; // 25% accuracy penalty
+            }
+            
+            if (Math.random() > hitChance) {
+                logs.push(`${target.name} evaded an attack from ${sourceShip.name}!`);
                 return;
             }
 
+            // --- Damage Application ---
             let remainingDamage = damage;
             const shieldDamage = type === 'torpedo' ? remainingDamage * 0.25 : remainingDamage;
             const absorbedByShields = Math.min(target.shields, shieldDamage);
@@ -451,14 +483,6 @@ export const useGameLogic = () => {
             remainingDamage -= absorbedByShields / (type === 'torpedo' ? 0.25 : 1);
             
             if (remainingDamage > 0) {
-                 // Check if player is firing on a ship they are boarding
-                if (gameState.player.boardingParty && gameState.player.boardingParty.targetId === target.id && sourceShipId === 'player') {
-                    if (Math.random() < 0.25) { // 25% chance of friendly fire
-                        const friendlyFireDamage = Math.round(remainingDamage * 0.5);
-                        gameState.player.boardingParty.strength -= friendlyFireDamage;
-                        logs.push(`WARNING: Phaser fire hit our own boarding party! Strength reduced by ${friendlyFireDamage}.`);
-                    }
-                }
                 if (subsystem && target.subsystems[subsystem]) {
                     const subsystemDamage = remainingDamage * 0.7;
                     const hullDamage = remainingDamage * 0.3;
@@ -470,14 +494,14 @@ export const useGameLogic = () => {
                     }
                 } else {
                     target.hull -= remainingDamage;
-                    logs.push(`${target.name} takes ${Math.round(remainingDamage)} hull damage.`);
+                    logs.push(`${target.name} takes ${Math.round(remainingDamage)} hull damage from ${sourceShip.name}.`);
                 }
             } else {
-                 logs.push(`${target.name}'s shields absorbed the hit.`);
+                 logs.push(`${target.name}'s shields absorbed the hit from ${sourceShip.name}.`);
             }
         };
 
-        // --- Phase 1: Player Actions ---
+        // --- Phase 1: Player Actions & Passive Systems ---
         setGameState(prev => {
             const next = JSON.parse(JSON.stringify(prev));
             if (next.gameOver) {
@@ -489,51 +513,50 @@ export const useGameLogic = () => {
             const logs: string[] = [];
             const phaserEffects: CombatEffect[] = [];
 
+            // Passive Repair Action
+            if (playerShip.repairTarget) {
+                const targetSystem = playerShip.repairTarget;
+                const repairAmount = 25;
+                const energyCost = 10;
+                if (playerShip.energy.current >= energyCost) {
+                    playerShip.energy.current -= energyCost;
+                    let repaired = false;
+                    let isComplete = false;
+                    if (targetSystem === 'hull') {
+                        const oldHull = playerShip.hull;
+                        playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + repairAmount);
+                        if (playerShip.hull > oldHull) {
+                            logs.push(`Damage control repaired ${Math.round(playerShip.hull - oldHull)} points of hull integrity.`);
+                            repaired = true;
+                        }
+                        if (playerShip.hull === playerShip.maxHull) isComplete = true;
+                    } else { // It's a subsystem
+                        const subsystem = playerShip.subsystems[targetSystem as 'weapons' | 'engines' | 'shields' | 'transporter'];
+                        if (subsystem) {
+                            const oldHealth = subsystem.health;
+                            subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
+                            if (subsystem.health > oldHealth) {
+                                logs.push(`Engineering teams restored ${Math.round(subsystem.health - oldHealth)} health to the ${targetSystem} system.`);
+                                repaired = true;
+                            }
+                            if (subsystem.health === subsystem.maxHealth) isComplete = true;
+                        }
+                    }
+                    if (isComplete) {
+                        logs.push(`Repairs to ${targetSystem} are complete.`);
+                        playerShip.repairTarget = null;
+                    } else if (!repaired) {
+                        logs.push(`The ${targetSystem} system is already at full integrity. No repairs needed.`);
+                        playerShip.repairTarget = null; // Auto-cancel if already full
+                    }
+                } else {
+                    logs.push(`Repair of ${targetSystem} failed: Insufficient energy.`);
+                }
+            }
+
             if (playerShip.retreatingTurn !== null) {
                 logs.push("Attempting to retreat, cannot take other actions.");
             } else {
-                // Player Repair Action
-                if (playerTurnActions.repair) {
-                    const targetSystem = playerTurnActions.repair;
-                    const repairAmount = 25;
-                    const energyCost = 10;
-                    if (playerShip.energy.current >= energyCost) {
-                        playerShip.energy.current -= energyCost;
-                        let repaired = false;
-                        if (targetSystem === 'hull') {
-                            const oldHull = playerShip.hull;
-                            playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + repairAmount);
-                            if (playerShip.hull > oldHull) {
-                                logs.push(`Damage control repaired ${Math.round(playerShip.hull - oldHull)} points of hull integrity.`);
-                                repaired = true;
-                            }
-                        } else { // It's a subsystem
-                            const subsystem = playerShip.subsystems[targetSystem as 'weapons' | 'engines' | 'shields' | 'transporter'];
-                            if (subsystem) {
-                                const oldHealth = subsystem.health;
-                                subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
-                                if (subsystem.health > oldHealth) {
-                                    logs.push(`Engineering teams restored ${Math.round(subsystem.health - oldHealth)} health to the ${targetSystem} system.`);
-                                    repaired = true;
-                                }
-                            }
-                        }
-                        if (!repaired) {
-                            logs.push(`The ${targetSystem} system is already at full integrity. No repairs needed.`);
-                        }
-                    } else {
-                        logs.push(`Repair of ${targetSystem} failed: Insufficient energy.`);
-                    }
-                }
-
-                if (playerTurnActions.evasive) {
-                    playerShip.evasive = true;
-                    playerShip.energy.current = Math.max(0, playerShip.energy.current - 15);
-                    logs.push("U.S.S. Endeavour is performing evasive maneuvers.");
-                } else {
-                    playerShip.evasive = false;
-                }
-
                 if (navigationTarget) {
                     if (playerShip.position.x !== navigationTarget.x || playerShip.position.y !== navigationTarget.y) {
                         playerShip.position = moveOneStep(playerShip.position, navigationTarget);
@@ -551,7 +574,7 @@ export const useGameLogic = () => {
                             const baseDamage = 20 * (playerShip.energyAllocation.weapons / 100);
                             playerShip.energy.current -= 10;
                             phaserEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
-                            applyDamage(target, baseDamage, 'phaser', playerTurnActions.combat.subsystem || null, logs, playerShip.id);
+                            applyDamage(target, baseDamage, 'phaser', playerTurnActions.combat.subsystem || null, logs, playerShip);
                             logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
                         }
                     }
@@ -580,7 +603,9 @@ export const useGameLogic = () => {
                     if (destroyedProjectileIds.has(torpedo.id)) return;
 
                     const targetEntity = allShips.find(s => s.id === torpedo.targetId);
-                    if (!targetEntity) {
+                    const sourceEntity = allShips.find(s => s.id === torpedo.sourceId);
+
+                    if (!targetEntity || !sourceEntity) {
                         logs.push(`${torpedo.name} self-destructs as its target is no longer in the sector.`);
                         destroyedProjectileIds.add(torpedo.id);
                         return;
@@ -600,13 +625,14 @@ export const useGameLogic = () => {
                         for (const ship of potentialTargets) {
                             if (ship.position.x === torpedo.position.x && ship.position.y === torpedo.position.y) {
                                 // Collision!
-                                const hitChance = Math.max(0.1, 1.0 - (torpedo.stepsTraveled * 0.1));
+                                let hitChance = Math.max(0.1, 1.0 - (torpedo.stepsTraveled * 0.1));
+                                if (ship.evasive) hitChance *= 0.3; // 70% reduction
+
                                 if (Math.random() < hitChance) {
-                                    applyDamage(ship, 50, 'torpedo', null, logs);
+                                    applyDamage(ship, 50, 'torpedo', null, logs, sourceEntity);
                                     newEffects.push({ type: 'torpedo_hit', position: ship.position, delay: 0 });
-                                    logs.push(`A torpedo hits ${ship.name}!`);
                                 } else {
-                                    logs.push(`A torpedo misses ${ship.name}!`);
+                                    logs.push(`A torpedo from ${sourceEntity.name} misses ${ship.name}!`);
                                 }
                                 destroyedProjectileIds.add(torpedo.id);
                                 return; // Stop processing this torpedo
@@ -625,54 +651,50 @@ export const useGameLogic = () => {
                 next.combatEffects = [...next.combatEffects, ...newEffects];
                 return next;
             });
-        }, 500);
+        }, 300);
 
-        // --- Phase 2.5: Boarding Action Resolution ---
+        // --- Phase 3: Allied Ship AI ---
         setTimeout(() => {
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
-                const { player, currentSector } = next;
-                if (!player.boardingParty) return prev;
+                if (next.gameOver) return prev;
         
                 const logs: string[] = [];
-                const targetShip = currentSector.entities.find((e: Entity): e is Ship => e.id === player.boardingParty!.targetId);
+                const phaserEffects: CombatEffect[] = [];
+                const { currentSector } = next;
         
-                if (!targetShip || targetShip.hull <= 0) {
-                    logs.push("Boarding party recalled: target vessel is no longer a viable threat.");
-                    player.boardingParty = null;
-                } else {
-                    const partyAttack = Math.round(player.boardingParty.strength * (0.2 + Math.random() * 0.2)); // 20-40% of strength
-                    const enemyDefense = Math.round(targetShip.hull * (0.1 + Math.random() * 0.1)); // 10-20% of hull
+                const alliedShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && e.faction === 'Federation' && e.id !== 'player');
+                const hostileShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
         
-                    targetShip.hull = Math.max(0, targetShip.hull - partyAttack);
-                    player.boardingParty.strength = Math.max(0, player.boardingParty.strength - enemyDefense);
+                if (alliedShips.length > 0 && hostileShips.length > 0) {
+                    alliedShips.forEach((ally, index) => {
+                        // Find closest hostile
+                        let closestHostile: Ship | null = null;
+                        let minDistance = Infinity;
+                        hostileShips.forEach(hostile => {
+                            const distance = calculateDistance(ally.position, hostile.position);
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestHostile = hostile;
+                            }
+                        });
         
-                    logs.push(`Boarding action continues: Our team dealt ${partyAttack} damage, enemy resistance caused ${enemyDefense} casualties.`);
-        
-                    if (player.boardingParty.strength <= 0) {
-                        logs.push("CRITICAL: We've lost contact with the boarding party. The action has failed.");
-                        player.boardingParty = null;
-                        player.ship.crewMorale.current = Math.max(0, player.ship.crewMorale.current - 15);
-                    } else if (targetShip.hull <= 0) {
-                        logs.push(`The ${targetShip.name} has been captured! Enemy crew has surrendered.`);
-                        player.ship.dilithium.current = Math.min(player.ship.dilithium.max, player.ship.dilithium.current + 10);
-                        player.ship.torpedoes.current = Math.min(player.ship.torpedoes.max, player.ship.torpedoes.current + 3);
-                        logs.push("Recovered 10 Dilithium and 3 Torpedoes from the captured vessel.");
-                        
-                        if (selectedTargetId && selectedTargetId === targetShip.id) {
-                            setSelectedTargetId(null);
+                        if (closestHostile && minDistance <= 6) {
+                            logs.push(`Allied ship ${ally.name} is engaging ${closestHostile.name}!`);
+                            const allyDamage = 15; // Allies do a bit less damage
+                            phaserEffects.push({ type: 'phaser', sourceId: ally.id, targetId: closestHostile.id, faction: ally.faction, delay: index * 200 });
+                            applyDamage(closestHostile, allyDamage, 'phaser', null, logs, ally);
                         }
-                        next.currentSector.entities = next.currentSector.entities.filter((e: Entity) => e.id !== targetShip.id);
-                        player.boardingParty = null;
-                    }
+                    });
                 }
         
                 next.logs = [...logs.reverse(), ...next.logs];
+                next.combatEffects = [...next.combatEffects, ...phaserEffects];
                 return next;
             });
         }, 800);
 
-        // --- Phase 3: AI Movement ---
+        // --- Phase 4: Hostile AI Movement ---
         setTimeout(() => {
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
@@ -690,7 +712,7 @@ export const useGameLogic = () => {
             });
         }, 1200); // Wait for projectile animation
 
-        // --- Phase 4: AI Firing & Turn Cleanup ---
+        // --- Phase 5: Hostile AI Firing & Turn Cleanup ---
         setTimeout(() => {
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
@@ -706,16 +728,19 @@ export const useGameLogic = () => {
                 
                 const hostileAIShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
                 hostileAIShips.forEach((aiShip: Ship, index: number) => {
-                    if (player.boardingParty?.targetId === aiShip.id) return; // AI won't fire on its own ship if boarded
-
                     const distance = calculateDistance(aiShip.position, playerShip.position);
+
+                    // Auto-scan if attacked at close range
+                    if (distance <= 7 && !aiShip.scanned) {
+                        aiShip.scanned = true;
+                        logs.push(`Tactical Alert: Automatically scanned ${aiShip.name} due to proximity during attack.`);
+                    }
 
                     // Phaser attack
                     if (aiShip.subsystems.weapons.health > 0 && distance <= 5) {
                         const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
                         phaserEffects.push({ type: 'phaser', sourceId: aiShip.id, targetId: playerShip.id, faction: aiShip.faction, delay: index * 250 });
-                        applyDamage(playerShip, aiDamage, 'phaser', null, logs);
-                        logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
+                        applyDamage(playerShip, aiDamage, 'phaser', null, logs, aiShip);
                         redAlertThisTurn = true;
                     }
                     
@@ -785,7 +810,7 @@ export const useGameLogic = () => {
             });
         }, 1700); // Wait for AI movement to be perceived
 
-    }, [addLog, playerTurnActions, navigationTarget, selectedTargetId, isTurnResolving, gameState.player.boardingParty]);
+    }, [addLog, playerTurnActions, navigationTarget, selectedTargetId, isTurnResolving]);
 
     const onEnergyChange = useCallback((changedKey: 'weapons' | 'shields' | 'engines', value: number) => {
         setGameState(prev => {
@@ -897,9 +922,10 @@ export const useGameLogic = () => {
                                 position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) }, // Appear at top
                                 hull: 40, maxHull: 40, shields: 10, maxShields: 10,
                                 energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: true, evasive: false, retreatingTurn: null,
                                 subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
                                 crewMorale: { current: 100, max: 100 },
+                                securityTeams: { current: 3, max: 3 }, repairTarget: null,
                             });
                         }
                         next.redAlert = true;
@@ -971,10 +997,12 @@ export const useGameLogic = () => {
     }, [addLog, setGameState]);
     
     const onEvasiveManeuvers = useCallback(() => {
-        setPlayerTurnActions(prev => {
-            const isEvasive = !prev.evasive;
-            addLog(isEvasive ? 'Evasive maneuvers enabled for next turn.' : 'Evasive maneuvers disabled.');
-            return { ...prev, evasive: isEvasive };
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const isEvasive = !next.player.ship.evasive;
+            next.player.ship.evasive = isEvasive;
+            addLog(isEvasive ? 'Evasive maneuvers enabled.' : 'Evasive maneuvers disabled.');
+            return next;
         });
     }, [addLog]);
 
@@ -990,12 +1018,40 @@ export const useGameLogic = () => {
         addLog('Torpedoes resupplied.');
          setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, torpedoes: { ...prev.player.ship.torpedoes, current: prev.player.ship.torpedoes.max } } } }));
     }, [addLog]);
-    const onInitiateDamageControl = useCallback(() => setIsRepairMode(prev => !prev), []);
+
+    const onStarbaseRepairs = useCallback(() => {
+        if (!isDocked) return;
+        addLog('Starbase service complete: Hull, energy, and all subsystems restored to maximum.');
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const ship = next.player.ship;
+            ship.hull = ship.maxHull;
+            ship.energy.current = ship.energy.max;
+            ship.subsystems.weapons.health = ship.subsystems.weapons.maxHealth;
+            ship.subsystems.engines.health = ship.subsystems.engines.maxHealth;
+            ship.subsystems.shields.health = ship.subsystems.shields.maxHealth;
+            ship.subsystems.transporter.health = ship.subsystems.transporter.maxHealth;
+            // Also resupply security teams at starbase
+            ship.securityTeams.current = ship.securityTeams.max;
+            addLog('Security teams have been reinforced to full strength.');
+            return next;
+        });
+    }, [addLog, isDocked]);
     
     const onSelectRepairTarget = useCallback((subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => {
-        addLog(`Engineering teams assigned to repair the ${subsystem}. Action will be performed at turn end.`);
-        setPlayerTurnActions(prev => ({ ...prev, repair: subsystem }));
-        setIsRepairMode(false);
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const currentTarget = next.player.ship.repairTarget;
+            const newTarget = currentTarget === subsystem ? null : subsystem;
+            next.player.ship.repairTarget = newTarget;
+
+            if (newTarget) {
+                addLog(`Engineering teams assigned to passively repair the ${newTarget}.`);
+            } else {
+                addLog(`Engineering teams are no longer assigned to repair the ${subsystem}.`);
+            }
+            return next;
+        });
     }, [addLog]);
 
     const onScanTarget = useCallback(() => {
@@ -1011,6 +1067,7 @@ export const useGameLogic = () => {
             return { ...prev, currentSector: { ...prev.currentSector, entities: newEntities } };
          });
     }, [addLog, selectedTargetId]);
+
     const onInitiateRetreat = useCallback(() => {
         addLog('Retreat initiated! Evasive maneuvers for 3 turns.');
         setGameState(prev => {
@@ -1018,6 +1075,7 @@ export const useGameLogic = () => {
             return { ...prev, player: { ...prev.player, ship: newShip } };
         });
     }, [addLog]);
+
     const onStartAwayMission = useCallback(() => {
         const mission = awayMissionTemplates[0]; // For demo, always use the first mission
         if (!mission) return;
@@ -1046,48 +1104,46 @@ export const useGameLogic = () => {
         }
     }, [addLog, gameState.player.crew]);
 
-    const onTransportAction = useCallback(() => {
-        const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
-        if (!target) return;
-    
-        if (gameState.player.boardingParty) {
-            // Recall logic
-            addLog("Recalling boarding party!");
-            setGameState(prev => ({
-                ...prev,
-                player: { ...prev.player, boardingParty: null }
-            }));
-            return;
-        }
-    
-        if (target.type === 'ship' && target.shields <= 0) {
-            // Boarding action
-            addLog("Transporter engaged! Boarding party away!");
-            setGameState(prev => {
-                const next = { ...prev };
-                next.player.boardingParty = {
-                    targetId: target.id,
-                    strength: Math.round(prev.player.ship.crewMorale.current * 0.8), // Initial strength based on morale
-                };
-                next.player.ship.energy.current -= 20; // Energy cost
-                return next;
-            });
-        } else if (target.type === 'event_beacon' && target.eventType === 'derelict_ship') {
-            // Beam to derelict
-            const derelictMission = awayMissionTemplates.find(m => m.id === 'am_derelict01');
-            if (derelictMission) {
-                addLog(`Beaming an away team to investigate the ${target.name}.`);
-                setActiveAwayMission(derelictMission);
-                // Mark beacon as resolved
-                setGameState(prev => {
-                    const next = JSON.parse(JSON.stringify(prev));
-                    const beacon = next.currentSector.entities.find((e: Entity) => e.id === target.id);
-                    if (beacon) (beacon as EventBeacon).isResolved = true;
-                    return next;
-                });
+    const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const playerShip = next.player.ship;
+            const target = next.currentSector.entities.find((e: Entity) => e.id === targetId) as Ship;
+
+            if (!target) { addLog("Away team action failed: Invalid target."); return prev; }
+            if (playerShip.securityTeams.current <= 0) { addLog("Away team action failed: No security teams available."); return prev; }
+            if ((target.shields / target.maxShields) > 0.2) { addLog(`Away team action failed: ${target.name}'s shields are too strong.`); return prev; }
+            if (playerShip.subsystems.transporter.health <= 0) { addLog("Away team action failed: Transporter is offline."); return prev; }
+
+            if (type === 'boarding') {
+                addLog(`Attempting to board the ${target.name}...`);
+                playerShip.securityTeams.current--;
+                // Success chance based on morale vs enemy hull integrity
+                const successChance = Math.max(0.1, (playerShip.crewMorale.current / 100) - (target.hull / target.maxHull) + 0.3);
+                if (Math.random() < successChance) {
+                    target.faction = 'Federation';
+                    addLog(`Success! The ${target.name} has been captured and is now under Federation control.`);
+                } else {
+                    addLog(`The boarding attempt failed! We lost the team in the assault.`);
+                    playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - 10);
+                }
+            } else if (type === 'strike') {
+                addLog(`Sending a strike team to the ${target.name}!`);
+                const damage = 35 + Math.floor(Math.random() * 10);
+                target.hull = Math.max(0, target.hull - damage);
+                addLog(`The strike team dealt ${damage} hull damage.`);
+
+                if (Math.random() < 0.25) { // 25% chance of losing the team
+                    playerShip.securityTeams.current--;
+                    addLog(`We lost the strike team during the action!`);
+                    playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - 5);
+                } else {
+                    addLog(`The strike team has returned safely.`);
+                }
             }
-        }
-    }, [addLog, selectedTargetId, gameState.currentSector.entities, gameState.player.boardingParty]);
+            return next;
+        });
+    }, [addLog]);
 
     const onChooseAwayMissionOption = useCallback((option: AwayMissionOption) => {
         const success = Math.random() < option.successChance;
@@ -1187,6 +1243,7 @@ export const useGameLogic = () => {
                                 torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                                 subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: {health: 0, maxHealth: 0} },
                                 crewMorale: { current: 100, max: 100 },
+                                securityTeams: { current: 3, max: 3 }, repairTarget: null,
                             });
                         }
                         next.redAlert = true;
@@ -1213,7 +1270,6 @@ export const useGameLogic = () => {
         navigationTarget,
         currentView,
         isDocked,
-        isRepairMode,
         activeAwayMission,
         activeHail,
         officerCounsel,
@@ -1235,7 +1291,7 @@ export const useGameLogic = () => {
         onDockWithStarbase,
         onRechargeDilithium,
         onResupplyTorpedoes,
-        onInitiateDamageControl,
+        onStarbaseRepairs,
         onSelectRepairTarget,
         onScanTarget,
         onInitiateRetreat,
@@ -1252,6 +1308,6 @@ export const useGameLogic = () => {
         exportSave,
         importSave,
         onDistributeEvenly,
-        onTransportAction,
+        onSendAwayTeam,
     };
 };

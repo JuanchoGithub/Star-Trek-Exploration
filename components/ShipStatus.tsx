@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GameState, ShipSubsystems } from '../types';
-import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon, SecurityIcon } from './Icons';
 import EnergyAllocator from './EnergyAllocator';
 
 interface StatusBarProps {
@@ -73,7 +73,6 @@ interface ShipStatusProps {
 
 const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDistributeEvenly }) => {
   const { ship } = gameState.player;
-  const evasiveText = ship.evasive ? <span className="text-green-400 font-bold ml-2">(Evasive)</span> : null;
 
   return (
     <div className="bg-gray-900 p-3 rounded h-full flex flex-col">
@@ -83,11 +82,18 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
         <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-cyan-500" />
         <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-yellow-500" />
         <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-pink-500" />
-        <div className="flex justify-between items-center">
-            <span className="font-bold text-sm">Torpedoes</span>
+        <div className="flex justify-between items-center text-sm">
+            <span className="font-bold">Torpedoes</span>
             <div className="flex items-center gap-1">
                 <TorpedoIcon className="w-5 h-5 text-cyan-400"/>
                 <span className="font-bold text-orange-400">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
+            </div>
+        </div>
+        <div className="flex justify-between items-center text-sm">
+            <span className="font-bold">Security Teams</span>
+            <div className="flex items-center gap-1">
+                <SecurityIcon className="w-5 h-5 text-red-400"/>
+                <span className="font-bold text-orange-400">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
             </div>
         </div>
         <SubsystemStatus 

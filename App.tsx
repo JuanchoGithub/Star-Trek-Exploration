@@ -69,7 +69,6 @@ const App: React.FC = () => {
     navigationTarget,
     currentView,
     isDocked,
-    isRepairMode,
     activeAwayMission,
     activeHail,
     officerCounsel,
@@ -91,7 +90,7 @@ const App: React.FC = () => {
     onDockWithStarbase,
     onRechargeDilithium,
     onResupplyTorpedoes,
-    onInitiateDamageControl,
+    onStarbaseRepairs,
     onSelectRepairTarget,
     onScanTarget,
     onInitiateRetreat,
@@ -108,7 +107,7 @@ const App: React.FC = () => {
     exportSave,
     importSave,
     onDistributeEvenly,
-    onTransportAction,
+    onSendAwayTeam,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -176,8 +175,7 @@ const App: React.FC = () => {
                     onDockWithStarbase={onDockWithStarbase}
                     onRechargeDilithium={onRechargeDilithium}
                     onResupplyTorpedoes={onResupplyTorpedoes}
-                    isRepairMode={isRepairMode}
-                    onInitiateDamageControl={onInitiateDamageControl}
+                    onStarbaseRepairs={onStarbaseRepairs}
                     onSelectRepairTarget={onSelectRepairTarget}
                     onScanTarget={onScanTarget}
                     onInitiateRetreat={onInitiateRetreat}
@@ -186,7 +184,7 @@ const App: React.FC = () => {
                     playerTurnActions={playerTurnActions}
                     navigationTarget={navigationTarget}
                     isTurnResolving={isTurnResolving}
-                    onTransportAction={onTransportAction}
+                    onSendAwayTeam={onSendAwayTeam}
                   />
               </div>
           </div>
