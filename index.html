@@ -26,6 +26,52 @@
       .wireframe-glow {
         animation: wireframe-glow-animation 3s ease-in-out infinite;
       }
+
+      /* Warp Animation Styles */
+      .warp-container {
+        position: absolute;
+        inset: 0;
+        background-color: #000;
+        overflow: hidden;
+        z-index: 100;
+      }
+      .stars-perspective {
+        position: absolute;
+        inset: 0;
+        perspective: 400px;
+        transform-style: preserve-3d;
+      }
+      .star {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        background: white;
+        border-radius: 50%;
+        animation: star-warp-animation infinite ease-in;
+      }
+      @keyframes star-warp-animation {
+        from {
+          transform: translateZ(-50px) scale(0.5);
+          opacity: 0.5;
+        }
+        to {
+          transform: translateZ(400px) scale(2);
+          opacity: 0;
+        }
+      }
+      .warp-flash {
+        position: absolute;
+        inset: 0;
+        background-color: white;
+        opacity: 0;
+        animation: warp-flash-animation 2.5s ease-out;
+      }
+      @keyframes warp-flash-animation {
+        0%, 45% { opacity: 0; }
+        50% { opacity: 1; }
+        55%, 100% { opacity: 0; }
+      }
+
     </style>
   <script type="importmap">
 {

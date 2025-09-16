@@ -10,6 +10,7 @@ import OfficerCounselDialog from './components/OfficerCounselDialog';
 import StatusLine from './components/StatusLine';
 import ShipStatus from './components/ShipStatus';
 import EventDialog from './components/EventDialog';
+import WarpAnimation from './components/WarpAnimation';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -75,6 +76,7 @@ const App: React.FC = () => {
     selectedSubsystem,
     playerTurnActions,
     activeEvent,
+    isWarping,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -128,7 +130,7 @@ const App: React.FC = () => {
                       </button>
                   </div>
                   {/* Map Container */}
-                  <div className="flex-grow min-h-0">
+                  <div className="flex-grow min-h-0 relative">
                       {currentView === 'sector' ? (
                           <SectorView
                           sector={gameState.currentSector}
@@ -149,6 +151,7 @@ const App: React.FC = () => {
                           onWarp={onWarp}
                           />
                       )}
+                      {isWarping && <WarpAnimation />}
                   </div>
               </div>
               {/* Bottom Section: HUD */}

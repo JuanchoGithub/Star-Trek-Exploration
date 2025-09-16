@@ -267,6 +267,7 @@ export const useGameLogic = () => {
     const [selectedSubsystem, setSelectedSubsystem] = useState<'weapons' | 'engines' | 'shields' | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
     const [activeEvent, setActiveEvent] = useState<{ beaconId: string; template: EventTemplate } | null>(null);
+    const [isWarping, setIsWarping] = useState(false);
 
 
     const addLog = useCallback((message: string) => {
@@ -620,52 +621,60 @@ export const useGameLogic = () => {
             addLog("Warp failed. Insufficient Dilithium crystals.");
             return;
         }
-         addLog(`Warping to quadrant ${pos.qx}, ${pos.qy}. Consumed 1 Dilithium.`);
-         setCurrentView('sector');
-         setNavigationTarget(null);
-         setSelectedTargetId(null);
-         setIsDocked(false);
-         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-            next.player.ship.dilithium.current--;
+         addLog(`Warp drive engaged. Plotting course for quadrant ${pos.qx}, ${pos.qy}.`);
+         setIsWarping(true);
 
-            const newMap = next.quadrantMap;
-            let sectorToWarpTo = newMap[pos.qy][pos.qx];
-            
-            if (!sectorToWarpTo.visited) {
-                sectorToWarpTo = generateSectorContent(sectorToWarpTo);
-                sectorToWarpTo.visited = true;
-                newMap[pos.qy][pos.qx] = sectorToWarpTo;
-                 addLog(`Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`);
+         setTimeout(() => {
+            setCurrentView('sector');
+            setNavigationTarget(null);
+            setSelectedTargetId(null);
+            setIsDocked(false);
 
-                // Pirate Ambush Chance
-                const isAmbush = Math.random() < 0.15;
-                if (isAmbush && !sectorToWarpTo.entities.some((e: Entity) => e.type === 'starbase')) {
-                    addLog("RED ALERT: It's an ambush! Pirate vessels are decloaking!");
-                    const ambushCount = Math.floor(Math.random() * 2) + 1; // 1-2 pirates
-                     for (let i = 0; i < ambushCount; i++) {
-                        sectorToWarpTo.entities.push({
-                            id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
-                            position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) }, // Appear at top
-                            hull: 40, maxHull: 40, shields: 10, maxShields: 10,
-                            energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                            torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
-                            subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
-                            crewMorale: { current: 100, max: 100 },
-                        });
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                next.player.ship.dilithium.current--;
+
+                const newMap = next.quadrantMap;
+                let sectorToWarpTo = newMap[pos.qy][pos.qx];
+                
+                if (!sectorToWarpTo.visited) {
+                    sectorToWarpTo = generateSectorContent(sectorToWarpTo);
+                    sectorToWarpTo.visited = true;
+                    newMap[pos.qy][pos.qx] = sectorToWarpTo;
+                    next.logs.unshift(`Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`);
+
+                    // Pirate Ambush Chance
+                    const isAmbush = Math.random() < 0.15;
+                    if (isAmbush && !sectorToWarpTo.entities.some((e: Entity) => e.type === 'starbase')) {
+                        next.logs.unshift("RED ALERT: It's an ambush! Pirate vessels are decloaking!");
+                        const ambushCount = Math.floor(Math.random() * 2) + 1; // 1-2 pirates
+                        for (let i = 0; i < ambushCount; i++) {
+                            sectorToWarpTo.entities.push({
+                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
+                                position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) }, // Appear at top
+                                hull: 40, maxHull: 40, shields: 10, maxShields: 10,
+                                energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                                subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
+                                crewMorale: { current: 100, max: 100 },
+                            });
+                        }
+                        next.redAlert = true;
                     }
-                    next.redAlert = true;
+
+                } else {
+                    next.logs.unshift(`Entering previously explored sector.`);
                 }
+                
+                next.logs.unshift(`Arrived at quadrant ${pos.qx}, ${pos.qy}. Consumed 1 Dilithium.`);
 
-            } else {
-                 addLog(`Entering previously explored sector.`);
-            }
-
-            next.player.position = pos;
-            next.currentSector = sectorToWarpTo;
-            next.quadrantMap = newMap;
-            return next;
-         })
+                next.player.position = pos;
+                next.currentSector = sectorToWarpTo;
+                next.quadrantMap = newMap;
+                return next;
+            });
+            setIsWarping(false);
+         }, 2500); // Duration of the warp animation
     }, [addLog, gameState.player.ship.dilithium.current]);
 
     const onFirePhasers = useCallback((targetId: string) => {
@@ -884,6 +893,7 @@ export const useGameLogic = () => {
         selectedSubsystem,
         playerTurnActions,
         activeEvent,
+        isWarping,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,
