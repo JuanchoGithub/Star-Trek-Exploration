@@ -16,7 +16,7 @@ interface PlayerHUDProps {
   onDockWithStarbase: () => void;
   isRepairMode: boolean;
   onInitiateDamageControl: () => void;
-  onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull') => void;
+  onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void;
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
@@ -25,6 +25,7 @@ interface PlayerHUDProps {
   playerTurnActions: PlayerTurnActions;
   navigationTarget: Position | null;
   isTurnResolving: boolean;
+  onTransportAction: () => void;
 }
 
 const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
@@ -44,7 +45,7 @@ const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: n
     )
 }
 
-const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
+const TargetInfo: React.FC<{target: Entity, isBoarding: boolean}> = ({target, isBoarding}) => {
     const isUnscannedShip = target.type === 'ship' && !target.scanned;
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
@@ -56,6 +57,7 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
                 </div>
                 <div className="h-full flex flex-col justify-center">
                     <h3 className="text-lg font-bold text-yellow-300 mb-1 truncate" title={name}>Target: {name}</h3>
+                     {isBoarding && <p className="text-sm font-bold text-orange-400 animate-pulse">BOARDING IN PROGRESS</p>}
                     {isUnscannedShip ? (
                         <p className="text-sm text-gray-400">Scan to reveal details.</p>
                     ) : (
@@ -84,24 +86,43 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     );
 };
 
-const RepairPanel: React.FC<{onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull') => void; ship: Ship; onCancel: () => void}> = ({onSelectRepairTarget, ship, onCancel}) => {
+const RepairPanel: React.FC<{
+    onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void; 
+    ship: Ship; 
+    onCancel: () => void;
+    playerTurnActions: PlayerTurnActions;
+}> = ({ onSelectRepairTarget, ship, onCancel, playerTurnActions }) => {
     const systems = [
         { key: 'hull', name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
         { key: 'weapons', name: 'Weapons', ...ship.subsystems.weapons, disabled: ship.subsystems.weapons.health === ship.subsystems.weapons.maxHealth },
         { key: 'engines', name: 'Engines', ...ship.subsystems.engines, disabled: ship.subsystems.engines.health === ship.subsystems.engines.maxHealth },
         { key: 'shields', name: 'Shields', ...ship.subsystems.shields, disabled: ship.subsystems.shields.health === ship.subsystems.shields.maxHealth },
+        { key: 'transporter', name: 'Transporter', ...ship.subsystems.transporter, disabled: ship.subsystems.transporter.health === ship.subsystems.transporter.maxHealth },
     ] as const;
 
     return (
         <div className="bg-gray-900 p-3 rounded h-full">
             <h3 className="text-lg font-bold text-yellow-400 mb-3 text-center">Damage Control</h3>
             <div className="space-y-2">
-                {systems.map(sys => (
-                    <button key={sys.key} onClick={() => onSelectRepairTarget(sys.key)} disabled={sys.disabled}
-                        className="w-full text-left p-2 font-bold rounded bg-yellow-700 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed">
-                        Repair {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
-                    </button>
-                ))}
+                {systems.map(sys => {
+                    const isAssigned = playerTurnActions.repair === sys.key;
+                    return (
+                        <button 
+                            key={sys.key} 
+                            onClick={() => onSelectRepairTarget(sys.key)} 
+                            disabled={sys.disabled}
+                            className={`w-full text-left p-2 font-bold rounded transition-colors ${
+                                sys.disabled 
+                                ? 'bg-gray-600 disabled:cursor-not-allowed'
+                                : isAssigned 
+                                ? 'bg-yellow-500 hover:bg-yellow-400 text-black' 
+                                : 'bg-yellow-700 hover:bg-yellow-600'
+                            }`}
+                        >
+                            {isAssigned ? 'Assigned to ' : 'Repair '} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
+                        </button>
+                    )
+                })}
             </div>
              <button onClick={onCancel} className="w-full mt-2 p-2 font-bold rounded bg-gray-500 hover:bg-gray-400">Exit Repair Mode</button>
         </div>
@@ -113,25 +134,26 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes,
     isRepairMode, onInitiateDamageControl, onSelectRepairTarget,
     onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions, navigationTarget, isTurnResolving
+    playerTurnActions, navigationTarget, isTurnResolving, onTransportAction,
 }) => {
     const playerShip = gameState.player.ship;
 
     const canFire = playerShip.energy.current >= 10 && playerShip.subsystems.weapons.health > 0;
-    const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
+    const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0 && !gameState.player.boardingParty;
     const canTakeEvasive = playerShip.energy.current >= 20 && playerShip.subsystems.engines.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
     const hasDamagedSystems = playerShip.hull < playerShip.maxHull || Object.values(playerShip.subsystems).some(s => s.health < s.maxHealth);
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
     const isOrbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1);
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
+    const isBoardingTarget = gameState.player.boardingParty?.targetId === target?.id;
 
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
-                    {target ? <TargetInfo target={target} /> : (
+                    {target ? <TargetInfo target={target} isBoarding={isBoardingTarget} /> : (
                          <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-gray-400">No Target Selected</h3>
                             <p className="text-sm text-gray-500">Click an object on the map to select it.</p>
@@ -162,7 +184,12 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 {/* Column 2: Command & Control */}
                 <div className="flex flex-col h-full">
                     {isRepairMode ? (
-                        <RepairPanel ship={playerShip} onSelectRepairTarget={onSelectRepairTarget} onCancel={onInitiateDamageControl} />
+                        <RepairPanel 
+                            ship={playerShip} 
+                            onSelectRepairTarget={onSelectRepairTarget} 
+                            onCancel={onInitiateDamageControl} 
+                            playerTurnActions={playerTurnActions}
+                        />
                     ) : (
                         <CommandConsole 
                             onEndTurn={onEndTurn}
@@ -173,6 +200,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             onScanTarget={onScanTarget}
                             onInitiateRetreat={onInitiateRetreat}
                             onHailTarget={onHailTarget}
+                            onTransportAction={onTransportAction}
                             retreatingTurn={playerShip.retreatingTurn}
                             currentTurn={gameState.turn}
                             isRepairMode={isRepairMode}
@@ -188,6 +216,9 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             navigationTarget={navigationTarget}
                             playerShipPosition={playerShip.position}
                             isTurnResolving={isTurnResolving}
+                            playerShip={playerShip}
+                            target={target}
+                            boardingParty={gameState.player.boardingParty}
                         />
                     )}
                 </div>

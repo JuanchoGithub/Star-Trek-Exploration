@@ -14,6 +14,7 @@ export interface ShipSubsystems {
   weapons: { health: number; maxHealth: number };
   engines: { health: number; maxHealth: number };
   shields: { health: number; maxHealth: number };
+  transporter: { health: number; maxHealth: number };
 }
 
 interface BaseEntity {
@@ -133,17 +134,19 @@ export interface PlayerTurnActions {
         subsystem?: 'weapons' | 'engines' | 'shields';
     };
     evasive?: boolean;
+    repair?: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter';
 }
 
 export interface EventTemplateOption {
     text: string;
     outcome: {
-        type: 'reward' | 'damage' | 'combat' | 'nothing' | 'special';
+        type: 'reward' | 'damage' | 'combat' | 'nothing' | 'special' | 'mission';
         log: string;
         amount?: number;
         resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale';
         spawn?: 'pirate_raider';
         spawnCount?: number;
+        missionId?: string;
     };
 }
 
@@ -172,6 +175,10 @@ export interface GameState {
     ship: Ship;
     position: QuadrantPosition;
     crew: BridgeOfficer[];
+    boardingParty: {
+        targetId: string;
+        strength: number;
+    } | null;
   };
   quadrantMap: SectorState[][];
   currentSector: SectorState;

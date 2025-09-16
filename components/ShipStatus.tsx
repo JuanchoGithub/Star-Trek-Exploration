@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GameState, ShipSubsystems } from '../types';
-import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon } from './Icons';
 import EnergyAllocator from './EnergyAllocator';
 
 interface StatusBarProps {
@@ -38,14 +38,19 @@ const SubsystemStatus: React.FC<{
         { name: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons, bonus: `+${weaponBonus} DMG`, bonusColor: 'text-red-400' },
         { name: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields, bonus: `+${shieldBonus} REG/t`, bonusColor: 'text-cyan-400' },
         { name: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines, bonus: `+${engineBonus} EVA`, bonusColor: 'text-green-400' },
+        { name: 'Transport', icon: <TransporterIcon className="w-5 h-5"/>, data: subsystems.transporter, bonus: ``, bonusColor: '' },
     ];
     return (
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-4 gap-2 mt-3">
             {systems.map(system => {
                 const healthPercentage = (system.data.health / system.data.maxHealth) * 100;
                 let color = 'text-green-400';
                 if (healthPercentage < 60) color = 'text-yellow-400';
                 if (healthPercentage < 25) color = 'text-red-500';
+                if (system.name === 'Transport') {
+                    color = healthPercentage > 50 ? 'text-purple-400' : 'text-yellow-400';
+                     if (healthPercentage < 25) color = 'text-red-500';
+                }
 
                 return (
                     <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-gray-800`}>

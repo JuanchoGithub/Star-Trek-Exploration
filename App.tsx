@@ -108,6 +108,7 @@ const App: React.FC = () => {
     exportSave,
     importSave,
     onDistributeEvenly,
+    onTransportAction,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -185,6 +186,7 @@ const App: React.FC = () => {
                     playerTurnActions={playerTurnActions}
                     navigationTarget={navigationTarget}
                     isTurnResolving={isTurnResolving}
+                    onTransportAction={onTransportAction}
                   />
               </div>
           </div>

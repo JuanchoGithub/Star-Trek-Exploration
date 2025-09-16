@@ -36,6 +36,32 @@ export const awayMissionTemplates: AwayMissionTemplate[] = [
       },
     ],
   },
+  {
+    id: 'am_derelict01',
+    title: 'Investigate Derelict',
+    planetType: 'Derelict Ship',
+    description: 'The away team has beamed aboard the silent vessel. The corridors are dark, with emergency lighting flickering. The mission is to find the ship\'s log and determine what happened.',
+    options: [
+      {
+        role: 'Engineering',
+        text: 'Have the engineer try to restore main power from the nearest console.',
+        successChance: 0.7,
+        outcomes: {
+          success: 'Success! The engineer reroutes auxiliary power, lighting up the ship and revealing the bridge. The log is easily accessible. The freighter suffered a critical engine failure.',
+          failure: 'The attempt causes a power surge, frying multiple systems and starting an electrical fire. The team must evacuate immediately, mission failed.',
+        },
+      },
+      {
+        role: 'Security',
+        text: 'Order a tactical sweep of the ship, section by section, to ensure there are no surprises.',
+        successChance: 0.8,
+        outcomes: {
+          success: 'The security team moves methodically, securing the ship. They find the crew was killed by a now-inert alien parasite. The log is recovered.',
+          failure: 'The team is ambushed by automated defense turrets! They take damage and are forced to retreat before reaching the bridge.',
+        },
+      },
+    ],
+  },
 ];
 
 export const hailResponses: Record<string, Record<string, string>> = {

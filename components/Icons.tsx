@@ -84,7 +84,7 @@ export const StarbaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
 );
 
 export const AsteroidFieldIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-     <Icon {...props}><path d="M16.5 10.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5zm-6 2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5-1.5.67-1.5 1.5zM9 11c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM5.5 8.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z"/></Icon>
+     <Icon {...props}><path d="M16.5 10.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5zm-6 2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5-1.5.67-1.5-1.5zM9 11c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM5.5 8.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z"/></Icon>
 );
 
 export const EventBeaconIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -109,6 +109,15 @@ export const ShieldIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 
 export const EngineIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></Icon>
+);
+
+export const TransporterIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props} fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="12" cy="12" r="5" strokeDasharray="2 2" />
+        <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
+        <circle cx="12" cy="12" r="11" strokeDasharray="4 4" />
+    </Icon>
 );
 
 export const CycleTargetIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
