@@ -1,6 +1,7 @@
 import React from 'react';
-import type { Entity, Planet } from '../types';
+import type { Entity, Planet, Ship } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
+import { shipTypes, ShipFaction } from '../assets/ships/configs/shipTypes';
 
 interface WireframeDisplayProps {
     target: Entity;
@@ -41,108 +42,41 @@ const AsteroidWireframe: React.FC = () => (
     </WireframeSVG>
 );
 
-const KlingonShipWireframe: React.FC = () => (
-    <WireframeSVG>
-        {/* Head */}
-        <path d="M 40 20 Q 50 10 60 20" />
-        <line x1="50" y1="15" x2="50" y2="40" />
-        {/* Body */}
-        <path d="M 40 40 L 30 70 L 50 90 L 70 70 L 60 40 Z" />
-        {/* Wings */}
-        <path d="M 40 40 L 10 50 L 30 70" />
-        <path d="M 60 40 L 90 50 L 70 70" />
-    </WireframeSVG>
-);
-
-const RomulanShipWireframe: React.FC = () => (
-    <WireframeSVG>
-        {/* Head */}
-        <path d="M 50 15 C 40 25, 40 40, 50 50" />
-        <path d="M 50 15 C 60 25, 60 40, 50 50" />
-        <line x1="50" y1="15" x2="50" y2="5" />
-        
-        {/* Body/Wings */}
-        <path d="M 50 50 C 10 50, 10 95, 50 95" />
-        <path d="M 50 50 C 90 50, 90 95, 50 95" />
-        
-        {/* Center line */}
-        <line x1="50" y1="50" x2="50" y2="95" />
-    </WireframeSVG>
-);
-
-const PirateShipWireframe: React.FC = () => (
-    <WireframeSVG>
-        <polygon points="50,15 80,40 70,85 30,85 20,40" />
-        <line x1="50" y1="15" x2="50" y2="85" />
-        <line x1="20" y1="40" x2="80" y2="40" />
-        <line x1="30" y1="85" x2="70" y2="85" />
-    </WireframeSVG>
-);
-
-const TraderShipWireframe: React.FC = () => (
-    <WireframeSVG>
-        <rect x="20" y="30" width="60" height="40" />
-        <rect x="65" y="20" width="20" height="20" />
-        <line x1="20" y1="50" x2="80" y2="50" />
-    </WireframeSVG>
-);
-
-const UnknownShipWireframe: React.FC = () => (
-    <WireframeSVG>
-        <path d="M 30 70 L 50 20 L 70 70 Z" />
-        <text x="50" y="58" textAnchor="middle" fontSize="24" stroke="#fde047" fill="#fde047">?</text>
-    </WireframeSVG>
-);
-
 
 const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
-    let wireframe = null;
-
-    if (target.type === 'ship' && !target.scanned) {
-        return (
-            <div className="w-full h-full p-2">
-                <UnknownShipWireframe />
-            </div>
-        );
-    }
+    let WireframeComponent: React.FC | null = null;
 
     switch (target.type) {
-        case 'planet':
-            const planet = target as Planet;
-            const planetConfig = planetTypes[planet.planetClass];
-            if (planetConfig) {
-                const WireframeComponent = planetConfig.wireframe;
-                wireframe = <WireframeComponent />;
-            } else {
-                // Fallback to M-class if config not found
-                const FallbackWireframe = planetTypes['M'].wireframe;
-                wireframe = <FallbackWireframe />;
-            }
+        case 'ship': {
+            const ship = target as Ship;
+            const faction = ship.scanned ? ship.faction as ShipFaction : 'Unknown';
+            const config = shipTypes[faction] || shipTypes['Independent'];
+            WireframeComponent = config.wireframe;
             break;
+        }
+        case 'planet': {
+            const planet = target as Planet;
+            const config = planetTypes[planet.planetClass];
+            WireframeComponent = config?.wireframe || planetTypes['M'].wireframe;
+            break;
+        }
         case 'starbase':
-            wireframe = <StarbaseWireframe />;
+            WireframeComponent = StarbaseWireframe;
             break;
         case 'asteroid_field':
-            wireframe = <AsteroidWireframe />;
-            break;
-        case 'ship':
-            if (target.faction === 'Klingon') {
-                wireframe = <KlingonShipWireframe />;
-            } else if (target.faction === 'Romulan') {
-                wireframe = <RomulanShipWireframe />;
-            } else if (target.faction === 'Pirate') {
-                wireframe = <PirateShipWireframe />;
-            } else { // Independent / Federation
-                wireframe = <TraderShipWireframe />;
-            }
+            WireframeComponent = AsteroidWireframe;
             break;
         default:
             return null;
     }
 
+    if (!WireframeComponent) {
+        return null;
+    }
+    
     return (
         <div className="w-full h-full p-2">
-            {wireframe}
+            <WireframeComponent />
         </div>
     );
 };

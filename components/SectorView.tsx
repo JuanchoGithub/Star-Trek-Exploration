@@ -1,7 +1,9 @@
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile } from '../types';
-import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon, TorpedoProjectileIcon } from './Icons';
+import { NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, EventBeaconIcon, TorpedoProjectileIcon } from './Icons';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
+import { shipTypes, ShipFaction } from '../assets/ships/configs/shipTypes';
+import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, OrionPirateShipIcon, UnknownShipIcon, NeutralShipIcon } from '../assets/ships/icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -176,12 +178,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 }
 
                 // This logic determines the color based on current faction
-                if (shipEntity.faction === 'Federation') factionColor = 'text-blue-400';
-                else if (shipEntity.faction === 'Klingon') factionColor = 'text-red-500';
-                else if (shipEntity.faction === 'Romulan') factionColor = 'text-green-400';
-                else if (shipEntity.faction === 'Pirate') factionColor = 'text-orange-500';
-                else if (!shipEntity.scanned) factionColor = 'text-yellow-400';
-                else factionColor = 'text-gray-300';
+                const currentFactionForColor = isPlayer ? 'Federation' : (!shipEntity.scanned ? 'Unknown' : shipEntity.faction);
+                const colorConfig = shipTypes[currentFactionForColor as ShipFaction] || shipTypes.Independent;
+                factionColor = colorConfig.colorClass;
 
             } else if (entity.type === 'starbase') {
                 icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;

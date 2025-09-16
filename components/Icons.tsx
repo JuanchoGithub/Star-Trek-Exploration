@@ -6,52 +6,6 @@ const Icon: React.FC<React.SVGProps<SVGSVGElement>> = ({ children, ...props }) =
     </svg>
 );
 
-export const PlayerShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}>
-        {/* Pylon (drawn first, so it's in the back) */}
-        <polygon points="16,13 18,13 19,8 17,8"/>
-        
-        {/* Neck (drawn second) */}
-        <polygon points="10,11.5 12,11.5 14,14 12,14"/>
-        
-        {/* Secondary Hull */}
-        <ellipse cx="16" cy="16" rx="8" ry="3"/>
-        
-        {/* Nacelle */}
-        <rect x="17" y="5" width="7" height="3" rx="1.5"/>
-
-        {/* Saucer Section (drawn last, so it's on top) */}
-        <ellipse cx="9" cy="9" rx="8" ry="2.5"/>
-    </Icon>
-);
-
-export const KlingonBirdOfPreyIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></Icon>
-);
-
-export const RomulanWarbirdIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <Icon {...props}>
-    <path d="M21 9c-2.17-1.67-4.56-3-7-3-2.44 0-4.83 1.33-7 3L2 14h5v3c0 1.66 1.34 3 3 3h4c1.66 0 3-1.34 3-3v-3h5l-5-5z" />
-  </Icon>
-);
-
-export const OrionPirateShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}>
-        <path d="M12 2L2 8 L5 12 L2 16 L12 22 L22 16 L19 12 L22 8 Z" />
-    </Icon>
-);
-
-export const UnknownShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}>
-        <path d="M12 2 L18 12 L12 22 L6 12 Z" />
-    </Icon>
-);
-
-export const NeutralShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></Icon>
-);
-
-
 export const StarbaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></Icon>
 );

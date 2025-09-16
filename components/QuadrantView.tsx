@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SectorState } from '../types';
-import { PlayerShipIcon } from './Icons';
+// Fix: Corrected the import path for PlayerShipIcon.
+import { PlayerShipIcon } from '../assets/ships/icons';
 
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
