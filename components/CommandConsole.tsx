@@ -1,13 +1,12 @@
+
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity } from '../types';
-import { WeaponIcon, TorpedoIcon, EvasiveManeuverIcon, DamageControlIcon, ScanIcon, RetreatIcon, HailIcon, SecurityIcon } from './Icons';
+import { WeaponIcon, TorpedoIcon, ScanIcon, RetreatIcon, HailIcon, SecurityIcon } from './Icons';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
   onFirePhasers: () => void;
   onLaunchTorpedo: () => void;
-  onEvasiveManeuvers: () => void;
-  onInitiateDamageControl: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
   onHailTarget: () => void;
@@ -16,9 +15,7 @@ interface CommandConsoleProps {
   currentTurn: number;
   canFire: boolean;
   canLaunchTorpedo: boolean;
-  canTakeEvasive: boolean;
   isTargetFriendly: boolean;
-  hasDamagedSystems: boolean;
   isTargetScanned: boolean;
   hasTarget: boolean;
   hasEnemy: boolean;
@@ -30,7 +27,7 @@ interface CommandConsoleProps {
   target?: Entity;
 }
 
-const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, className?: string, isActive?: boolean}> = ({ onClick, disabled, children, className="", isActive=false }) => (
+const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, className?: string}> = ({ onClick, disabled, children, className="" }) => (
   <button
     onClick={onClick}
     disabled={disabled}
@@ -40,7 +37,6 @@ const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; childre
           ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
           : `bg-blue-600 hover:bg-blue-500 text-white ${className}`
       }
-      ${isActive ? 'ring-2 ring-yellow-400' : ''}
     `}
   >
     {children}
@@ -53,9 +49,9 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo, onEvasiveManeuvers, canTakeEvasive,
-    onInitiateDamageControl, onScanTarget, onInitiateRetreat, onHailTarget, onSendAwayTeam,
-    retreatingTurn, currentTurn, isTargetFriendly, hasDamagedSystems, isTargetScanned, hasTarget, hasEnemy, 
+    onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo,
+    onScanTarget, onInitiateRetreat, onHailTarget, onSendAwayTeam,
+    retreatingTurn, currentTurn, isTargetFriendly, isTargetScanned, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
@@ -101,18 +97,6 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
 
             <SectionHeader title="Maneuvers & Systems" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onEvasiveManeuvers} disabled={!canTakeEvasive || isRetreating || isTurnResolving} className="bg-green-700 hover:bg-green-600" isActive={playerShip.evasive}>
-                    <EvasiveManeuverIcon className="w-5 h-5" /> Evasive
-                </CommandButton>
-                 <CommandButton 
-                    onClick={onInitiateDamageControl} 
-                    disabled={!hasDamagedSystems || isRetreating || isTurnResolving} 
-                    className="bg-yellow-700 hover:bg-yellow-600" 
-                    isActive={!!playerShip.repairTarget}
-                >
-                    <DamageControlIcon className="w-5 h-5" /> 
-                    {playerShip.repairTarget ? `Repairing ${playerShip.repairTarget}` : 'Damage Control'}
-                </CommandButton>
                 <CommandButton onClick={onScanTarget} disabled={!hasTarget || isTargetScanned || isRetreating || isTurnResolving} className="bg-sky-600 hover:bg-sky-500">
                     <ScanIcon className="w-5 h-5" /> Scan
                 </CommandButton>

@@ -1257,6 +1257,15 @@ export const useGameLogic = () => {
         setActiveEvent(null);
     }, [activeEvent, addLog]);
 
+    const onToggleRedAlert = useCallback(() => {
+        setGameState(prev => {
+            if (prev.gameOver) return prev;
+            const newRedAlertState = !prev.redAlert;
+            addLog(newRedAlertState ? "Red Alert! All hands to battle stations." : "Standing down from Red Alert.");
+            return { ...prev, redAlert: newRedAlertState };
+        });
+    }, [addLog]);
+
     const targetEntity = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
     
     // Clear navigation target when view changes
@@ -1309,5 +1318,6 @@ export const useGameLogic = () => {
         importSave,
         onDistributeEvenly,
         onSendAwayTeam,
+        onToggleRedAlert,
     };
 };

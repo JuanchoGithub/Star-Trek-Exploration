@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
@@ -108,6 +109,7 @@ const App: React.FC = () => {
     importSave,
     onDistributeEvenly,
     onSendAwayTeam,
+    onToggleRedAlert,
   } = useGameLogic();
 
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -169,14 +171,12 @@ const App: React.FC = () => {
                     onEndTurn={onEndTurn}
                     onFirePhasers={onFirePhasers}
                     onLaunchTorpedo={onLaunchTorpedo}
-                    onEvasiveManeuvers={onEvasiveManeuvers}
                     target={target}
                     isDocked={isDocked}
                     onDockWithStarbase={onDockWithStarbase}
                     onRechargeDilithium={onRechargeDilithium}
                     onResupplyTorpedoes={onResupplyTorpedoes}
                     onStarbaseRepairs={onStarbaseRepairs}
-                    onSelectRepairTarget={onSelectRepairTarget}
                     onScanTarget={onScanTarget}
                     onInitiateRetreat={onInitiateRetreat}
                     onStartAwayMission={onStartAwayMission}
@@ -195,6 +195,9 @@ const App: React.FC = () => {
                   gameState={gameState} 
                   onEnergyChange={onEnergyChange} 
                   onDistributeEvenly={onDistributeEvenly}
+                  onToggleRedAlert={onToggleRedAlert}
+                  onEvasiveManeuvers={onEvasiveManeuvers}
+                  onSelectRepairTarget={onSelectRepairTarget}
               />
           </div>
       </div>
