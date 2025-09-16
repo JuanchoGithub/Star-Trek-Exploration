@@ -19,7 +19,7 @@ export interface ShipSubsystems {
 interface BaseEntity {
   id: string;
   name: string;
-  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon';
+  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'torpedo_projectile';
   faction: string;
   position: Position;
   scanned: boolean;
@@ -64,7 +64,16 @@ export interface EventBeacon extends BaseEntity {
     isResolved: boolean;
 }
 
-export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon;
+export interface TorpedoProjectile extends BaseEntity {
+    type: 'torpedo_projectile';
+    targetId: string;
+    sourceId: string;
+    stepsTraveled: number;
+    speed: number;
+    path: Position[];
+}
+
+export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile;
 
 export interface SectorState {
   entities: Entity[];
@@ -119,7 +128,7 @@ export interface ActiveCounselSession {
 
 export interface PlayerTurnActions {
     combat?: {
-        type: 'phasers' | 'torpedoes';
+        type: 'phasers'; // Torpedoes are no longer a turn action
         targetId: string;
         subsystem?: 'weapons' | 'engines' | 'shields';
     };
@@ -152,6 +161,10 @@ export type CombatEffect = {
     targetId: string;
     faction: string;
     delay: number; // in milliseconds
+} | {
+    type: 'torpedo_hit';
+    position: Position;
+    delay: number;
 };
 
 export interface GameState {

@@ -101,6 +101,25 @@
           100% { opacity: 0; }
       }
 
+      .torpedo-trail-dot {
+          background-color: #f97316; /* orange-500 */
+          border-radius: 50%;
+          box-shadow: 0 0 4px #fb923c; /* orange-400 */
+      }
+      @keyframes torpedo-explosion-animation {
+        0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 5px; }
+        100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; border-width: 0px; }
+      }
+      .torpedo-explosion {
+        position: absolute;
+        border-radius: 50%;
+        border-style: solid;
+        border-color: #fff;
+        background-color: #fb923c; /* orange-400 */
+        box-shadow: 0 0 15px 5px #f97316; /* orange-500 */
+        animation: torpedo-explosion-animation 0.4s ease-out forwards;
+      }
+
     </style>
   <script type="importmap">
 {

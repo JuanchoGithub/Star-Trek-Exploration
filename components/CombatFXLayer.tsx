@@ -30,7 +30,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
 
     return (
         <div className="absolute inset-0 pointer-events-none z-50">
-            <svg width="100%" height="100%">
+            <svg width="100%" height="100%" className="overflow-visible">
                 {effects.map((effect, index) => {
                     if (effect.type === 'phaser') {
                         const source = entityMap.get(effect.sourceId);
@@ -56,6 +56,26 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                     return null;
                 })}
             </svg>
+            {/* Non-SVG effects like explosions go here */}
+            {effects.map((effect, index) => {
+                 if (effect.type === 'torpedo_hit') {
+                    const coords = getPercentageCoords(effect.position);
+                    return (
+                        <div
+                            key={`explosion-${index}`}
+                            className="torpedo-explosion"
+                            style={{
+                                left: coords.x,
+                                top: coords.y,
+                                width: '5vw',
+                                height: '5vw',
+                                animationDelay: `${effect.delay}ms`,
+                            }}
+                        />
+                    );
+                }
+                return null;
+            })}
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../data/contentData';
 import { planetNames } from '../data/planetNames';
 
@@ -424,7 +424,7 @@ export const useGameLogic = () => {
         const applyDamage = (target: Ship, damage: number, type: 'phaser' | 'torpedo', subsystem: 'weapons' | 'engines' | 'shields' | null, logs: string[]) => {
             let hitChance = target.evasive ? 0.6 : 0.9;
             if (target.retreatingTurn && target.id === 'player') hitChance = 0.5;
-            if (Math.random() > hitChance) {
+            if (type === 'phaser' && Math.random() > hitChance) {
                 logs.push(`${target.name} evaded an attack!`);
                 return;
             }
@@ -496,12 +496,6 @@ export const useGameLogic = () => {
                             phaserEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
                             applyDamage(target, baseDamage, 'phaser', playerTurnActions.combat.subsystem || null, logs);
                             logs.push(`Firing phasers at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
-                        } else if (playerTurnActions.combat.type === 'torpedoes') {
-                            if (playerShip.torpedoes.current > 0) {
-                                playerShip.torpedoes.current--;
-                                applyDamage(target, 50, 'torpedo', playerTurnActions.combat.subsystem || null, logs);
-                                logs.push(`Launching torpedo at ${target.name}${playerTurnActions.combat.subsystem ? `'s ${playerTurnActions.combat.subsystem}`: ''}.`);
-                            }
                         }
                     }
                 }
@@ -510,13 +504,77 @@ export const useGameLogic = () => {
             next.combatEffects = phaserEffects;
             return next;
         });
+        
+        // --- Phase 2: Projectile Movement & Resolution ---
+        setTimeout(() => {
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                if (next.gameOver) return prev;
 
-        // --- Phase 2: AI Movement ---
+                const logs: string[] = [];
+                const newEffects: CombatEffect[] = [];
+                const destroyedProjectileIds = new Set<string>();
+                const { currentSector } = next;
+
+                const projectiles = currentSector.entities.filter((e: Entity): e is TorpedoProjectile => e.type === 'torpedo_projectile');
+                const allShips = [...currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship'), next.player.ship];
+
+                projectiles.forEach(torpedo => {
+                    if (destroyedProjectileIds.has(torpedo.id)) return;
+
+                    const targetEntity = allShips.find(s => s.id === torpedo.targetId);
+                    if (!targetEntity) {
+                        logs.push(`${torpedo.name} self-destructs as its target is no longer in the sector.`);
+                        destroyedProjectileIds.add(torpedo.id);
+                        return;
+                    }
+                    const targetPosition = targetEntity.position;
+
+                    // Move projectile
+                    for (let i = 0; i < torpedo.speed; i++) {
+                        if (torpedo.position.x === targetPosition.x && torpedo.position.y === targetPosition.y) break;
+                        
+                        torpedo.position = moveOneStep(torpedo.position, targetPosition);
+                        torpedo.path.push({ ...torpedo.position });
+                        torpedo.stepsTraveled++;
+                        
+                        // Check for collision with any valid target ship after each step
+                        const potentialTargets = allShips.filter(s => s.faction !== torpedo.faction && s.hull > 0);
+                        for (const ship of potentialTargets) {
+                            if (ship.position.x === torpedo.position.x && ship.position.y === torpedo.position.y) {
+                                // Collision!
+                                const hitChance = Math.max(0.1, 1.0 - (torpedo.stepsTraveled * 0.1));
+                                if (Math.random() < hitChance) {
+                                    applyDamage(ship, 50, 'torpedo', null, logs);
+                                    newEffects.push({ type: 'torpedo_hit', position: ship.position, delay: 0 });
+                                    logs.push(`A torpedo hits ${ship.name}!`);
+                                } else {
+                                    logs.push(`A torpedo misses ${ship.name}!`);
+                                }
+                                destroyedProjectileIds.add(torpedo.id);
+                                return; // Stop processing this torpedo
+                            }
+                        }
+                    }
+
+                    if (torpedo.stepsTraveled > 15) { // Max range
+                        logs.push("A torpedo self-destructed at maximum range.");
+                        destroyedProjectileIds.add(torpedo.id);
+                    }
+                });
+
+                next.currentSector.entities = next.currentSector.entities.filter((e: Entity) => !destroyedProjectileIds.has(e.id));
+                next.logs = [...logs.reverse(), ...next.logs];
+                next.combatEffects = [...next.combatEffects, ...newEffects];
+                return next;
+            });
+        }, 500);
+
+        // --- Phase 3: AI Movement ---
         setTimeout(() => {
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
                 if (next.gameOver) {
-                    setIsTurnResolving(false);
                     return prev;
                 }
                 const hostileAIShips = next.currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
@@ -526,11 +584,11 @@ export const useGameLogic = () => {
                         aiShip.position = moveOneStep(aiShip.position, next.player.ship.position);
                     }
                 });
-                return { ...next, combatEffects: [] }; // Clear player effects
+                return { ...next };
             });
-        }, 1200); // Wait for player phaser animation to finish
+        }, 1200); // Wait for projectile animation
 
-        // --- Phase 3: AI Firing & Turn Cleanup ---
+        // --- Phase 4: AI Firing & Turn Cleanup ---
         setTimeout(() => {
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
@@ -546,18 +604,39 @@ export const useGameLogic = () => {
                 
                 const hostileAIShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
                 hostileAIShips.forEach((aiShip: Ship, index: number) => {
-                    if (aiShip.subsystems.weapons.health > 0) {
-                        const distance = calculateDistance(aiShip.position, playerShip.position);
-                        if (distance <= 5) {
-                            const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
-                            phaserEffects.push({ type: 'phaser', sourceId: aiShip.id, targetId: playerShip.id, faction: aiShip.faction, delay: index * 250 });
-                            applyDamage(playerShip, aiDamage, 'phaser', null, logs);
-                            logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
-                            redAlertThisTurn = true;
-                        }
+                    const distance = calculateDistance(aiShip.position, playerShip.position);
+
+                    // Phaser attack
+                    if (aiShip.subsystems.weapons.health > 0 && distance <= 5) {
+                        const aiDamage = 10 * (aiShip.energyAllocation.weapons / 100);
+                        phaserEffects.push({ type: 'phaser', sourceId: aiShip.id, targetId: playerShip.id, faction: aiShip.faction, delay: index * 250 });
+                        applyDamage(playerShip, aiDamage, 'phaser', null, logs);
+                        logs.push(`${aiShip.name} is firing at the U.S.S. Endeavour!`);
+                        redAlertThisTurn = true;
+                    }
+                    
+                    // Torpedo attack
+                    if (aiShip.torpedoes.current > 0 && aiShip.subsystems.weapons.health > 0 && distance <= 8 && Math.random() < 0.4) {
+                         aiShip.torpedoes.current--;
+                         const torpedo: TorpedoProjectile = {
+                             id: uniqueId(),
+                             name: 'Enemy Torpedo',
+                             type: 'torpedo_projectile',
+                             faction: aiShip.faction,
+                             position: { ...aiShip.position },
+                             targetId: playerShip.id,
+                             sourceId: aiShip.id,
+                             stepsTraveled: 0,
+                             speed: 3,
+                             path: [{ ...aiShip.position }],
+                             scanned: true,
+                         };
+                         next.currentSector.entities.push(torpedo);
+                         logs.push(`${aiShip.name} has launched a torpedo!`);
+                         redAlertThisTurn = true;
                     }
                 });
-                next.combatEffects = phaserEffects;
+                next.combatEffects = [...next.combatEffects, ...phaserEffects];
 
                 [playerShip, ...currentSector.entities].forEach(e => {
                     if (e.type === 'ship') {
@@ -744,10 +823,48 @@ export const useGameLogic = () => {
     }, [addLog, gameState.currentSector.entities, selectedSubsystem]);
     
     const onLaunchTorpedo = useCallback((targetId: string) => {
-        addLog(`Torpedo targeted at ${gameState.currentSector.entities.find(e=>e.id === targetId)?.name}. Awaiting turn end.`);
-        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'torpedoes', targetId, subsystem: selectedSubsystem || undefined } }));
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const { player, currentSector } = next;
+            const playerShip = player.ship;
+            const target = currentSector.entities.find((e: Entity) => e.id === targetId);
+
+            if (!target) {
+                addLog("Cannot launch torpedo: Invalid target.");
+                return prev;
+            }
+            if (playerShip.torpedoes.current <= 0) {
+                addLog("Launch failed: No torpedoes remaining.");
+                return prev;
+            }
+            if (playerShip.subsystems.weapons.health <= 0) {
+                addLog("Launch failed: Weapon systems are offline.");
+                return prev;
+            }
+
+            playerShip.torpedoes.current--;
+
+            const torpedo: TorpedoProjectile = {
+                id: uniqueId(),
+                name: 'Photon Torpedo',
+                type: 'torpedo_projectile',
+                faction: 'Federation',
+                position: { ...playerShip.position },
+                targetId: targetId,
+                sourceId: playerShip.id,
+                stepsTraveled: 0,
+                speed: 3,
+                path: [{ ...playerShip.position }],
+                scanned: true,
+            };
+
+            currentSector.entities.push(torpedo);
+            addLog(`Photon torpedo launched at ${target.name}.`);
+            
+            return next;
+        });
         setSelectedSubsystem(null);
-    }, [addLog, gameState.currentSector.entities, selectedSubsystem]);
+    }, [addLog, setGameState]);
     
     const onEvasiveManeuvers = useCallback(() => {
         setPlayerTurnActions(prev => {

@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Entity, Ship, SectorState, Planet } from '../types';
-import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon } from './Icons';
+import type { Entity, Ship, SectorState, Planet, TorpedoProjectile } from '../types';
+import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon, UnknownShipIcon, OrionPirateShipIcon, TorpedoProjectileIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -134,6 +134,31 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             let factionColor = 'text-gray-400';
             let entityName = entity.name;
 
+            if (entity.type === 'torpedo_projectile') {
+                 const torpedo = entity as TorpedoProjectile;
+                 return (
+                    <React.Fragment key={torpedo.id}>
+                        {torpedo.path.map((pos, i) => (
+                            <div key={`trail-${torpedo.id}-${i}`}
+                                className="absolute w-1.5 h-1.5 torpedo-trail-dot"
+                                style={{
+                                    opacity: 0.1 + (i / torpedo.path.length) * 0.5,
+                                    left: `${(pos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
+                                    top: `${(pos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
+                                    transform: 'translate(-50%, -50%)',
+                                    zIndex: 25
+                                }}
+                            />
+                        ))}
+                        <div
+                            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-40"
+                            style={{ left: `${(torpedo.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(torpedo.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
+                        >
+                            <TorpedoProjectileIcon className="w-4 h-4" />
+                        </div>
+                    </React.Fragment>
+                 );
+            }
             if (entity.type === 'ship') {
                 if (isPlayer) {
                     icon = <PlayerShipIcon className="w-8 h-8"/>;

@@ -119,6 +119,20 @@ export const TorpedoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M8 20c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2v-4H8v4zm8-18h-2V1h-4v1H8V1H6v1H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></Icon>
 );
 
+export const TorpedoProjectileIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props} viewBox="0 0 24 24">
+        <defs>
+            <radialGradient id="torpedoGradient">
+                <stop offset="0%" stopColor="white" />
+                <stop offset="50%" stopColor="yellow" />
+                <stop offset="100%" stopColor="orange" />
+            </radialGradient>
+        </defs>
+        <circle cx="12" cy="12" r="8" fill="url(#torpedoGradient)" />
+    </Icon>
+);
+
+
 export const EvasiveManeuverIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="m19.65 9.04-2.79-2.79-2.79 2.79C14.07 9.03 15 9.49 15 10v7H9v-7c0-.51.93-1 1.07-.96l-2.8-2.79-2.78 2.79C4.34 9.03 4 8.66 4 8V4h16v4c0 .66-.34 1.03-.49 1.04z"/></Icon>
 );
