@@ -19,7 +19,7 @@ export interface ShipSubsystems {
 interface BaseEntity {
   id: string;
   name: string;
-  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field';
+  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon';
   faction: string;
   position: Position;
   scanned: boolean;
@@ -41,8 +41,11 @@ export interface Ship extends BaseEntity {
   crewMorale: { current: number; max: number };
 }
 
+export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
+
 export interface Planet extends BaseEntity {
   type: 'planet';
+  planetClass: PlanetClass;
 }
 
 export interface Starbase extends BaseEntity {
@@ -55,7 +58,13 @@ export interface AsteroidField extends BaseEntity {
     type: 'asteroid_field';
 }
 
-export type Entity = Ship | Planet | Starbase | AsteroidField;
+export interface EventBeacon extends BaseEntity {
+    type: 'event_beacon';
+    eventType: 'derelict_ship' | 'distress_call' | 'ancient_probe';
+    isResolved: boolean;
+}
+
+export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon;
 
 export interface SectorState {
   entities: Entity[];
@@ -117,6 +126,25 @@ export interface PlayerTurnActions {
     evasive?: boolean;
 }
 
+export interface EventTemplateOption {
+    text: string;
+    outcome: {
+        type: 'reward' | 'damage' | 'combat' | 'nothing' | 'special';
+        log: string;
+        amount?: number;
+        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale';
+        spawn?: 'pirate_raider';
+        spawnCount?: number;
+    };
+}
+
+export interface EventTemplate {
+    id: string;
+    type: EventBeacon['eventType'];
+    title: string;
+    description: string;
+    options: EventTemplateOption[];
+}
 
 export interface GameState {
   player: {

@@ -2,6 +2,7 @@ import React from 'react';
 import type { GameState, Entity, Ship, PlayerTurnActions, Position } from '../types';
 import CommandConsole from './CommandConsole';
 import { WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
+import WireframeDisplay from './WireframeDisplay';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -43,37 +44,41 @@ const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: n
 }
 
 const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
-    if (target.type === 'ship' && !target.scanned) {
-        return <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center"><h3 className="text-lg font-bold text-yellow-300 mb-1">Target: Unknown Ship</h3><p className="text-sm text-gray-400">Scan to reveal details.</p></div>
-    }
-    
-    let stats = null;
-    if (target.type === 'ship') {
-        stats = (
-            <>
-                <div className="text-sm mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                    <span className="text-gray-400">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
-                    <span className="text-gray-400">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
-                </div>
-                {target.scanned && (
-                    <div className="mt-3 pt-3 border-t border-gray-700">
-                         <h4 className="text-sm font-bold text-gray-400 mb-2">Subsystems</h4>
-                         <div className="space-y-1 text-sm">
-                            <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
-                            <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
-                            <SubsystemStatusDisplay subsystem={target.subsystems.shields} name="Shields" icon={<ShieldIcon className="w-5 h-5"/>} />
-                         </div>
-                    </div>
-                )}
-            </>
-        )
-    }
+    const isUnscannedShip = target.type === 'ship' && !target.scanned;
+    const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
     return (
-        <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center">
-            <h3 className="text-lg font-bold text-yellow-300 mb-1">Target: {target.name}</h3>
-            <p className="text-sm text-gray-500">{target.faction} {target.type}</p>
-            {stats}
+        <div className="bg-gray-900 p-3 rounded h-full flex flex-col">
+            <div className="flex-grow grid grid-cols-[1fr_2fr] gap-3 items-center min-h-0">
+                <div className="h-full w-full">
+                     <WireframeDisplay target={target} />
+                </div>
+                <div className="h-full flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-yellow-300 mb-1 truncate" title={name}>Target: {name}</h3>
+                    {isUnscannedShip ? (
+                        <p className="text-sm text-gray-400">Scan to reveal details.</p>
+                    ) : (
+                        <p className="text-sm text-gray-500">{target.faction} {target.type}</p>
+                    )}
+                    
+                    {target.type === 'ship' && !isUnscannedShip && (
+                        <>
+                            <div className="text-sm mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                                <span className="text-gray-400">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
+                                <span className="text-gray-400">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-gray-700">
+                                <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Subsystems</h4>
+                                <div className="space-y-1 text-sm">
+                                <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
+                                <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
+                                <SubsystemStatusDisplay subsystem={target.subsystems.shields} name="Shields" icon={<ShieldIcon className="w-5 h-5"/>} />
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

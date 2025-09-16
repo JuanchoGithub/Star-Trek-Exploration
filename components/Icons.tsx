@@ -6,12 +6,50 @@ const Icon: React.FC<React.SVGProps<SVGSVGElement>> = ({ children, ...props }) =
     </svg>
 );
 
-export const PlanetIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const PlanetIconM: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <Icon {...props}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /></Icon>
 );
 
+export const PlanetIconJ: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}>
+        <circle cx="12" cy="12" r="8" />
+        <ellipse cx="12" cy="12" rx="11" ry="4" fill="none" stroke="currentColor" strokeWidth="1.5" transform="rotate(-20 12 12)" />
+    </Icon>
+);
+
+export const PlanetIconL: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+        <circle cx="8" cy="8" r="1.5" fillOpacity="0.5" />
+        <circle cx="15" cy="14" r="2" fillOpacity="0.5" />
+    </Icon>
+);
+
+export const PlanetIconD: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+        <path d="M5 12c0-3.87 3.13-7 7-7" fill="none" stroke="currentColor" strokeWidth="1" strokeOpacity="0.6"/>
+        <path d="M19 12a7 7 0 0 1-7 7" fill="none" stroke="currentColor" strokeWidth="1" strokeOpacity="0.6"/>
+    </Icon>
+);
+
 export const PlayerShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}><path d="m2 12 10-9 10 9-10 9z"/></Icon>
+    <Icon {...props}>
+        {/* Pylon (drawn first, so it's in the back) */}
+        <polygon points="16,13 18,13 19,8 17,8"/>
+        
+        {/* Neck (drawn second) */}
+        <polygon points="10,11.5 12,11.5 14,14 12,14"/>
+        
+        {/* Secondary Hull */}
+        <ellipse cx="16" cy="16" rx="8" ry="3"/>
+        
+        {/* Nacelle */}
+        <rect x="17" y="5" width="7" height="3" rx="1.5"/>
+
+        {/* Saucer Section (drawn last, so it's on top) */}
+        <ellipse cx="9" cy="9" rx="8" ry="2.5"/>
+    </Icon>
 );
 
 export const EnemyShipIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -29,6 +67,14 @@ export const StarbaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
 
 export const AsteroidFieldIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
      <Icon {...props}><path d="M16.5 10.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5zm-6 2.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5-1.5.67-1.5 1.5zM9 11c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM5.5 8.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z"/></Icon>
+);
+
+export const EventBeaconIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <Icon {...props} fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" />
+        <path d="M15.41 6.59C14.05 5.23 12.04 4.5 10 4.5c-2.04 0-4.05.73-5.41 2.09" />
+        <path d="M17.5 4.5c2.76 2.76 2.76 7.24 0 10" transform="rotate(45 12 12)" />
+    </Icon>
 );
 
 export const NavigationTargetIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (

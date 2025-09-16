@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Entity, Ship, SectorState } from '../types';
-import { PlanetIcon, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon } from './Icons';
+import type { Entity, Ship, SectorState, Planet } from '../types';
+import { PlanetIconM, PlanetIconJ, PlanetIconL, PlanetIconD, PlayerShipIcon, EnemyShipIcon, NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, NeutralShipIcon, EventBeaconIcon } from './Icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -159,8 +159,32 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             } else if (entity.type === 'asteroid_field') {
                 icon = <AsteroidFieldIcon className="w-12 h-12 text-gray-500" />;
                  factionColor = 'text-gray-400';
+            } else if (entity.type === 'event_beacon') {
+                if (entity.isResolved) {
+                    icon = <EventBeaconIcon className="w-8 h-8 text-gray-600" />;
+                    factionColor = 'text-gray-600';
+                } else {
+                    icon = <EventBeaconIcon className="w-8 h-8 text-purple-400 animate-pulse" />;
+                    factionColor = 'text-purple-400';
+                }
             } else { // Planet
-                icon = <PlanetIcon className="w-10 h-10 text-green-500" />;
+                const planet = entity as Planet;
+                switch (planet.planetClass) {
+                    case 'M':
+                        icon = <PlanetIconM className="w-10 h-10 text-green-500" />;
+                        break;
+                    case 'J':
+                        icon = <PlanetIconJ className="w-10 h-10 text-orange-400" />;
+                        break;
+                    case 'L':
+                        icon = <PlanetIconL className="w-10 h-10 text-yellow-600" />;
+                        break;
+                    case 'D':
+                        icon = <PlanetIconD className="w-10 h-10 text-gray-500" />;
+                        break;
+                    default:
+                        icon = <PlanetIconM className="w-10 h-10 text-green-500" />;
+                }
             }
             
             return (
@@ -170,7 +194,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     style={{ left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
                     onClick={(e) => {
                          e.stopPropagation();
-                         if (!isPlayer && entity.type !== 'asteroid_field') {
+                         if (!isPlayer && entity.type !== 'asteroid_field' && entity.type !== 'event_beacon') {
                             onSelectTarget(entity.id);
                          }
                     }}

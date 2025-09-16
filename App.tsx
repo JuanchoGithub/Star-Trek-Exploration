@@ -9,6 +9,7 @@ import HailDialog from './components/HailDialog';
 import OfficerCounselDialog from './components/OfficerCounselDialog';
 import StatusLine from './components/StatusLine';
 import ShipStatus from './components/ShipStatus';
+import EventDialog from './components/EventDialog';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -73,6 +74,7 @@ const App: React.FC = () => {
     targetEntity,
     selectedSubsystem,
     playerTurnActions,
+    activeEvent,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -96,6 +98,7 @@ const App: React.FC = () => {
     onCloseOfficerCounsel,
     onProceedFromCounsel,
     onSelectSubsystem,
+    onChooseEventOption,
     saveGame,
     loadGame,
     exportSave,
@@ -195,6 +198,8 @@ const App: React.FC = () => {
       {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} />}
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
       {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} />}
+      {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
+
       {showLogPanel && (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
             <div className="bg-gray-900 border-2 border-blue-400 rounded-md h-3/4 w-4/5 max-w-4xl flex flex-col p-4">

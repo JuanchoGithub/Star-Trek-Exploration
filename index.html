@@ -19,6 +19,13 @@
       .red-alert-pulse {
         animation: red-alert-pulse-animation 2s ease-in-out infinite;
       }
+      @keyframes wireframe-glow-animation {
+        0%, 100% { filter: drop-shadow(0 0 2px #fde047); opacity: 0.8; }
+        50% { filter: drop-shadow(0 0 5px #fde047); opacity: 1; }
+      }
+      .wireframe-glow {
+        animation: wireframe-glow-animation 3s ease-in-out infinite;
+      }
     </style>
   <script type="importmap">
 {

@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions } from '../types';
-import { awayMissionTemplates, hailResponses, counselAdvice } from '../data/contentData';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass } from '../types';
+import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../data/contentData';
+import { planetNames } from '../data/planetNames';
 
 const SECTOR_WIDTH = 12;
 const SECTOR_HEIGHT = 10;
@@ -71,14 +72,33 @@ const generateSectorContent = (sector: SectorState): SectorState => {
         const entityTypeRoll = Math.random();
         const position = getUniquePosition();
 
-        if (entityTypeRoll < 0.4) { // 40% chance for a planet
+        if (entityTypeRoll < 0.1 && newEntities.length > 0) { // 10% chance for an event, not in an empty sector
+            const eventTypes: EventBeacon['eventType'][] = ['derelict_ship', 'distress_call', 'ancient_probe'];
+            const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
             newEntities.push({
                 id: uniqueId(),
-                name: `Planet ${uniqueId().substring(3, 7)}`,
+                name: 'Unidentified Signal',
+                type: 'event_beacon',
+                eventType: eventType,
+                faction: 'Unknown',
+                position: position,
+                scanned: false,
+                isResolved: false,
+            });
+        } else if (entityTypeRoll < 0.4) { // ~30% chance for a planet
+            const planetClasses: PlanetClass[] = ['M', 'J', 'L', 'D'];
+            const planetClass = planetClasses[Math.floor(Math.random() * planetClasses.length)];
+            const nameList = planetNames[planetClass] || ['Unknown Planet'];
+            const name = nameList[Math.floor(Math.random() * nameList.length)];
+
+            newEntities.push({
+                id: uniqueId(),
+                name: name,
                 type: 'planet',
                 faction: 'None',
                 position,
                 scanned: false,
+                planetClass: planetClass,
             });
         } else if (entityTypeRoll < 0.55) { // 15% chance for an asteroid field
              newEntities.push({
@@ -116,7 +136,7 @@ const generateSectorContent = (sector: SectorState): SectorState => {
                 subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
                 crewMorale: { current: 100, max: 100 },
             });
-        } else { // 15% chance for a Trader
+        } else { // ~15% chance for a Trader
             newEntities.push({
                 id: uniqueId(),
                 name: 'Independent Trader',
@@ -198,9 +218,10 @@ const createInitialGameState = (): GameState => {
         faction: 'None',
         position: { x: 2, y: 2 },
         scanned: true,
+        planetClass: 'M',
     });
   }
-  startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
+  startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
 
 
   quadrantMap[playerPosition.qy][playerPosition.qx] = startSector;
@@ -245,6 +266,7 @@ export const useGameLogic = () => {
     const [officerCounsel, setOfficerCounsel] = useState<ActiveCounselSession | null>(null);
     const [selectedSubsystem, setSelectedSubsystem] = useState<'weapons' | 'engines' | 'shields' | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
+    const [activeEvent, setActiveEvent] = useState<{ beaconId: string; template: EventTemplate } | null>(null);
 
 
     const addLog = useCallback((message: string) => {
@@ -269,6 +291,26 @@ export const useGameLogic = () => {
             addLog("Undocked: Moved out of range of the starbase.");
         }
     }, [gameState.turn, gameState.currentSector.entities, isDocked, addLog]);
+
+    // Effect to trigger dynamic events when close to a beacon
+    useEffect(() => {
+        if (activeEvent) return; // Don't trigger a new event if one is already active
+
+        const beacon = gameState.currentSector.entities.find(e =>
+            e.type === 'event_beacon' &&
+            !e.isResolved &&
+            calculateDistance(gameState.player.ship.position, e.position) <= 1
+        ) as EventBeacon | undefined;
+
+        if (beacon) {
+            const templates = eventTemplates[beacon.eventType];
+            if (templates && templates.length > 0) {
+                const template = templates[Math.floor(Math.random() * templates.length)];
+                addLog(`Approaching an ${beacon.name}...`);
+                setActiveEvent({ beaconId: beacon.id, template });
+            }
+        }
+    }, [gameState.player.ship.position, gameState.currentSector.entities, activeEvent]);
 
 
     const saveGame = useCallback(() => {
@@ -492,7 +534,7 @@ export const useGameLogic = () => {
         next.turn++;
         logs.unshift(`Turn ${next.turn} begins.`);
         next.logs = [...logs.reverse(), ...prev.logs];
-        next.redAlert = redAlertThisTurn;
+        next.redAlert = redAlertThisTurn || next.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
         setPlayerTurnActions({});
 
         return next;
@@ -584,10 +626,10 @@ export const useGameLogic = () => {
          setSelectedTargetId(null);
          setIsDocked(false);
          setGameState(prev => {
-            const newPlayerShip = { ...prev.player.ship };
-            newPlayerShip.dilithium.current--;
+            const next = JSON.parse(JSON.stringify(prev));
+            next.player.ship.dilithium.current--;
 
-            const newMap = prev.quadrantMap.map(row => [...row]);
+            const newMap = next.quadrantMap;
             let sectorToWarpTo = newMap[pos.qy][pos.qx];
             
             if (!sectorToWarpTo.visited) {
@@ -595,16 +637,34 @@ export const useGameLogic = () => {
                 sectorToWarpTo.visited = true;
                 newMap[pos.qy][pos.qx] = sectorToWarpTo;
                  addLog(`Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`);
+
+                // Pirate Ambush Chance
+                const isAmbush = Math.random() < 0.15;
+                if (isAmbush && !sectorToWarpTo.entities.some((e: Entity) => e.type === 'starbase')) {
+                    addLog("RED ALERT: It's an ambush! Pirate vessels are decloaking!");
+                    const ambushCount = Math.floor(Math.random() * 2) + 1; // 1-2 pirates
+                     for (let i = 0; i < ambushCount; i++) {
+                        sectorToWarpTo.entities.push({
+                            id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
+                            position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) }, // Appear at top
+                            hull: 40, maxHull: 40, shields: 10, maxShields: 10,
+                            energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                            torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                            subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
+                            crewMorale: { current: 100, max: 100 },
+                        });
+                    }
+                    next.redAlert = true;
+                }
+
             } else {
                  addLog(`Entering previously explored sector.`);
             }
 
-            return {
-                ...prev,
-                player: { ...prev.player, ship: newPlayerShip, position: pos },
-                currentSector: sectorToWarpTo,
-                quadrantMap: newMap
-            }
+            next.player.position = pos;
+            next.currentSector = sectorToWarpTo;
+            next.quadrantMap = newMap;
+            return next;
          })
     }, [addLog, gameState.player.ship.dilithium.current]);
 
@@ -735,6 +795,73 @@ export const useGameLogic = () => {
             setActiveHail({ targetId: selectedTargetId, loading: false, message: defaultResponse });
          }
     }, [addLog, gameState.currentSector.entities, selectedTargetId]);
+    
+    const onChooseEventOption = useCallback((option: EventTemplateOption) => {
+        if (!activeEvent) return;
+
+        addLog(option.outcome.log);
+
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const playerShip = next.player.ship;
+
+            // Mark beacon as resolved
+            const beacon = next.currentSector.entities.find((e: Entity) => e.id === activeEvent.beaconId);
+            if (beacon && beacon.type === 'event_beacon') {
+                beacon.isResolved = true;
+                beacon.name = 'Resolved Signal';
+            }
+
+            // Apply outcome effect
+            const outcome = option.outcome;
+            const amount = outcome.amount || 0;
+
+            switch (outcome.type) {
+                case 'reward':
+                    if (outcome.resource) {
+                        switch(outcome.resource) {
+                            case 'dilithium': playerShip.dilithium.current = Math.min(playerShip.dilithium.max, playerShip.dilithium.current + amount); break;
+                            case 'torpedoes': playerShip.torpedoes.current = Math.min(playerShip.torpedoes.max, playerShip.torpedoes.current + amount); break;
+                            case 'energy': playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + amount); break;
+                            case 'hull': playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + amount); break;
+                            case 'shields': playerShip.shields = Math.min(playerShip.maxShields, playerShip.shields + amount); break;
+                            case 'morale': playerShip.crewMorale.current = Math.min(playerShip.crewMorale.max, playerShip.crewMorale.current + amount); break;
+                        }
+                    }
+                    break;
+                case 'damage':
+                     if (outcome.resource) {
+                        switch(outcome.resource) {
+                            case 'hull': playerShip.hull = Math.max(0, playerShip.hull - amount); break;
+                            case 'shields': playerShip.shields = Math.max(0, playerShip.shields - amount); break;
+                            case 'morale': playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - amount); break;
+                        }
+                    }
+                    break;
+                case 'combat':
+                    if (outcome.spawn && beacon) {
+                        const count = outcome.spawnCount || 1;
+                        for (let i = 0; i < count; i++) {
+                             next.currentSector.entities.push({
+                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
+                                position: { x: beacon.position.x + i + 1, y: beacon.position.y },
+                                hull: 40, maxHull: 40, shields: 10, maxShields: 10,
+                                energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                                subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 } },
+                                crewMorale: { current: 100, max: 100 },
+                            });
+                        }
+                        next.redAlert = true;
+                    }
+                    break;
+            }
+
+            return next;
+        });
+
+        setActiveEvent(null);
+    }, [activeEvent, addLog]);
 
     const targetEntity = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
     
@@ -756,6 +883,7 @@ export const useGameLogic = () => {
         targetEntity,
         selectedSubsystem,
         playerTurnActions,
+        activeEvent,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,
@@ -779,6 +907,7 @@ export const useGameLogic = () => {
         onCloseOfficerCounsel,
         onProceedFromCounsel,
         onSelectSubsystem: setSelectedSubsystem,
+        onChooseEventOption,
         saveGame,
         loadGame,
         exportSave,
