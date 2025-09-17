@@ -606,11 +606,18 @@ export const useGameLogic = () => {
                     const targetEntity = allShips.find(s => s.id === torpedo.targetId);
                     const sourceEntity = allShips.find(s => s.id === torpedo.sourceId);
 
-                    if (!targetEntity || !sourceEntity) {
-                        logs.push(`${torpedo.name} self-destructs as its target is no longer in the sector.`);
+                    // Check for invalid target or expiration
+                    if (!targetEntity || !sourceEntity || targetEntity.faction === torpedo.faction) {
+                        logs.push(`${torpedo.name} self-destructs as its target is no longer valid.`);
                         destroyedProjectileIds.add(torpedo.id);
                         return;
                     }
+                    if (next.turn - torpedo.turnLaunched >= 3) { // Active for up to 3 turns
+                        logs.push(`${torpedo.name} self-destructs at the end of its lifespan.`);
+                        destroyedProjectileIds.add(torpedo.id);
+                        return;
+                    }
+
                     const targetPosition = targetEntity.position;
 
                     // Move projectile
@@ -626,7 +633,7 @@ export const useGameLogic = () => {
                         for (const ship of potentialTargets) {
                             if (ship.position.x === torpedo.position.x && ship.position.y === torpedo.position.y) {
                                 // Collision!
-                                let hitChance = Math.max(0.1, 1.0 - (torpedo.stepsTraveled * 0.1));
+                                let hitChance = Math.max(0.05, 1.0 - (torpedo.stepsTraveled * 0.24));
                                 if (ship.evasive) hitChance *= 0.3; // 70% reduction
 
                                 if (Math.random() < hitChance) {
@@ -639,11 +646,6 @@ export const useGameLogic = () => {
                                 return; // Stop processing this torpedo
                             }
                         }
-                    }
-
-                    if (torpedo.stepsTraveled > 15) { // Max range
-                        logs.push("A torpedo self-destructed at maximum range.");
-                        destroyedProjectileIds.add(torpedo.id);
                     }
                 });
 
@@ -757,9 +759,10 @@ export const useGameLogic = () => {
                              targetId: playerShip.id,
                              sourceId: aiShip.id,
                              stepsTraveled: 0,
-                             speed: 3,
+                             speed: 2,
                              path: [{ ...aiShip.position }],
                              scanned: true,
+                             turnLaunched: next.turn,
                          };
                          next.currentSector.entities.push(torpedo);
                          logs.push(`${aiShip.name} has launched a torpedo!`);
@@ -984,9 +987,10 @@ export const useGameLogic = () => {
                 targetId: targetId,
                 sourceId: playerShip.id,
                 stepsTraveled: 0,
-                speed: 3,
+                speed: 2,
                 path: [{ ...playerShip.position }],
                 scanned: true,
+                turnLaunched: next.turn,
             };
 
             currentSector.entities.push(torpedo);

@@ -105,13 +105,15 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 </CommandButton>
             </div>
         </div>
-      <button 
-        onClick={() => onEndTurn()}
-        disabled={isTurnResolving}
-        className="w-full mt-2 p-3 flex-shrink-0 btn btn-primary"
-      >
-        {getEndTurnButtonText()}
-      </button>
+      <div className="flex items-center gap-2 mt-2 flex-shrink-0">
+        <button 
+            onClick={() => onEndTurn()}
+            disabled={isTurnResolving}
+            className="flex-grow p-3 btn btn-primary"
+        >
+            {getEndTurnButtonText()}
+        </button>
+      </div>
     </div>
   );
 };

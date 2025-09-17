@@ -81,6 +81,18 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
       {...playerShip, type: 'ship' as const}
   ];
 
+  const handleCellClick = (x: number, y: number) => {
+    if (navigationTarget && navigationTarget.x === x && navigationTarget.y === y) {
+        onSetNavigationTarget(null); // Clicked the same target again, cancel it.
+    } else {
+        // Prevent setting navigation target on top of another entity
+        const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip.id);
+        if (!entityAtPos) {
+            onSetNavigationTarget({ x, y });
+        }
+    }
+  };
+
   const path = getPath(playerShip.position, navigationTarget);
 
   return (
@@ -101,7 +113,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     <div
                         key={`cell-${x}-${y}`}
                         className="w-full h-full hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer"
-                        onClick={() => onSetNavigationTarget({ x, y })}
+                        onClick={() => handleCellClick(x, y)}
                     />
                 );
             })}
@@ -121,13 +133,18 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 />
             ))}
             <div
-                className="absolute flex items-center justify-center text-accent-yellow"
+                className="absolute flex items-center justify-center text-accent-yellow cursor-pointer"
                 style={{
                     left: `${(navigationTarget.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
                     top: `${(navigationTarget.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
                     transform: 'translate(-50%, -50%)',
                     zIndex: 20
                 }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onSetNavigationTarget(null);
+                }}
+                title="Cancel Navigation"
             >
                 <NavigationTargetIcon className="w-8 h-8 animate-pulse" />
             </div>
@@ -220,11 +237,13 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             return (
                 <div
                     key={entity.id}
-                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 ${!isPlayer ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer`}
                     style={{ left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
                     onClick={(e) => {
                          e.stopPropagation();
-                         if (!isPlayer && entity.type !== 'asteroid_field' && entity.type !== 'event_beacon') {
+                         if (isPlayer) {
+                             if(navigationTarget) onSetNavigationTarget(null);
+                         } else if (entity.type !== 'asteroid_field' && entity.type !== 'event_beacon') {
                             onSelectTarget(entity.id);
                          }
                     }}
