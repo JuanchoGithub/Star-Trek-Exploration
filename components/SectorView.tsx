@@ -56,13 +56,13 @@ const SubsystemTarget: React.FC<{
     children: React.ReactNode;
 }> = ({ subsystem, health, maxHealth, isSelected, positionClass, onSelect, children }) => {
     const healthPercentage = (health / maxHealth) * 100;
-    let color = 'text-green-400';
-    if (healthPercentage < 60) color = 'text-yellow-400';
-    if (healthPercentage < 25) color = 'text-red-500';
+    let color = 'text-accent-green';
+    if (healthPercentage < 60) color = 'text-accent-yellow';
+    if (healthPercentage < 25) color = 'text-accent-red';
 
     return (
         <div
-            className={`absolute ${positionClass} transform transition-all cursor-pointer p-1 rounded-full bg-black bg-opacity-50 hover:bg-opacity-75 ${isSelected ? 'ring-2 ring-yellow-400' : 'ring-1 ring-gray-600'}`}
+            className={`absolute ${positionClass} transform transition-all cursor-pointer p-1 rounded-full bg-black bg-opacity-50 hover:bg-opacity-75 ${isSelected ? 'ring-2 ring-accent-yellow' : 'ring-1 ring-text-disabled'}`}
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
             title={`${subsystem.charAt(0).toUpperCase() + subsystem.slice(1)}: ${Math.round(healthPercentage)}%`}
         >
@@ -84,13 +84,13 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const path = getPath(playerShip.position, navigationTarget);
 
   return (
-    <div className="bg-black border-2 border-cyan-400 p-2 rounded-r-md h-full relative">
+    <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {sector.hasNebula && (
-        <div className="absolute inset-0 bg-purple-900 opacity-30 z-0 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-accent-purple opacity-30 z-0 pointer-events-none"></div>
       )}
       <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
         {gridCells.map((_, index) => (
-          <div key={index} className="border border-cyan-900 border-opacity-50"></div>
+          <div key={index} className="border border-border-dark border-opacity-50"></div>
         ))}
 
         <div className="absolute inset-0 grid grid-cols-12 grid-rows-10 z-10">
@@ -100,7 +100,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 return (
                     <div
                         key={`cell-${x}-${y}`}
-                        className="w-full h-full hover:bg-cyan-400 hover:bg-opacity-20 cursor-pointer"
+                        className="w-full h-full hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer"
                         onClick={() => onSetNavigationTarget({ x, y })}
                     />
                 );
@@ -111,7 +111,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             <>
             {path.map((pos, i) => (
                 <div key={`path-${i}`}
-                    className="absolute w-1 h-1 bg-yellow-400 rounded-full opacity-60"
+                    className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
                     style={{
                         left: `${(pos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
                         top: `${(pos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
@@ -121,7 +121,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 />
             ))}
             <div
-                className="absolute flex items-center justify-center text-yellow-400"
+                className="absolute flex items-center justify-center text-accent-yellow"
                 style={{
                     left: `${(navigationTarget.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
                     top: `${(navigationTarget.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
@@ -198,8 +198,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             } else if (entity.type === 'event_beacon') {
                 const IconComponent = beaconType.icon;
                 if (entity.isResolved) {
-                    icon = <IconComponent className="w-8 h-8 text-gray-600" />;
-                    factionColor = 'text-gray-600';
+                    icon = <IconComponent className="w-8 h-8 text-text-disabled" />;
+                    factionColor = 'text-text-disabled';
                 } else {
                     icon = <IconComponent className="w-8 h-8 animate-pulse" />;
                     factionColor = beaconType.colorClass;
@@ -233,7 +233,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                         {icon}
                         {isSelected && (
                             <>
-                                <div className="absolute inset-0 border-2 border-yellow-400 rounded-full animate-ping"></div>
+                                <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
                                 {targetEntity && targetEntity.type === 'ship' && targetEntity.scanned && (
                                     <>
                                     <SubsystemTarget subsystem="weapons" {...targetEntity.subsystems.weapons} isSelected={selectedSubsystem === 'weapons'} positionClass="-top-6 -left-3 -translate-x-1/2" onSelect={() => onSelectSubsystem('weapons')}><WeaponIcon className="w-5 h-5"/></SubsystemTarget>
@@ -245,10 +245,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                         )}
                         <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                     </div>
-                    <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-yellow-400' : ''}`}>{entityName}</span>
+                    <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>
                     {entity.type === 'ship' && (
-                        <div className="w-10 h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
-                            <div className="h-full bg-green-500" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
+                        <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
+                            <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
                         </div>
                     )}
                 </div>

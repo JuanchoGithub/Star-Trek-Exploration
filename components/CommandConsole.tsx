@@ -33,8 +33,8 @@ const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; childre
     className={`w-full text-left p-3 font-bold rounded transition-all flex items-center gap-3
       ${
         disabled
-          ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-          : `bg-blue-600 hover:bg-blue-500 text-white ${className}`
+          ? 'bg-bg-paper-lighter text-text-disabled cursor-not-allowed'
+          : `bg-primary-main hover:bg-primary-light text-primary-text ${className}`
       }
     `}
   >
@@ -43,7 +43,7 @@ const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; childre
 );
 
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mt-2 mb-1 px-1">{title}</h4>
+    <h4 className="text-sm font-bold text-text-secondary uppercase tracking-wider mt-2 mb-1 px-1">{title}</h4>
 );
 
 
@@ -76,19 +76,19 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <div className="flex-grow space-y-1">
             <SectionHeader title="Combat" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onFirePhasers} disabled={!canFire || isTargetFriendly || isRetreating || isTurnResolving} className="bg-red-700 hover:bg-red-600">
+                <CommandButton onClick={onFirePhasers} disabled={!canFire || isTargetFriendly || isRetreating || isTurnResolving} className="bg-accent-red hover:brightness-110">
                     <WeaponIcon className="w-5 h-5" /> Fire Phasers
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || isTargetFriendly || isRetreating || isTurnResolving} className="bg-cyan-700 hover:bg-cyan-600">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || isTargetFriendly || isRetreating || isTurnResolving} className="bg-accent-cyan hover:brightness-110">
                     <TorpedoIcon className="w-5 h-5" />
                     Launch Torpedo
                 </CommandButton>
             </div>
              <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} className="bg-purple-700 hover:bg-purple-600">
+                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} className="bg-accent-purple hover:brightness-110">
                     <SecurityIcon className="w-5 h-5" /> Board Ship
                 </CommandButton>
-                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} className="bg-orange-700 hover:bg-orange-600">
+                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} className="bg-accent-orange hover:brightness-110">
                     <SecurityIcon className="w-5 h-5" /> Strike Team
                 </CommandButton>
             </div>
@@ -96,13 +96,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
 
             <SectionHeader title="Maneuvers & Systems" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onScanTarget} disabled={!hasTarget || isTargetScanned || isRetreating || isTurnResolving} className="bg-sky-600 hover:bg-sky-500">
+                <CommandButton onClick={onScanTarget} disabled={!hasTarget || isTargetScanned || isRetreating || isTurnResolving} className="bg-accent-sky hover:brightness-110">
                     <ScanIcon className="w-5 h-5" /> Scan
                 </CommandButton>
-                 <CommandButton onClick={onHailTarget} disabled={!hasTarget || isRetreating || isTurnResolving} className="bg-teal-600 hover:bg-teal-500">
+                 <CommandButton onClick={onHailTarget} disabled={!hasTarget || isRetreating || isTurnResolving} className="bg-accent-teal hover:brightness-110">
                     <HailIcon className="w-5 h-5" /> Hail
                 </CommandButton>
-                 <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isRetreating || isTurnResolving} className="bg-indigo-700 hover:bg-indigo-600">
+                 <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isRetreating || isTurnResolving} className="bg-accent-indigo hover:brightness-110">
                     <RetreatIcon className="w-5 h-5" /> 
                     {isRetreating ? `Retreating (${turnsToRetreat})` : 'Retreat'}
                 </CommandButton>
@@ -111,7 +111,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
       <button 
         onClick={() => onEndTurn()}
         disabled={isTurnResolving}
-        className="w-full mt-2 p-3 font-bold rounded transition-all bg-blue-600 hover:bg-blue-500 text-white flex-shrink-0 disabled:bg-gray-600 disabled:cursor-not-allowed"
+        className="w-full mt-2 p-3 font-bold rounded transition-all bg-primary-main hover:bg-primary-light text-primary-text flex-shrink-0 disabled:bg-bg-paper-lighter disabled:cursor-not-allowed"
       >
         {getEndTurnButtonText()}
       </button>

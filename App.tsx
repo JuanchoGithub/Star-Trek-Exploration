@@ -14,6 +14,8 @@ import EventDialog from './components/EventDialog';
 import WarpAnimation from './components/WarpAnimation';
 import CombatFXLayer from './components/CombatFXLayer';
 import AwayMissionResultDialog from './components/AwayMissionResultDialog';
+import { useTheme } from './hooks/useTheme';
+import ThemeSwitcher from './components/ThemeSwitcher';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -47,17 +49,17 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
 
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-            <div className="bg-gray-800 border-2 border-blue-400 p-6 rounded-md w-full max-w-sm">
-                <h3 className="text-xl font-bold text-blue-300 mb-4 text-center">Game Menu</h3>
+            <div className="bg-bg-paper border-2 border-border-main p-6 rounded-md w-full max-w-sm">
+                <h3 className="text-xl font-bold text-secondary-light mb-4 text-center">Game Menu</h3>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={onSaveGame} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Save Game</button>
-                    <button onClick={onLoadGame} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Load Game</button>
-                    <button onClick={onExportSave} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Export Save</button>
-                    <button onClick={handleImportClick} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded">Import Save</button>
+                    <button onClick={onSaveGame} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Save Game</button>
+                    <button onClick={onLoadGame} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Load Game</button>
+                    <button onClick={onExportSave} className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded">Export Save</button>
+                    <button onClick={handleImportClick} className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded">Import Save</button>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
                 <div className="mt-6 text-center">
-                     <button onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded">Close</button>
+                     <button onClick={onClose} className="bg-bg-paper-lighter hover:brightness-110 text-text-primary font-bold py-2 px-6 rounded">Close</button>
                 </div>
             </div>
         </div>
@@ -115,13 +117,14 @@ const App: React.FC = () => {
     onCloseAwayMissionResult,
   } = useGameLogic();
 
+  const { theme, themeName, setTheme } = useTheme();
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [isGameMenuOpen, setGameMenuOpen] = useState(false);
 
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
 
   return (
-    <main className={`bg-gray-900 text-gray-100 h-screen p-4 font-sans flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
+    <main className={`bg-bg-default text-text-primary h-screen p-4 ${theme.font} ${theme.className} flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
       <div className="flex-grow grid grid-cols-[3fr_1fr] gap-4 min-h-0">
           {/* Left Column: Map/HUD */}
           <div className="flex flex-col min-h-0">
@@ -129,10 +132,10 @@ const App: React.FC = () => {
               <div className="flex flex-grow min-h-0">
                   {/* Vertical Tabs */}
                   <div className="flex flex-col w-10 flex-shrink-0">
-                      <button onClick={() => onSetView('sector')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-tl-md ${currentView === 'sector' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                      <button onClick={() => onSetView('sector')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-tl-md ${currentView === 'sector' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'}`}>
                           <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Sector View</span>
                       </button>
-                      <button onClick={() => onSetView('quadrant')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                      <button onClick={() => onSetView('quadrant')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'}`}>
                           <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Quadrant Map</span>
                       </button>
                   </div>
@@ -210,7 +213,9 @@ const App: React.FC = () => {
             latestLog={gameState.logs[0] || "Welcome to the U.S.S. Endeavour."}
             onToggleLog={() => setShowLogPanel(true)}
             onOpenGameMenu={() => setGameMenuOpen(true)}
-          />
+          >
+            <ThemeSwitcher themeName={themeName} setTheme={setTheme} />
+          </StatusLine>
       </div>
 
       {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} />}
@@ -221,11 +226,11 @@ const App: React.FC = () => {
 
       {showLogPanel && (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-            <div className="bg-gray-900 border-2 border-blue-400 rounded-md h-3/4 w-4/5 max-w-4xl flex flex-col p-4">
+            <div className="bg-bg-paper border-2 border-border-main rounded-md h-3/4 w-4/5 max-w-4xl flex flex-col p-4">
                  <LogPanel logs={gameState.logs} />
                  <button 
                     onClick={() => setShowLogPanel(false)} 
-                    className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all self-center flex-shrink-0"
+                    className="mt-4 px-6 py-2 bg-primary-main hover:bg-primary-light text-primary-text font-bold rounded-lg transition-all self-center flex-shrink-0"
                 >
                     Close Log
                 </button>
@@ -243,8 +248,8 @@ const App: React.FC = () => {
       )}
       {gameState.gameOver && (
           <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 p-8 text-center">
-              <h2 className="text-6xl font-bold text-red-500 mb-4">GAME OVER</h2>
-              <p className="text-2xl text-gray-300">{gameState.logs[0]}</p>
+              <h2 className="text-6xl font-bold text-accent-red mb-4">GAME OVER</h2>
+              <p className="text-2xl text-text-secondary">{gameState.logs[0]}</p>
           </div>
       )}
     </main>

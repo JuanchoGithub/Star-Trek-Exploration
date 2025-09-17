@@ -30,9 +30,9 @@ const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: n
     if (subsystem.maxHealth === 0) return null;
 
     const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
-    let color = 'text-green-400';
-    if (healthPercentage < 60) color = 'text-yellow-400';
-    if (healthPercentage < 25) color = 'text-red-400';
+    let color = 'text-accent-green';
+    if (healthPercentage < 60) color = 'text-accent-yellow';
+    if (healthPercentage < 25) color = 'text-accent-red';
 
     return (
         <div className={`flex items-center gap-2 ${color}`}>
@@ -48,22 +48,22 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
     return (
-        <div className="bg-gray-900 p-3 rounded h-full flex flex-col">
+        <div className="bg-bg-paper p-3 rounded h-full flex flex-col">
             <div className="flex-grow grid grid-cols-[1fr_2fr] gap-3 items-center min-h-0">
                 <div className="h-full w-full">
                      <WireframeDisplay target={target} />
                 </div>
                 <div className="h-full flex flex-col justify-center">
-                    <h3 className="text-lg font-bold text-yellow-300 mb-1 truncate" title={name}>Target: {name}</h3>
+                    <h3 className="text-lg font-bold text-accent-yellow mb-1 truncate" title={name}>Target: {name}</h3>
                     {isUnscannedShip ? (
-                        <p className="text-sm text-gray-400">Scan to reveal details.</p>
+                        <p className="text-sm text-text-disabled">Scan to reveal details.</p>
                     ) : (
-                        <p className="text-sm text-gray-500">{target.faction} {target.type}</p>
+                        <p className="text-sm text-text-disabled">{target.faction} {target.type}</p>
                     )}
                     
                     {target.type === 'planet' && target.scanned && (
                          <div className="text-sm mt-2">
-                             <span className="text-gray-400">Classification: </span>
+                             <span className="text-text-secondary">Classification: </span>
                              <span>{planetTypes[target.planetClass]?.name || 'Unknown'}</span>
                          </div>
                     )}
@@ -71,11 +71,11 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
                     {target.type === 'ship' && !isUnscannedShip && (
                         <>
                             <div className="text-sm mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                                <span className="text-gray-400">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
-                                <span className="text-gray-400">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
+                                <span className="text-text-secondary">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
+                                <span className="text-text-secondary">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-gray-700">
-                                <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Subsystems</h4>
+                            <div className="mt-3 pt-3 border-t border-bg-paper-lighter">
+                                <h4 className="text-xs font-bold text-text-secondary mb-2 uppercase tracking-wider">Subsystems</h4>
                                 <div className="space-y-1 text-sm">
                                 <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
                                 <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
@@ -138,32 +138,32 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
                     {target ? <TargetInfo target={target} /> : (
-                         <div className="bg-gray-900 p-3 rounded h-full flex flex-col justify-center text-center">
-                            <h3 className="text-lg font-bold text-gray-400">No Target Selected</h3>
-                            <p className="text-sm text-gray-500">Click an object on the map to select it.</p>
+                         <div className="bg-bg-paper p-3 rounded h-full flex flex-col justify-center text-center">
+                            <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
+                            <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
                         </div>
                     )}
                     {isAdjacentToStarbase && !isDocked && (
-                        <div className="bg-gray-900 p-3 rounded text-center">
-                            <button onClick={onDockWithStarbase} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Initiate Docking</button>
+                        <div className="bg-bg-paper p-3 rounded text-center">
+                            <button onClick={onDockWithStarbase} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Initiate Docking</button>
                         </div>
                     )}
                     {isDocked && (
-                        <div className="bg-gray-900 p-3 rounded text-center">
-                            <h3 className="text-lg font-bold text-blue-300 mb-3">Starbase Operations</h3>
+                        <div className="bg-bg-paper p-3 rounded text-center">
+                            <h3 className="text-lg font-bold text-secondary-light mb-3">Starbase Operations</h3>
                             <div className="space-y-2">
-                                <button onClick={onStarbaseRepairs} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">Full Service Repairs & Recharge</button>
-                                <button onClick={onRechargeDilithium} className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
-                                <button onClick={onResupplyTorpedoes} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
+                                <button onClick={onStarbaseRepairs} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Full Service Repairs & Recharge</button>
+                                <button onClick={onRechargeDilithium} className="w-full bg-accent-pink hover:brightness-110 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
+                                <button onClick={onResupplyTorpedoes} className="w-full bg-accent-cyan hover:brightness-110 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
                             </div>
                         </div>
                     )}
                     {orbitingPlanet && (
-                        <div className="bg-gray-900 p-3 rounded text-center">
-                            <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
+                        <div className="bg-bg-paper p-3 rounded text-center">
+                            <h3 className="text-lg font-bold text-accent-green mb-3">Planet Operations</h3>
                             <button 
                                 onClick={() => orbitingPlanet && onStartAwayMission(orbitingPlanet.id)} 
-                                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded disabled:bg-bg-paper-lighter disabled:cursor-not-allowed"
                                 disabled={awayMissionState.disabled}
                             >
                                 {awayMissionState.text}

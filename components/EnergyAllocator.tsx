@@ -13,24 +13,24 @@ interface EnergyAllocatorProps {
 
 const Slider: React.FC<{ label: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; icon: React.ReactNode; }> = ({ label, value, onChange, icon }) => (
   <div className="flex items-center space-x-2">
-    <span className="text-blue-300" title={label}>{icon}</span>
+    <span className="text-secondary-light" title={label}>{icon}</span>
     <input
       type="range"
       min="0"
       max="100"
       value={value}
       onChange={onChange}
-      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+      className="w-full h-2 bg-bg-paper-lighter rounded-lg appearance-none cursor-pointer accent-accent-orange"
     />
-    <span className="text-orange-400 font-bold w-10 text-right">{value}%</span>
+    <span className="text-accent-orange font-bold w-10 text-right">{value}%</span>
   </div>
 );
 
 
 const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange, onDistributeEvenly }) => {
   return (
-    <div className="bg-gray-900 p-3 rounded">
-      <h3 className="text-lg font-bold text-blue-300 mb-3">Energy Allocation</h3>
+    <div className="bg-bg-paper p-3 rounded">
+      <h3 className="text-lg font-bold text-secondary-light mb-3">Energy Allocation</h3>
       <div className="space-y-3">
         <Slider 
           label="Weapons"
@@ -54,7 +54,7 @@ const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyC
       <div className="mt-4 text-center">
         <button 
             onClick={onDistributeEvenly} 
-            className="text-xs text-blue-300 hover:text-blue-200 border border-blue-400 rounded-full px-3 py-1 transition-colors"
+            className="text-xs text-secondary-light hover:text-secondary-main border border-border-main rounded-full px-3 py-1 transition-colors"
         >
             Distribute Evenly
         </button>

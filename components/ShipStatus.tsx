@@ -18,7 +18,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, colorClass }) 
         <span className="font-bold">{label}</span>
         <span>{Math.round(value)} / {max}</span>
       </div>
-      <div className="w-full bg-gray-700 rounded-full h-2.5">
+      <div className="w-full bg-bg-paper-lighter rounded-full h-2.5">
         <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${percentage}%` }}></div>
       </div>
     </div>
@@ -53,9 +53,9 @@ const SubsystemStatus: React.FC<{
                 }
 
                 return (
-                    <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-gray-800`}>
+                    <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-bg-paper-lighter`}>
                         <div className={color}>{system.icon}</div>
-                        <span className="text-xs mt-1 text-gray-300">{system.name}</span>
+                        <span className="text-xs mt-1 text-text-secondary">{system.name}</span>
                         <span className={`text-sm font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
                         <span className={`text-xs font-bold ${system.bonusColor}`}>{system.bonus}</span>
                     </div>
@@ -74,10 +74,10 @@ const InteractiveStatusIndicator: React.FC<{
 }> = ({ label, status, colorClass, onClick, disabled = false }) => (
     <div
         onClick={!disabled ? onClick : undefined}
-        className={`flex justify-between items-center text-xs p-1 bg-gray-800 rounded transition-colors ${onClick && !disabled ? 'cursor-pointer hover:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded transition-colors ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-paper' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         title={disabled ? 'Action unavailable' : `Click to toggle ${label}`}
     >
-        <span className="font-bold text-gray-300 uppercase tracking-wider">{label}</span>
+        <span className="font-bold text-text-secondary uppercase tracking-wider">{label}</span>
         <span className={`font-bold px-2 py-0.5 rounded ${colorClass}`}>{status}</span>
     </div>
 );
@@ -113,33 +113,33 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
   ];
 
   return (
-    <div className="bg-gray-900 p-3 rounded h-full flex flex-col">
-      <h3 className="text-lg font-bold text-blue-300 mb-2">U.S.S. Endeavour Systems</h3>
+    <div className="bg-bg-paper p-3 rounded h-full flex flex-col">
+      <h3 className="text-lg font-bold text-secondary-light mb-2">U.S.S. Endeavour Systems</h3>
       
-      <div className="mb-3 border-t border-b border-gray-700 py-2 space-y-1">
+      <div className="mb-3 border-t border-b border-bg-paper-lighter py-2 space-y-1">
         <InteractiveStatusIndicator 
             label="Red Alert" 
             status={gameState.redAlert ? 'ACTIVE' : 'STANDBY'} 
-            colorClass={gameState.redAlert ? 'text-red-400 animate-pulse bg-red-900 bg-opacity-50' : 'text-gray-400'}
+            colorClass={gameState.redAlert ? 'text-accent-red animate-pulse bg-red-900 bg-opacity-50' : 'text-text-disabled'}
             onClick={onToggleRedAlert}
         />
         <InteractiveStatusIndicator 
             label="Evasive" 
             status={ship.evasive ? 'ENABLED' : 'DISABLED'} 
-            colorClass={ship.evasive ? 'text-green-300 bg-green-900 bg-opacity-50' : 'text-gray-400'}
+            colorClass={ship.evasive ? 'text-accent-green bg-green-900 bg-opacity-50' : 'text-text-disabled'}
             onClick={onEvasiveManeuvers}
             disabled={!canTakeEvasive}
         />
         <InteractiveStatusIndicator 
             label="Damage Control" 
             status={ship.repairTarget ? `REPAIRING ${ship.repairTarget.toUpperCase()}` : 'INACTIVE'} 
-            colorClass={ship.repairTarget ? 'text-yellow-300 bg-yellow-900 bg-opacity-50' : 'text-gray-400'}
+            colorClass={ship.repairTarget ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled'}
             onClick={() => (hasDamagedSystems || ship.repairTarget) && setRepairListVisible(prev => !prev)}
             disabled={!hasDamagedSystems && !ship.repairTarget}
         />
          {isRepairListVisible && (
-            <div className="bg-gray-800 p-2 rounded mt-2 border border-yellow-700">
-                <h4 className="text-xs font-bold text-yellow-300 mb-2 text-center">Assign Repair Crew</h4>
+            <div className="bg-bg-paper p-2 rounded mt-2 border border-accent-yellow-darker">
+                <h4 className="text-xs font-bold text-accent-yellow mb-2 text-center">Assign Repair Crew</h4>
                 <div className="space-y-1">
                     {systemsToRepair.map(sys => {
                         const isAssigned = ship.repairTarget === sys.key;
@@ -150,10 +150,10 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
                                 disabled={sys.disabled && !isAssigned}
                                 className={`w-full text-left p-1 text-sm font-bold rounded transition-colors ${
                                     sys.disabled && !isAssigned
-                                    ? 'bg-gray-600 disabled:cursor-not-allowed text-gray-400'
+                                    ? 'bg-bg-paper-lighter disabled:cursor-not-allowed text-text-disabled'
                                     : isAssigned 
-                                    ? 'bg-yellow-500 hover:bg-yellow-400 text-black' 
-                                    : 'bg-yellow-700 hover:bg-yellow-600 text-white'
+                                    ? 'bg-accent-yellow-dark hover:bg-accent-yellow text-secondary-text' 
+                                    : 'bg-accent-yellow-darker hover:brightness-110 text-white'
                                 }`}
                             >
                                 {isAssigned ? 'Cancel:' : 'Assign:'} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
@@ -166,22 +166,22 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
       </div>
 
       <div className="space-y-3">
-        <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-red-500" />
-        <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-cyan-500" />
-        <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-yellow-500" />
-        <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-pink-500" />
+        <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
+        <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-accent-cyan" />
+        <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow" />
+        <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold">Torpedoes</span>
             <div className="flex items-center gap-1">
-                <TorpedoIcon className="w-5 h-5 text-cyan-400"/>
-                <span className="font-bold text-orange-400">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
+                <TorpedoIcon className="w-5 h-5 text-accent-cyan"/>
+                <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
             </div>
         </div>
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold">Security Teams</span>
             <div className="flex items-center gap-1">
-                <SecurityIcon className="w-5 h-5 text-red-400"/>
-                <span className="font-bold text-orange-400">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
+                <SecurityIcon className="w-5 h-5 text-accent-red"/>
+                <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
             </div>
         </div>
         <SubsystemStatus 

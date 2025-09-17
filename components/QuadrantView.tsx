@@ -13,8 +13,8 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
     const quadrantSize = { width: 8, height: 8 };
 
     return (
-        <div className="bg-black border-2 border-cyan-400 p-2 rounded-r-md h-full flex flex-col">
-            <h2 className="text-xl font-bold text-cyan-300 mb-2 text-center">Quadrant Map</h2>
+        <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full flex flex-col">
+            <h2 className="text-xl font-bold text-secondary-light mb-2 text-center">Quadrant Map</h2>
             <div className="grid grid-cols-8 grid-rows-8 h-full gap-1 flex-grow">
                 {quadrantMap.flat().map((sector, index) => {
                     const qx = index % quadrantSize.width;
@@ -22,22 +22,22 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                     const isPlayerHere = playerPosition.qx === qx && playerPosition.qy === qy;
                     const isAdjacent = Math.abs(playerPosition.qx - qx) + Math.abs(playerPosition.qy - qy) === 1;
 
-                    let bgColor = 'bg-gray-900';
-                    let borderColor = 'border-cyan-900';
-                    let textColor = 'text-gray-600';
+                    let bgColor = 'bg-bg-paper';
+                    let borderColor = 'border-border-dark';
+                    let textColor = 'text-text-disabled';
                     let hoverClass = '';
 
                     if (sector.visited) {
-                        bgColor = 'bg-gray-800';
-                        borderColor = 'border-cyan-700';
-                        textColor = 'text-cyan-400';
+                        bgColor = 'bg-bg-paper-lighter';
+                        borderColor = 'border-border-main';
+                        textColor = 'text-secondary-main';
                     }
                     
                     if (isPlayerHere) {
-                        bgColor = 'bg-blue-800';
-                        borderColor = 'border-blue-400';
+                        bgColor = 'bg-primary-dark';
+                        borderColor = 'border-primary-main';
                     } else if (isAdjacent) {
-                        hoverClass = 'hover:bg-green-700 cursor-pointer';
+                        hoverClass = 'hover:bg-accent-green cursor-pointer';
                     }
 
 
@@ -51,7 +51,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                         >
                             <span className={`font-bold ${textColor}`}>({qx},{qy})</span>
                             {isPlayerHere && (
-                                <div className="absolute inset-0 flex items-center justify-center text-yellow-300">
+                                <div className="absolute inset-0 flex items-center justify-center text-accent-yellow">
                                     <PlayerShipIcon className="w-8 h-8 animate-pulse" />
                                 </div>
                             )}
