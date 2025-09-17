@@ -28,6 +28,7 @@ interface BaseEntity {
 
 export interface Ship extends BaseEntity {
   type: 'ship';
+  shipClass: 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
   hull: number;
   maxHull: number;
   shields: number;

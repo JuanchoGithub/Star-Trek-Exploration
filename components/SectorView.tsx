@@ -225,13 +225,35 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     icon = <PlayerShipIcon className="w-8 h-8"/>;
                 } else if (!shipEntity.scanned) {
                     icon = <UnknownShipIcon className="w-8 h-8"/>;
-                    entityName = 'Unknown Ship';
+                    entityName = 'Unknown Contact';
                 } else {
-                    // This logic determines the icon shape based on original faction, even if captured
-                    if (shipEntity.name.includes('Klingon')) icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
-                    else if (shipEntity.name.includes('Romulan')) icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
-                    else if (shipEntity.name.includes('Pirate')) icon = <OrionPirateShipIcon className="w-8 h-8"/>;
-                    else icon = <NeutralShipIcon className="w-8 h-8"/>;
+                    let shipClassForIcon = shipEntity.shipClass;
+                    // Fallback for older save files without shipClass
+                    if (!shipClassForIcon) {
+                        if (shipEntity.name.includes('Klingon')) shipClassForIcon = 'Klingon';
+                        else if (shipEntity.name.includes('Romulan')) shipClassForIcon = 'Romulan';
+                        else if (shipEntity.name.includes('Pirate')) shipClassForIcon = 'Pirate';
+                        else shipClassForIcon = 'Independent';
+                    }
+
+                    switch (shipClassForIcon) {
+                        case 'Klingon':
+                            icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
+                            break;
+                        case 'Romulan':
+                            icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
+                            break;
+                        case 'Pirate':
+                            icon = <OrionPirateShipIcon className="w-8 h-8"/>;
+                            break;
+                        case 'Federation':
+                            icon = <PlayerShipIcon className="w-8 h-8"/>;
+                            break;
+                        case 'Independent':
+                        default:
+                            icon = <NeutralShipIcon className="w-8 h-8"/>;
+                            break;
+                    }
                 }
 
                 // This logic determines the color based on current faction

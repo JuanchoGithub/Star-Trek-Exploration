@@ -5,6 +5,7 @@ import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplat
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
+import { shipNames } from '../assets/ships/configs/shipNames';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE, SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 
 // Helper to generate a unique ID
@@ -67,7 +68,7 @@ const consumeEnergy = (ship: Ship, amount: number, logs: string[]): boolean => {
 };
 
 
-const generateSectorContent = (sector: SectorState, availablePlanetNames?: Record<PlanetClass, string[]>): SectorState => {
+const generateSectorContent = (sector: SectorState, availablePlanetNames?: Record<PlanetClass, string[]>, availableShipNames?: Record<string, string[]>): SectorState => {
     const newEntities: Entity[] = [];
     const entityCount = Math.floor(Math.random() * 4) + 2; // 2 to 5 entities
     const takenPositions = new Set<string>();
@@ -84,6 +85,18 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
         } while (takenPositions.has(`${pos.x},${pos.y}`) && tries < 50);
         takenPositions.add(`${pos.x},${pos.y}`);
         return pos;
+    };
+
+    const getUniqueShipName = (faction: string): string => {
+        if (availableShipNames && availableShipNames[faction] && availableShipNames[faction].length > 0) {
+            const nameList = availableShipNames[faction];
+            const nameIndex = Math.floor(Math.random() * nameList.length);
+            const name = nameList[nameIndex];
+            nameList.splice(nameIndex, 1); // Remove from pool
+            return name;
+        }
+        // Fallback
+        return `${faction} Vessel ${uniqueId().substr(-4)}`;
     };
 
     // Chance for a starbase (rare)
@@ -160,11 +173,13 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
             });
         } else if (entityTypeRoll < 0.70) { // 15% chance for a Klingon/Romulan
             const isKlingon = Math.random() < 0.7;
+            const faction = isKlingon ? 'Klingon' : 'Romulan';
             newEntities.push({
                 id: uniqueId(),
-                name: isKlingon ? 'Klingon Bird-of-Prey' : 'Romulan Warbird',
+                name: getUniqueShipName(faction),
                 type: 'ship',
-                faction: isKlingon ? 'Klingon' : 'Romulan',
+                shipClass: faction,
+                faction: faction,
                 position,
                 hull: 60, maxHull: 60, shields: 20, maxShields: 20,
                 energy: { current: 50, max: 50 }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
@@ -177,8 +192,9 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
         } else if (entityTypeRoll < 0.85) { // 15% chance for a Pirate
             newEntities.push({
                 id: uniqueId(),
-                name: 'Pirate Raider',
+                name: getUniqueShipName('Pirate'),
                 type: 'ship',
+                shipClass: 'Pirate',
                 faction: 'Pirate',
                 position,
                 hull: 40, maxHull: 40, shields: 10, maxShields: 10,
@@ -192,8 +208,9 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
         } else { // ~15% chance for a Trader
             newEntities.push({
                 id: uniqueId(),
-                name: 'Independent Trader',
+                name: getUniqueShipName('Independent'),
                 type: 'ship',
+                shipClass: 'Independent',
                 faction: 'Independent',
                 position,
                 hull: 30, maxHull: 30, shields: 0, maxShields: 0,
@@ -217,10 +234,11 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
 const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
     const newMap = JSON.parse(JSON.stringify(quadrantMap));
     const availablePlanetNames: Record<PlanetClass, string[]> = JSON.parse(JSON.stringify(planetNames));
+    const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
 
     for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
         for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
-            newMap[qy][qx] = generateSectorContent(newMap[qy][qx], availablePlanetNames);
+            newMap[qy][qx] = generateSectorContent(newMap[qy][qx], availablePlanetNames, availableShipNames);
         }
     }
     return newMap;
@@ -233,6 +251,7 @@ const createInitialGameState = (): GameState => {
     id: 'player',
     name: 'U.S.S. Endeavour',
     type: 'ship',
+    shipClass: 'Federation',
     faction: 'Federation',
     position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
     hull: 100,
@@ -334,6 +353,9 @@ export const useGameLogic = () => {
                     }
                     if (!savedState.player.targeting) {
                         delete savedState.player.targeting;
+                    }
+                    if (!savedState.player.ship.shipClass) {
+                        savedState.player.ship.shipClass = 'Federation';
                     }
                     return savedState;
                 }
@@ -446,6 +468,9 @@ export const useGameLogic = () => {
                     }
                     if (!savedState.player.targeting) {
                         delete savedState.player.targeting;
+                    }
+                    if (!savedState.player.ship.shipClass) {
+                        savedState.player.ship.shipClass = 'Federation';
                     }
                     setGameState(savedState);
                     addLog('Game state loaded successfully.');
@@ -1302,6 +1327,7 @@ export const useGameLogic = () => {
                         for (let i = 0; i < ambushCount; i++) {
                             sectorToWarpTo.entities.push({
                                 id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
+                                shipClass: 'Pirate',
                                 position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) }, // Appear at top
                                 hull: 40, maxHull: 40, shields: 10, maxShields: 10,
                                 energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
@@ -1653,6 +1679,7 @@ export const useGameLogic = () => {
                         for (let i = 0; i < count; i++) {
                              next.currentSector.entities.push({
                                 id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate',
+                                shipClass: 'Pirate',
                                 position: { x: beacon.position.x + i + 1, y: beacon.position.y },
                                 hull: 40, maxHull: 40, shields: 10, maxShields: 10,
                                 energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
