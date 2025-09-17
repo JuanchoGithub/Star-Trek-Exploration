@@ -15,16 +15,18 @@ import CombatFXLayer from './components/CombatFXLayer';
 import AwayMissionResultDialog from './components/AwayMissionResultDialog';
 import { useTheme } from './hooks/useTheme';
 import ThemeSwitcher from './components/ThemeSwitcher';
+import PlayerManual from './components/PlayerManual';
 
 interface GameMenuProps {
     onSaveGame: () => void;
     onLoadGame: () => void;
     onExportSave: () => void;
     onImportSave: (jsonString: string) => void;
+    onOpenManual: () => void;
     onClose: () => void;
 }
 
-const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onClose }) => {
+const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onOpenManual, onClose }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleImportClick = () => {
@@ -55,7 +57,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
                     <button onClick={onLoadGame} className="w-full btn btn-primary">Load Game</button>
                     <button onClick={onExportSave} className="w-full btn btn-accent green text-white">Export Save</button>
                     <button onClick={handleImportClick} className="w-full btn btn-accent green text-white">Import Save</button>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                    <button onClick={onOpenManual} className="w-full btn btn-secondary col-span-2">Player's Manual</button>
                 </div>
                 <div className="mt-6 text-center">
                      <button onClick={onClose} className="btn btn-tertiary px-6">Close</button>
@@ -119,6 +121,7 @@ const App: React.FC = () => {
   const { theme, themeName, setTheme } = useTheme();
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [isGameMenuOpen, setGameMenuOpen] = useState(false);
+  const [isManualOpen, setManualOpen] = useState(false);
 
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
   const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
@@ -247,8 +250,12 @@ const App: React.FC = () => {
               onLoadGame={loadGame}
               onExportSave={exportSave}
               onImportSave={importSave}
+              onOpenManual={() => { setGameMenuOpen(false); setManualOpen(true); }}
               onClose={() => setGameMenuOpen(false)}
           />
+      )}
+      {isManualOpen && (
+        <PlayerManual onClose={() => setManualOpen(false)} themeName={themeName} />
       )}
       {gameState.gameOver && (
           <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 p-8 text-center">
