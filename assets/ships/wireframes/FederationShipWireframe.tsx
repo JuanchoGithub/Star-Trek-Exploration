@@ -10,15 +10,31 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const FederationShipWireframe: React.FC = () => (
     <WireframeSVG>
-        {/* Pylon */}
-        <line x1="70" y1="55" x2="80" y2="35" />
-        {/* Neck */}
-        <polygon points="45,48 55,48 65,60 55,60" />
         {/* Secondary Hull */}
-        <ellipse cx="70" cy="70" rx="35" ry="12" />
+        <ellipse cx="68" cy="72" rx="30" ry="10" />
+        {/* Deflector Dish */}
+        <ellipse cx="41" cy="72" rx="5" ry="5" />
+        <line x1="41" y1="67" x2="41" y2="77" />
+        <line x1="36" y1="72" x2="46" y2="72" />
+
+        {/* Neck */}
+        <path d="M 50 45 C 55 55, 60 63, 60 63" />
+        <path d="M 40 45 C 45 55, 50 63, 50 63" />
+
+        {/* Pylons */}
+        <path d="M 80 65 C 85 55, 88 40, 85 30" />
+        <line x1="80" y1="65" x2="84" y2="67" /> 
+        <line x1="85" y1="30" x2="89" y2="32" /> 
+
         {/* Nacelle */}
-        <rect x="75" y="25" width="23" height="10" rx="5" />
+        <ellipse cx="80" cy="25" rx="18" ry="5" />
+        <ellipse cx="65" cy="25" rx="4" ry="4" strokeWidth="2" />
+        <line x1="62" y1="25" x2="98" y2="25" />
+
         {/* Saucer Section */}
-        <ellipse cx="40" cy="40" rx="35" ry="10" />
+        <ellipse cx="45" cy="40" rx="40" ry="15" />
+        <ellipse cx="45" cy="40" r="8" />
+        <path d="M 5 40 C 25 30, 65 30, 85 40" />
+        <path d="M 5 40 C 25 50, 65 50, 85 40" />
     </WireframeSVG>
 );
