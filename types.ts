@@ -86,10 +86,14 @@ export interface TorpedoProjectile extends BaseEntity {
 
 export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile;
 
+export type FactionOwner = 'Federation' | 'Klingon' | 'Romulan' | 'None';
+
 export interface SectorState {
   entities: Entity[];
   visited: boolean;
   hasNebula: boolean;
+  factionOwner: FactionOwner;
+  isScanned: boolean;
 }
 
 export type AwayMissionRole = 'Science' | 'Security' | 'Engineering' | 'Medical' | 'Counselor';

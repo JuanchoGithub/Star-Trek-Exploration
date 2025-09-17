@@ -113,6 +113,7 @@ const App: React.FC = () => {
     onSendAwayTeam,
     onToggleRedAlert,
     onCloseAwayMissionResult,
+    onScanQuadrant,
   } = useGameLogic();
 
   const { theme, themeName, setTheme } = useTheme();
@@ -159,6 +160,7 @@ const App: React.FC = () => {
                           quadrantMap={gameState.quadrantMap}
                           playerPosition={gameState.player.position}
                           onWarp={onWarp}
+                          onScanQuadrant={onScanQuadrant}
                           />
                       )}
                       {isWarping && <WarpAnimation />}

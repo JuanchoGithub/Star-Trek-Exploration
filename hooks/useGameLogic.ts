@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
@@ -40,32 +40,56 @@ const consumeEnergy = (ship: Ship, amount: number): { success: boolean, logs: st
         return { success: true, logs };
     }
 
-    if (ship.dilithium.current > 0) {
-        ship.dilithium.current--;
-        ship.energy.current = ship.energy.max;
-        logs.push("CRITICAL: Reserve power depleted! Rerouting 1 Dilithium to the batteries. Power fully restored.");
+    // Not enough initial power.
+    const initialEnergy = ship.energy.current;
+    const remainingCost = amount - initialEnergy;
 
-        const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter'];
-        const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-        const targetSubsystem = ship.subsystems[randomSubsystemKey];
-        if (targetSubsystem.maxHealth > 0) {
-            const damage = 5 + Math.floor(Math.random() * 6);
-            targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
-            logs.push(`WARNING: The power surge caused ${damage} damage to the ${randomSubsystemKey} system!`);
-        }
-
-        if (ship.energy.current >= amount) {
-            ship.energy.current -= amount;
-            return { success: true, logs };
-        }
+    if (ship.dilithium.current <= 0) {
+        logs.push(`Action failed: Insufficient reserve power and no Dilithium backup.`);
+        return { success: false, logs };
     }
-    
-    logs.push(`Action failed: Insufficient reserve power and no Dilithium backup.`);
-    return { success: false, logs };
+
+    // Use dilithium
+    ship.energy.current = 0; // Use up what was left
+    ship.dilithium.current--;
+    const rechargedEnergy = ship.energy.max; // Full recharge
+    logs.push(`CRITICAL: Drained remaining ${initialEnergy} power. Rerouting 1 Dilithium to batteries. Power fully restored.`);
+
+    // Apply subsystem damage
+    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter'];
+    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+    const targetSubsystem = ship.subsystems[randomSubsystemKey];
+    if (targetSubsystem.maxHealth > 0) {
+        const damage = 5 + Math.floor(Math.random() * 6);
+        targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+        logs.push(`WARNING: The power surge caused ${damage} damage to the ${randomSubsystemKey} system!`);
+    }
+
+    // Now check if we can cover the remaining cost.
+    if (rechargedEnergy >= remainingCost) {
+        ship.energy.current = rechargedEnergy - remainingCost;
+        return { success: true, logs };
+    } else {
+        // This is an edge case where the action costs more than a full tank of energy plus whatever was left.
+        // The action fails, but the dilithium is still spent. The ship is left with full power.
+        ship.energy.current = rechargedEnergy;
+        logs.push(`Action failed: Power cost is too high even for a dilithium boost. Power restored, but action aborted.`);
+        return { success: false, logs };
+    }
 };
 
+const getFactionOwner = (qx: number, qy: number): FactionOwner => {
+    const midX = QUADRANT_SIZE / 2;
+    const midY = QUADRANT_SIZE / 2;
 
-const generateSectorContent = (sector: SectorState, availablePlanetNames?: Record<PlanetClass, string[]>, availableShipNames?: Record<string, string[]>, colorIndex?: { current: number }): SectorState => {
+    if (qx < midX && qy < midY) return 'Klingon';
+    if (qx >= midX && qy < midY) return 'Romulan';
+    if (qx < midX && qy >= midY) return 'Federation';
+    
+    return 'None'; // No Man's Land
+};
+
+const generateSectorContent = (sector: SectorState, qx: number, qy: number, availablePlanetNames?: Record<PlanetClass, string[]>, availableShipNames?: Record<string, string[]>, colorIndex?: { current: number }): SectorState => {
     const newEntities: Entity[] = [];
     const entityCount = Math.floor(Math.random() * 4) + 2; // 2 to 5 entities
     const takenPositions = new Set<string>();
@@ -104,10 +128,50 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
         return ENEMY_LOG_COLORS[0];
     };
 
-    if (Math.random() < 0.1) {
+    const { factionOwner } = sector;
+    const midX = QUADRANT_SIZE / 2;
+    const midY = QUADRANT_SIZE / 2;
+
+    let depth = 0;
+    if (factionOwner === 'Klingon') depth = (midX - 1 - qx) + (midY - 1 - qy);
+    else if (factionOwner === 'Romulan') depth = (qx - midX) + (midY - 1 - qy);
+    else if (factionOwner === 'Federation') depth = (midX - 1 - qx) + (qy - midY);
+
+    let mainFaction: Ship['shipClass'] | null = null;
+    let pirateChance = 0.1;
+    let factionShipChance = 0;
+    let starbaseChance = 0;
+
+    switch (factionOwner) {
+        case 'Federation':
+            mainFaction = 'Federation';
+            starbaseChance = 0.2 + depth * 0.05;
+            factionShipChance = 0.2; 
+            pirateChance = 0.01;
+            break;
+        case 'Klingon':
+            mainFaction = 'Klingon';
+            starbaseChance = 0.02 + depth * 0.01;
+            factionShipChance = 0.25 + depth * 0.1;
+            pirateChance = 0.05;
+            break;
+        case 'Romulan':
+            mainFaction = 'Romulan';
+            starbaseChance = 0.02 + depth * 0.01;
+            factionShipChance = 0.25 + depth * 0.1;
+            pirateChance = 0.05;
+            break;
+        case 'None':
+            pirateChance = 0.4;
+            factionShipChance = 0.2;
+            break;
+    }
+
+    if (Math.random() < starbaseChance) {
         newEntities.push({
             id: uniqueId(), name: `Starbase ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase',
-            faction: 'Federation', position: getUniquePosition(), scanned: false, hull: 500, maxHull: 500,
+            faction: mainFaction === 'Klingon' || mainFaction === 'Romulan' ? mainFaction : 'Federation', 
+            position: getUniquePosition(), scanned: false, hull: 500, maxHull: 500,
         });
     }
 
@@ -151,44 +215,73 @@ const generateSectorContent = (sector: SectorState, availablePlanetNames?: Recor
                 position, scanned: true,
             });
         } else {
-            let faction: 'Klingon' | 'Romulan' | 'Pirate' | 'Independent' = 'Independent';
-            let shipClass: Ship['shipClass'] = 'Independent';
-            let baseStats: Partial<Ship> = {
-                hull: 30, maxHull: 30, shields: 0, maxShields: 0,
-                energy: { current: 20, max: 20 }, energyAllocation: { weapons: 0, shields: 0, engines: 100 },
-                torpedoes: { current: 0, max: 0 },
-                subsystems: { weapons: { health: 0, maxHealth: 0 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 0, maxHealth: 0 }, transporter: { health: 0, maxHealth: 0 } },
-                securityTeams: { current: 1, max: 1 },
-            };
+            let faction: Ship['shipClass'] | null = null;
+            const shipRoll = Math.random();
 
-            if (entityTypeRoll < 0.70) {
-                const isKlingon = Math.random() < 0.7;
-                faction = isKlingon ? 'Klingon' : 'Romulan';
-                shipClass = faction;
-                baseStats = {
-                    hull: 60, maxHull: 60, shields: 20, maxShields: 20,
-                    energy: { current: 50, max: 50 }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
-                    torpedoes: { current: 4, max: 4 },
-                    subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 0, maxHealth: 0 } },
-                    securityTeams: { current: 5, max: 5 },
-                };
-            } else if (entityTypeRoll < 0.85) {
-                faction = 'Pirate';
-                shipClass = 'Pirate';
-                baseStats = {
-                    hull: 40, maxHull: 40, shields: 10, maxShields: 10,
-                    energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                    torpedoes: { current: 2, max: 2 },
-                    subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
-                    securityTeams: { current: 3, max: 3 },
-                };
+            if (factionOwner === 'None') {
+                if (shipRoll < pirateChance) faction = 'Pirate';
+                else if (shipRoll < pirateChance + 0.1) faction = 'Klingon';
+                else if (shipRoll < pirateChance + 0.15) faction = 'Romulan';
+                else if (shipRoll < pirateChance + 0.25) faction = 'Independent';
+            } else {
+                if (shipRoll < factionShipChance) faction = mainFaction;
+                else if (shipRoll < factionShipChance + pirateChance) faction = 'Pirate';
+            }
+
+            if (factionOwner === 'Federation' && faction === 'Federation') {
+                faction = Math.random() < 0.6 ? 'Federation' : 'Independent';
             }
             
-            newEntities.push({
-                id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipClass, faction, position,
-                dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
-                crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), ...baseStats,
-            } as Ship);
+            if (faction) {
+                let baseStats: Partial<Ship> = {};
+                switch(faction) {
+                    case 'Klingon':
+                    case 'Romulan':
+                        baseStats = {
+                            hull: 60, maxHull: 60, shields: 20, maxShields: 20,
+                            energy: { current: 50, max: 50 }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
+                            torpedoes: { current: 4, max: 4 },
+                            subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 0, maxHealth: 0 } },
+                            securityTeams: { current: 5, max: 5 },
+                        };
+                        break;
+                    case 'Pirate':
+                        baseStats = {
+                            hull: 40, maxHull: 40, shields: 10, maxShields: 10,
+                            energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                            torpedoes: { current: 2, max: 2 },
+                            subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
+                            securityTeams: { current: 3, max: 3 },
+                        };
+                        break;
+                    case 'Federation':
+                        baseStats = {
+                            hull: 80, maxHull: 80, shields: 40, maxShields: 40,
+                            energy: { current: 80, max: 80 }, energyAllocation: { weapons: 33, shields: 34, engines: 33 },
+                            torpedoes: { current: 8, max: 8 },
+                            subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 100, maxHealth: 100 } },
+                            securityTeams: { current: 4, max: 4 },
+                        };
+                        break;
+                    case 'Independent':
+                    default:
+                        baseStats = {
+                            hull: 30, maxHull: 30, shields: 0, maxShields: 0,
+                            energy: { current: 20, max: 20 }, energyAllocation: { weapons: 0, shields: 0, engines: 100 },
+                            torpedoes: { current: 0, max: 0 },
+                            subsystems: { weapons: { health: 0, maxHealth: 0 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 0, maxHealth: 0 }, transporter: { health: 0, maxHealth: 0 } },
+                            securityTeams: { current: 1, max: 1 },
+                        };
+                        faction = 'Independent';
+                        break;
+                }
+                
+                newEntities.push({
+                    id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipClass: faction, faction, position,
+                    dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                    crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), ...baseStats,
+                } as Ship);
+            }
         }
     }
 
@@ -203,7 +296,9 @@ const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
 
     for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
         for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
-            newMap[qy][qx] = generateSectorContent(newMap[qy][qx], availablePlanetNames, availableShipNames, colorIndex);
+            const sector = newMap[qy][qx];
+            sector.factionOwner = getFactionOwner(qx, qy);
+            newMap[qy][qx] = generateSectorContent(sector, qx, qy, availablePlanetNames, availableShipNames, colorIndex);
         }
     }
     return newMap;
@@ -233,19 +328,30 @@ const createInitialGameState = (): GameState => {
   ];
 
   let quadrantMap: SectorState[][] = Array.from({ length: QUADRANT_SIZE }, () =>
-    Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false }))
+    Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, factionOwner: 'None', isScanned: false }))
   );
 
   quadrantMap = pregenerateGalaxy(quadrantMap);
 
-  const playerPosition = { qx: Math.floor(QUADRANT_SIZE / 2), qy: Math.floor(QUADRANT_SIZE / 2) };
+  const playerPosition = { qx: 1, qy: 6 };
+  
+  for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
+    for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
+        if (quadrantMap[qy][qx].factionOwner === 'Federation') {
+            quadrantMap[qy][qx].visited = true;
+            quadrantMap[qy][qx].isScanned = true;
+        }
+    }
+  }
+
   let startSector = quadrantMap[playerPosition.qy][playerPosition.qx];
   startSector.visited = true;
+  startSector.isScanned = true;
 
-  if (!startSector.entities.some(e => e.type === 'planet')) {
+  if (!startSector.entities.some(e => e.type === 'starbase')) {
     startSector.entities.push({
-        id: uniqueId(), name: 'Alpha Centauri III', type: 'planet', faction: 'None',
-        position: { x: 2, y: 2 }, scanned: true, planetClass: 'M', awayMissionCompleted: false,
+        id: uniqueId(), name: `Starbase 364`, type: 'starbase', faction: 'Federation',
+        position: { x: 2, y: 2 }, scanned: true, hull: 500, maxHull: 500
     });
   }
   startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
@@ -408,9 +514,21 @@ export const useGameLogic = () => {
                            colorIndex = (colorIndex + 1) % ENEMY_LOG_COLORS.length;
                         }
                     };
-                    savedState.quadrantMap.forEach(row => row.forEach(sector => sector.entities.forEach(e => {
-                        if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
-                    })));
+                    savedState.quadrantMap.forEach(row => row.forEach(sector => {
+                        // Add factionOwner and isScanned if missing
+                        if (!sector.factionOwner) {
+                            const qx = savedState.quadrantMap[0].findIndex(s => s === sector);
+                            const qy = savedState.quadrantMap.findIndex(r => r.includes(sector));
+                            if(qx !== -1 && qy !== -1) sector.factionOwner = getFactionOwner(qx, qy);
+                            else sector.factionOwner = 'None';
+                        }
+                        if (sector.isScanned === undefined) {
+                            sector.isScanned = sector.visited;
+                        }
+                        sector.entities.forEach(e => {
+                            if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
+                        })
+                    }));
                     
                     // Convert old string logs to new LogEntry format
                     if (savedState.logs.length > 0 && typeof savedState.logs[0] === 'string') {
@@ -529,9 +647,17 @@ export const useGameLogic = () => {
                            colorIndex = (colorIndex + 1) % ENEMY_LOG_COLORS.length;
                         }
                     };
-                    savedState.quadrantMap.forEach(row => row.forEach(sector => sector.entities.forEach(e => {
-                        if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
-                    })));
+                    savedState.quadrantMap.forEach((row, qy) => row.forEach((sector, qx) => {
+                         if (!sector.factionOwner) {
+                            sector.factionOwner = getFactionOwner(qx, qy);
+                        }
+                        if (sector.isScanned === undefined) {
+                            sector.isScanned = sector.visited;
+                        }
+                        sector.entities.forEach(e => {
+                            if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
+                        });
+                    }));
 
                     if (savedState.logs.length > 0 && typeof savedState.logs[0] === 'string') {
                         savedState.logs = (savedState.logs as unknown as string[]).map((msg, index) => ({
@@ -1052,6 +1178,40 @@ export const useGameLogic = () => {
          }, 2500);
     }, [addLog, gameState.player.ship.dilithium, gameState.player.ship.name]);
 
+    const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
+        const energyCost = 1;
+        
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const { success, logs } = consumeEnergy(next.player.ship, energyCost);
+            
+            if (!success) {
+                logs.forEach(log => addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: log, isPlayerSource: true }));
+                return prev;
+            }
+
+            logs.forEach(log => addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: log, isPlayerSource: true }));
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Performing long-range scan of quadrant (${pos.qx},${pos.qy}). Consumed ${energyCost} power.`, isPlayerSource: true });
+            next.quadrantMap[pos.qy][pos.qx].isScanned = true;
+            
+            const scannedSector = next.quadrantMap[pos.qy][pos.qx];
+            const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
+            const hasStarbase = scannedSector.entities.some((e:Entity) => e.type === 'starbase');
+            const planetCount = scannedSector.entities.filter((e:Entity) => e.type === 'planet').length;
+            
+            let scanReport = `Scan complete. Results for (${pos.qx},${pos.qy}):\n`;
+            if (hostileCount > 0) scanReport += `--> WARNING: ${hostileCount} hostile contacts detected.\n`;
+            if (hasStarbase) scanReport += `--> Starbase signature detected.\n`;
+            if (planetCount > 0) scanReport += `--> ${planetCount} planetary bodies detected.\n`;
+            if (scannedSector.hasNebula) scanReport += `--> Sector contains a nebula.\n`;
+            if (scanReport.split('\n').length === 2) scanReport += `--> No significant readings.`;
+
+            addLog({ sourceId: 'system', sourceName: 'Sensors', message: scanReport.trim(), isPlayerSource: false });
+
+            return next;
+        });
+    }, [addLog]);
+
     const onFirePhasers = useCallback((targetId: string) => {
         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Phaser attack ordered. Awaiting turn end.`, isPlayerSource: true });
         setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId } }));
@@ -1322,7 +1482,7 @@ export const useGameLogic = () => {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail,
         officerCounsel, targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult,
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget,
-        onSetNavigationTarget, onSetView: setCurrentView, onWarp, onDockWithStarbase, onRechargeDilithium,
+        onSetNavigationTarget, onSetView: setCurrentView, onWarp, onScanQuadrant, onDockWithStarbase, onRechargeDilithium,
         onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat,
         onStartAwayMission, onChooseAwayMissionOption, onHailTarget, onCloseHail: () => setActiveHail(null),
         onCloseOfficerCounsel, onProceedFromCounsel, onSelectSubsystem, onChooseEventOption, saveGame, loadGame,
