@@ -76,6 +76,8 @@ export interface TorpedoProjectile extends BaseEntity {
     speed: number;
     path: Position[];
     turnLaunched: number;
+    hull: number;
+    maxHull: number;
 }
 
 export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile;

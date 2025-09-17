@@ -70,6 +70,13 @@ const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, t
                              <span>{planetTypes[target.planetClass]?.name || 'Unknown'}</span>
                          </div>
                     )}
+                     {target.type === 'torpedo_projectile' && (
+                         <div className="text-sm mt-2">
+                             <span className="text-text-secondary">Type: </span>
+                             <span>Projectile</span>
+                         </div>
+                    )}
+
 
                     {target.type === 'ship' && !isUnscannedShip && (
                         <>
@@ -187,8 +194,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
-                        canFire={!!target && !isTargetFriendly && canFire}
-                        canLaunchTorpedo={!!target && !isTargetFriendly && canLaunchTorpedo}
+                        canFire={canFire}
+                        canLaunchTorpedo={canLaunchTorpedo}
                         isTargetFriendly={!!isTargetFriendly}
                         isTargetScanned={!!target?.scanned}
                         hasTarget={!!target}

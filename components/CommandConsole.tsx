@@ -68,12 +68,16 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const canBoardOrStrike = target?.type === 'ship' && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
   const { WeaponIcon, TorpedoIcon, SecurityIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
 
+  const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
+  const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
+  const canUsePhasers = canFire && (canFireOnShip || canFireOnTorpedo);
+
   return (
     <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
             <SectionHeader title="Combat" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onFirePhasers} disabled={!canFire || isTargetFriendly || isRetreating || isTurnResolving} accentColor="red">
+                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || isRetreating || isTurnResolving} accentColor="red">
                     <WeaponIcon className="w-5 h-5" /> Fire Phasers
                 </CommandButton>
                 <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || isTargetFriendly || isRetreating || isTurnResolving} accentColor="sky">

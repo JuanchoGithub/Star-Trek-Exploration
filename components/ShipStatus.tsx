@@ -9,14 +9,15 @@ interface StatusBarProps {
   value: number;
   max: number;
   colorClass: string;
+  children?: React.ReactNode;
 }
 
-const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, colorClass }) => {
+const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, colorClass, children }) => {
   const percentage = max > 0 ? (value / max) * 100 : 0;
   return (
     <div>
       <div className="flex justify-between items-center text-sm">
-        <span className="font-bold">{label}</span>
+        <span className="font-bold flex items-center gap-1">{label} {children}</span>
         <span>{Math.round(value)} / {max}</span>
       </div>
       <div className="w-full bg-bg-paper-lighter rounded-full h-2.5">
@@ -74,11 +75,12 @@ const InteractiveStatusIndicator: React.FC<{
     colorClass: string;
     onClick?: () => void;
     disabled?: boolean;
-}> = ({ label, status, colorClass, onClick, disabled = false }) => (
+    title?: string;
+}> = ({ label, status, colorClass, onClick, disabled = false, title }) => (
     <div
         onClick={!disabled ? onClick : undefined}
         className={`flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded transition-colors ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-paper' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-        title={disabled ? 'Action unavailable' : `Click to toggle ${label}`}
+        title={title ?? (disabled ? 'Action unavailable' : `Click to toggle ${label}`)}
     >
         <span className="font-bold text-text-secondary uppercase tracking-wider">{label}</span>
         <span className={`font-bold px-2 py-0.5 rounded ${colorClass}`}>{status}</span>
@@ -101,7 +103,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
   const [isRepairListVisible, setRepairListVisible] = useState(false);
   const { TorpedoIcon, SecurityIcon, WeaponIcon, ShieldIcon, EngineIcon } = getFactionIcons(themeName);
 
-  const canTakeEvasive = ship.energy.current >= 20 && ship.subsystems.engines.health > 0;
+  const canTakeEvasive = gameState.redAlert && ship.subsystems.engines.health > 0;
   const hasDamagedSystems = ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth);
 
   const handleSelectRepair = (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => {
@@ -117,6 +119,15 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
       { key: 'transporter' as const, name: 'Transporter', ...ship.subsystems.transporter, disabled: ship.subsystems.transporter.health === ship.subsystems.transporter.maxHealth },
   ];
 
+  const redAlertTitle = "Raise shields for combat. Costs 15 energy to activate and drains reserve power each turn. When offline, shields are down and energy recharges.";
+  const evasiveTitle = canTakeEvasive
+    ? (ship.evasive ? "Evasive maneuvers active. Increases passive energy drain." : "Enable evasive maneuvers. Increases passive energy drain.")
+    : "Cannot engage evasive: Red Alert must be active and engines undamaged.";
+    
+  const energyStatusIcon = gameState.redAlert ? 
+        <span className="text-accent-red" title="Draining">▼</span> :
+        (ship.energy.current < ship.energy.max ? <span className="text-accent-green" title="Recharging">▲</span> : null);
+
   return (
     <div className="panel-style p-3 h-full flex flex-col">
       <h3 className="text-lg font-bold text-secondary-light mb-2">U.S.S. Endeavour Systems</h3>
@@ -127,6 +138,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
             status={gameState.redAlert ? 'ACTIVE' : 'STANDBY'} 
             colorClass={gameState.redAlert ? 'text-accent-red animate-pulse bg-red-900 bg-opacity-50' : 'text-text-disabled'}
             onClick={onToggleRedAlert}
+            title={redAlertTitle}
         />
         <InteractiveStatusIndicator 
             label="Evasive" 
@@ -134,6 +146,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
             colorClass={ship.evasive ? 'text-accent-green bg-green-900 bg-opacity-50' : 'text-text-disabled'}
             onClick={onEvasiveManeuvers}
             disabled={!canTakeEvasive}
+            title={evasiveTitle}
         />
         <InteractiveStatusIndicator 
             label="Damage Control" 
@@ -170,9 +183,18 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
 
       <div className="space-y-3">
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
-        <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-secondary-main" />
-        <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow" />
-        <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
+        <StatusBar 
+            label={gameState.redAlert ? "Shields" : "Shields (OFFLINE)"} 
+            value={gameState.redAlert ? ship.shields : 0} 
+            max={ship.maxShields} 
+            colorClass={gameState.redAlert ? "bg-secondary-main" : "bg-text-disabled"}
+        />
+        <StatusBar label="Reserve Power" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow">
+            {energyStatusIcon}
+        </StatusBar>
+        <div title="Dilithium crystals are used for warping and as an emergency power source.">
+            <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
+        </div>
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold">Torpedoes</span>
             <div className="flex items-center gap-1">

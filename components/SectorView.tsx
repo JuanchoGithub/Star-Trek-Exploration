@@ -46,6 +46,12 @@ const getPath = (start: { x: number; y: number }, end: { x: number; y: number } 
   return path;
 };
 
+const getPercentageCoords = (gridPos: { x: number; y: number }, sectorSize: {width: number, height: number}) => {
+    const x = (gridPos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2);
+    const y = (gridPos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2);
+    return { x: `${x}%`, y: `${y}%` };
+};
+
 const SubsystemTarget: React.FC<{
     subsystem: 'weapons' | 'engines' | 'shields';
     health: number;
@@ -118,6 +124,22 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 );
             })}
         </div>
+         <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-20 overflow-visible">
+            {(() => {
+                if (!selectedTargetId) return null;
+                const selectedEntity = allEntities.find(e => e.id === selectedTargetId);
+                if (!selectedEntity || selectedEntity.type !== 'torpedo_projectile') return null;
+                
+                const torpedo = selectedEntity as TorpedoProjectile;
+                const target = allEntities.find(e => e.id === torpedo.targetId);
+                if (!target) return null;
+
+                const start = getPercentageCoords(torpedo.position, sectorSize);
+                const end = getPercentageCoords(target.position, sectorSize);
+                
+                return <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="var(--color-accent-yellow)" strokeWidth="1" strokeDasharray="4 4" />;
+            })()}
+        </svg>
 
         {navigationTarget && (
             <>
@@ -159,8 +181,16 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             let factionColor = 'text-gray-400';
             let entityName = entity.name;
 
+            let transformStyle = { transform: `translate(-50%, -50%)` };
+
             if (entity.type === 'torpedo_projectile') {
                  const torpedo = entity as TorpedoProjectile;
+                 const target = allEntities.find(e => e.id === torpedo.targetId);
+                 if (target) {
+                    const angle = Math.atan2(target.position.y - entity.position.y, target.position.x - entity.position.x) * 180 / Math.PI;
+                    transformStyle = { transform: `translate(-50%, -50%) rotate(${angle}deg)` };
+                 }
+
                  return (
                     <React.Fragment key={torpedo.id}>
                         {torpedo.path.map((pos, i) => (
@@ -176,10 +206,15 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                             />
                         ))}
                         <div
-                            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-40"
-                            style={{ left: `${(torpedo.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(torpedo.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
+                            className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''}`}
+                            style={{ 
+                                left: `${(torpedo.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, 
+                                top: `${(torpedo.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
+                                ...transformStyle 
+                            }}
+                             onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
                         >
-                            <TorpedoProjectileIcon className="w-4 h-4" />
+                            <TorpedoProjectileIcon className="w-6 h-6 text-accent-orange" />
                         </div>
                     </React.Fragment>
                  );
@@ -237,8 +272,12 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             return (
                 <div
                     key={entity.id}
-                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer`}
-                    style={{ left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%` }}
+                    className={`absolute flex flex-col items-center justify-center transition-all duration-300 z-30 cursor-pointer`}
+                    style={{ 
+                        left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, 
+                        top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
+                        ...transformStyle
+                    }}
                     onClick={(e) => {
                          e.stopPropagation();
                          if (isPlayer) {
