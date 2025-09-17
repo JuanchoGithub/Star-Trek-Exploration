@@ -9,11 +9,11 @@ interface StatusLineProps {
 
 const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenGameMenu, children }) => {
   return (
-    <div className="bg-bg-paper-lighter border-2 border-border-main p-2 rounded-md h-full flex items-center justify-between text-sm">
+    <div className="panel-style p-2 h-full flex items-center justify-between text-sm">
       <div className="flex items-center gap-4">
         <button 
           onClick={onOpenGameMenu} 
-          className="bg-bg-paper hover:bg-bg-paper-lighter text-text-primary font-bold py-1 px-3 rounded flex-shrink-0"
+          className="btn btn-tertiary flex-shrink-0"
         >
           Game Menu
         </button>
@@ -24,7 +24,7 @@ const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenG
       </p>
       <button 
         onClick={onToggleLog} 
-        className="bg-primary-main hover:bg-primary-light text-primary-text font-bold py-1 px-3 rounded flex-shrink-0"
+        className="btn btn-primary flex-shrink-0"
       >
         View Captain's Log
       </button>

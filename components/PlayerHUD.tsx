@@ -48,7 +48,7 @@ const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
     return (
-        <div className="bg-bg-paper p-3 rounded h-full flex flex-col">
+        <div className="panel-style p-3 h-full flex flex-col">
             <div className="flex-grow grid grid-cols-[1fr_2fr] gap-3 items-center min-h-0">
                 <div className="h-full w-full">
                      <WireframeDisplay target={target} />
@@ -138,32 +138,32 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
                     {target ? <TargetInfo target={target} /> : (
-                         <div className="bg-bg-paper p-3 rounded h-full flex flex-col justify-center text-center">
+                         <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
                             <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
                         </div>
                     )}
                     {isAdjacentToStarbase && !isDocked && (
-                        <div className="bg-bg-paper p-3 rounded text-center">
-                            <button onClick={onDockWithStarbase} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Initiate Docking</button>
+                        <div className="panel-style p-3 text-center">
+                            <button onClick={onDockWithStarbase} className="w-full btn btn-primary">Initiate Docking</button>
                         </div>
                     )}
                     {isDocked && (
-                        <div className="bg-bg-paper p-3 rounded text-center">
+                        <div className="panel-style p-3 text-center">
                             <h3 className="text-lg font-bold text-secondary-light mb-3">Starbase Operations</h3>
                             <div className="space-y-2">
-                                <button onClick={onStarbaseRepairs} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Full Service Repairs & Recharge</button>
-                                <button onClick={onRechargeDilithium} className="w-full bg-accent-pink hover:brightness-110 text-white font-bold py-2 px-4 rounded">Recharge Dilithium</button>
-                                <button onClick={onResupplyTorpedoes} className="w-full bg-accent-cyan hover:brightness-110 text-white font-bold py-2 px-4 rounded">Resupply Torpedoes</button>
+                                <button onClick={onStarbaseRepairs} className="w-full btn btn-primary">Full Service Repairs & Recharge</button>
+                                <button onClick={onRechargeDilithium} className="w-full btn btn-accent pink text-white">Recharge Dilithium</button>
+                                <button onClick={onResupplyTorpedoes} className="w-full btn btn-accent sky text-white">Resupply Torpedoes</button>
                             </div>
                         </div>
                     )}
                     {orbitingPlanet && (
-                        <div className="bg-bg-paper p-3 rounded text-center">
+                        <div className="panel-style p-3 text-center">
                             <h3 className="text-lg font-bold text-accent-green mb-3">Planet Operations</h3>
                             <button 
                                 onClick={() => orbitingPlanet && onStartAwayMission(orbitingPlanet.id)} 
-                                className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded disabled:bg-bg-paper-lighter disabled:cursor-not-allowed"
+                                className="w-full btn btn-accent green text-white"
                                 disabled={awayMissionState.disabled}
                             >
                                 {awayMissionState.text}

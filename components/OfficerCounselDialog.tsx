@@ -17,7 +17,7 @@ const roleIcons: { [key in AwayMissionRole]?: React.ReactNode } = {
 const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSession, onProceed, onAbort }) => {
   return (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-      <div className="bg-bg-paper border-2 border-accent-yellow p-6 rounded-md max-w-3xl w-full flex flex-col">
+      <div className="panel-style p-6 max-w-3xl w-full flex flex-col" style={{borderColor: 'var(--color-accent-yellow)'}}>
         <h2 className="text-3xl font-bold text-accent-yellow mb-2 text-center">Officer Counsel: {counselSession.mission.title}</h2>
         <p className="text-md mb-6 text-text-secondary text-center italic">"{counselSession.mission.description}"</p>
         
@@ -38,13 +38,13 @@ const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSess
         <div className="mt-auto flex justify-center gap-4">
           <button
             onClick={onAbort}
-            className="px-6 py-2 bg-bg-paper-lighter hover:brightness-110 text-white font-bold rounded-lg transition-all"
+            className="btn btn-tertiary px-6"
           >
             Abort Mission
           </button>
           <button
             onClick={onProceed}
-            className="px-8 py-2 bg-accent-green hover:brightness-110 text-white font-bold rounded-lg transition-all"
+            className="btn btn-accent green px-8"
           >
             Proceed to Mission
           </button>

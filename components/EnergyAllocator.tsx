@@ -29,7 +29,7 @@ const Slider: React.FC<{ label: string; value: number; onChange: (e: React.Chang
 
 const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange, onDistributeEvenly }) => {
   return (
-    <div className="bg-bg-paper p-3 rounded">
+    <div className="panel-style p-3">
       <h3 className="text-lg font-bold text-secondary-light mb-3">Energy Allocation</h3>
       <div className="space-y-3">
         <Slider 

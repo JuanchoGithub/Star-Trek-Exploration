@@ -19,7 +19,7 @@ const roleIcons: { [key in AwayMissionOption['role']]: React.ReactNode } = {
 const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose }) => {
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-            <div className="bg-bg-paper border-2 border-accent-green p-6 rounded-md max-w-2xl w-full text-center">
+            <div className="panel-style p-6 max-w-2xl w-full text-center" style={{borderColor: 'var(--color-accent-green)'}}>
                 <h2 className="text-3xl font-bold text-accent-green mb-4">{mission.title}</h2>
                 <p className="text-lg mb-6 text-text-secondary">{mission.description}</p>
                 <div className="space-y-3">
@@ -27,7 +27,7 @@ const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose
                         <button
                             key={option.role}
                             onClick={() => onChoose(option)}
-                            className="w-full text-left p-4 font-bold rounded transition-all flex items-center gap-4 bg-accent-green bg-opacity-40 hover:bg-opacity-60 text-white"
+                            className="w-full text-left p-4 flex items-center gap-4 btn btn-accent green bg-opacity-40 hover:bg-opacity-60 text-white"
                         >
                             {roleIcons[option.role]}
                             <div className="flex flex-col">

@@ -14,7 +14,7 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs }) => {
     }, [logs]);
 
   return (
-    <div className="bg-bg-paper border-2 border-border-main p-4 rounded-md h-full grid grid-rows-[auto_1fr] gap-2 min-h-0">
+    <div className="panel-style p-4 h-full grid grid-rows-[auto_1fr] gap-2 min-h-0">
       <h2 className="text-xl font-bold text-secondary-light">Captain's Log</h2>
       <div ref={logContainerRef} className="bg-black p-2 rounded-inner overflow-y-auto font-mono text-sm space-y-1">
         {logs.map((log, index) => {

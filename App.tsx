@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
@@ -49,17 +48,17 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
 
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-            <div className="bg-bg-paper border-2 border-border-main p-6 rounded-md w-full max-w-sm">
+            <div className="panel-style p-6 w-full max-w-sm">
                 <h3 className="text-xl font-bold text-secondary-light mb-4 text-center">Game Menu</h3>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={onSaveGame} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Save Game</button>
-                    <button onClick={onLoadGame} className="w-full bg-primary-main hover:bg-primary-light text-primary-text font-bold py-2 px-4 rounded">Load Game</button>
-                    <button onClick={onExportSave} className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded">Export Save</button>
-                    <button onClick={handleImportClick} className="w-full bg-accent-green hover:brightness-110 text-white font-bold py-2 px-4 rounded">Import Save</button>
+                    <button onClick={onSaveGame} className="w-full btn btn-primary">Save Game</button>
+                    <button onClick={onLoadGame} className="w-full btn btn-primary">Load Game</button>
+                    <button onClick={onExportSave} className="w-full btn btn-accent green text-white">Export Save</button>
+                    <button onClick={handleImportClick} className="w-full btn btn-accent green text-white">Import Save</button>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
                 <div className="mt-6 text-center">
-                     <button onClick={onClose} className="bg-bg-paper-lighter hover:brightness-110 text-text-primary font-bold py-2 px-6 rounded">Close</button>
+                     <button onClick={onClose} className="btn btn-tertiary px-6">Close</button>
                 </div>
             </div>
         </div>
@@ -226,11 +225,11 @@ const App: React.FC = () => {
 
       {showLogPanel && (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-            <div className="bg-bg-paper border-2 border-border-main rounded-md h-3/4 w-4/5 max-w-4xl flex flex-col p-4">
+            <div className="h-3/4 w-4/5 max-w-4xl flex flex-col">
                  <LogPanel logs={gameState.logs} />
                  <button 
                     onClick={() => setShowLogPanel(false)} 
-                    className="mt-4 px-6 py-2 bg-primary-main hover:bg-primary-light text-primary-text font-bold rounded-lg transition-all self-center flex-shrink-0"
+                    className="mt-4 btn btn-primary self-center flex-shrink-0"
                 >
                     Close Log
                 </button>

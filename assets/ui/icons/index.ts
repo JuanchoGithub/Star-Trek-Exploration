@@ -12,3 +12,4 @@ export * from './ShieldIcon';
 export * from './TorpedoIcon';
 export * from './TransporterIcon';
 export * from './WeaponIcon';
+export * from './FactionIcons';

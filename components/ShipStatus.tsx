@@ -113,7 +113,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
   ];
 
   return (
-    <div className="bg-bg-paper p-3 rounded h-full flex flex-col">
+    <div className="panel-style p-3 h-full flex flex-col">
       <h3 className="text-lg font-bold text-secondary-light mb-2">U.S.S. Endeavour Systems</h3>
       
       <div className="mb-3 border-t border-b border-bg-paper-lighter py-2 space-y-1">
@@ -148,10 +148,8 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
                                 key={sys.key} 
                                 onClick={() => handleSelectRepair(sys.key)} 
                                 disabled={sys.disabled && !isAssigned}
-                                className={`w-full text-left p-1 text-sm font-bold rounded transition-colors ${
-                                    sys.disabled && !isAssigned
-                                    ? 'bg-bg-paper-lighter disabled:cursor-not-allowed text-text-disabled'
-                                    : isAssigned 
+                                className={`w-full text-left p-1 text-sm btn ${
+                                    isAssigned 
                                     ? 'bg-accent-yellow-dark hover:bg-accent-yellow text-secondary-text' 
                                     : 'bg-accent-yellow-darker hover:brightness-110 text-white'
                                 }`}
@@ -167,13 +165,13 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
 
       <div className="space-y-3">
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
-        <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-accent-cyan" />
+        <StatusBar label="Shields" value={ship.shields} max={ship.maxShields} colorClass="bg-secondary-main" />
         <StatusBar label="Energy" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow" />
         <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold">Torpedoes</span>
             <div className="flex items-center gap-1">
-                <TorpedoIcon className="w-5 h-5 text-accent-cyan"/>
+                <TorpedoIcon className="w-5 h-5 text-secondary-main"/>
                 <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
             </div>
         </div>

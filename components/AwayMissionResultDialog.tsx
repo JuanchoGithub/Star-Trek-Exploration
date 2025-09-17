@@ -10,7 +10,7 @@ interface AwayMissionResultDialogProps {
 const AwayMissionResultDialog: React.FC<AwayMissionResultDialogProps> = ({ result, onClose }) => {
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-            <div className="bg-bg-paper border-2 border-border-main p-6 rounded-md max-w-2xl w-full">
+            <div className="panel-style p-6 max-w-2xl w-full">
                 <h2 className="text-2xl font-bold text-secondary-light mb-4">Away Mission Debrief</h2>
                 <div className="bg-black p-4 rounded min-h-[100px] text-lg text-text-primary">
                     <p>{result}</p>
@@ -18,7 +18,7 @@ const AwayMissionResultDialog: React.FC<AwayMissionResultDialogProps> = ({ resul
                 <div className="mt-6 text-center">
                     <button
                         onClick={onClose}
-                        className="px-8 py-2 bg-primary-main hover:bg-primary-light text-primary-text font-bold rounded-lg transition-all"
+                        className="btn btn-primary px-8"
                     >
                         Continue
                     </button>
