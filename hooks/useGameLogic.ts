@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole } from '../types';
@@ -852,11 +853,19 @@ export const useGameLogic = () => {
                 addLog({ sourceId: 'player', sourceName: playerShip.name, message: "Attempting to retreat, cannot take other actions.", isPlayerSource: true });
             } else {
                 if (navigationTarget) {
-                    if (playerShip.position.x !== navigationTarget.x || playerShip.position.y !== navigationTarget.y) {
-                        playerShip.position = moveOneStep(playerShip.position, navigationTarget);
-                        addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Moving to ${playerShip.position.x}, ${playerShip.position.y}.`, isPlayerSource: true });
+                    const movementSpeed = next.redAlert ? 1 : 3;
+                    let moved = false;
+                    const initialPosition = { ...playerShip.position };
+
+                    for (let i = 0; i < movementSpeed; i++) {
+                        if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
+                            break; // Arrived at destination
+                        }
                         
-                        // Asteroid field hazard
+                        playerShip.position = moveOneStep(playerShip.position, navigationTarget);
+                        moved = true;
+
+                        // Asteroid field hazard check for each step
                         const asteroidFields = currentSector.entities.filter((e: Entity) => e.type === 'asteroid_field');
                         const isAdjacentToAsteroids = asteroidFields.some(field => calculateDistance(playerShip.position, field.position) <= 1);
                         if (isAdjacentToAsteroids && Math.random() < 0.25) {
@@ -876,6 +885,11 @@ export const useGameLogic = () => {
                             }
                         }
                     }
+
+                    if (moved) {
+                        addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Moving from (${initialPosition.x},${initialPosition.y}) to (${playerShip.position.x},${playerShip.position.y}).`, isPlayerSource: true });
+                    }
+
                     if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
                         setNavigationTarget(null);
                         addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Arrived at navigation target.`, isPlayerSource: true });
