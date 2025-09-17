@@ -28,9 +28,15 @@ interface BaseEntity {
   scanned: boolean;
 }
 
+export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter';
+// FIX: Exported ShipModel type to be used across the application.
+export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
+
 export interface Ship extends BaseEntity {
   type: 'ship';
-  shipClass: 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
+  // FIX: Used the exported ShipModel type.
+  shipModel: ShipModel;
+  shipRole: ShipRole;
   hull: number;
   maxHull: number;
   shields: number;

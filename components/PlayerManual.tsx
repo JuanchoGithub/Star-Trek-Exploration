@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
-import { shipTypes } from '../assets/ships/configs/shipTypes';
+import { shipVisuals } from '../assets/ships/configs/shipVisuals';
+import { shipRoleStats } from '../assets/ships/configs/shipRoleStats';
 import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
-import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon } from '../assets/ships/icons';
-import { StarbaseIcon } from '../assets/starbases/icons';
 import { MClassIcon } from '../assets/planets/icons';
 import { NavigationTargetIcon, FederationIcon, KlingonIcon, RomulanIcon } from '../assets/ui/icons';
+// FIX: Imported missing ShipModel type.
+import { ShipModel, ShipRole } from '../../types';
 
 type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations';
 
@@ -28,8 +29,8 @@ const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <h2 className="text-3xl font-bold text-secondary-light mb-4 pb-2 border-b-2 border-border-main">{children}</h2>
 );
 
-const SubHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <h3 className="text-xl font-bold text-accent-yellow mt-6 mb-2">{children}</h3>
+const SubHeader: React.FC<{ children: React.ReactNode, id?: string }> = ({ children, id }) => (
+    <h3 id={id} className="text-xl font-bold text-accent-yellow mt-6 mb-2">{children}</h3>
 );
 
 const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
@@ -64,97 +65,120 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
         </div>
     );
 
-    const UISection = () => (
-        <div>
-            <SectionHeader>The Bridge Interface</SectionHeader>
-            <p>Your command interface is divided into two primary columns and a status line at the bottom.</p>
-            <SubHeader>Left Column: Viewscreen & Operations</SubHeader>
-            <p className="text-text-secondary">This area contains your view of the current sector and your primary command console.</p>
-            <div className="mt-4 p-2 border border-border-dark rounded">
-                <div className="font-bold mb-2">1. The Viewscreen</div>
-                <p>Displays either the current <strong>Sector View</strong> or the strategic <strong>Quadrant Map</strong>. You can switch between them using the vertical tabs.</p>
-                <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                    <li><strong>Sector View:</strong> A tactical grid of the current sector. Click on an empty square to set a <NavigationTargetIcon className="w-4 h-4 inline-block text-accent-yellow" /> navigation target. Click on an entity like a <PlayerShipIcon className="w-4 h-4 inline-block text-blue-400" /> ship or <MClassIcon className="w-4 h-4 inline-block text-green-500" /> planet to select it.</li>
-                    <li><strong>Quadrant Map:</strong> A strategic overview of the entire Typhon Expanse. Green quadrants are Federation-controlled, Red are Klingon, etc. Click on an adjacent sector to open a context menu to Warp or Scan.</li>
-                </ul>
-                <div className="font-bold mb-2 mt-4">2. Player HUD</div>
-                <p>This section is divided into the Target Information panel and the Command Console.</p>
-                <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                    <li><strong>Target Info:</strong> Displays a wireframe and vital statistics (Hull, Shields, Subsystems) for your currently selected target. You must scan unscanned ships to see their details.</li>
-                    <li><strong>Command Console:</strong> Contains all your primary actions for the turn: Fire Phasers, Launch Torpedoes, Scan, Hail, Retreat, and special actions like Boarding.</li>
-                </ul>
+    const UISection = () => {
+        const PlayerShipIcon = shipVisuals.Federation.roles.Explorer!.icon;
+        return (
+            <div>
+                <SectionHeader>The Bridge Interface</SectionHeader>
+                <p>Your command interface is divided into two primary columns and a status line at the bottom.</p>
+                <SubHeader>Left Column: Viewscreen & Operations</SubHeader>
+                <p className="text-text-secondary">This area contains your view of the current sector and your primary command console.</p>
+                <div className="mt-4 p-2 border border-border-dark rounded">
+                    <div className="font-bold mb-2">1. The Viewscreen</div>
+                    <p>Displays either the current <strong>Sector View</strong> or the strategic <strong>Quadrant Map</strong>. You can switch between them using the vertical tabs.</p>
+                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
+                        <li><strong>Sector View:</strong> A tactical grid of the current sector. Click on an empty square to set a <NavigationTargetIcon className="w-4 h-4 inline-block text-accent-yellow" /> navigation target. Click on an entity like a <PlayerShipIcon className="w-4 h-4 inline-block text-blue-400" /> ship or <MClassIcon className="w-4 h-4 inline-block text-green-500" /> planet to select it.</li>
+                        <li><strong>Quadrant Map:</strong> A strategic overview of the entire Typhon Expanse. Green quadrants are Federation-controlled, Red are Klingon, etc. Click on an adjacent sector to open a context menu to Warp or Scan.</li>
+                    </ul>
+                    <div className="font-bold mb-2 mt-4">2. Player HUD</div>
+                    <p>This section is divided into the Target Information panel and the Command Console.</p>
+                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
+                        <li><strong>Target Info:</strong> Displays a wireframe and vital statistics (Hull, Shields, Subsystems) for your currently selected target. You must scan unscanned ships to see their details.</li>
+                        <li><strong>Command Console:</strong> Contains all your primary actions for the turn: Fire Phasers, Launch Torpedoes, Scan, Hail, Retreat, and special actions like Boarding.</li>
+                    </ul>
+                </div>
+                <SubHeader>Right Column: Ship Systems Status</SubHeader>
+                <p className="text-text-secondary">This column gives you a detailed, real-time overview of the U.S.S. Endeavour's status.</p>
+                 <div className="mt-4 p-2 border border-border-dark rounded">
+                    <div className="font-bold mb-2">1. Primary Status Bars</div>
+                     <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
+                         <li><strong>Hull:</strong> Your ship's structural integrity. If this reaches zero, the Endeavour is destroyed.</li>
+                         <li><strong>Shields:</strong> Your main defense. Only active during Red Alert. Regenerates each turn based on power to shields.</li>
+                         <li><strong>Reserve Power:</strong> Used for combat actions and system upkeep during Red Alert. Recharges when not in combat.</li>
+                         <li><strong>Dilithium:</strong> A critical resource used for warping between quadrants and as an emergency power backup.</li>
+                     </ul>
+                     <div className="font-bold mb-2 mt-4">2. Tactical Toggles</div>
+                     <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
+                         <li><strong>Red Alert:</strong> Raises shields for combat. Drains reserve power each turn.</li>
+                         <li><strong>Evasive:</strong> Increases chance to evade attacks but costs more power. Requires Red Alert.</li>
+                         <li><strong>Damage Control:</strong> Assign your engineering crew to slowly repair the Hull or a damaged subsystem. This consumes power each turn.</li>
+                     </ul>
+                     <div className="font-bold mb-2 mt-4">3. Energy Allocation</div>
+                     <p>Perhaps the most critical system. Distribute 100% of your main reactor's power between Weapons, Shields, and Engines. This directly impacts phaser damage, shield regeneration rate, and a passive evasion bonus.</p>
+                 </div>
             </div>
-            <SubHeader>Right Column: Ship Systems Status</SubHeader>
-            <p className="text-text-secondary">This column gives you a detailed, real-time overview of the U.S.S. Endeavour's status.</p>
-             <div className="mt-4 p-2 border border-border-dark rounded">
-                <div className="font-bold mb-2">1. Primary Status Bars</div>
-                 <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                     <li><strong>Hull:</strong> Your ship's structural integrity. If this reaches zero, the Endeavour is destroyed.</li>
-                     <li><strong>Shields:</strong> Your main defense. Only active during Red Alert. Regenerates each turn based on power to shields.</li>
-                     <li><strong>Reserve Power:</strong> Used for combat actions and system upkeep during Red Alert. Recharges when not in combat.</li>
-                     <li><strong>Dilithium:</strong> A critical resource used for warping between quadrants and as an emergency power backup.</li>
-                 </ul>
-                 <div className="font-bold mb-2 mt-4">2. Tactical Toggles</div>
-                 <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                     <li><strong>Red Alert:</strong> Raises shields for combat. Drains reserve power each turn.</li>
-                     <li><strong>Evasive:</strong> Increases chance to evade attacks but costs more power. Requires Red Alert.</li>
-                     <li><strong>Damage Control:</strong> Assign your engineering crew to slowly repair the Hull or a damaged subsystem. This consumes power each turn.</li>
-                 </ul>
-                 <div className="font-bold mb-2 mt-4">3. Energy Allocation</div>
-                 <p>Perhaps the most critical system. Distribute 100% of your main reactor's power between Weapons, Shields, and Engines. This directly impacts phaser damage, shield regeneration rate, and a passive evasion bonus.</p>
-             </div>
-        </div>
-    );
+        )
+    };
     
     const RegistrySection = () => {
-        const EntityEntry: React.FC<{
-            config: { wireframe: React.FC, icon: React.FC<any>, colorClass: string },
-            name: string,
-            description: string,
-            stats?: string
-        }> = ({ config, name, description, stats }) => {
-            const Wireframe = config.wireframe;
-            const Icon = config.icon;
+        const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
+            <div id={`registry-${name.toLowerCase()}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
+                {icon}
+                <h3 className="text-2xl font-bold">{name}</h3>
+            </div>
+        );
+
+        const RoleEntry: React.FC<{ model: ShipModel, role: ShipRole, name: string, description: string }> = ({ model, role, name, description }) => {
+            const visualConfig = shipVisuals[model].roles[role];
+            if (!visualConfig) return null;
+            const stats = shipRoleStats[role];
+
+            const Wireframe = visualConfig.wireframe;
+            const Icon = visualConfig.icon;
+
             return (
-                <div className="grid grid-cols-[1fr_2fr] gap-4 items-center mb-6 p-3 bg-bg-paper-lighter rounded">
+                 <div className="grid grid-cols-[1fr_2fr] gap-4 items-center mb-6 p-3 bg-bg-paper-lighter rounded">
                     <div className="flex flex-col items-center">
                         <div className="w-24 h-24"><Wireframe /></div>
-                        <Icon className={`w-12 h-12 mt-2 ${config.colorClass}`} />
+                        <Icon className={`w-12 h-12 mt-2 ${visualConfig.colorClass}`} />
                     </div>
                     <div>
                         <h4 className="text-lg font-bold text-secondary-light">{name}</h4>
                         <p className="text-text-secondary text-sm mb-2">{description}</p>
-                        {stats && <p className="font-mono text-accent-orange text-sm bg-black p-2 rounded">{stats}</p>}
+                        <p className="font-mono text-accent-orange text-xs bg-black p-2 rounded">
+                            HULL: {stats.maxHull} | SHIELDS: {stats.maxShields} | ENERGY: {stats.energy.max} | TORPS: {stats.torpedoes.max}
+                        </p>
                     </div>
                 </div>
             )
         };
+
+        // FIX: A component must be capitalized to be used in JSX. Extracted the icon component to a variable.
+        const PirateIcon = shipVisuals.Pirate.roles.Escort!.icon;
     
         return (
             <div>
                 <SectionHeader>Entity Registry</SectionHeader>
-                <SubHeader>Hostile & Neutral Vessels</SubHeader>
-                <EntityEntry config={shipTypes['Klingon']} name="Klingon D7-Class" description="The workhorse of the Klingon fleet. Aggressive tactics, heavy forward disruptors, and an appetite for glorious battle. Expect torpedoes." stats="HULL: 60 | SHIELDS: 20 | TORPEDOES: 4" />
-                <EntityEntry config={shipTypes['Romulan']} name="Romulan D'deridex-Type Warbird" description="A feared vessel of the Romulan Star Empire. Often found patrolling their borders. They rely on powerful plasma weaponry and cloaking devices (not simulated)." stats="HULL: 60 | SHIELDS: 20 | TORPEDOES: 4" />
-                <EntityEntry config={shipTypes['Pirate']} name="Orion Pirate Vessel" description="A jury-rigged ship, common among raiders in the Expanse. What it lacks in durability, it makes up for in ferocity. Weak shields are their primary vulnerability." stats="HULL: 40 | SHIELDS: 10 | TORPEDOES: 2" />
-                <EntityEntry config={shipTypes['Independent']} name="Independent Freighter" description="Civilian traders and transports. Typically not hostile unless provoked. They possess minimal armament and defenses." stats="HULL: 30 | SHIELDS: 0 | TORPEDOES: 0" />
-    
-                <SubHeader>Planetology</SubHeader>
-                <p className="text-text-secondary mb-4">A classification of planetary bodies discovered within the Typhon Expanse.</p>
-                <EntityEntry config={planetTypes['M']} name="M-Class (Terrestrial)" description="Earth-like worlds, often teeming with life. Prime candidates for colonization, scientific study, and first contact missions. The majority of away missions will occur on these planets." />
-                <EntityEntry config={planetTypes['L']} name="L-Class (Marginal)" description="Barely habitable worlds with thin atmospheres or extreme geological conditions. Often home to hardy, primitive lifeforms or rich, rare mineral deposits. Starfleet science outposts are sometimes established on L-Class worlds." />
-                <EntityEntry config={planetTypes['J']} name="J-Class (Gas Giant)" description="Massive spheres of gas with no solid surface, making them impossible to land on. Their extensive moon systems, however, can be sources of valuable resources or hide pirate bases." />
-                <EntityEntry config={planetTypes['D']} name="D-Class (Rock/Barren)" description="Lifeless worlds, often little more than large asteroids. They are frequently the sites of mining operations or, more rarely, contain the ruins of ancient, long-dead civilizations." />
-    
-                <SubHeader>Stellar Cartography</SubHeader>
-                <p className="text-text-secondary mb-4">Notable stellar phenomena and structures recorded in Federation charts.</p>
-                <EntityEntry config={starbaseType} name="Starbase" description="Federation outposts. Dock with them to fully repair your ship, recharge dilithium, and resupply torpedoes." stats="HULL: 500 | SHIELDS: N/A" />
-                <EntityEntry config={asteroidType} name="Asteroid Field" description="Dense clusters of rock and ice that are impassable to starships. While a navigational nuisance, they can be used tactically to evade pursuers or hide from sensors." />
-                <EntityEntry config={beaconType} name="Unidentified Signal Beacon" description="An artificial signal of unknown origin. Approaching these beacons will trigger a unique event, ranging from a distress call to the discovery of an ancient artifact. Approach with caution." />
-                <div className="p-3 bg-bg-paper-lighter rounded">
-                    <h4 className="text-lg font-bold text-secondary-light">Nebula</h4>
-                    <p className="text-text-secondary text-sm mb-2">Vast clouds of interstellar gas and dust. Nebulae interfere with sensors, making targeting difficult and long-range scans impossible. They can provide excellent cover for tactical maneuvers but are equally dangerous for hiding enemy ships. Sectors containing nebulae will have a purple haze effect.</p>
+                <p>A registry of all known vessels, planets, and anomalies identified by Starfleet in the Typhon Expanse.</p>
+                <div className="flex gap-2 my-4">
+                    <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
+                    <a href="#registry-klingon" className="btn btn-tertiary">Klingon</a>
+                    <a href="#registry-romulan" className="btn btn-tertiary">Romulan</a>
+                    <a href="#registry-pirate" className="btn btn-tertiary">Pirate</a>
                 </div>
+                
+                <FactionHeader name="Federation" icon={<FederationIcon className="w-8 h-8 text-blue-400" />} />
+                <RoleEntry model="Federation" role="Explorer" name="Explorer" description="Balanced vessels designed for long-range missions. They boast strong shields, versatile subsystems, and high energy reserves, but are not dedicated warships. The U.S.S. Endeavour is a prime example." />
+                <RoleEntry model="Federation" role="Cruiser" name="Cruiser" description="A heavier class of starship, serving as the fleet's backbone in combat situations. Well-armed and armored, they sacrifice some scientific utility for increased firepower and durability." />
+                <RoleEntry model="Federation" role="Escort" name="Escort" description="Small, fast, and highly maneuverable warships designed for patrol, interception, and fleet support. While fragile, their high damage output makes them a significant threat." />
+                <RoleEntry model="Federation" role="Freighter" name="Freighter" description="Civilian cargo haulers under Federation registry. They have large hulls but are slow and possess only minimal defensive capabilities. Often require assistance when attacked." />
+
+                <FactionHeader name="Klingon Empire" icon={<KlingonIcon className="w-8 h-8 text-red-500" />} />
+                <RoleEntry model="Klingon" role="Cruiser" name="Cruiser (Bird-of-Prey)" description="The workhorse of the Klingon Defense Force. A versatile combat vessel with powerful disruptors and a cloaking device, designed for direct, honorable confrontation." />
+                <RoleEntry model="Klingon" role="Escort" name="Escort (Raptor)" description="A fast attack craft, more nimble than the standard Bird-of-Prey. Used for raiding, reconnaissance, and overwhelming smaller targets with speed and aggression." />
+                <RoleEntry model="Klingon" role="Freighter" name="Freighter" description="Armored Klingon transports. While primarily for cargo, they are more heavily armed than their civilian counterparts and should not be underestimated." />
+
+                <FactionHeader name="Romulan Star Empire" icon={<RomulanIcon className="w-8 h-8 text-green-500" />} />
+                <RoleEntry model="Romulan" role="Cruiser" name="Cruiser (Warbird)" description="The iconic symbol of Romulan power. These massive warships are heavily armed and possess superior cloaking technology, preferring to strike from the shadows with devastating precision." />
+                <RoleEntry model="Romulan" role="Escort" name="Escort (Hawk)" description="A smaller, faster class of warship. While less powerful than a Warbird, they are still a deadly threat, often used for patrols along the Neutral Zone and for surgical strikes." />
+                
+                <FactionHeader name="Pirate & Orion Syndicate" icon={<PirateIcon className="w-8 h-8 text-orange-500" />} />
+                <RoleEntry model="Pirate" role="Escort" name="Raider/Escort" description="A fast, lightly armored ship favored by pirates. They are glass cannons, boasting high-powered engines and weapons but suffering from weak hulls and shields. Typically rely on ambush tactics." />
+                <RoleEntry model="Pirate" role="Cruiser" name="Cruiser" description="A captured and heavily modified freighter or older warship. Bristling with mismatched weapon systems and reinforced plating, these vessels are surprisingly durable and dangerous in a brawl." />
+    
+                <SubHeader id="registry-planets">Planetology</SubHeader>
+                <p className="text-text-secondary mb-4">A classification of planetary bodies discovered within the Typhon Expanse.</p>
+                {/* ... existing planet entries ... */}
             </div>
         )
     };

@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipNames } from '../assets/ships/configs/shipNames';
+import { shipRoleStats } from '../assets/ships/configs/shipRoleStats';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE, SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../assets/configs/logColors';
 
@@ -137,7 +138,7 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
     else if (factionOwner === 'Romulan') depth = (qx - midX) + (midY - 1 - qy);
     else if (factionOwner === 'Federation') depth = (midX - 1 - qx) + (qy - midY);
 
-    let mainFaction: Ship['shipClass'] | null = null;
+    let mainFaction: Ship['shipModel'] | null = null;
     let pirateChance = 0.1;
     let factionShipChance = 0;
     let starbaseChance = 0;
@@ -215,7 +216,7 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                 position, scanned: true,
             });
         } else {
-            let faction: Ship['shipClass'] | null = null;
+            let faction: Ship['shipModel'] | null = null;
             const shipRoll = Math.random();
 
             if (factionOwner === 'None') {
@@ -233,53 +234,43 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
             }
             
             if (faction) {
-                let baseStats: Partial<Ship> = {};
+                let shipRole: ShipRole;
+                let energyAllocation: Ship['energyAllocation'];
+
                 switch(faction) {
                     case 'Klingon':
                     case 'Romulan':
-                        baseStats = {
-                            hull: 60, maxHull: 60, shields: 20, maxShields: 20,
-                            energy: { current: 50, max: 50 }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
-                            torpedoes: { current: 4, max: 4 },
-                            subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 0, maxHealth: 0 } },
-                            securityTeams: { current: 5, max: 5 },
-                        };
+                        shipRole = Math.random() < 0.8 ? 'Cruiser' : 'Escort';
+                        energyAllocation = { weapons: 50, shields: 50, engines: 0 };
                         break;
                     case 'Pirate':
-                        baseStats = {
-                            hull: 40, maxHull: 40, shields: 10, maxShields: 10,
-                            energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                            torpedoes: { current: 2, max: 2 },
-                            subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
-                            securityTeams: { current: 3, max: 3 },
-                        };
+                        shipRole = 'Escort';
+                        energyAllocation = { weapons: 60, shields: 40, engines: 0 };
                         break;
                     case 'Federation':
-                        baseStats = {
-                            hull: 80, maxHull: 80, shields: 40, maxShields: 40,
-                            energy: { current: 80, max: 80 }, energyAllocation: { weapons: 33, shields: 34, engines: 33 },
-                            torpedoes: { current: 8, max: 8 },
-                            subsystems: { weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 100, maxHealth: 100 }, transporter: { health: 100, maxHealth: 100 } },
-                            securityTeams: { current: 4, max: 4 },
-                        };
+                        shipRole = Math.random() < 0.7 ? 'Explorer' : 'Cruiser';
+                        energyAllocation = { weapons: 33, shields: 34, engines: 33 };
                         break;
                     case 'Independent':
                     default:
-                        baseStats = {
-                            hull: 30, maxHull: 30, shields: 0, maxShields: 0,
-                            energy: { current: 20, max: 20 }, energyAllocation: { weapons: 0, shields: 0, engines: 100 },
-                            torpedoes: { current: 0, max: 0 },
-                            subsystems: { weapons: { health: 0, maxHealth: 0 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 0, maxHealth: 0 }, transporter: { health: 0, maxHealth: 0 } },
-                            securityTeams: { current: 1, max: 1 },
-                        };
+                        shipRole = 'Freighter';
                         faction = 'Independent';
+                        energyAllocation = { weapons: 0, shields: 0, engines: 100 };
                         break;
                 }
                 
+                const stats = shipRoleStats[shipRole];
+                
                 newEntities.push({
-                    id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipClass: faction, faction, position,
+                    id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipModel: faction, shipRole, faction, position,
+                    hull: stats.maxHull, maxHull: stats.maxHull,
+                    shields: 0, maxShields: stats.maxShields,
+                    energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation,
+                    torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
+                    subsystems: JSON.parse(JSON.stringify(stats.subsystems)),
+                    securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
                     dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
-                    crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), ...baseStats,
+                    crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(),
                 } as Ship);
             }
         }
@@ -306,18 +297,16 @@ const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
 
 
 const createInitialGameState = (): GameState => {
+  const playerStats = shipRoleStats.Explorer;
   const playerShip: Ship = {
-    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipClass: 'Federation',
+    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', shipRole: 'Explorer',
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
-    hull: 100, maxHull: 100, shields: 0, maxShields: 50,
-    subsystems: {
-      weapons: { health: 100, maxHealth: 100 }, engines: { health: 100, maxHealth: 100 },
-      shields: { health: 100, maxHealth: 100 }, transporter: { health: 100, maxHealth: 100 },
-    },
-    energy: { current: 100, max: 100 }, energyAllocation: { weapons: 34, shields: 33, engines: 33 },
-    torpedoes: { current: 10, max: 10 }, dilithium: { current: 20, max: 20 },
+    hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
+    subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
+    energy: { current: playerStats.energy.max, max: playerStats.energy.max }, energyAllocation: { weapons: 34, shields: 33, engines: 33 },
+    torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max }, dilithium: { current: 20, max: 20 },
     scanned: true, evasive: false, retreatingTurn: null,
-    crewMorale: { current: 100, max: 100 }, securityTeams: { current: 3, max: 3 }, repairTarget: null,
+    crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
   };
 
@@ -381,6 +370,10 @@ const applyPhaserDamage = (
     }
 
     let hitChance = 0.9;
+    if (gameState.currentSector.hasNebula) {
+        hitChance *= 0.75;
+        logs.push(`Nebula interference is affecting targeting sensors.`);
+    }
     if (target.evasive) hitChance *= 0.6;
     if (sourceShip.id === 'player' && sourceShip.evasive) hitChance *= 0.75;
     
@@ -431,10 +424,9 @@ const applyPhaserDamage = (
 
     const absorbedByShields = Math.min(target.shields, damageToProcess);
     if (absorbedByShields > 0) {
-        const roundedAbsorbed = Math.round(absorbedByShields);
-        logs.push(`--> Shields absorbed ${roundedAbsorbed} damage.`);
-        target.shields -= roundedAbsorbed;
-        damageToProcess -= roundedAbsorbed;
+        logs.push(`--> Shields absorbed ${Math.round(absorbedByShields)} damage.`);
+        target.shields -= absorbedByShields;
+        damageToProcess -= absorbedByShields;
     }
     
     const totalPenetratingDamage = damageToProcess + damageBypassingShields;
@@ -503,7 +495,50 @@ export const useGameLogic = () => {
                     if (!savedState.player.ship.subsystems.transporter) savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
                     if (!savedState.player.targeting) delete savedState.player.targeting;
                     else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
-                    if (!savedState.player.ship.shipClass) savedState.player.ship.shipClass = 'Federation';
+                    
+                    // Migration to shipModel and shipRole
+                    const migrateShip = (ship: Ship) => {
+                        if ((ship as any).shipClass) {
+                            ship.shipModel = (ship as any).shipClass;
+                            delete (ship as any).shipClass;
+                        }
+                        if (!ship.shipRole) {
+                            let role: ShipRole;
+                            let model = ship.shipModel || ship.faction; // Fallback for really old saves
+                            switch(model) {
+                                case 'Klingon':
+                                case 'Romulan':
+                                    role = 'Cruiser'; break;
+                                case 'Pirate':
+                                    role = 'Escort'; break;
+                                case 'Federation':
+                                    role = 'Explorer'; break;
+                                default:
+                                    role = 'Freighter'; break;
+                            }
+                            ship.shipRole = role;
+                            const stats = shipRoleStats[role];
+                            ship.maxHull = stats.maxHull;
+                            ship.hull = Math.min(ship.hull, stats.maxHull);
+                            ship.maxShields = stats.maxShields;
+                            ship.shields = Math.min(ship.shields, stats.maxShields);
+                            ship.energy.max = stats.energy.max;
+                            ship.energy.current = Math.min(ship.energy.current, stats.energy.max);
+                            ship.torpedoes.max = stats.torpedoes.max;
+                            ship.torpedoes.current = Math.min(ship.torpedoes.current, stats.torpedoes.max);
+
+                            const oldSubsystems = JSON.parse(JSON.stringify(ship.subsystems));
+                            ship.subsystems = JSON.parse(JSON.stringify(stats.subsystems));
+                            (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).forEach(key => {
+                                if (oldSubsystems[key]) {
+                                    ship.subsystems[key].health = Math.min(oldSubsystems[key].health, ship.subsystems[key].maxHealth);
+                                }
+                            });
+                        }
+                    };
+
+                    migrateShip(savedState.player.ship);
+                    if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
                     
                     // Add log colors if missing
                     let colorIndex = 0;
@@ -526,7 +561,10 @@ export const useGameLogic = () => {
                             sector.isScanned = sector.visited;
                         }
                         sector.entities.forEach(e => {
-                            if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
+                            if (e.type === 'ship' && e.id !== 'player') {
+                                migrateShip(e as Ship);
+                                assignColor(e as Ship);
+                            }
                         })
                     }));
                     
@@ -637,8 +675,43 @@ export const useGameLogic = () => {
                     if (!savedState.player.ship.subsystems.transporter) savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
                     if (!savedState.player.targeting) delete savedState.player.targeting;
                     else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
-                    if (!savedState.player.ship.shipClass) savedState.player.ship.shipClass = 'Federation';
                     
+                     const migrateShip = (ship: Ship) => {
+                        if ((ship as any).shipClass) {
+                            ship.shipModel = (ship as any).shipClass;
+                            delete (ship as any).shipClass;
+                        }
+                        if (!ship.shipRole) {
+                            let role: ShipRole;
+                            let model = ship.shipModel || ship.faction;
+                            switch(model) {
+                                case 'Klingon': case 'Romulan': role = 'Cruiser'; break;
+                                case 'Pirate': role = 'Escort'; break;
+                                case 'Federation': role = 'Explorer'; break;
+                                default: role = 'Freighter'; break;
+                            }
+                            ship.shipRole = role;
+                            const stats = shipRoleStats[role];
+                            ship.maxHull = stats.maxHull;
+                            ship.hull = Math.min(ship.hull, stats.maxHull);
+                            ship.maxShields = stats.maxShields;
+                            ship.shields = Math.min(ship.shields, stats.maxShields);
+                            ship.energy.max = stats.energy.max;
+                            ship.energy.current = Math.min(ship.energy.current, stats.energy.max);
+                            ship.torpedoes.max = stats.torpedoes.max;
+                            ship.torpedoes.current = Math.min(ship.torpedoes.current, stats.torpedoes.max);
+                            const oldSubsystems = JSON.parse(JSON.stringify(ship.subsystems));
+                            ship.subsystems = JSON.parse(JSON.stringify(stats.subsystems));
+                            (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).forEach(key => {
+                                if (oldSubsystems[key]) {
+                                    ship.subsystems[key].health = Math.min(oldSubsystems[key].health, ship.subsystems[key].maxHealth);
+                                }
+                            });
+                        }
+                    };
+                    migrateShip(savedState.player.ship);
+                     if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
+
                     let colorIndex = 0;
                     savedState.player.ship.logColor = PLAYER_LOG_COLOR;
                      const assignColor = (ship: Ship) => {
@@ -655,7 +728,10 @@ export const useGameLogic = () => {
                             sector.isScanned = sector.visited;
                         }
                         sector.entities.forEach(e => {
-                            if (e.type === 'ship' && e.id !== 'player') assignColor(e as Ship);
+                            if (e.type === 'ship' && e.id !== 'player') {
+                                migrateShip(e as Ship);
+                                assignColor(e as Ship);
+                            }
                         });
                     }));
 
@@ -779,6 +855,26 @@ export const useGameLogic = () => {
                     if (playerShip.position.x !== navigationTarget.x || playerShip.position.y !== navigationTarget.y) {
                         playerShip.position = moveOneStep(playerShip.position, navigationTarget);
                         addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Moving to ${playerShip.position.x}, ${playerShip.position.y}.`, isPlayerSource: true });
+                        
+                        // Asteroid field hazard
+                        const asteroidFields = currentSector.entities.filter((e: Entity) => e.type === 'asteroid_field');
+                        const isAdjacentToAsteroids = asteroidFields.some(field => calculateDistance(playerShip.position, field.position) <= 1);
+                        if (isAdjacentToAsteroids && Math.random() < 0.25) {
+                            const damage = 3 + Math.floor(Math.random() * 5); // 3-7 damage
+                            addLog({ sourceId: 'system', sourceName: 'Hazard Alert', message: `Navigating near asteroid field... minor debris impact!`, isPlayerSource: false, color: 'border-orange-400' });
+                            let remainingDamage: number = damage;
+                            if (playerShip.shields > 0) {
+                                const absorbed = Math.min(playerShip.shields, remainingDamage);
+                                playerShip.shields -= absorbed;
+                                remainingDamage -= absorbed;
+                                addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Shields absorbed ${Math.round(absorbed)} damage.`, isPlayerSource: false });
+                            }
+                            if (remainingDamage > 0) {
+                                const roundedDamage = Math.round(remainingDamage);
+                                playerShip.hull = Math.max(0, playerShip.hull - roundedDamage);
+                                addLog({ sourceId: 'system', sourceName: 'Damage Control', message: `Ship took ${roundedDamage} hull damage!`, isPlayerSource: false });
+                            }
+                        }
                     }
                     if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
                         setNavigationTarget(null);
@@ -856,10 +952,19 @@ export const useGameLogic = () => {
                  let remainingDamage = damage;
                  const shieldDamage = remainingDamage * 0.25;
                  const absorbedByShields = Math.min(target.shields, shieldDamage);
-                 if (absorbedByShields > 0) { logs.push(`--> Shields absorbed ${Math.round(absorbedByShields)} damage.`); target.shields -= absorbedByShields; }
+                 if (absorbedByShields > 0) {
+                     logs.push(`--> Shields absorbed ${Math.round(absorbedByShields)} damage.`);
+                     target.shields -= absorbedByShields;
+                 }
                  remainingDamage -= absorbedByShields / 0.25;
-                 if (remainingDamage > 0) { target.hull = Math.max(0, target.hull - remainingDamage); logs.push(`--> ${target.name} takes ${Math.round(remainingDamage)} hull damage.`); }
-                 else { logs.push(`--> Shields absorbed the entire hit.`); }
+                 if (remainingDamage > 0) {
+                     const roundedHullDamage = Math.round(remainingDamage);
+                     target.hull = Math.max(0, target.hull - roundedHullDamage);
+                     logs.push(`--> ${target.name} takes ${roundedHullDamage} hull damage.`);
+                 }
+                 else {
+                     logs.push(`--> Shields absorbed the entire hit.`);
+                 }
                  return logs;
             };
 
@@ -888,8 +993,12 @@ export const useGameLogic = () => {
                         if (ship.position.x === torpedo.position.x && ship.position.y === torpedo.position.y) {
                             let hitChance = Math.max(0.05, 1.0 - (torpedo.stepsTraveled * 0.24));
                             if (ship.evasive) hitChance *= 0.3;
+                            if (next.currentSector.hasNebula) hitChance *= 0.6;
                             
                             let torpedoLog = `${sourceEntity.name}'s torpedo is on an intercept course with ${ship.name}. Impact chance: ${Math.round(hitChance * 100)}%.`;
+                             if (next.currentSector.hasNebula) {
+                                torpedoLog += ` (Reduced by nebula interference)`;
+                            }
                             if (Math.random() < hitChance) {
                                 const damageLogs = applyTorpedoDamage(ship, 50, sourceEntity);
                                 torpedoLog += '\n' + damageLogs.join('\n');
@@ -941,6 +1050,25 @@ export const useGameLogic = () => {
                 const distance = calculateDistance(aiShip.position, next.player.ship.position);
                 if (distance > 2 && aiShip.subsystems.engines.health > 0) {
                     aiShip.position = moveOneStep(aiShip.position, next.player.ship.position);
+
+                    // AI Asteroid hazard
+                    const asteroidFields = next.currentSector.entities.filter((e: Entity) => e.type === 'asteroid_field');
+                    if (asteroidFields.some(field => calculateDistance(aiShip.position, field.position) <= 1)) {
+                        if (Math.random() < 0.20) {
+                            const damage = 3 + Math.floor(Math.random() * 5);
+                            addLog({ sourceId: 'system', sourceName: 'Sensors', message: `${aiShip.name} is struck by debris while maneuvering near asteroids!`, isPlayerSource: false, color: 'border-orange-400' });
+                            let remainingDamage: number = damage;
+                            if (aiShip.shields > 0) {
+                                const absorbed = Math.min(aiShip.shields, remainingDamage);
+                                aiShip.shields -= absorbed;
+                                remainingDamage -= absorbed;
+                            }
+                            if (remainingDamage > 0) {
+                                const roundedDamage = Math.round(remainingDamage);
+                                aiShip.hull = Math.max(0, aiShip.hull - roundedDamage);
+                            }
+                        }
+                    }
                 }
             });
             return { ...next };
@@ -1156,14 +1284,15 @@ export const useGameLogic = () => {
                     if (Math.random() < 0.15 && !sectorToWarpTo.entities.some((e: Entity) => e.type === 'starbase')) {
                         addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: "It's an ambush! Pirate vessels are decloaking!", isPlayerSource: false, color: 'border-red-600' });
                         for (let i = 0; i < Math.floor(Math.random() * 2) + 1; i++) {
+                            const stats = shipRoleStats['Escort'];
                             sectorToWarpTo.entities.push({
-                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipClass: 'Pirate',
+                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipModel: 'Pirate', shipRole: 'Escort',
                                 position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) },
-                                hull: 40, maxHull: 40, shields: 10, maxShields: 10, logColor: ENEMY_LOG_COLORS[i % ENEMY_LOG_COLORS.length],
-                                energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: true, evasive: false, retreatingTurn: null,
-                                subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: { health: 0, maxHealth: 0 } },
-                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: 3, max: 3 }, repairTarget: null,
+                                hull: stats.maxHull, maxHull: stats.maxHull, shields: stats.maxShields, maxShields: stats.maxShields, logColor: ENEMY_LOG_COLORS[i % ENEMY_LOG_COLORS.length],
+                                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, dilithium: { current: 0, max: 0 }, scanned: true, evasive: false, retreatingTurn: null,
+                                subsystems: JSON.parse(JSON.stringify(stats.subsystems)),
+                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, repairTarget: null,
                             } as Ship);
                         }
                         next.redAlert = true; next.player.ship.shields = next.player.ship.maxShields;
@@ -1195,16 +1324,30 @@ export const useGameLogic = () => {
             next.quadrantMap[pos.qy][pos.qx].isScanned = true;
             
             const scannedSector = next.quadrantMap[pos.qy][pos.qx];
-            const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
-            const hasStarbase = scannedSector.entities.some((e:Entity) => e.type === 'starbase');
-            const planetCount = scannedSector.entities.filter((e:Entity) => e.type === 'planet').length;
-            
             let scanReport = `Scan complete. Results for (${pos.qx},${pos.qy}):\n`;
-            if (hostileCount > 0) scanReport += `--> WARNING: ${hostileCount} hostile contacts detected.\n`;
-            if (hasStarbase) scanReport += `--> Starbase signature detected.\n`;
-            if (planetCount > 0) scanReport += `--> ${planetCount} planetary bodies detected.\n`;
-            if (scannedSector.hasNebula) scanReport += `--> Sector contains a nebula.\n`;
-            if (scanReport.split('\n').length === 2) scanReport += `--> No significant readings.`;
+
+            if (scannedSector.hasNebula) {
+                scanReport += `--> A dense nebula is present in this sector. Detailed sensor readings are impossible.\n`;
+                const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
+                if (hostileCount > 0) {
+                    scanReport += `--> CAUTION: Intermittent energy readings detected, could indicate vessel activity.`;
+                }
+            } else {
+                const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
+                const hasStarbase = scannedSector.entities.some((e:Entity) => e.type === 'starbase');
+                const planetCount = scannedSector.entities.filter((e:Entity) => e.type === 'planet').length;
+                
+                const findings = [];
+                if (hostileCount > 0) findings.push(`WARNING: ${hostileCount} hostile contacts detected.`);
+                if (hasStarbase) findings.push(`Starbase signature detected.`);
+                if (planetCount > 0) findings.push(`${planetCount} planetary bodies detected.`);
+                
+                if (findings.length > 0) {
+                    scanReport += findings.map(f => `--> ${f}`).join('\n');
+                } else {
+                    scanReport += `--> No significant readings.`;
+                }
+            }
 
             addLog({ sourceId: 'system', sourceName: 'Sensors', message: scanReport.trim(), isPlayerSource: false });
 
@@ -1395,6 +1538,7 @@ export const useGameLogic = () => {
                 contents: `You are the captain of a ${target.faction} ship called '${target.name}'. I am hailing you from the Federation starship U.S.S. Endeavour. What is your response? Be brief and in character.`,
                 config: { systemInstruction: "You are a spaceship captain in a sci-fi universe. Respond concisely." },
               });
+            // FIX: The response object has a `text` property, not a `text()` method.
             setActiveHail({ targetId: selectedTargetId, loading: false, message: response.text });
          } catch (error) {
             console.error("Hail AI error:", error);
@@ -1421,14 +1565,15 @@ export const useGameLogic = () => {
                 case 'damage': if (outcome.resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount); break;
                 case 'combat': if (outcome.spawn && beacon) {
                         for (let i = 0; i < (outcome.spawnCount || 1); i++) {
+                             const stats = shipRoleStats['Escort'];
                              next.currentSector.entities.push({
-                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipClass: 'Pirate',
-                                position: { x: beacon.position.x + i + 1, y: beacon.position.y }, hull: 40, maxHull: 40, shields: 10, maxShields: 10,
+                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipModel: 'Pirate', shipRole: 'Escort',
+                                position: { x: beacon.position.x + i + 1, y: beacon.position.y }, hull: stats.maxHull, maxHull: stats.maxHull, shields: stats.maxShields, maxShields: stats.maxShields,
                                 logColor: ENEMY_LOG_COLORS[i % ENEMY_LOG_COLORS.length],
-                                energy: { current: 30, max: 30 }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                                torpedoes: { current: 2, max: 2 }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
-                                subsystems: { weapons: { health: 80, maxHealth: 80 }, engines: { health: 100, maxHealth: 100 }, shields: { health: 70, maxHealth: 70 }, transporter: {health: 0, maxHealth: 0} },
-                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: 3, max: 3 }, repairTarget: null,
+                                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
+                                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                                subsystems: JSON.parse(JSON.stringify(stats.subsystems)),
+                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, repairTarget: null,
                             } as Ship);
                         } next.redAlert = true;
                     } break;

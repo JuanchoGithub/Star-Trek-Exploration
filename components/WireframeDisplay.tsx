@@ -1,7 +1,8 @@
 import React from 'react';
-import type { Entity, Planet, Ship, TorpedoProjectile } from '../types';
+// FIX: Imported ShipModel type.
+import type { Entity, Planet, Ship, ShipModel } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
-import { shipTypes, ShipFaction } from '../assets/ships/configs/shipTypes';
+import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
@@ -17,9 +18,17 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
     switch (target.type) {
         case 'ship': {
             const ship = target as Ship;
-            const faction = ship.scanned ? ship.faction as ShipFaction : 'Unknown';
-            const config = shipTypes[faction] || shipTypes['Independent'];
-            WireframeComponent = config.wireframe;
+            // FIX: Corrected type to include 'Unknown' as a possibility.
+            const model: ShipModel | 'Unknown' = ship.scanned ? ship.shipModel : 'Unknown';
+
+            if (model === 'Unknown') {
+                WireframeComponent = shipVisuals.Unknown.roles.Unknown.wireframe;
+            } else {
+                const visualConfig = shipVisuals[model];
+                const roleConfig = visualConfig?.roles[ship.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
+                const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown;
+                WireframeComponent = finalConfig.wireframe;
+            }
             break;
         }
         case 'planet': {

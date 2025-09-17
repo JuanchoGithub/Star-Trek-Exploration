@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
-import { PlayerShipIcon } from '../assets/ships/icons';
+// FIX: PlayerShipIcon is not directly exported. It's an alias for FederationExplorerIcon.
+import { FederationExplorerIcon as PlayerShipIcon } from '../assets/ships/icons';
 
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GameState, Entity, PlayerTurnActions, Position, Planet } from '../types';
+import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship } from '../types';
 import CommandConsole from './CommandConsole';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
@@ -61,7 +61,10 @@ const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, t
                     {isUnscannedShip ? (
                         <p className="text-sm text-text-disabled">Scan to reveal details.</p>
                     ) : (
-                        <p className="text-sm text-text-disabled">{target.faction} {target.type}</p>
+                        <>
+                            <p className="text-sm text-text-disabled">{target.faction} {target.type}</p>
+                            {target.type === 'ship' && <p className="text-sm text-text-primary">{(target as Ship).shipRole} Role</p>}
+                        </>
                     )}
                     
                     {target.type === 'planet' && target.scanned && (

@@ -1,8 +1,7 @@
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
-import { shipTypes, ShipFaction } from '../assets/ships/configs/shipTypes';
-import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, OrionPirateShipIcon, UnknownShipIcon, NeutralShipIcon } from '../assets/ships/icons';
+import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
@@ -177,10 +176,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             const isSelected = entity.id === selectedTargetId;
             const isPlayer = entity.id === playerShip.id;
 
-            let icon;
+            let icon: React.ReactNode;
             let factionColor = 'text-gray-400';
             let entityName = entity.name;
-
             let transformStyle = { transform: `translate(-50%, -50%)` };
 
             if (entity.type === 'torpedo_projectile') {
@@ -221,45 +219,21 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             }
             if (entity.type === 'ship') {
                 const shipEntity = entity as Ship;
-                 if (isPlayer) {
-                    icon = <PlayerShipIcon className="w-8 h-8"/>;
-                } else if (!shipEntity.scanned) {
-                    icon = <UnknownShipIcon className="w-8 h-8"/>;
+                
+                if (!shipEntity.scanned && !isPlayer) {
+                    const config = shipVisuals.Unknown.roles.Unknown;
+                    const IconComponent = config.icon;
+                    icon = <IconComponent className="w-8 h-8"/>;
+                    factionColor = config.colorClass;
                     entityName = 'Unknown Contact';
                 } else {
-                    let shipClassForIcon = shipEntity.shipClass;
-                    // Fallback for older save files without shipClass
-                    if (!shipClassForIcon) {
-                        if (shipEntity.name.includes('Klingon')) shipClassForIcon = 'Klingon';
-                        else if (shipEntity.name.includes('Romulan')) shipClassForIcon = 'Romulan';
-                        else if (shipEntity.name.includes('Pirate')) shipClassForIcon = 'Pirate';
-                        else shipClassForIcon = 'Independent';
-                    }
-
-                    switch (shipClassForIcon) {
-                        case 'Klingon':
-                            icon = <KlingonBirdOfPreyIcon className="w-8 h-8"/>;
-                            break;
-                        case 'Romulan':
-                            icon = <RomulanWarbirdIcon className="w-8 h-8"/>;
-                            break;
-                        case 'Pirate':
-                            icon = <OrionPirateShipIcon className="w-8 h-8"/>;
-                            break;
-                        case 'Federation':
-                            icon = <PlayerShipIcon className="w-8 h-8"/>;
-                            break;
-                        case 'Independent':
-                        default:
-                            icon = <NeutralShipIcon className="w-8 h-8"/>;
-                            break;
-                    }
+                    const visualConfig = shipVisuals[shipEntity.shipModel];
+                    const roleConfig = visualConfig?.roles[shipEntity.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
+                    const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown;
+                    const IconComponent = finalConfig.icon;
+                    icon = <IconComponent className="w-8 h-8"/>;
+                    factionColor = finalConfig.colorClass;
                 }
-
-                // This logic determines the color based on current faction
-                const currentFactionForColor = isPlayer ? 'Federation' : (!shipEntity.scanned ? 'Unknown' : shipEntity.faction);
-                const colorConfig = shipTypes[currentFactionForColor as ShipFaction] || shipTypes.Independent;
-                factionColor = colorConfig.colorClass;
 
             } else if (entity.type === 'starbase') {
                 const IconComponent = starbaseType.icon;
