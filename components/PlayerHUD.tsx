@@ -1,7 +1,8 @@
 import React from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet } from '../types';
 import CommandConsole from './CommandConsole';
-import { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } from '../assets/ui/icons';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 
@@ -24,6 +25,7 @@ interface PlayerHUDProps {
   navigationTarget: Position | null;
   isTurnResolving: boolean;
   onSendAwayTeam: (targetId: string, type: 'boarding' | 'strike') => void;
+  themeName: ThemeName;
 }
 
 const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
@@ -43,7 +45,8 @@ const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: n
     )
 }
 
-const TargetInfo: React.FC<{target: Entity}> = ({target}) => {
+const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, themeName}) => {
+    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } = getFactionIcons(themeName);
     const isUnscannedShip = target.type === 'ship' && !target.scanned;
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
 
@@ -95,7 +98,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     gameState, onEndTurn, onFirePhasers, onLaunchTorpedo,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam,
+    playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName
 }) => {
     const playerShip = gameState.player.ship;
     
@@ -137,7 +140,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
-                    {target ? <TargetInfo target={target} /> : (
+                    {target ? <TargetInfo target={target} themeName={themeName} /> : (
                          <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
                             <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
@@ -196,6 +199,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         isTurnResolving={isTurnResolving}
                         playerShip={playerShip}
                         target={target}
+                        themeName={themeName}
                     />
                 </div>
             </div>

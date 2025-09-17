@@ -1,5 +1,6 @@
 import React from 'react';
-import { WeaponIcon, ShieldIcon, EngineIcon } from '../assets/ui/icons';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { ThemeName } from '../hooks/useTheme';
 
 interface EnergyAllocatorProps {
   allocation: {
@@ -9,6 +10,7 @@ interface EnergyAllocatorProps {
   };
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
   onDistributeEvenly: () => void;
+  themeName: ThemeName;
 }
 
 const Slider: React.FC<{ label: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; icon: React.ReactNode; }> = ({ label, value, onChange, icon }) => (
@@ -27,7 +29,8 @@ const Slider: React.FC<{ label: string; value: number; onChange: (e: React.Chang
 );
 
 
-const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange, onDistributeEvenly }) => {
+const EnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocation, onEnergyChange, onDistributeEvenly, themeName }) => {
+  const { WeaponIcon, ShieldIcon, EngineIcon } = getFactionIcons(themeName);
   return (
     <div className="panel-style p-3">
       <h3 className="text-lg font-bold text-secondary-light mb-3">Energy Allocation</h3>

@@ -1,22 +1,25 @@
 import React from 'react';
 import type { AwayMissionTemplate, AwayMissionOption } from '../types';
-import { ScienceIcon, SecurityIcon, EngineeringIcon } from '../assets/ui/icons';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { ThemeName } from '../hooks/useTheme';
 
 interface AwayMissionDialogProps {
     mission: AwayMissionTemplate;
     onChoose: (option: AwayMissionOption) => void;
+    themeName: ThemeName;
 }
 
-const roleIcons: { [key in AwayMissionOption['role']]: React.ReactNode } = {
-    Security: <SecurityIcon className="w-6 h-6" />,
-    Science: <ScienceIcon className="w-6 h-6" />,
-    Engineering: <EngineeringIcon className="w-6 h-6" />,
-    Medical: <div />, // placeholder
-    Counselor: <div />, // placeholder
-};
+const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose, themeName }) => {
+    const { ScienceIcon, SecurityIcon, EngineeringIcon } = getFactionIcons(themeName);
 
+    const roleIcons: { [key in AwayMissionOption['role']]: React.ReactNode } = {
+        Security: <SecurityIcon className="w-6 h-6" />,
+        Science: <ScienceIcon className="w-6 h-6" />,
+        Engineering: <EngineeringIcon className="w-6 h-6" />,
+        Medical: <div />, // placeholder
+        Counselor: <div />, // placeholder
+    };
 
-const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose }) => {
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
             <div className="panel-style p-6 max-w-2xl w-full text-center" style={{borderColor: 'var(--color-accent-green)'}}>

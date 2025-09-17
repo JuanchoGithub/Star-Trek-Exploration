@@ -190,6 +190,7 @@ const App: React.FC = () => {
                     navigationTarget={navigationTarget}
                     isTurnResolving={isTurnResolving}
                     onSendAwayTeam={onSendAwayTeam}
+                    themeName={themeName}
                   />
               </div>
           </div>
@@ -203,6 +204,7 @@ const App: React.FC = () => {
                   onToggleRedAlert={onToggleRedAlert}
                   onEvasiveManeuvers={onEvasiveManeuvers}
                   onSelectRepairTarget={onSelectRepairTarget}
+                  themeName={themeName}
               />
           </div>
       </div>
@@ -217,10 +219,10 @@ const App: React.FC = () => {
           </StatusLine>
       </div>
 
-      {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} />}
+      {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} themeName={themeName} />}
       {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
-      {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} />}
+      {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} themeName={themeName} />}
       {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
 
       {showLogPanel && (

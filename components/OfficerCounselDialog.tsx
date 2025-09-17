@@ -1,20 +1,24 @@
 import React from 'react';
 import type { ActiveCounselSession, AwayMissionRole } from '../types';
-import { ScienceIcon, SecurityIcon, EngineeringIcon } from '../assets/ui/icons';
+import { ThemeName } from '../hooks/useTheme';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 
 interface OfficerCounselDialogProps {
   counselSession: ActiveCounselSession;
   onProceed: () => void;
   onAbort: () => void;
+  themeName: ThemeName;
 }
 
-const roleIcons: { [key in AwayMissionRole]?: React.ReactNode } = {
+const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSession, onProceed, onAbort, themeName }) => {
+  const { ScienceIcon, SecurityIcon, EngineeringIcon } = getFactionIcons(themeName);
+  
+  const roleIcons: { [key in AwayMissionRole]?: React.ReactNode } = {
     Security: <SecurityIcon className="w-8 h-8 text-accent-red" />,
     Science: <ScienceIcon className="w-8 h-8 text-secondary-light" />,
     Engineering: <EngineeringIcon className="w-8 h-8 text-accent-yellow" />,
-};
+  };
 
-const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSession, onProceed, onAbort }) => {
   return (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
       <div className="panel-style p-6 max-w-3xl w-full flex flex-col" style={{borderColor: 'var(--color-accent-yellow)'}}>

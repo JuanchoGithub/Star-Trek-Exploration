@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
-import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon, SecurityIcon } from '../assets/ui/icons';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { ThemeName } from '../hooks/useTheme';
 import EnergyAllocator from './EnergyAllocator';
 
 interface StatusBarProps {
@@ -29,7 +30,9 @@ const SubsystemStatus: React.FC<{
   subsystems: ShipSubsystems;
   allocation: { weapons: number; shields: number; engines: number };
   maxShields: number;
-}> = ({ subsystems, allocation, maxShields }) => {
+  themeName: ThemeName;
+}> = ({ subsystems, allocation, maxShields, themeName }) => {
+    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } = getFactionIcons(themeName);
     const weaponBonus = (20 * (allocation.weapons / 100)).toFixed(1);
     const shieldBonus = ((allocation.shields / 100) * (maxShields * 0.1)).toFixed(1);
     const engineBonus = (allocation.engines / 5).toFixed(0); // Represents a fictional evasion bonus for UI feedback
@@ -90,11 +93,13 @@ interface ShipStatusProps {
   onToggleRedAlert: () => void;
   onEvasiveManeuvers: () => void;
   onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void;
+  themeName: ThemeName;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDistributeEvenly, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDistributeEvenly, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, themeName }) => {
   const { ship } = gameState.player;
   const [isRepairListVisible, setRepairListVisible] = useState(false);
+  const { TorpedoIcon, SecurityIcon, WeaponIcon, ShieldIcon, EngineIcon } = getFactionIcons(themeName);
 
   const canTakeEvasive = ship.energy.current >= 20 && ship.subsystems.engines.health > 0;
   const hasDamagedSystems = ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth);
@@ -186,6 +191,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
             subsystems={ship.subsystems} 
             allocation={ship.energyAllocation}
             maxShields={ship.maxShields}
+            themeName={themeName}
         />
       </div>
        <div className="mt-auto pt-3">
@@ -193,6 +199,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
             allocation={ship.energyAllocation} 
             onEnergyChange={onEnergyChange} 
             onDistributeEvenly={onDistributeEvenly}
+            themeName={themeName}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity } from '../types';
-import { WeaponIcon, TorpedoIcon, ScanIcon, RetreatIcon, HailIcon, SecurityIcon } from '../assets/ui/icons';
+import { ThemeName } from '../hooks/useTheme';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
@@ -24,6 +25,7 @@ interface CommandConsoleProps {
   isTurnResolving: boolean;
   playerShip: Ship;
   target?: Entity;
+  themeName: ThemeName;
 }
 
 const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, accentColor: string}> = ({ onClick, disabled, children, accentColor }) => (
@@ -45,7 +47,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo,
     onScanTarget, onInitiateRetreat, onHailTarget, onSendAwayTeam,
     retreatingTurn, currentTurn, isTargetFriendly, isTargetScanned, hasTarget, hasEnemy, 
-    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target
+    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, themeName
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
@@ -64,6 +66,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   }
   
   const canBoardOrStrike = target?.type === 'ship' && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
+  const { WeaponIcon, TorpedoIcon, SecurityIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
 
   return (
     <div className="flex flex-col h-full">
