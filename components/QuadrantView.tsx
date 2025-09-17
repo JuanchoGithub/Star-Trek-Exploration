@@ -8,9 +8,10 @@ interface QuadrantViewProps {
     playerPosition: { qx: number; qy: number };
     onWarp: (pos: { qx: number; qy: number }) => void;
     onScanQuadrant: (pos: QuadrantPosition) => void;
+    isInCombat: boolean;
 }
 
-const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, onWarp, onScanQuadrant }) => {
+const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, onWarp, onScanQuadrant, isInCombat }) => {
     const quadrantSize = { width: 8, height: 8 };
     const [contextMenu, setContextMenu] = useState<{ qx: number; qy: number } | null>(null);
 
@@ -111,11 +112,18 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                  {contextMenu && (
                     <div 
                         style={menuStyle}
-                        className="bg-bg-paper-lighter border-2 border-border-light rounded-md shadow-lg p-2 flex flex-col gap-1 w-32"
+                        className="bg-bg-paper-lighter border-2 border-border-light rounded-md shadow-lg p-2 flex flex-col gap-1 w-36"
                         onClick={e => e.stopPropagation()}
                     >
                         <h4 className="text-sm font-bold text-center border-b border-border-dark mb-1 pb-1">Sector ({contextMenu.qx},{contextMenu.qy})</h4>
-                        <button onClick={() => { onWarp(contextMenu); setContextMenu(null); }} className="btn btn-primary text-xs w-full">Warp</button>
+                        <button 
+                            onClick={() => { onWarp(contextMenu); setContextMenu(null); }} 
+                            className="btn btn-primary text-xs w-full"
+                            disabled={isInCombat}
+                            title={isInCombat ? "Cannot warp during Red Alert" : "Engage Warp Drive"}
+                        >
+                            Warp
+                        </button>
                         {!quadrantMap[contextMenu.qy][contextMenu.qx].isScanned && (
                             <button onClick={() => { onScanQuadrant(contextMenu); setContextMenu(null); }} className="btn btn-secondary text-xs w-full">Scan (1 Pwr)</button>
                         )}

@@ -126,6 +126,7 @@ const App: React.FC = () => {
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
   const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
   const latestLogEntry = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
+  const isRetreating = gameState.player.ship.retreatingTurn !== null && gameState.player.ship.retreatingTurn > gameState.turn;
 
   return (
     <main className={`bg-bg-default text-text-primary h-screen p-4 ${theme.font} ${theme.className} flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
@@ -139,7 +140,11 @@ const App: React.FC = () => {
                       <button onClick={() => onSetView('sector')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-tl-md ${currentView === 'sector' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'}`}>
                           <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Sector View</span>
                       </button>
-                      <button onClick={() => onSetView('quadrant')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'}`}>
+                      <button 
+                        onClick={() => onSetView('quadrant')} 
+                        disabled={isRetreating}
+                        title={isRetreating ? "Cannot access Quadrant Map while retreating" : "Switch to Quadrant Map"}
+                        className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-paper-lighter`}>
                           <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Quadrant Map</span>
                       </button>
                   </div>
@@ -164,6 +169,7 @@ const App: React.FC = () => {
                           playerPosition={gameState.player.position}
                           onWarp={onWarp}
                           onScanQuadrant={onScanQuadrant}
+                          isInCombat={gameState.redAlert}
                           />
                       )}
                       {isWarping && <WarpAnimation />}

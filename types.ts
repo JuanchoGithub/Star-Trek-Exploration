@@ -216,4 +216,5 @@ export interface GameState {
   gameWon: boolean;
   redAlert: boolean;
   combatEffects: CombatEffect[];
+  isRetreatingWarp: boolean;
 }
