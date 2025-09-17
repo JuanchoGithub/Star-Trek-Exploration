@@ -1,8 +1,7 @@
-
 import React from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet } from '../types';
 import CommandConsole from './CommandConsole';
-import { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } from '../assets/ui/icons';
 import WireframeDisplay from './WireframeDisplay';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 

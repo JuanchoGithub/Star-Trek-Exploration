@@ -2,14 +2,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet } from '../types';
-import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../data/contentData';
+import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content/contentData';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
-
-const SECTOR_WIDTH = 12;
-const SECTOR_HEIGHT = 10;
-const QUADRANT_SIZE = 8;
-const SAVE_GAME_KEY = 'star_trek_savegame';
+import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE, SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 
 // Helper to generate a unique ID
 const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;

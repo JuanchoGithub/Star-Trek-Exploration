@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity } from '../types';
-import { WeaponIcon, TorpedoIcon, ScanIcon, RetreatIcon, HailIcon, SecurityIcon } from './Icons';
+import { WeaponIcon, TorpedoIcon, ScanIcon, RetreatIcon, HailIcon, SecurityIcon } from '../assets/ui/icons';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;

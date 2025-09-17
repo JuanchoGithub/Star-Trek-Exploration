@@ -1,4 +1,5 @@
-import type { AwayMissionTemplate, AwayMissionRole, OfficerPersonality, EventTemplate } from '../types';
+// Fix: Corrected the import path to point to the root types.ts file.
+import type { AwayMissionTemplate, AwayMissionRole, OfficerPersonality, EventTemplate } from '../../types';
 
 export const awayMissionTemplates: AwayMissionTemplate[] = [
   {

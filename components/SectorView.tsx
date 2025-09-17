@@ -1,9 +1,14 @@
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile } from '../types';
-import { NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon, StarbaseIcon, AsteroidFieldIcon, EventBeaconIcon, TorpedoProjectileIcon } from './Icons';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipTypes, ShipFaction } from '../assets/ships/configs/shipTypes';
 import { PlayerShipIcon, KlingonBirdOfPreyIcon, RomulanWarbirdIcon, OrionPirateShipIcon, UnknownShipIcon, NeutralShipIcon } from '../assets/ships/icons';
+import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
+import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
+import { beaconType } from '../assets/beacons/configs/beaconTypes';
+import { TorpedoProjectileIcon } from '../assets/projectiles/icons';
+import { NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon } from '../assets/ui/icons';
+
 
 interface SectorViewProps {
   entities: Entity[];
@@ -183,18 +188,21 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 factionColor = colorConfig.colorClass;
 
             } else if (entity.type === 'starbase') {
-                icon = <StarbaseIcon className="w-12 h-12 text-cyan-300" />;
-                factionColor = 'text-cyan-300';
+                const IconComponent = starbaseType.icon;
+                icon = <IconComponent className="w-12 h-12" />;
+                factionColor = starbaseType.colorClass;
             } else if (entity.type === 'asteroid_field') {
-                icon = <AsteroidFieldIcon className="w-12 h-12 text-gray-500" />;
-                 factionColor = 'text-gray-400';
+                const IconComponent = asteroidType.icon;
+                icon = <IconComponent className="w-12 h-12" />;
+                factionColor = asteroidType.colorClass;
             } else if (entity.type === 'event_beacon') {
+                const IconComponent = beaconType.icon;
                 if (entity.isResolved) {
-                    icon = <EventBeaconIcon className="w-8 h-8 text-gray-600" />;
+                    icon = <IconComponent className="w-8 h-8 text-gray-600" />;
                     factionColor = 'text-gray-600';
                 } else {
-                    icon = <EventBeaconIcon className="w-8 h-8 text-purple-400 animate-pulse" />;
-                    factionColor = 'text-purple-400';
+                    icon = <IconComponent className="w-8 h-8 animate-pulse" />;
+                    factionColor = beaconType.colorClass;
                 }
             } else { // Planet
                 const planet = entity as Planet;

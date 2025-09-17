@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ActiveCounselSession, AwayMissionRole } from '../types';
-import { ScienceIcon, SecurityIcon, EngineeringIcon } from './Icons';
+import { ScienceIcon, SecurityIcon, EngineeringIcon } from '../assets/ui/icons';
 
 interface OfficerCounselDialogProps {
   counselSession: ActiveCounselSession;

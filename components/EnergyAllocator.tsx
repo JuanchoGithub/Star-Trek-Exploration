@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { WeaponIcon, ShieldIcon, EngineIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon } from '../assets/ui/icons';
 
 interface EnergyAllocatorProps {
   allocation: {

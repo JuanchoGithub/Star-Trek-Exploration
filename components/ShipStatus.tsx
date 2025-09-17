@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
-import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon, SecurityIcon } from './Icons';
+import { WeaponIcon, ShieldIcon, EngineIcon, TorpedoIcon, DilithiumIcon, TransporterIcon, SecurityIcon } from '../assets/ui/icons';
 import EnergyAllocator from './EnergyAllocator';
 
 interface StatusBarProps {

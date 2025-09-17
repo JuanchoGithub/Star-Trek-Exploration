@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AwayMissionTemplate, AwayMissionOption } from '../types';
-import { ScienceIcon, SecurityIcon, EngineeringIcon } from './Icons';
+import { ScienceIcon, SecurityIcon, EngineeringIcon } from '../assets/ui/icons';
 
 interface AwayMissionDialogProps {
     mission: AwayMissionTemplate;
