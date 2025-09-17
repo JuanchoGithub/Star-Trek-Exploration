@@ -22,11 +22,13 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
             const model: ShipModel | 'Unknown' = ship.scanned ? ship.shipModel : 'Unknown';
 
             if (model === 'Unknown') {
-                WireframeComponent = shipVisuals.Unknown.roles.Unknown.wireframe;
+                // FIX: Added non-null assertion as 'Unknown' role is guaranteed to exist.
+                WireframeComponent = shipVisuals.Unknown.roles.Unknown!.wireframe;
             } else {
                 const visualConfig = shipVisuals[model];
                 const roleConfig = visualConfig?.roles[ship.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
-                const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown;
+                // FIX: Added non-null assertion for the final fallback to 'Unknown'.
+                const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown!;
                 WireframeComponent = finalConfig.wireframe;
             }
             break;

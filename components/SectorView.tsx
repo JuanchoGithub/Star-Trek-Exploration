@@ -221,15 +221,18 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 const shipEntity = entity as Ship;
                 
                 if (!shipEntity.scanned && !isPlayer) {
-                    const config = shipVisuals.Unknown.roles.Unknown;
+                    // FIX: Add non-null assertion as 'Unknown' role is guaranteed to exist.
+                    const config = shipVisuals.Unknown.roles.Unknown!;
                     const IconComponent = config.icon;
                     icon = <IconComponent className="w-8 h-8"/>;
                     factionColor = config.colorClass;
                     entityName = 'Unknown Contact';
                 } else {
                     const visualConfig = shipVisuals[shipEntity.shipModel];
+                    // FIX: Corrected fallback logic to use defaultRole for the faction.
                     const roleConfig = visualConfig?.roles[shipEntity.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
-                    const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown;
+                    // FIX: Added non-null assertion for the final fallback to 'Unknown'.
+                    const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown!;
                     const IconComponent = finalConfig.icon;
                     icon = <IconComponent className="w-8 h-8"/>;
                     factionColor = finalConfig.colorClass;

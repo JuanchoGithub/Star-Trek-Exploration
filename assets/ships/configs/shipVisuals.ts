@@ -46,7 +46,8 @@ export interface ShipTypeConfig {
 // FIX: Modified FactionVisuals to allow for the special 'Unknown' role key.
 export interface FactionVisuals {
     defaultRole: ShipRole;
-    roles: Partial<Record<ShipRole, ShipTypeConfig>> | { Unknown: ShipTypeConfig };
+    // FIX: Simplified the union type to a single Partial Record to resolve type errors.
+    roles: Partial<Record<ShipRole | 'Unknown', ShipTypeConfig>>;
 }
 
 // FIX: Corrected the type to use an index signature of `ShipModel | 'Unknown'`.
