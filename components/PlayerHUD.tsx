@@ -109,7 +109,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
 }) => {
     const playerShip = gameState.player.ship;
     
-    const canFire = playerShip.energy.current >= 10 && playerShip.subsystems.weapons.health > 0;
+    const canFire = playerShip.subsystems.weapons.health > 0;
     const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
     const isTargetFriendly = target?.faction === 'Federation';
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
@@ -206,6 +206,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         isTurnResolving={isTurnResolving}
                         playerShip={playerShip}
                         target={target}
+                        targeting={gameState.player.targeting}
                         themeName={themeName}
                     />
                 </div>

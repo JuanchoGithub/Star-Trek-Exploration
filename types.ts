@@ -137,7 +137,6 @@ export interface PlayerTurnActions {
     combat?: {
         type: 'phasers'; // Torpedoes are no longer a turn action
         targetId: string;
-        subsystem?: 'weapons' | 'engines' | 'shields';
     };
 }
 
@@ -179,6 +178,10 @@ export interface GameState {
     ship: Ship;
     position: QuadrantPosition;
     crew: BridgeOfficer[];
+    targeting?: {
+        entityId: string;
+        subsystem: 'weapons' | 'engines' | 'shields' | null;
+    };
   };
   quadrantMap: SectorState[][];
   currentSector: SectorState;

@@ -76,7 +76,6 @@ const App: React.FC = () => {
     activeHail,
     officerCounsel,
     targetEntity,
-    selectedSubsystem,
     playerTurnActions,
     activeEvent,
     isWarping,
@@ -121,6 +120,7 @@ const App: React.FC = () => {
   const [isGameMenuOpen, setGameMenuOpen] = useState(false);
 
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+  const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
 
   return (
     <main className={`bg-bg-default text-text-primary h-screen p-4 ${theme.font} ${theme.className} flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>

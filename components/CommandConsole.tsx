@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PlayerTurnActions, Position, Ship, Entity } from '../types';
+import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 
@@ -25,6 +25,7 @@ interface CommandConsoleProps {
   isTurnResolving: boolean;
   playerShip: Ship;
   target?: Entity;
+  targeting?: GameState['player']['targeting'];
   themeName: ThemeName;
 }
 
@@ -47,7 +48,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo,
     onScanTarget, onInitiateRetreat, onHailTarget, onSendAwayTeam,
     retreatingTurn, currentTurn, isTargetFriendly, isTargetScanned, hasTarget, hasEnemy, 
-    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, themeName
+    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
@@ -72,15 +73,20 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
   const canUsePhasers = canFire && (canFireOnShip || canFireOnTorpedo);
 
+  const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
+  const phaserButtonText = isTargetingSubsystem
+    ? `Phasers (${targeting.subsystem.charAt(0).toUpperCase()})`
+    : 'Fire Phasers';
+
   return (
     <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
             <SectionHeader title="Combat" />
             <div className="grid grid-cols-2 gap-2">
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || isRetreating || isTurnResolving} accentColor="red">
-                    <WeaponIcon className="w-5 h-5" /> Fire Phasers
+                    <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || isTargetFriendly || isRetreating || isTurnResolving} accentColor="sky">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || !canFireOnShip || isRetreating || isTurnResolving} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
                     Launch Torpedo
                 </CommandButton>
