@@ -7,9 +7,7 @@ import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
-import { MClassIcon } from '../assets/planets/icons';
 import { NavigationTargetIcon, FederationIcon, KlingonIcon, RomulanIcon } from '../assets/ui/icons';
-// FIX: Imported missing ShipModel type.
 import { ShipModel, ShipRole } from '../../types';
 
 type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations';
@@ -67,6 +65,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
 
     const UISection = () => {
         const PlayerShipIcon = shipVisuals.Federation.roles.Explorer!.icon;
+        const MClassIcon = planetTypes.M.icon;
         return (
             <div>
                 <SectionHeader>The Bridge Interface</SectionHeader>
@@ -76,8 +75,8 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                 <div className="mt-4 p-2 border border-border-dark rounded">
                     <div className="font-bold mb-2">1. The Viewscreen</div>
                     <p>Displays either the current <strong>Sector View</strong> or the strategic <strong>Quadrant Map</strong>. You can switch between them using the vertical tabs.</p>
-                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                        <li><strong>Sector View:</strong> A tactical grid of the current sector. Click on an empty square to set a <NavigationTargetIcon className="w-4 h-4 inline-block text-accent-yellow" /> navigation target. Click on an entity like a <PlayerShipIcon className="w-4 h-4 inline-block text-blue-400" /> ship or <MClassIcon className="w-4 h-4 inline-block text-green-500" /> planet to select it.</li>
+                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2 space-y-1">
+                        <li><strong>Sector View:</strong> A tactical grid of the current sector. Click on an empty square to set a <NavigationTargetIcon className="w-4 h-4 inline-block text-accent-yellow" /> navigation target. Click on an entity like a <PlayerShipIcon className="w-4 h-4 inline-block text-blue-400" /> ship or <MClassIcon className="w-4 h-4 inline-block text-green-500" /> planet to select it. Successfully captured ships will be displayed with a friendly blue icon.</li>
                         <li><strong>Quadrant Map:</strong> A strategic overview of the entire Typhon Expanse. Green quadrants are Federation-controlled, Red are Klingon, etc. Click on an adjacent sector to open a context menu to Warp or Scan.</li>
                     </ul>
                     <div className="font-bold mb-2 mt-4">2. Player HUD</div>
@@ -142,19 +141,37 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                 </div>
             )
         };
+        
+        const OtherEntityEntry: React.FC<{ config: {icon: React.FC<any>, wireframe: React.FC, colorClass: string}, name: string, description: string }> = ({ config, name, description }) => {
+            const Wireframe = config.wireframe;
+            const Icon = config.icon;
+            
+            return (
+                 <div className="grid grid-cols-[1fr_2fr] gap-4 items-center mb-6 p-3 bg-bg-paper-lighter rounded">
+                    <div className="flex flex-col items-center">
+                        <div className="w-24 h-24"><Wireframe /></div>
+                        <Icon className={`w-12 h-12 mt-2 ${config.colorClass}`} />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-bold text-secondary-light">{name}</h4>
+                        <p className="text-text-secondary text-sm mb-2">{description}</p>
+                    </div>
+                </div>
+            )
+        };
 
-        // FIX: A component must be capitalized to be used in JSX. Extracted the icon component to a variable.
         const PirateIcon = shipVisuals.Pirate.roles.Escort!.icon;
     
         return (
             <div>
                 <SectionHeader>Entity Registry</SectionHeader>
                 <p>A registry of all known vessels, planets, and anomalies identified by Starfleet in the Typhon Expanse.</p>
-                <div className="flex gap-2 my-4">
+                <div className="flex gap-2 my-4 flex-wrap">
                     <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
                     <a href="#registry-klingon" className="btn btn-tertiary">Klingon</a>
                     <a href="#registry-romulan" className="btn btn-tertiary">Romulan</a>
                     <a href="#registry-pirate" className="btn btn-tertiary">Pirate</a>
+                    <a href="#registry-planets" className="btn btn-tertiary">Stellar Bodies</a>
                 </div>
                 
                 <FactionHeader name="Federation" icon={<FederationIcon className="w-8 h-8 text-blue-400" />} />
@@ -176,9 +193,15 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                 <RoleEntry model="Pirate" role="Escort" name="Raider/Escort" description="A fast, lightly armored ship favored by pirates. They are glass cannons, boasting high-powered engines and weapons but suffering from weak hulls and shields. Typically rely on ambush tactics." />
                 <RoleEntry model="Pirate" role="Cruiser" name="Cruiser" description="A captured and heavily modified freighter or older warship. Bristling with mismatched weapon systems and reinforced plating, these vessels are surprisingly durable and dangerous in a brawl." />
     
-                <SubHeader id="registry-planets">Planetology</SubHeader>
-                <p className="text-text-secondary mb-4">A classification of planetary bodies discovered within the Typhon Expanse.</p>
-                {/* ... existing planet entries ... */}
+                <SubHeader id="registry-planets">Stellar Bodies & Anomalies</SubHeader>
+                <OtherEntityEntry config={planetTypes.M} name="M-Class Planet" description="A terrestrial, Earth-like world capable of supporting carbon-based life. Often home to civilizations or valuable biological resources. Prime candidates for away missions." />
+                <OtherEntityEntry config={planetTypes.J} name="J-Class Planet" description="A massive gas giant, rich in various gases that may be valuable but unsuitable for standard away missions. Often has numerous moons." />
+                <OtherEntityEntry config={planetTypes.L} name="L-Class Planet" description="A marginally habitable world with a thin atmosphere or extreme temperatures. Life may exist, but it is often primitive or highly adapted. Suitable for some away missions." />
+                <OtherEntityEntry config={planetTypes.D} name="D-Class Planet" description="A barren rock or asteroid, devoid of atmosphere and life. May contain valuable mineral deposits but is otherwise unremarkable." />
+                <OtherEntityEntry config={starbaseType} name="Starbase" description="Federation outposts that serve as hubs for repair, resupply, and refuge. Docking with a starbase provides full repairs and replenishment of torpedoes and dilithium." />
+                <OtherEntityEntry config={asteroidType} name="Asteroid Field" description="A dense field of rock and ice. Navigating adjacent to these fields is hazardous, as micrometeoroid impacts can damage shields and hull." />
+                 <OtherEntityEntry config={beaconType} name="Event Beacon" description="An unidentified signal source. Approaching these beacons can trigger unique events, ranging from derelict ships and distress calls to ancient alien artifacts." />
+
             </div>
         )
     };
@@ -295,6 +318,13 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             <SectionHeader>Core Mechanics</SectionHeader>
             <SubHeader>Turn Flow</SubHeader>
             <p>The game is turn-based. In each turn, you can perform one or more actions (e.g., set a navigation course, target a subsystem, fire a weapon). When you are ready, press the "End Turn" button. The game will then resolve your actions, move NPCs, and process combat for that turn.</p>
+            <SubHeader>Movement & Navigation</SubHeader>
+            <p className="text-text-secondary">The U.S.S. Endeavour's impulse engines have two modes of operation:</p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
+                <li><strong>Cruise Speed (Green Alert):</strong> When not in combat, the ship can move up to <span className="font-bold text-accent-green">three cells</span> per turn, allowing for rapid travel across sectors.</li>
+                <li><strong>Tactical Speed (Red Alert):</strong> During combat, power is diverted to weapons and shields. Movement is reduced to <span className="font-bold text-accent-red">one cell</span> per turn to maximize maneuverability.</li>
+                <li><strong>Hazards:</strong> Be aware that moving through or adjacent to certain phenomena, like asteroid fields, can cause damage for each cell you move through.</li>
+            </ul>
             <SubHeader>Energy Management</SubHeader>
             <p>Your ship has two power pools:</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
@@ -320,7 +350,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             <p className="text-text-secondary">Phaser damage is calculated through several steps. Understanding them is key to victory.</p>
             <ol className="list-decimal list-inside space-y-3 p-2 border border-border-dark rounded mt-2">
                 <li>
-                    <strong>Hit Chance:</strong> Starts at a base of 90%. If a target is taking Evasive Maneuvers, this is significantly reduced. Your own Evasive Maneuvers also slightly reduce your accuracy.
+                    <strong>Hit Chance:</strong> Starts at a base of 90%. If a target is taking Evasive Maneuvers, this is significantly reduced. Your own Evasive Maneuvers also slightly reduce your accuracy. Nebulae in a sector will reduce accuracy for all combatants.
                 </li>
                 <li>
                     <strong>Base Damage:</strong> Directly proportional to your <span className="text-red-400 font-bold">Power to Weapons</span> allocation. At 100% allocation, your base damage is 20. At 50%, it is 10.
@@ -399,9 +429,9 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             </div>
             <SubHeader>Away Team & Transporter Doctrine</SubHeader>
             <p className="text-text-secondary mb-4">Your Security Teams and Transporter Room are a versatile strategic asset, not just a last resort. Proper deployment can end a battle or complete a mission without firing a shot.</p>
-            <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-1">
                 <li><strong>Condition for Transport:</strong> All transport-based actions (Away Missions, Boarding, Strikes) require two conditions: your Transporter must be online, and the target's shields must be down (or below 20% for enemy ships).</li>
-                <li><strong>Boarding Action:</strong> A high-risk, high-reward maneuver. Success instantly captures the enemy vessel. Failure results in the loss of the entire security team and a significant blow to crew morale. Only to be attempted when victory is uncertain or a ship must be taken intact.</li>
+                <li><strong>Boarding Action:</strong> A high-risk, high-reward maneuver. Success instantly captures the enemy vessel, changing its icon to friendly blue on the tactical display. Failure results in the loss of the entire security team and a significant blow to crew morale. Only to be attempted when victory is uncertain or a ship must be taken intact.</li>
                 <li><strong>Strike Team:</strong> A lower-risk alternative to boarding. A security team transports over, sabotages a critical system dealing direct hull damage, and transports back. There is a small but non-zero chance of losing the team in the firefight, with a minor morale penalty.</li>
                  <li><strong>Planetary Away Missions:</strong> The primary method of investigating planets. The composition of the away team (Science, Security, Engineering) is determined by your command choice, influencing the probability of success. A disabled Transporter makes these missions impossible.</li>
             </ul>
