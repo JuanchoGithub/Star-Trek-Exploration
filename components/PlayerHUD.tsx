@@ -106,6 +106,32 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     const orbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1) as Planet | undefined;
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
 
+    const getAwayMissionButtonState = () => {
+        if (!orbitingPlanet) {
+            return { disabled: true, text: '' }; // Should not render anyway
+        }
+
+        if (hasEnemy) {
+            return { disabled: true, text: 'Cannot Beam Down: Hostiles Present' };
+        }
+        if (playerShip.subsystems.transporter.health <= 0) {
+            return { disabled: true, text: 'Cannot Beam Down: Transporter Offline' };
+        }
+        if (orbitingPlanet.awayMissionCompleted) {
+            return { disabled: true, text: 'Planet Surveyed' };
+        }
+        
+        // Away missions are generally for M (Earth-like) and L (Marginal) class planets.
+        const isMissionAvailableForPlanetType = ['M', 'L'].includes(orbitingPlanet.planetClass);
+        if (!isMissionAvailableForPlanetType) {
+            return { disabled: true, text: 'Unsuitable for Away Mission' };
+        }
+
+        return { disabled: false, text: 'Beam Down Away Team' };
+    };
+
+    const awayMissionState = getAwayMissionButtonState();
+
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -132,15 +158,15 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             </div>
                         </div>
                     )}
-                    {orbitingPlanet && !hasEnemy && (
+                    {orbitingPlanet && (
                         <div className="bg-gray-900 p-3 rounded text-center">
                             <h3 className="text-lg font-bold text-green-300 mb-3">Planet Operations</h3>
                             <button 
                                 onClick={() => orbitingPlanet && onStartAwayMission(orbitingPlanet.id)} 
                                 className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                disabled={orbitingPlanet.awayMissionCompleted}
+                                disabled={awayMissionState.disabled}
                             >
-                                {orbitingPlanet.awayMissionCompleted ? 'Planet Surveyed' : 'Beam Down Away Team'}
+                                {awayMissionState.text}
                             </button>
                         </div>
                     )}
