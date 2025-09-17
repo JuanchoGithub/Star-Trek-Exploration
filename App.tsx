@@ -121,6 +121,7 @@ const App: React.FC = () => {
 
   const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
   const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
+  const latestLogEntry = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
 
   return (
     <main className={`bg-bg-default text-text-primary h-screen p-4 ${theme.font} ${theme.className} flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
@@ -211,7 +212,7 @@ const App: React.FC = () => {
       
       <div className="flex-shrink-0 pt-4">
            <StatusLine 
-            latestLog={gameState.logs[0] || "Welcome to the U.S.S. Endeavour."}
+            latestLog={latestLogEntry}
             onToggleLog={() => setShowLogPanel(true)}
             onOpenGameMenu={() => setGameMenuOpen(true)}
           >
@@ -250,7 +251,7 @@ const App: React.FC = () => {
       {gameState.gameOver && (
           <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 p-8 text-center">
               <h2 className="text-6xl font-bold text-accent-red mb-4">GAME OVER</h2>
-              <p className="text-2xl text-text-secondary">{gameState.logs[0]}</p>
+              <p className="text-2xl text-text-secondary">{latestLogEntry?.message ?? ''}</p>
           </div>
       )}
     </main>

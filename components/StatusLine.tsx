@@ -1,13 +1,16 @@
 import React from 'react';
+import { LogEntry } from '../types';
 
 interface StatusLineProps {
-  latestLog: string;
+  latestLog: LogEntry | null;
   onToggleLog: () => void;
   onOpenGameMenu: () => void;
   children?: React.ReactNode;
 }
 
 const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenGameMenu, children }) => {
+  const logMessage = latestLog ? latestLog.message : "Welcome to the U.S.S. Endeavour.";
+  
   return (
     <div className="panel-style p-2 h-full flex items-center justify-between text-sm">
       <div className="flex items-center gap-4">
@@ -19,8 +22,8 @@ const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenG
         </button>
         {children}
       </div>
-      <p className="flex-grow text-center mx-4 italic text-text-secondary truncate" title={latestLog}>
-        {latestLog}
+      <p className="flex-grow text-center mx-4 italic text-text-secondary truncate" title={logMessage}>
+        {logMessage}
       </p>
       <button 
         onClick={onToggleLog} 

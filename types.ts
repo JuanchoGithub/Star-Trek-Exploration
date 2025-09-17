@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Fix: Replaced entire file content with correct type definitions and removed logic.
 // This resolves circular dependency issues and provides strongly-typed interfaces for the application.
 export interface Position {
@@ -43,6 +45,7 @@ export interface Ship extends BaseEntity {
   crewMorale: { current: number; max: number };
   securityTeams: { current: number; max: number };
   repairTarget: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter' | null;
+  logColor: string;
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
@@ -174,6 +177,16 @@ export type CombatEffect = {
     delay: number;
 };
 
+export interface LogEntry {
+  id: string;
+  turn: number;
+  sourceId: string; // 'player', 'system', or an entity ID
+  sourceName: string;
+  message: string;
+  color: string; // Tailwind border color class
+  isPlayerSource: boolean;
+}
+
 export interface GameState {
   player: {
     ship: Ship;
@@ -182,12 +195,13 @@ export interface GameState {
     targeting?: {
         entityId: string;
         subsystem: 'weapons' | 'engines' | 'shields' | null;
+        consecutiveTurns: number;
     };
   };
   quadrantMap: SectorState[][];
   currentSector: SectorState;
   turn: number;
-  logs: string[];
+  logs: LogEntry[];
   gameOver: boolean;
   gameWon: boolean;
   redAlert: boolean;
