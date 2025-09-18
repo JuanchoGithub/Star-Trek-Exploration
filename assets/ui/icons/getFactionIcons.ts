@@ -13,6 +13,8 @@ import { DilithiumIcon } from './DilithiumIcon';
 import { ScanIcon } from './ScanIcon';
 import { RetreatIcon } from './RetreatIcon';
 import { HailIcon } from './HailIcon';
+import { ShuttleIcon } from './ShuttleIcon';
+import { PhaserIcon } from './PhaserIcon';
 
 // Klingon
 import { KlingonWeaponIcon } from './klingon/KlingonWeaponIcon';
@@ -20,6 +22,7 @@ import { KlingonShieldIcon } from './klingon/KlingonShieldIcon';
 import { KlingonEngineIcon } from './klingon/KlingonEngineIcon';
 import { KlingonTorpedoIcon } from './klingon/KlingonTorpedoIcon';
 import { KlingonSecurityIcon } from './klingon/KlingonSecurityIcon';
+import { BatlethIcon } from './klingon/BatlethIcon';
 
 // Romulan
 import { RomulanWeaponIcon } from './romulan/RomulanWeaponIcon';
@@ -27,6 +30,7 @@ import { RomulanShieldIcon } from './romulan/RomulanShieldIcon';
 import { RomulanEngineIcon } from './romulan/RomulanEngineIcon';
 import { RomulanTorpedoIcon } from './romulan/RomulanTorpedoIcon';
 import { RomulanSecurityIcon } from './romulan/RomulanSecurityIcon';
+import { DisruptorIcon } from './romulan/DisruptorIcon';
 
 const federationIcons = {
     WeaponIcon,
@@ -41,6 +45,8 @@ const federationIcons = {
     ScanIcon,
     RetreatIcon,
     HailIcon,
+    BoardingIcon: ShuttleIcon,
+    StrikeTeamIcon: PhaserIcon,
 };
 
 const klingonIcons = {
@@ -50,6 +56,7 @@ const klingonIcons = {
     EngineIcon: KlingonEngineIcon,
     TorpedoIcon: KlingonTorpedoIcon,
     SecurityIcon: KlingonSecurityIcon,
+    StrikeTeamIcon: BatlethIcon,
 };
 
 const romulanIcons = {
@@ -59,6 +66,7 @@ const romulanIcons = {
     EngineIcon: RomulanEngineIcon,
     TorpedoIcon: RomulanTorpedoIcon,
     SecurityIcon: RomulanSecurityIcon,
+    StrikeTeamIcon: DisruptorIcon,
 };
 
 

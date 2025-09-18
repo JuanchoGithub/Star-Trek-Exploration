@@ -9,6 +9,8 @@ export * from './ScanIcon';
 export * from './ScienceIcon';
 export * from './SecurityIcon';
 export * from './ShieldIcon';
+export * from './ShuttleIcon';
+export * from './PhaserIcon';
 export * from './TorpedoIcon';
 export * from './TransporterIcon';
 export * from './WeaponIcon';

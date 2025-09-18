@@ -71,7 +71,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   }
   
   const canBoardOrStrike = target?.type === 'ship' && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
-  const { WeaponIcon, TorpedoIcon, SecurityIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
+  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
@@ -97,10 +97,10 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
             </div>
              <div className="grid grid-cols-2 gap-2">
                 <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} accentColor="purple">
-                    <SecurityIcon className="w-5 h-5" /> Board Ship
+                    <BoardingIcon className="w-5 h-5" /> Board Ship
                 </CommandButton>
                 <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} accentColor="orange">
-                    <SecurityIcon className="w-5 h-5" /> Strike Team
+                    <StrikeTeamIcon className="w-5 h-5" /> Strike Team
                 </CommandButton>
             </div>
 
