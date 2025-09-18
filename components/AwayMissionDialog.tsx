@@ -1,18 +1,18 @@
 import React from 'react';
-import type { AwayMissionTemplate, AwayMissionOption } from '../types';
+import type { ActiveAwayMission, ActiveAwayMissionOption } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 
 interface AwayMissionDialogProps {
-    mission: AwayMissionTemplate;
-    onChoose: (option: AwayMissionOption) => void;
+    mission: ActiveAwayMission;
+    onChoose: (option: ActiveAwayMissionOption) => void;
     themeName: ThemeName;
 }
 
 const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose, themeName }) => {
     const { ScienceIcon, SecurityIcon, EngineeringIcon } = getFactionIcons(themeName);
 
-    const roleIcons: { [key in AwayMissionOption['role']]: React.ReactNode } = {
+    const roleIcons: { [key in ActiveAwayMissionOption['role']]: React.ReactNode } = {
         Security: <SecurityIcon className="w-6 h-6" />,
         Science: <ScienceIcon className="w-6 h-6" />,
         Engineering: <EngineeringIcon className="w-6 h-6" />,
@@ -33,7 +33,7 @@ const AwayMissionDialog: React.FC<AwayMissionDialogProps> = ({ mission, onChoose
                             className="w-full text-left p-4 flex items-center gap-4 btn btn-accent green bg-opacity-40 hover:bg-opacity-60 text-white"
                         >
                             {roleIcons[option.role]}
-                            <div className="flex flex-col">
+                            <div className="flex flex-col flex-grow">
                                 <span className="font-bold">{option.role} Approach</span>
                                 <span className="font-normal text-sm text-gray-200">{option.text}</span>
                             </div>

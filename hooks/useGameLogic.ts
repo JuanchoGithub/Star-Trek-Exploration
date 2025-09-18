@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, AwayMissionOption, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole, ActiveAwayMission, AwayMissionOutcome, ActiveAwayMissionOption, ResourceType } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
@@ -31,6 +31,29 @@ const moveOneStep = (start: Position, end: Position): Position => {
         newPos.x += Math.sign(dx);
     }
     return newPos;
+};
+
+// Seeded PRNG helpers
+const cyrb53 = (str: string, seed = 0): number => {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
+
+const seededRandom = (seed: number): (() => number) => {
+    let state = seed;
+    return function() {
+        state = (state * 9301 + 49297) % 233280;
+        return state / 233280;
+    };
 };
 
 // Helper for player energy consumption with dilithium backup
@@ -356,6 +379,8 @@ const createInitialGameState = (): GameState => {
     quadrantMap, currentSector: startSector, turn: 1, logs: [initialLog],
     gameOver: false, gameWon: false, redAlert: false, combatEffects: [],
     isRetreatingWarp: false,
+    usedAwayMissionSeeds: [],
+    usedAwayMissionTemplateIds: [],
   };
 };
 
@@ -497,6 +522,8 @@ export const useGameLogic = () => {
                     if (!savedState.player.targeting) delete savedState.player.targeting;
                     else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
                     if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
+                    if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
+                    if (savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
                     
                     // Migration to shipModel and shipRole
                     const migrateShip = (ship: Ship) => {
@@ -588,7 +615,7 @@ export const useGameLogic = () => {
     const [navigationTarget, setNavigationTarget] = useState<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
     const [isDocked, setIsDocked] = useState(false);
-    const [activeAwayMission, setActiveAwayMission] = useState<AwayMissionTemplate | null>(null);
+    const [activeAwayMission, setActiveAwayMission] = useState<ActiveAwayMission | null>(null);
     const [activeHail, setActiveHail] = useState<ActiveHail | null>(null);
     const [officerCounsel, setOfficerCounsel] = useState<ActiveCounselSession | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
@@ -693,6 +720,8 @@ export const useGameLogic = () => {
                     if (!savedState.player.targeting) delete savedState.player.targeting;
                     else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
                     if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
+                    if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
+                    if (savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
                     
                      const migrateShip = (ship: Ship) => {
                         if ((ship as any).shipClass) {
@@ -1570,15 +1599,71 @@ export const useGameLogic = () => {
         setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: null } } }));
     }, [addLog, gameState.player.ship.name]);
 
+    const generateAwayMission = useCallback((planet: Planet, turn: number, usedSeeds: string[], usedTemplateIds: string[]): ActiveAwayMission | null => {
+        let seed = `${planet.id}-${turn}`;
+        if (usedSeeds.includes(seed)) {
+            // This should be rare, but as a fallback, add a random element.
+            seed = `${planet.id}-${turn}-${Math.random()}`;
+        }
+        const rand = seededRandom(cyrb53(seed));
+
+        const compatibleMissions = awayMissionTemplates.filter(t => t.planetClasses.includes(planet.planetClass));
+        if (compatibleMissions.length === 0) {
+            console.error(`No compatible away missions found for planet class: ${planet.planetClass}`);
+            return null;
+        }
+
+        // Filter out missions that have already been used in this playthrough
+        let availableMissions = compatibleMissions.filter(t => !usedTemplateIds.includes(t.id));
+
+        // If all compatible missions have been used, reset the pool for this planet type.
+        if (availableMissions.length === 0) {
+            console.warn(`All missions for planet class ${planet.planetClass} have been used. Resetting pool for selection.`);
+            availableMissions = compatibleMissions;
+        }
+
+        const template = availableMissions[Math.floor(rand() * availableMissions.length)];
+
+        const activeMission: ActiveAwayMission = {
+            id: template.id,
+            seed: seed,
+            title: template.title,
+            description: template.description,
+            options: template.options.map(optTemplate => {
+                const [min, max] = optTemplate.successChanceRange;
+                const calculatedSuccessChance = min + (max - min) * rand();
+                return {
+                    role: optTemplate.role,
+                    text: optTemplate.text,
+                    outcomes: optTemplate.outcomes,
+                    calculatedSuccessChance,
+                };
+            })
+        };
+        
+        console.log(`AWAY MISSION GENERATED (SEED: ${seed})`, activeMission);
+        return activeMission;
+    }, []);
+
     const onStartAwayMission = useCallback((planetId: string) => {
-        const mission = awayMissionTemplates[0]; if (!mission) return;
+        const planet = gameState.currentSector.entities.find(e => e.id === planetId) as Planet | undefined;
+        if (!planet) return;
+        
+        const mission = generateAwayMission(planet, gameState.turn, gameState.usedAwayMissionSeeds, gameState.usedAwayMissionTemplateIds || []);
+        if (!mission) {
+             addLog({ sourceId: 'system', sourceName: 'Bridge', message: "After assessing the planet, the senior staff concludes an away mission is not viable at this time.", isPlayerSource: false });
+             return;
+        }
+
         setActiveMissionPlanetId(planetId);
+        
         const relevantOfficers = gameState.player.crew.filter(officer => mission.options.some(option => option.role === officer.role));
         const advice: OfficerAdvice[] = relevantOfficers.map(officer => {
             const adviceOptions = counselAdvice[officer.role]?.[officer.personality];
             const message = adviceOptions ? adviceOptions[Math.floor(Math.random() * adviceOptions.length)] : "I have no specific recommendation, Captain.";
             return { officerName: officer.name, role: officer.role, message };
         });
+
         if (advice.length > 0) {
             setOfficerCounsel({ mission, advice });
             addLog({ sourceId: 'system', sourceName: 'Bridge', message: "The bridge crew offers their counsel on the upcoming away mission.", isPlayerSource: false });
@@ -1586,7 +1671,7 @@ export const useGameLogic = () => {
             setActiveAwayMission(mission);
             addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Away team beamed down.', isPlayerSource: true });
         }
-    }, [addLog, gameState.player.crew, gameState.player.ship.name]);
+    }, [gameState.currentSector.entities, gameState.turn, gameState.usedAwayMissionSeeds, gameState.player.crew, gameState.player.ship.name, addLog, generateAwayMission]);
 
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
         setGameState(prev => {
@@ -1626,21 +1711,110 @@ export const useGameLogic = () => {
         });
     }, [addLog]);
 
-    const onChooseAwayMissionOption = useCallback((option: AwayMissionOption) => {
-        const success = Math.random() < option.successChance;
-        const resultMessage = success ? option.outcomes.success : option.outcomes.failure;
-        setAwayMissionResult(resultMessage);
-        addLog({ sourceId: 'system', sourceName: 'Away Mission Debrief', message: resultMessage, isPlayerSource: false });
-        if (activeMissionPlanetId) {
-            setGameState(prev => {
-                const next = JSON.parse(JSON.stringify(prev));
+    const onChooseAwayMissionOption = useCallback((option: ActiveAwayMissionOption) => {
+        if (!activeAwayMission) return;
+        
+        const rand = seededRandom(cyrb53(activeAwayMission.seed + option.role));
+        
+        const successRoll = rand();
+        const success = successRoll < option.calculatedSuccessChance;
+        
+        const outcomes = success ? option.outcomes.success : option.outcomes.failure;
+
+        const totalWeight = outcomes.reduce((sum, o) => sum + o.weight, 0);
+        
+        // Use the next random number in the sequence for outcome selection
+        const outcomeRollForSelection = rand();
+        let weightRoll = outcomeRollForSelection * totalWeight;
+        
+        const chosenOutcome = outcomes.find(o => {
+            weightRoll -= o.weight;
+            return weightRoll < 0;
+        }) || outcomes[0];
+
+        console.groupCollapsed(`Away Mission Resolution (Seed: ${activeAwayMission.seed})`);
+        console.log('Mission:', `"${activeAwayMission.title}"`);
+        console.log('All Options & Chances:');
+        console.table(activeAwayMission.options.map(opt => ({ 
+            role: opt.role, 
+            text: opt.text, 
+            chance: `${(opt.calculatedSuccessChance * 100).toFixed(1)}%` 
+        })));
+        console.log('--- RESOLUTION ---');
+        console.log('Player Chose:', `[${option.role}] ${option.text}`);
+        console.log(`Success Check: Rolled ${(successRoll * 100).toFixed(2)} vs Target of ${(option.calculatedSuccessChance * 100).toFixed(2)} -> ${success ? 'SUCCESS' : 'FAILURE'}`);
+        if(outcomes.length > 1) {
+            console.log(`Outcome Selection (${outcomes.length} possibilities, total weight ${totalWeight}): Rolled a value that selected the following outcome.`);
+        }
+        console.log('Final Outcome:', chosenOutcome.log);
+        console.log('State Changes:', chosenOutcome);
+        console.groupEnd();
+
+        const resultText = success ? 'SUCCESS' : 'FAILURE';
+        const debugLogMessage = `[DEBUG] Mission Seed: ${activeAwayMission.seed} | Choice: ${option.role} | Roll: ${successRoll.toFixed(2)} vs Chance: ${option.calculatedSuccessChance.toFixed(2)} | Result: ${resultText}`;
+
+        addLog({
+            sourceId: 'system',
+            sourceName: 'System Log',
+            message: debugLogMessage,
+            isPlayerSource: false,
+            color: 'border-gray-700'
+        });
+        
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev)); 
+            const playerShip = next.player.ship;
+            const amount = chosenOutcome.amount || 0;
+            const resource = chosenOutcome.resource as ResourceType;
+
+            switch (chosenOutcome.type) {
+                case 'reward':
+                    if (resource) {
+                        if (resource === 'dilithium') playerShip.dilithium.current = Math.min(playerShip.dilithium.max, playerShip.dilithium.current + amount);
+                        else if (resource === 'torpedoes') playerShip.torpedoes.current = Math.min(playerShip.torpedoes.max, playerShip.torpedoes.current + amount);
+                        else if (resource === 'hull') playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + amount);
+                        else if (resource === 'energy') playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + amount);
+                        else if (resource === 'morale') playerShip.crewMorale.current = Math.min(playerShip.crewMorale.max, playerShip.crewMorale.current + amount);
+                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(resource)) {
+                            const subsystem = playerShip.subsystems[resource as keyof ShipSubsystems];
+                            if (subsystem) subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + amount);
+                        }
+                    }
+                    break;
+                case 'damage':
+                    if (resource) {
+                        if (resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount);
+                        else if (resource === 'morale') playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - amount);
+                        else if (resource === 'energy') playerShip.energy.current = Math.max(0, playerShip.energy.current - amount);
+                        else if (resource === 'dilithium') playerShip.dilithium.current = Math.max(0, playerShip.dilithium.current - amount);
+                        else if (resource === 'security_teams') playerShip.securityTeams.current = Math.max(0, playerShip.securityTeams.current - amount);
+                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(resource)) {
+                            const subsystem = playerShip.subsystems[resource as keyof ShipSubsystems];
+                            if (subsystem) subsystem.health = Math.max(0, subsystem.health - amount);
+                        }
+                    }
+                    break;
+            }
+
+            if (activeMissionPlanetId) {
                 const planet = next.currentSector.entities.find((e: Entity) => e.id === activeMissionPlanetId) as Planet | undefined;
                 if (planet) planet.awayMissionCompleted = true;
-                return next;
-            });
-        }
-        setActiveAwayMission(null); setActiveMissionPlanetId(null);
-    }, [addLog, activeMissionPlanetId]);
+            }
+
+            next.usedAwayMissionSeeds.push(activeAwayMission.seed);
+            if (!next.usedAwayMissionTemplateIds) {
+                next.usedAwayMissionTemplateIds = [];
+            }
+            if (!next.usedAwayMissionTemplateIds.includes(activeAwayMission.id)) {
+                next.usedAwayMissionTemplateIds.push(activeAwayMission.id);
+            }
+            return next;
+        });
+        
+        setAwayMissionResult(chosenOutcome.log);
+        setActiveAwayMission(null); 
+        setActiveMissionPlanetId(null);
+    }, [activeAwayMission, activeMissionPlanetId, addLog]);
 
     const onProceedFromCounsel = useCallback(() => {
         if (officerCounsel) {
@@ -1728,7 +1902,7 @@ export const useGameLogic = () => {
         // Set event result after state update to trigger dialog
         setEventResult(option.outcome.log);
         setActiveEvent(null);
-    }, [activeEvent]);
+    }, [activeEvent, addLog]);
 
     const onToggleRedAlert = useCallback(() => {
         setGameState(prev => {

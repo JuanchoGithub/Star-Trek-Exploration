@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ActiveCounselSession, AwayMissionRole } from '../types';
+import type { ActiveCounselSession, AwayMissionRole, ActiveAwayMission } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 

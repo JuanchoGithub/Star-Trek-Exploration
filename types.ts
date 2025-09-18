@@ -118,22 +118,52 @@ export interface OfficerAdvice {
   message: string;
 }
 
-export interface AwayMissionOption {
-  role: AwayMissionRole;
-  text: string;
-  successChance: number;
-  outcomes: {
-    success: string;
-    failure: string;
-  };
+export type OutcomeType = 'reward' | 'damage' | 'nothing' | 'special';
+export type ResourceType = 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'security_teams';
+
+export interface AwayMissionOutcome {
+    type: OutcomeType;
+    resource?: ResourceType;
+    amount?: number;
+    log: string;
+    weight: number; // For weighted random selection
+}
+
+export interface AwayMissionOptionTemplate {
+    role: AwayMissionRole;
+    text: string;
+    successChanceRange: [number, number]; // e.g., [0.7, 0.9] for 70-90%
+    outcomes: {
+        success: AwayMissionOutcome[];
+        failure: AwayMissionOutcome[];
+    };
 }
 
 export interface AwayMissionTemplate {
-  id: string;
-  title: string;
-  planetType: string;
-  description: string;
-  options: AwayMissionOption[];
+    id: string;
+    title: string;
+    planetClasses: PlanetClass[]; // Can apply to multiple planet types
+    description: string;
+    options: AwayMissionOptionTemplate[];
+}
+
+// This is what will be stored in the state for an active mission
+export interface ActiveAwayMissionOption {
+    role: AwayMissionRole;
+    text: string;
+    calculatedSuccessChance: number; // The specific chance for this instance
+    outcomes: {
+        success: AwayMissionOutcome[];
+        failure: AwayMissionOutcome[];
+    };
+}
+
+export interface ActiveAwayMission {
+    id: string;
+    seed: string;
+    title: string;
+    description: string;
+    options: ActiveAwayMissionOption[];
 }
 
 export interface ActiveHail {
@@ -143,7 +173,7 @@ export interface ActiveHail {
 }
 
 export interface ActiveCounselSession {
-    mission: AwayMissionTemplate;
+    mission: ActiveAwayMission;
     advice: OfficerAdvice[];
 }
 
@@ -218,4 +248,6 @@ export interface GameState {
   redAlert: boolean;
   combatEffects: CombatEffect[];
   isRetreatingWarp: boolean;
+  usedAwayMissionSeeds: string[];
+  usedAwayMissionTemplateIds?: string[];
 }
