@@ -160,7 +160,8 @@ export interface EventTemplateOption {
         type: 'reward' | 'damage' | 'combat' | 'nothing' | 'special' | 'mission';
         log: string;
         amount?: number;
-        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale';
+        // FIX: Added subsystem types to allow for damaging engines, weapons, etc., in events.
+        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter';
         spawn?: 'pirate_raider';
         spawnCount?: number;
         missionId?: string;

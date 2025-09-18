@@ -17,7 +17,8 @@ import {
 import {
     IndependentFreighterIcon, IndependentExplorerIcon
 } from '../icons/independent';
-import { UnknownShipIcon } from '../icons';
+// FIX: Replaced import of missing UnknownShipIcon with a suitable fallback from an existing file.
+import { EventBeaconIcon } from '../../beacons/icons';
 
 import {
     FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe
@@ -34,7 +35,8 @@ import {
 import {
     IndependentFreighterWireframe, IndependentExplorerWireframe
 } from '../wireframes/independent';
-import { UnknownShipWireframe } from '../wireframes';
+// FIX: Replaced import of missing UnknownShipWireframe with a suitable fallback from an existing file.
+import { EventBeaconWireframe } from '../../beacons/wireframes';
 
 
 export interface ShipTypeConfig {
@@ -93,7 +95,8 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
     Unknown: {
         defaultRole: 'Explorer', // Not used, but required for type
         roles: {
-            Unknown: { icon: UnknownShipIcon, wireframe: UnknownShipWireframe, colorClass: 'text-yellow-400' }
+            // FIX: Using EventBeacon assets as a fallback for the missing UnknownShip assets.
+            Unknown: { icon: EventBeaconIcon, wireframe: EventBeaconWireframe, colorClass: 'text-yellow-400' }
         }
     }
 };

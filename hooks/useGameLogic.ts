@@ -1685,12 +1685,29 @@ export const useGameLogic = () => {
             if (beacon && beacon.type === 'event_beacon') { beacon.isResolved = true; beacon.name = 'Resolved Signal'; }
             const outcome = option.outcome; const amount = outcome.amount || 0;
             switch (outcome.type) {
-                case 'reward': if (outcome.resource) {
+                case 'reward': 
+                    if (outcome.resource) {
                         if(outcome.resource === 'dilithium') playerShip.dilithium.current = Math.min(playerShip.dilithium.max, playerShip.dilithium.current + amount);
                         else if(outcome.resource === 'torpedoes') playerShip.torpedoes.current = Math.min(playerShip.torpedoes.max, playerShip.torpedoes.current + amount);
                         else if(outcome.resource === 'hull') playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + amount);
-                    } break;
-                case 'damage': if (outcome.resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount); break;
+                        else if(outcome.resource === 'energy') playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + amount);
+                        else if(outcome.resource === 'morale') playerShip.crewMorale.current = Math.min(playerShip.crewMorale.max, playerShip.crewMorale.current + amount);
+                    } 
+                    break;
+                case 'damage': 
+                    if (outcome.resource) {
+                        if (outcome.resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount);
+                        else if (outcome.resource === 'morale') playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - amount);
+                        else if (outcome.resource === 'energy') playerShip.energy.current = Math.max(0, playerShip.energy.current - amount);
+                        else if (outcome.resource === 'dilithium') playerShip.dilithium.current = Math.max(0, playerShip.dilithium.current - amount);
+                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(outcome.resource)) {
+                            const subsystem = playerShip.subsystems[outcome.resource as keyof ShipSubsystems];
+                            if (subsystem) {
+                                subsystem.health = Math.max(0, subsystem.health - amount);
+                            }
+                        }
+                    }
+                    break;
                 case 'combat': if (outcome.spawn && beacon) {
                         for (let i = 0; i < (outcome.spawnCount || 1); i++) {
                              const stats = shipRoleStats['Escort'];
