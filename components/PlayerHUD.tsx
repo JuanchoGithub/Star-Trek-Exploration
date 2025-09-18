@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship } from '../types';
 import CommandConsole from './CommandConsole';
@@ -162,8 +163,10 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             <h3 className="text-lg font-bold text-secondary-light mb-3">Starbase Operations</h3>
                             <div className="space-y-2">
                                 <button onClick={onStarbaseRepairs} className="w-full btn btn-primary">Full Service Repairs & Recharge</button>
-                                <button onClick={onRechargeDilithium} className="w-full btn btn-accent pink text-white">Recharge Dilithium</button>
-                                <button onClick={onResupplyTorpedoes} className="w-full btn btn-accent sky text-white">Resupply Torpedoes</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={onRechargeDilithium} className="w-full btn btn-accent pink text-white">Recharge Dilithium</button>
+                                    <button onClick={onResupplyTorpedoes} className="w-full btn btn-accent sky text-white">Resupply Torpedoes</button>
+                                </div>
                             </div>
                         </div>
                     )}
