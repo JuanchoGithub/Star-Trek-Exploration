@@ -9,6 +9,7 @@ interface CommandConsoleProps {
   onLaunchTorpedo: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
+  onCancelRetreat: () => void;
   onHailTarget: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
   retreatingTurn: number | null;
@@ -46,16 +47,19 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
     onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo,
-    onScanTarget, onInitiateRetreat, onHailTarget, onSendAwayTeam,
+    onScanTarget, onInitiateRetreat, onCancelRetreat, onHailTarget, onSendAwayTeam,
     retreatingTurn, currentTurn, isTargetFriendly, isTargetScanned, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName
 }) => {
-  const isRetreating = retreatingTurn !== null && retreatingTurn > currentTurn;
+  const isRetreating = retreatingTurn !== null && retreatingTurn >= currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
   
   const getEndTurnButtonText = () => {
     if (isTurnResolving) {
         return "Resolving...";
+    }
+    if (isRetreating && turnsToRetreat === 0) {
+        return "Engage Emergency Warp";
     }
     if (playerTurnActions.combat) {
         return "End Turn & Fire";
@@ -109,10 +113,21 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                  <CommandButton onClick={onHailTarget} disabled={!hasTarget || isRetreating || isTurnResolving} accentColor="teal">
                     <HailIcon className="w-5 h-5" /> Hail
                 </CommandButton>
-                 <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isRetreating || isTurnResolving} accentColor="indigo">
-                    <RetreatIcon className="w-5 h-5" /> 
-                    {isRetreating ? `Retreating (${turnsToRetreat})` : 'Retreat'}
-                </CommandButton>
+                {isRetreating ? (
+                    <CommandButton 
+                        onClick={onCancelRetreat} 
+                        disabled={isTurnResolving || turnsToRetreat === 0} 
+                        accentColor="yellow"
+                    >
+                        <RetreatIcon className="w-5 h-5" /> 
+                        {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Core Engaged'}
+                    </CommandButton>
+                ) : (
+                    <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isTurnResolving} accentColor="indigo">
+                        <RetreatIcon className="w-5 h-5" /> 
+                        Retreat
+                    </CommandButton>
+                )}
             </div>
         </div>
       <div className="flex items-center gap-2 mt-2 flex-shrink-0">

@@ -19,6 +19,7 @@ interface PlayerHUDProps {
   onResupplyTorpedoes: () => void;
   onScanTarget: () => void;
   onInitiateRetreat: () => void;
+  onCancelRetreat: () => void;
   onStartAwayMission: (planetId: string) => void;
   onHailTarget: () => void;
   playerTurnActions: PlayerTurnActions;
@@ -107,7 +108,7 @@ const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, t
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
     gameState, onEndTurn, onFirePhasers, onLaunchTorpedo,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
-    onScanTarget, onInitiateRetreat, onStartAwayMission, onHailTarget,
+    onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName
 }) => {
     const playerShip = gameState.player.ship;
@@ -193,6 +194,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
                         onScanTarget={onScanTarget}
                         onInitiateRetreat={onInitiateRetreat}
+                        onCancelRetreat={onCancelRetreat}
                         onHailTarget={onHailTarget}
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                         retreatingTurn={playerShip.retreatingTurn}

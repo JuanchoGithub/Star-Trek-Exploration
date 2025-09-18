@@ -596,6 +596,7 @@ export const useGameLogic = () => {
     const [isWarping, setIsWarping] = useState(false);
     const [isTurnResolving, setIsTurnResolving] = useState(false);
     const [awayMissionResult, setAwayMissionResult] = useState<string | null>(null);
+    const [eventResult, setEventResult] = useState<string | null>(null);
     const [activeMissionPlanetId, setActiveMissionPlanetId] = useState<string | null>(null);
 
 
@@ -663,7 +664,6 @@ export const useGameLogic = () => {
                     ...prev,
                     isRetreatingWarp: false,
                 }));
-                addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "We've escaped to a safe distance.", isPlayerSource: true });
             }, 2500);
             return () => clearTimeout(timer);
         }
@@ -1158,78 +1158,7 @@ export const useGameLogic = () => {
                     }
                 });
 
-                const retreatSuccessful = playerShip.retreatingTurn !== null && next.turn >= playerShip.retreatingTurn;
-                
-                if (retreatSuccessful) {
-                    playerShip.retreatingTurn = null;
-                    addLog({ sourceId: 'player', sourceName: playerShip.name, message: "Retreat successful! Engaging emergency warp...", isPlayerSource: true });
-                    
-                    const damageLogs: string[] = [];
-                    if (Math.random() < 0.3) {
-                        const damage = Math.round(playerShip.maxHull * Math.random() * 0.5);
-                        playerShip.hull = Math.max(0, playerShip.hull - damage);
-                        damageLogs.push(`Hull took ${damage} stress damage.`);
-                    }
-                    if (Math.random() < 0.4) {
-                        const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter'];
-                        const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-                        const targetSubsystem = playerShip.subsystems[randomSubsystemKey];
-                        if (targetSubsystem.maxHealth > 0) {
-                            const damage = Math.round(targetSubsystem.maxHealth * Math.random() * 0.5);
-                            targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
-                            damageLogs.push(`The ${randomSubsystemKey} system took ${damage} damage from the power surge.`);
-                        }
-                    }
-                    if (damageLogs.length > 0) {
-                        addLog({ 
-                            sourceId: 'system', 
-                            sourceName: 'Damage Control', 
-                            message: "The emergency warp has strained the ship's systems!\n" + damageLogs.map(l => `--> ${l}`).join('\n'), 
-                            isPlayerSource: false,
-                            color: 'border-orange-400'
-                        });
-                    }
-
-                    const { qx, qy } = next.player.position;
-                    const adjacentDeltas = [{dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}];
-                    const potentialDestinations: QuadrantPosition[] = [];
-                    for (const delta of adjacentDeltas) {
-                        const newQx = qx + delta.dx;
-                        const newQy = qy + delta.dy;
-                        if (newQx >= 0 && newQx < QUADRANT_SIZE && newQy >= 0 && newQy < QUADRANT_SIZE) {
-                            potentialDestinations.push({ qx: newQx, qy: newQy });
-                        }
-                    }
-
-                    let destination: QuadrantPosition | null = null;
-                    if (potentialDestinations.length > 0) {
-                        const safeDestinations = potentialDestinations.filter(pos => 
-                            !next.quadrantMap[pos.qy][pos.qx].entities.some((e: Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction))
-                        );
-
-                        if (safeDestinations.length > 0) {
-                            destination = safeDestinations[Math.floor(Math.random() * safeDestinations.length)];
-                        } else {
-                            destination = potentialDestinations[Math.floor(Math.random() * potentialDestinations.length)];
-                        }
-                    }
-
-                    if (destination) {
-                        next.player.position = destination;
-                        next.currentSector = next.quadrantMap[destination.qy][destination.qx];
-                        next.currentSector.visited = true;
-                        setNavigationTarget(null);
-                        addLog({ sourceId: 'system', sourceName: 'Navigation', message: `Emergency warp completed. Arrived in quadrant (${destination.qx}, ${destination.qy}).`, isPlayerSource: false });
-                    } else {
-                        addLog({ sourceId: 'system', sourceName: 'Navigation', message: `Warp failed to find a safe vector! We've cleared the immediate area.`, isPlayerSource: false, color: 'border-orange-400' });
-                        next.currentSector.entities = next.currentSector.entities.filter((e: Entity) => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
-                    }
-                    
-                    delete next.player.targeting;
-                    setSelectedTargetId(null);
-                    next.isRetreatingWarp = true;
-                }
-
+                // Resolve all combat and destruction before handling retreat.
                 const destroyedIds = new Set<string>(); const newExplosionEffects: CombatEffect[] = [];
                 currentSector.entities.forEach(e => {
                     const entityWithHull = e as Ship | Starbase | TorpedoProjectile;
@@ -1243,6 +1172,7 @@ export const useGameLogic = () => {
                         destroyedIds.add(e.id);
                     }
                 });
+
                 if (newExplosionEffects.length > 0) next.combatEffects = [...next.combatEffects, ...newExplosionEffects];
                 
                 const targetingInfo = player.targeting;
@@ -1260,6 +1190,97 @@ export const useGameLogic = () => {
                 }
                 if (selectedTargetId && destroyedIds.has(selectedTargetId)) setSelectedTargetId(null);
                 next.currentSector.entities = currentSector.entities.filter(e => !destroyedIds.has(e.id));
+                
+                const retreatSuccessful = playerShip.retreatingTurn !== null && next.turn >= playerShip.retreatingTurn;
+                
+                if (retreatSuccessful) {
+                    const oldPlayerPos = next.player.position;
+                    
+                    // Save the now-finalized state of the sector being left.
+                    next.quadrantMap[oldPlayerPos.qy][oldPlayerPos.qx] = JSON.parse(JSON.stringify(next.currentSector));
+
+                    playerShip.retreatingTurn = null;
+                    
+                    const friendlySectors: QuadrantPosition[] = [];
+                    next.quadrantMap.forEach((row: SectorState[], qy: number) => {
+                        row.forEach((sector: SectorState, qx: number) => {
+                            if (sector.factionOwner === 'Federation' && (qx !== oldPlayerPos.qx || qy !== oldPlayerPos.qy)) {
+                                friendlySectors.push({ qx, qy });
+                            }
+                        });
+                    });
+
+                    let destination: QuadrantPosition | null = null;
+                    if (friendlySectors.length > 0) {
+                        destination = friendlySectors[Math.floor(Math.random() * friendlySectors.length)];
+                    } else {
+                        // Fallback to original adjacent logic if no other friendly sector is found
+                        const { qx, qy } = next.player.position;
+                        const adjacentDeltas = [{dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}];
+                        const potentialDestinations: QuadrantPosition[] = [];
+                        for (const delta of adjacentDeltas) {
+                            const newQx = qx + delta.dx;
+                            const newQy = qy + delta.dy;
+                            if (newQx >= 0 && newQx < QUADRANT_SIZE && newQy >= 0 && newQy < QUADRANT_SIZE) {
+                                potentialDestinations.push({ qx: newQx, qy: newQy });
+                            }
+                        }
+                        if(potentialDestinations.length > 0) {
+                             const pickSafest = (destinations: QuadrantPosition[]) => {
+                                const safe = destinations.filter(pos => 
+                                    !next.quadrantMap[pos.qy][pos.qx].entities.some((e: Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction))
+                                );
+                                if (safe.length > 0) return safe[Math.floor(Math.random() * safe.length)];
+                                return destinations[Math.floor(Math.random() * destinations.length)];
+                            };
+                            destination = pickSafest(potentialDestinations);
+                        }
+                    }
+
+                    addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Retreat successful! Engaging emergency warp to quadrant (${destination?.qx ?? 'unknown'}, ${destination?.qy ?? 'unknown'})...`, isPlayerSource: true });
+
+                    const damageLogs: string[] = [];
+                    if (Math.random() < 0.3) {
+                        const damage = Math.round(playerShip.maxHull * Math.random() * 0.5);
+                        playerShip.hull = Math.max(0, playerShip.hull - damage);
+                        damageLogs.push(`--> Hull took ${damage} stress damage.`);
+                    }
+                    if (Math.random() < 0.4) {
+                        const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter'];
+                        const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+                        const targetSubsystem = playerShip.subsystems[randomSubsystemKey];
+                        if (targetSubsystem.maxHealth > 0) {
+                            const damage = Math.round(targetSubsystem.maxHealth * Math.random() * 0.5);
+                            targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+                            damageLogs.push(`--> The ${randomSubsystemKey} system took ${damage} damage from the power surge.`);
+                        }
+                    }
+                    if (damageLogs.length > 0) {
+                        addLog({ 
+                            sourceId: 'system', 
+                            sourceName: 'Damage Control', 
+                            message: "The emergency warp has strained the ship's systems!\n" + damageLogs.join('\n'), 
+                            isPlayerSource: false,
+                            color: 'border-orange-400'
+                        });
+                    }
+
+                    if (destination) {
+                        next.player.position = destination;
+                        next.currentSector = JSON.parse(JSON.stringify(next.quadrantMap[destination.qy][destination.qx]));
+                        next.player.ship.position = { x: 6, y: 8 };
+                        next.currentSector.visited = true;
+                        setNavigationTarget(null);
+                        addLog({ sourceId: 'system', sourceName: 'Navigation', message: `Emergency warp completed. Arrived in quadrant (${destination.qx}, ${destination.qy}).`, isPlayerSource: false });
+                    } else {
+                        addLog({ sourceId: 'system', sourceName: 'Navigation', message: `Warp failed to find a safe vector! We've cleared the immediate area.`, isPlayerSource: false, color: 'border-orange-400' });
+                        next.currentSector.entities = next.currentSector.entities.filter((e: Entity) => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
+                    }
+                    
+                    delete next.player.targeting;
+                    setSelectedTargetId(null);
+                    next.isRetreatingWarp = true;
+                }
                 
                 if (playerShip.hull <= 0) {
                     next.gameOver = true;
@@ -1369,10 +1390,16 @@ export const useGameLogic = () => {
             setCurrentView('sector'); setNavigationTarget(null); setSelectedTargetId(null); setIsDocked(false);
             setGameState(prev => {
                 const next = JSON.parse(JSON.stringify(prev));
+                const oldPlayerPos = next.player.position;
+
+                // Save the state of the sector being left using a deep copy.
+                next.quadrantMap[oldPlayerPos.qy][oldPlayerPos.qx] = JSON.parse(JSON.stringify(next.currentSector));
+
                 next.player.ship.dilithium.current--;
-                const newMap = next.quadrantMap;
-                let sectorToWarpTo = newMap[pos.qy][pos.qx];
+                let sectorToWarpTo = JSON.parse(JSON.stringify(next.quadrantMap[pos.qy][pos.qx]));
                 
+                next.player.ship.position = { x: 6, y: 8 };
+
                 if (!sectorToWarpTo.visited) {
                     sectorToWarpTo.visited = true;
                     addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`, isPlayerSource: false });
@@ -1396,12 +1423,12 @@ export const useGameLogic = () => {
                 } else { addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Entering previously explored sector.`, isPlayerSource: false }); }
                 
                 addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Arrived at quadrant ${pos.qx}, ${pos.qy}. Consumed 1 Dilithium.`, isPlayerSource: true });
-                next.player.position = pos; next.currentSector = sectorToWarpTo; next.quadrantMap = newMap;
+                next.player.position = pos; next.currentSector = sectorToWarpTo;
                 return next;
             });
             setIsWarping(false);
          }, 2500);
-    }, [addLog, gameState.player.ship.dilithium, gameState.player.ship.name]);
+    }, [addLog, gameState.player.ship.name, gameState.player.ship.dilithium]);
 
     const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
         const energyCost = 1;
@@ -1534,8 +1561,13 @@ export const useGameLogic = () => {
     }, [addLog, selectedTargetId, gameState.player.ship.name]);
 
     const onInitiateRetreat = useCallback(() => {
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Retreat initiated! Evasive maneuvers for 3 turns.', isPlayerSource: true });
-        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: prev.turn + 3 } } }));
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Retreat initiated! Evasive maneuvers for 2 turns.', isPlayerSource: true });
+        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: prev.turn + 2 } } }));
+    }, [addLog, gameState.player.ship.name]);
+
+    const onCancelRetreat = useCallback(() => {
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Retreat canceled. Resuming normal operations.', isPlayerSource: true });
+        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: null } } }));
     }, [addLog, gameState.player.ship.name]);
 
     const onStartAwayMission = useCallback((planetId: string) => {
@@ -1646,7 +1678,7 @@ export const useGameLogic = () => {
     
     const onChooseEventOption = useCallback((option: EventTemplateOption) => {
         if (!activeEvent) return;
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: option.outcome.log, isPlayerSource: true });
+        
         setGameState(prev => {
             const next = JSON.parse(JSON.stringify(prev)); const playerShip = next.player.ship;
             const beacon = next.currentSector.entities.find((e: Entity) => e.id === activeEvent.beaconId);
@@ -1675,8 +1707,11 @@ export const useGameLogic = () => {
                     } break;
             } return next;
         });
+
+        // Set event result after state update to trigger dialog
+        setEventResult(option.outcome.log);
         setActiveEvent(null);
-    }, [activeEvent, addLog, gameState.player.ship.name]);
+    }, [activeEvent]);
 
     const onToggleRedAlert = useCallback(() => {
         setGameState(prev => {
@@ -1721,12 +1756,13 @@ export const useGameLogic = () => {
 
     return {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail,
-        officerCounsel, targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult,
+        officerCounsel, targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget,
         onSetNavigationTarget, onSetView: setCurrentView, onWarp, onScanQuadrant, onDockWithStarbase, onRechargeDilithium,
-        onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat,
+        onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat,
         onStartAwayMission, onChooseAwayMissionOption, onHailTarget, onCloseHail: () => setActiveHail(null),
         onCloseOfficerCounsel, onProceedFromCounsel, onSelectSubsystem, onChooseEventOption, saveGame, loadGame,
         exportSave, importSave, onDistributeEvenly, onSendAwayTeam, onToggleRedAlert, onCloseAwayMissionResult: () => setAwayMissionResult(null),
+        onCloseEventResult: () => setEventResult(null),
     };
 };

@@ -16,6 +16,7 @@ import AwayMissionResultDialog from './components/AwayMissionResultDialog';
 import { useTheme } from './hooks/useTheme';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import PlayerManual from './components/PlayerManual';
+import EventResultDialog from './components/EventResultDialog';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -83,6 +84,7 @@ const App: React.FC = () => {
     isWarping,
     isTurnResolving,
     awayMissionResult,
+    eventResult,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -99,6 +101,7 @@ const App: React.FC = () => {
     onSelectRepairTarget,
     onScanTarget,
     onInitiateRetreat,
+    onCancelRetreat,
     onStartAwayMission,
     onChooseAwayMissionOption,
     onHailTarget,
@@ -115,6 +118,7 @@ const App: React.FC = () => {
     onSendAwayTeam,
     onToggleRedAlert,
     onCloseAwayMissionResult,
+    onCloseEventResult,
     onScanQuadrant,
   } = useGameLogic();
 
@@ -196,6 +200,7 @@ const App: React.FC = () => {
                     onStarbaseRepairs={onStarbaseRepairs}
                     onScanTarget={onScanTarget}
                     onInitiateRetreat={onInitiateRetreat}
+                    onCancelRetreat={onCancelRetreat}
                     onStartAwayMission={onStartAwayMission}
                     onHailTarget={onHailTarget}
                     playerTurnActions={playerTurnActions}
@@ -236,6 +241,7 @@ const App: React.FC = () => {
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
       {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} themeName={themeName} />}
       {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
+      {eventResult && <EventResultDialog result={eventResult} onClose={onCloseEventResult} />}
 
       {showLogPanel && (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
