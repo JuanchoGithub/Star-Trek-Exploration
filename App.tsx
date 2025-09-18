@@ -6,7 +6,6 @@ import SectorView from './components/SectorView';
 import QuadrantView from './components/QuadrantView';
 import AwayMissionDialog from './components/AwayMissionDialog';
 import HailDialog from './components/HailDialog';
-import OfficerCounselDialog from './components/OfficerCounselDialog';
 import StatusLine from './components/StatusLine';
 import ShipStatus from './components/ShipStatus';
 import EventDialog from './components/EventDialog';
@@ -77,7 +76,6 @@ const App: React.FC = () => {
     isDocked,
     activeAwayMission,
     activeHail,
-    officerCounsel,
     targetEntity,
     playerTurnActions,
     activeEvent,
@@ -106,8 +104,6 @@ const App: React.FC = () => {
     onChooseAwayMissionOption,
     onHailTarget,
     onCloseHail,
-    onCloseOfficerCounsel,
-    onProceedFromCounsel,
     onSelectSubsystem,
     onChooseEventOption,
     saveGame,
@@ -239,7 +235,6 @@ const App: React.FC = () => {
       {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} themeName={themeName} />}
       {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
       {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
-      {officerCounsel && <OfficerCounselDialog counselSession={officerCounsel} onProceed={onProceedFromCounsel} onAbort={onCloseOfficerCounsel} themeName={themeName} />}
       {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
       {eventResult && <EventResultDialog result={eventResult} onClose={onCloseEventResult} />}
 

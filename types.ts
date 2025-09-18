@@ -164,17 +164,25 @@ export interface ActiveAwayMission {
     title: string;
     description: string;
     options: ActiveAwayMissionOption[];
+    advice: OfficerAdvice[];
 }
+
+export type AwayMissionResultStatus = 'success' | 'failure';
+
+export interface AwayMissionResult {
+    log: string;
+    status: AwayMissionResultStatus;
+    changes: {
+        resource: ResourceType;
+        amount: number; // signed number: positive for gain, negative for loss
+    }[];
+}
+
 
 export interface ActiveHail {
     targetId: string;
     loading: boolean;
     message: string;
-}
-
-export interface ActiveCounselSession {
-    mission: ActiveAwayMission;
-    advice: OfficerAdvice[];
 }
 
 export interface PlayerTurnActions {

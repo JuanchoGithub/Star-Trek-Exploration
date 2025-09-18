@@ -1000,5 +1000,78 @@ export const awayMissionTemplates: AwayMissionTemplate[] = [
         }
       }
     ]
+  },
+  {
+    id: 'am41',
+    title: 'The Guardian\'s Test',
+    planetClasses: ['D'],
+    description: "An away team discovers a bizarre, perfectly circular stone archway humming with temporal energy. A disembodied voice emanates from it, offering knowledge but demanding a demonstration of worthiness.",
+    options: [
+      {
+        role: 'Science',
+        text: "Answer the Guardian's riddle about Federation history and philosophy.",
+        successChanceRange: [0.6, 0.8],
+        outcomes: {
+          success: [
+            { type: 'reward', resource: 'dilithium', amount: 3, log: "The Guardian is satisfied. It shares a star chart revealing a sector rich in rare minerals. Our scientists synthesize 3 Dilithium from the data.", weight: 8 },
+            { type: 'reward', resource: 'shields', amount: 25, log: 'The Guardian deems you worthy and imparts a complex shield algorithm, permanently improving shield subsystem health by 25.', weight: 2 }
+          ],
+          failure: [
+            { type: 'nothing', log: "The Guardian finds your answer lacking. 'You are not ready,' it says, and the archway goes silent.", weight: 10 },
+            { type: 'damage', resource: 'morale', amount: 10, log: "The Guardian rejects your philosophy, showing the team visions of the Federation's darkest moments. The team returns shaken, and crew morale drops.", weight: 5 }
+          ]
+        }
+      },
+      {
+        role: 'Engineering',
+        text: "Attempt to bypass the Guardian's interface and directly tap into the temporal energy source.",
+        successChanceRange: [0.5, 0.7],
+        outcomes: {
+          success: [
+            { type: 'reward', resource: 'energy', amount: 100, log: "The engineer successfully creates a stable conduit, siphoning a massive amount of temporal energy and converting it to power. Reserve power is fully restored.", weight: 10 }
+          ],
+          failure: [
+            { type: 'damage', resource: 'engines', amount: 30, log: "The attempt causes a temporal feedback loop! A key component of the impulse engines is aged 50 years in an instant, causing severe damage.", weight: 10 },
+            { type: 'damage', resource: 'security_teams', amount: 1, log: "A temporal distortion engulfs an away team member, who ages rapidly and dies before the team can pull back. A horrific, tragic accident.", weight: 1 }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    id: 'am42',
+    title: 'Descent into Darkness',
+    planetClasses: ['J'],
+    description: "A Federation science probe, the 'Carl Sagan', has fallen into the gas giant's lower atmosphere after its antigravity systems failed. It's being crushed by the pressure, but its data core is intact and contains unique atmospheric composition data.",
+    options: [
+      {
+        role: 'Engineering',
+        text: "Reinforce the Endeavour's tractor beam and attempt a high-risk retrieval.",
+        successChanceRange: [0.6, 0.8],
+        outcomes: {
+          success: [
+            { type: 'reward', resource: 'hull', amount: 20, log: "The tractor beam holds! The probe is retrieved just before it implodes. Its structural integrity data allows us to reinforce the Endeavour's hull.", weight: 10 }
+          ],
+          failure: [
+            { type: 'damage', resource: 'engines', amount: 20, log: "The strain on the tractor beam overloads the ship's power relays, causing a surge that damages the engines.", weight: 10 },
+            { type: 'nothing', log: "The probe is crushed by the pressure before we can get a solid lock. The probe and its data are lost.", weight: 5 }
+          ]
+        }
+      },
+      {
+        role: 'Science',
+        text: "Attempt a high-speed, long-range transporter snatch of the probe's data core just before it's destroyed.",
+        successChanceRange: [0.7, 0.9],
+        outcomes: {
+          success: [
+            { type: 'reward', resource: 'dilithium', amount: 3, log: "A one-in-a-million shot! The transporter grabs the data core milliseconds before the probe implodes. The atmospheric data reveals a method to refine dilithium with much greater efficiency.", weight: 10 }
+          ],
+          failure: [
+            { type: 'damage', resource: 'transporter', amount: 25, log: "The atmospheric pressure creates a feedback loop in the transporter beam, scrambling the data and damaging the transporter.", weight: 10 },
+            { type: 'nothing', log: "We missed the window. The data core was destroyed along with the probe.", weight: 8 }
+          ]
+        }
+      }
+    ]
   }
 ];

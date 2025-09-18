@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, ActiveHail, ActiveCounselSession, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole, ActiveAwayMission, AwayMissionOutcome, ActiveAwayMissionOption, ResourceType } from '../types';
+import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, ActiveHail, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole, ActiveAwayMission, AwayMissionOutcome, ActiveAwayMissionOption, ResourceType, AwayMissionResult, AwayMissionResultStatus } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
@@ -506,6 +506,40 @@ const applyPhaserDamage = (
     return logs;
 };
 
+// Helper to apply resource changes from away missions or events
+const applyResourceChange = (ship: Ship, resource: ResourceType, amount: number) => {
+    // amount is signed: positive for gain, negative for loss.
+    switch (resource) {
+        case 'hull':
+            ship.hull = Math.max(0, Math.min(ship.maxHull, ship.hull + amount));
+            break;
+        case 'energy':
+            ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + amount));
+            break;
+        case 'dilithium':
+            ship.dilithium.current = Math.max(0, Math.min(ship.dilithium.max, ship.dilithium.current + amount));
+            break;
+        case 'torpedoes':
+            ship.torpedoes.current = Math.max(0, Math.min(ship.torpedoes.max, ship.torpedoes.current + amount));
+            break;
+        case 'morale':
+            ship.crewMorale.current = Math.max(0, Math.min(ship.crewMorale.max, ship.crewMorale.current + amount));
+            break;
+        case 'security_teams':
+            ship.securityTeams.current = Math.max(0, Math.min(ship.securityTeams.max, ship.securityTeams.current + amount));
+            break;
+        case 'weapons':
+        case 'engines':
+        case 'shields':
+        case 'transporter':
+            const subsystem = ship.subsystems[resource];
+            if (subsystem) {
+                subsystem.health = Math.max(0, Math.min(subsystem.maxHealth, subsystem.health + amount));
+            }
+            break;
+    }
+};
+
 
 export const useGameLogic = () => {
     const [gameState, setGameState] = useState<GameState>(() => {
@@ -617,12 +651,11 @@ export const useGameLogic = () => {
     const [isDocked, setIsDocked] = useState(false);
     const [activeAwayMission, setActiveAwayMission] = useState<ActiveAwayMission | null>(null);
     const [activeHail, setActiveHail] = useState<ActiveHail | null>(null);
-    const [officerCounsel, setOfficerCounsel] = useState<ActiveCounselSession | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
     const [activeEvent, setActiveEvent] = useState<{ beaconId: string; template: EventTemplate } | null>(null);
     const [isWarping, setIsWarping] = useState(false);
     const [isTurnResolving, setIsTurnResolving] = useState(false);
-    const [awayMissionResult, setAwayMissionResult] = useState<string | null>(null);
+    const [awayMissionResult, setAwayMissionResult] = useState<AwayMissionResult | null>(null);
     const [eventResult, setEventResult] = useState<string | null>(null);
     const [activeMissionPlanetId, setActiveMissionPlanetId] = useState<string | null>(null);
 
@@ -1599,7 +1632,7 @@ export const useGameLogic = () => {
         setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: null } } }));
     }, [addLog, gameState.player.ship.name]);
 
-    const generateAwayMission = useCallback((planet: Planet, turn: number, usedSeeds: string[], usedTemplateIds: string[]): ActiveAwayMission | null => {
+    const generateAwayMission = useCallback((planet: Planet, turn: number, usedSeeds: string[], usedTemplateIds: string[]): Omit<ActiveAwayMission, 'advice'> | null => {
         let seed = `${planet.id}-${turn}`;
         if (usedSeeds.includes(seed)) {
             // This should be rare, but as a fallback, add a random element.
@@ -1624,7 +1657,7 @@ export const useGameLogic = () => {
 
         const template = availableMissions[Math.floor(rand() * availableMissions.length)];
 
-        const activeMission: ActiveAwayMission = {
+        const activeMission: Omit<ActiveAwayMission, 'advice'> = {
             id: template.id,
             seed: seed,
             title: template.title,
@@ -1664,13 +1697,10 @@ export const useGameLogic = () => {
             return { officerName: officer.name, role: officer.role, message };
         });
 
-        if (advice.length > 0) {
-            setOfficerCounsel({ mission, advice });
-            addLog({ sourceId: 'system', sourceName: 'Bridge', message: "The bridge crew offers their counsel on the upcoming away mission.", isPlayerSource: false });
-        } else {
-            setActiveAwayMission(mission);
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Away team beamed down.', isPlayerSource: true });
-        }
+        const missionWithAdvice: ActiveAwayMission = { ...mission, advice };
+        setActiveAwayMission(missionWithAdvice);
+        addLog({ sourceId: 'system', sourceName: 'Bridge', message: "Preparing for away mission. Senior staff are offering their opinions.", isPlayerSource: false });
+        
     }, [gameState.currentSector.entities, gameState.turn, gameState.usedAwayMissionSeeds, gameState.player.crew, gameState.player.ship.name, addLog, generateAwayMission]);
 
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
@@ -1713,94 +1743,50 @@ export const useGameLogic = () => {
 
     const onChooseAwayMissionOption = useCallback((option: ActiveAwayMissionOption) => {
         if (!activeAwayMission) return;
-        
+    
         const rand = seededRandom(cyrb53(activeAwayMission.seed + option.role));
-        
+    
         const successRoll = rand();
         const success = successRoll < option.calculatedSuccessChance;
-        
+    
         const outcomes = success ? option.outcomes.success : option.outcomes.failure;
-
+    
         const totalWeight = outcomes.reduce((sum, o) => sum + o.weight, 0);
-        
-        // Use the next random number in the sequence for outcome selection
-        const outcomeRollForSelection = rand();
-        let weightRoll = outcomeRollForSelection * totalWeight;
-        
+    
+        let weightRoll = rand() * totalWeight;
+    
         const chosenOutcome = outcomes.find(o => {
             weightRoll -= o.weight;
             return weightRoll < 0;
         }) || outcomes[0];
-
-        console.groupCollapsed(`Away Mission Resolution (Seed: ${activeAwayMission.seed})`);
-        console.log('Mission:', `"${activeAwayMission.title}"`);
-        console.log('All Options & Chances:');
-        console.table(activeAwayMission.options.map(opt => ({ 
-            role: opt.role, 
-            text: opt.text, 
-            chance: `${(opt.calculatedSuccessChance * 100).toFixed(1)}%` 
-        })));
-        console.log('--- RESOLUTION ---');
-        console.log('Player Chose:', `[${option.role}] ${option.text}`);
-        console.log(`Success Check: Rolled ${(successRoll * 100).toFixed(2)} vs Target of ${(option.calculatedSuccessChance * 100).toFixed(2)} -> ${success ? 'SUCCESS' : 'FAILURE'}`);
-        if(outcomes.length > 1) {
-            console.log(`Outcome Selection (${outcomes.length} possibilities, total weight ${totalWeight}): Rolled a value that selected the following outcome.`);
+    
+        const result: AwayMissionResult = {
+            log: chosenOutcome.log,
+            status: success ? 'success' : 'failure',
+            changes: [],
+        };
+    
+        if ((chosenOutcome.type === 'reward' || chosenOutcome.type === 'damage') && chosenOutcome.resource && chosenOutcome.amount) {
+            const changeAmount = chosenOutcome.type === 'reward' ? chosenOutcome.amount : -chosenOutcome.amount;
+            result.changes.push({
+                resource: chosenOutcome.resource,
+                amount: changeAmount,
+            });
         }
-        console.log('Final Outcome:', chosenOutcome.log);
-        console.log('State Changes:', chosenOutcome);
-        console.groupEnd();
-
-        const resultText = success ? 'SUCCESS' : 'FAILURE';
-        const debugLogMessage = `[DEBUG] Mission Seed: ${activeAwayMission.seed} | Choice: ${option.role} | Roll: ${successRoll.toFixed(2)} vs Chance: ${option.calculatedSuccessChance.toFixed(2)} | Result: ${resultText}`;
-
-        addLog({
-            sourceId: 'system',
-            sourceName: 'System Log',
-            message: debugLogMessage,
-            isPlayerSource: false,
-            color: 'border-gray-700'
-        });
-        
+    
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); 
-            const playerShip = next.player.ship;
-            const amount = chosenOutcome.amount || 0;
-            const resource = chosenOutcome.resource as ResourceType;
-
-            switch (chosenOutcome.type) {
-                case 'reward':
-                    if (resource) {
-                        if (resource === 'dilithium') playerShip.dilithium.current = Math.min(playerShip.dilithium.max, playerShip.dilithium.current + amount);
-                        else if (resource === 'torpedoes') playerShip.torpedoes.current = Math.min(playerShip.torpedoes.max, playerShip.torpedoes.current + amount);
-                        else if (resource === 'hull') playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + amount);
-                        else if (resource === 'energy') playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + amount);
-                        else if (resource === 'morale') playerShip.crewMorale.current = Math.min(playerShip.crewMorale.max, playerShip.crewMorale.current + amount);
-                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(resource)) {
-                            const subsystem = playerShip.subsystems[resource as keyof ShipSubsystems];
-                            if (subsystem) subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + amount);
-                        }
-                    }
-                    break;
-                case 'damage':
-                    if (resource) {
-                        if (resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount);
-                        else if (resource === 'morale') playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - amount);
-                        else if (resource === 'energy') playerShip.energy.current = Math.max(0, playerShip.energy.current - amount);
-                        else if (resource === 'dilithium') playerShip.dilithium.current = Math.max(0, playerShip.dilithium.current - amount);
-                        else if (resource === 'security_teams') playerShip.securityTeams.current = Math.max(0, playerShip.securityTeams.current - amount);
-                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(resource)) {
-                            const subsystem = playerShip.subsystems[resource as keyof ShipSubsystems];
-                            if (subsystem) subsystem.health = Math.max(0, subsystem.health - amount);
-                        }
-                    }
-                    break;
-            }
-
+            const next = JSON.parse(JSON.stringify(prev));
+    
+            // Apply all changes from the result
+            result.changes.forEach(change => {
+                applyResourceChange(next.player.ship, change.resource, change.amount);
+            });
+    
             if (activeMissionPlanetId) {
                 const planet = next.currentSector.entities.find((e: Entity) => e.id === activeMissionPlanetId) as Planet | undefined;
                 if (planet) planet.awayMissionCompleted = true;
             }
-
+    
             next.usedAwayMissionSeeds.push(activeAwayMission.seed);
             if (!next.usedAwayMissionTemplateIds) {
                 next.usedAwayMissionTemplateIds = [];
@@ -1810,24 +1796,11 @@ export const useGameLogic = () => {
             }
             return next;
         });
-        
-        setAwayMissionResult(chosenOutcome.log);
-        setActiveAwayMission(null); 
+    
+        setAwayMissionResult(result);
+        setActiveAwayMission(null);
         setActiveMissionPlanetId(null);
-    }, [activeAwayMission, activeMissionPlanetId, addLog]);
-
-    const onProceedFromCounsel = useCallback(() => {
-        if (officerCounsel) {
-            setActiveAwayMission(officerCounsel.mission);
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Away team beamed down.', isPlayerSource: true });
-            setOfficerCounsel(null);
-        }
-    }, [addLog, officerCounsel, gameState.player.ship.name]);
-
-    const onCloseOfficerCounsel = useCallback(() => {
-        setOfficerCounsel(null); setActiveMissionPlanetId(null);
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Away mission aborted based on counsel.", isPlayerSource: true });
-    }, [addLog, gameState.player.ship.name]);
+    }, [activeAwayMission, activeMissionPlanetId]);
 
     const onHailTarget = useCallback(async () => {
          if (!selectedTargetId || !ai) return;
@@ -1947,12 +1920,12 @@ export const useGameLogic = () => {
 
     return {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail,
-        officerCounsel, targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
+        targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget,
         onSetNavigationTarget, onSetView: setCurrentView, onWarp, onScanQuadrant, onDockWithStarbase, onRechargeDilithium,
         onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat,
         onStartAwayMission, onChooseAwayMissionOption, onHailTarget, onCloseHail: () => setActiveHail(null),
-        onCloseOfficerCounsel, onProceedFromCounsel, onSelectSubsystem, onChooseEventOption, saveGame, loadGame,
+        onSelectSubsystem, onChooseEventOption, saveGame, loadGame,
         exportSave, importSave, onDistributeEvenly, onSendAwayTeam, onToggleRedAlert, onCloseAwayMissionResult: () => setAwayMissionResult(null),
         onCloseEventResult: () => setEventResult(null),
     };

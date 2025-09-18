@@ -126,22 +126,17 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
         }
 
         if (hasEnemy) {
-            return { disabled: true, text: 'Cannot Beam Down: Hostiles Present' };
+            return { disabled: true, text: 'Cannot Begin Mission: Hostiles Present' };
         }
-        if (playerShip.subsystems.transporter.health <= 0) {
-            return { disabled: true, text: 'Cannot Beam Down: Transporter Offline' };
+        // Non-J class missions may require a transporter. J-class missions are assumed to use probes/shuttles.
+        if (playerShip.subsystems.transporter.health <= 0 && orbitingPlanet.planetClass !== 'J') {
+            return { disabled: true, text: 'Cannot Begin Mission: Transporter Offline' };
         }
         if (orbitingPlanet.awayMissionCompleted) {
             return { disabled: true, text: 'Planet Surveyed' };
         }
-        
-        // Away missions are generally for M (Earth-like) and L (Marginal) class planets.
-        const isMissionAvailableForPlanetType = ['M', 'L'].includes(orbitingPlanet.planetClass);
-        if (!isMissionAvailableForPlanetType) {
-            return { disabled: true, text: 'Unsuitable for Away Mission' };
-        }
 
-        return { disabled: false, text: 'Beam Down Away Team' };
+        return { disabled: false, text: 'Begin Away Mission' };
     };
 
     const awayMissionState = getAwayMissionButtonState();

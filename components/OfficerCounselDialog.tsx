@@ -1,16 +1,19 @@
 import React from 'react';
-import type { ActiveCounselSession, AwayMissionRole, ActiveAwayMission } from '../types';
+// FIX: Replaced non-existent `ActiveCounselSession` with `ActiveAwayMission`.
+import type { ActiveAwayMission, AwayMissionRole } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 
 interface OfficerCounselDialogProps {
-  counselSession: ActiveCounselSession;
+  // FIX: Renamed prop to `mission` and changed type to `ActiveAwayMission`.
+  mission: ActiveAwayMission;
   onProceed: () => void;
   onAbort: () => void;
   themeName: ThemeName;
 }
 
-const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSession, onProceed, onAbort, themeName }) => {
+// FIX: Updated component to use the `mission` prop.
+const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ mission, onProceed, onAbort, themeName }) => {
   const { ScienceIcon, SecurityIcon, EngineeringIcon } = getFactionIcons(themeName);
   
   const roleIcons: { [key in AwayMissionRole]?: React.ReactNode } = {
@@ -22,11 +25,13 @@ const OfficerCounselDialog: React.FC<OfficerCounselDialogProps> = ({ counselSess
   return (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
       <div className="panel-style p-6 max-w-3xl w-full flex flex-col" style={{borderColor: 'var(--color-accent-yellow)'}}>
-        <h2 className="text-3xl font-bold text-accent-yellow mb-2 text-center">Officer Counsel: {counselSession.mission.title}</h2>
-        <p className="text-md mb-6 text-text-secondary text-center italic">"{counselSession.mission.description}"</p>
+        {/* FIX: Updated property access to use `mission` directly. */}
+        <h2 className="text-3xl font-bold text-accent-yellow mb-2 text-center">Officer Counsel: {mission.title}</h2>
+        <p className="text-md mb-6 text-text-secondary text-center italic">"{mission.description}"</p>
         
         <div className="space-y-4 mb-6 overflow-y-auto max-h-[40vh] pr-2">
-            {counselSession.advice.map((adv, index) => (
+            {/* FIX: Updated property access to use `mission` directly. */}
+            {mission.advice.map((adv, index) => (
                 <div key={index} className="flex items-start gap-4 bg-black p-3 rounded-md">
                     <div className="flex-shrink-0 pt-1">
                         {roleIcons[adv.role]}
