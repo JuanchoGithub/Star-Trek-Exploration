@@ -28,7 +28,7 @@ interface BaseEntity {
   scanned: boolean;
 }
 
-export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter';
+export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter' | 'Dreadnought';
 // FIX: Exported ShipModel type to be used across the application.
 export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
 
@@ -93,14 +93,6 @@ export interface TorpedoProjectile extends BaseEntity {
 export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile;
 
 export type FactionOwner = 'Federation' | 'Klingon' | 'Romulan' | 'None';
-
-export interface SectorState {
-  entities: Entity[];
-  visited: boolean;
-  hasNebula: boolean;
-  factionOwner: FactionOwner;
-  isScanned: boolean;
-}
 
 export type AwayMissionRole = 'Science' | 'Security' | 'Engineering' | 'Medical' | 'Counselor';
 export type OfficerPersonality = 'Logical' | 'Aggressive' | 'Cautious';
@@ -234,6 +226,15 @@ export interface LogEntry {
   message: string;
   color: string; // Tailwind border color class
   isPlayerSource: boolean;
+}
+
+// FIX: Added missing SectorState interface.
+export interface SectorState {
+  entities: Entity[];
+  visited: boolean;
+  hasNebula: boolean;
+  factionOwner: FactionOwner;
+  isScanned: boolean;
 }
 
 export interface GameState {

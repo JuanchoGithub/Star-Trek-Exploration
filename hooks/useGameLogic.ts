@@ -1,3 +1,5 @@
+
+
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, Ship, SectorState, AwayMissionTemplate, ActiveHail, BridgeOfficer, OfficerAdvice, Entity, Position, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, CombatEffect, TorpedoProjectile, ShipSubsystems, Planet, Starbase, LogEntry, FactionOwner, ShipRole, ActiveAwayMission, AwayMissionOutcome, ActiveAwayMissionOption, ResourceType, AwayMissionResult, AwayMissionResultStatus } from '../types';
@@ -113,7 +115,7 @@ const getFactionOwner = (qx: number, qy: number): FactionOwner => {
     return 'None'; // No Man's Land
 };
 
-const generateSectorContent = (sector: SectorState, qx: number, qy: number, availablePlanetNames?: Record<PlanetClass, string[]>, availableShipNames?: Record<string, string[]>, colorIndex?: { current: number }): SectorState => {
+const generateSectorContent = (sector: SectorState, qx: number, qy: number, availablePlanetNames?: Record<string, string[]>, availableShipNames?: Record<string, string[]>, colorIndex?: { current: number }): SectorState => {
     const newEntities: Entity[] = [];
     const entityCount = Math.floor(Math.random() * 4) + 2; // 2 to 5 entities
     const takenPositions = new Set<string>();
@@ -216,7 +218,7 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
             
             let name: string;
             if (availablePlanetNames) {
-                const nameList = availablePlanetNames[planetConfig.typeName];
+                const nameList = availablePlanetNames[planetConfig.typeName as PlanetClass];
                 if (nameList && nameList.length > 0) {
                     const nameIndex = Math.floor(Math.random() * nameList.length);
                     name = nameList[nameIndex];
@@ -225,7 +227,7 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                     name = `Uncharted Planet ${uniqueId().substr(-4)}`;
                 }
             } else {
-                const nameList = planetNames[planetConfig.typeName] || ['Unknown Planet'];
+                const nameList = planetNames[planetConfig.typeName as PlanetClass] || ['Unknown Planet'];
                 name = nameList[Math.floor(Math.random() * nameList.length)];
             }
 
@@ -304,7 +306,7 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
 
 const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
     const newMap = JSON.parse(JSON.stringify(quadrantMap));
-    const availablePlanetNames: Record<PlanetClass, string[]> = JSON.parse(JSON.stringify(planetNames));
+    const availablePlanetNames: Record<string, string[]> = JSON.parse(JSON.stringify(planetNames));
     const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
     const colorIndex = { current: 0 };
 
@@ -320,9 +322,9 @@ const pregenerateGalaxy = (quadrantMap: SectorState[][]): SectorState[][] => {
 
 
 const createInitialGameState = (): GameState => {
-  const playerStats = shipRoleStats.Explorer;
+  const playerStats = shipRoleStats.Dreadnought;
   const playerShip: Ship = {
-    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', shipRole: 'Explorer',
+    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', shipRole: 'Dreadnought',
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
@@ -575,7 +577,7 @@ export const useGameLogic = () => {
                                 case 'Pirate':
                                     role = 'Escort'; break;
                                 case 'Federation':
-                                    role = 'Explorer'; break;
+                                    role = 'Dreadnought'; break;
                                 default:
                                     role = 'Freighter'; break;
                             }
@@ -686,7 +688,7 @@ export const useGameLogic = () => {
             setIsDocked(false);
             addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: "Undocked: Moved out of range of the starbase.", isPlayerSource: false });
         }
-    }, [gameState.turn, gameState.currentSector.entities, isDocked, addLog]);
+    }, [gameState.turn, gameState.currentSector.entities, isDocked, addLog, gameState.player.ship.position]);
 
     useEffect(() => {
         if (activeEvent) return;
@@ -727,7 +729,7 @@ export const useGameLogic = () => {
             }, 2500);
             return () => clearTimeout(timer);
         }
-    }, [gameState.isRetreatingWarp, addLog, gameState.player.ship.name]);
+    }, [gameState.isRetreatingWarp]);
 
 
     const saveGame = useCallback(() => {
@@ -767,7 +769,7 @@ export const useGameLogic = () => {
                             switch(model) {
                                 case 'Klingon': case 'Romulan': role = 'Cruiser'; break;
                                 case 'Pirate': role = 'Escort'; break;
-                                case 'Federation': role = 'Explorer'; break;
+                                case 'Federation': role = 'Dreadnought'; break;
                                 default: role = 'Freighter'; break;
                             }
                             ship.shipRole = role;
@@ -879,7 +881,8 @@ export const useGameLogic = () => {
         };
 
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
             if (next.gameOver) { setIsTurnResolving(false); return prev; }
             
             const { player, currentSector } = next;
@@ -1031,7 +1034,8 @@ export const useGameLogic = () => {
         });
         
         setTimeout(() => setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
             const newEffects: CombatEffect[] = [];
             const destroyedProjectileIds = new Set<string>();
             const { currentSector } = next;
@@ -1112,7 +1116,8 @@ export const useGameLogic = () => {
         }), 300);
 
         setTimeout(() => setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
             const phaserEffects: CombatEffect[] = [];
             const { currentSector } = next;
             const alliedShips = currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && e.faction === 'Federation' && e.id !== 'player');
@@ -1137,7 +1142,8 @@ export const useGameLogic = () => {
         }), 800);
 
         setTimeout(() => setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
             const hostileAIShips = next.currentSector.entities.filter((e: Entity): e is Ship => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
             hostileAIShips.forEach((aiShip: Ship) => {
                 const distance = calculateDistance(aiShip.position, next.player.ship.position);
@@ -1169,7 +1175,8 @@ export const useGameLogic = () => {
 
         setTimeout(() => {
             setGameState(prev => {
-                const next = JSON.parse(JSON.stringify(prev));
+                // FIX: Explicitly type 'next' as GameState to ensure type safety.
+                const next: GameState = JSON.parse(JSON.stringify(prev));
                 if (next.gameOver) { setIsTurnResolving(false); return prev; }
                 const { player, currentSector } = next; const playerShip = player.ship;
                 const phaserEffects: CombatEffect[] = []; let redAlertThisTurn = false;
@@ -1421,7 +1428,8 @@ export const useGameLogic = () => {
     const onSelectTarget = useCallback((id: string | null) => {
         setSelectedTargetId(id);
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
             if (id) {
                 const targetEntity = next.currentSector.entities.find((e: Entity) => e.id === id);
                 const currentTargeting = next.player.targeting;
@@ -1434,499 +1442,531 @@ export const useGameLogic = () => {
             return next;
         });
     }, []);
-    
+
     const onSetNavigationTarget = useCallback((pos: { x: number; y: number } | null) => {
         setNavigationTarget(pos);
-        const message = pos ? `Navigation target set to ${pos.x}, ${pos.y}.` : `Navigation target cleared.`;
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: message, isPlayerSource: true });
+        if (pos) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Navigation target set to (${pos.x}, ${pos.y}).`, isPlayerSource: true });
+        } else {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Navigation cancelled.`, isPlayerSource: true });
+        }
     }, [addLog, gameState.player.ship.name]);
 
-    const onWarp = useCallback((pos: QuadrantPosition) => {
-        if (gameState.player.ship.dilithium.current <= 0) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Warp failed. Insufficient Dilithium crystals.", isPlayerSource: true }); return;
-        }
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp drive engaged. Plotting course for quadrant ${pos.qx}, ${pos.qy}.`, isPlayerSource: true });
-        setIsWarping(true);
+    const onSetView = useCallback((view: 'sector' | 'quadrant') => {
+        setCurrentView(view);
+    }, []);
 
-         setTimeout(() => {
-            setCurrentView('sector'); setNavigationTarget(null); setSelectedTargetId(null); setIsDocked(false);
-            setGameState(prev => {
-                const next = JSON.parse(JSON.stringify(prev));
-                const oldPlayerPos = next.player.position;
-
-                // Save the state of the sector being left using a deep copy.
-                next.quadrantMap[oldPlayerPos.qy][oldPlayerPos.qx] = JSON.parse(JSON.stringify(next.currentSector));
-
-                next.player.ship.dilithium.current--;
-                let sectorToWarpTo = JSON.parse(JSON.stringify(next.quadrantMap[pos.qy][pos.qx]));
-                
-                next.player.ship.position = { x: 6, y: 8 };
-
-                if (!sectorToWarpTo.visited) {
-                    sectorToWarpTo.visited = true;
-                    addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Entering unexplored sector. Long-range scans show ${sectorToWarpTo.entities.length} entities.`, isPlayerSource: false });
-
-                    if (Math.random() < 0.15 && !sectorToWarpTo.entities.some((e: Entity) => e.type === 'starbase')) {
-                        addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: "It's an ambush! Pirate vessels are decloaking!", isPlayerSource: false, color: 'border-red-600' });
-                        for (let i = 0; i < Math.floor(Math.random() * 2) + 1; i++) {
-                            const stats = shipRoleStats['Escort'];
-                            sectorToWarpTo.entities.push({
-                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipModel: 'Pirate', shipRole: 'Escort',
-                                position: { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * 3) },
-                                hull: stats.maxHull, maxHull: stats.maxHull, shields: stats.maxShields, maxShields: stats.maxShields, logColor: ENEMY_LOG_COLORS[i % ENEMY_LOG_COLORS.length],
-                                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, dilithium: { current: 0, max: 0 }, scanned: true, evasive: false, retreatingTurn: null,
-                                subsystems: JSON.parse(JSON.stringify(stats.subsystems)),
-                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, repairTarget: null,
-                            } as Ship);
-                        }
-                        next.redAlert = true; next.player.ship.shields = next.player.ship.maxShields;
-                    }
-                } else { addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Entering previously explored sector.`, isPlayerSource: false }); }
-                
-                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Arrived at quadrant ${pos.qx}, ${pos.qy}. Consumed 1 Dilithium.`, isPlayerSource: true });
-                next.player.position = pos; next.currentSector = sectorToWarpTo;
-                return next;
-            });
-            setIsWarping(false);
-         }, 2500);
-    }, [addLog, gameState.player.ship.name, gameState.player.ship.dilithium]);
-
-    const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
-        const energyCost = 1;
-        
+    const onToggleRedAlert = useCallback(() => {
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-            const { success, logs } = consumeEnergy(next.player.ship, energyCost);
-            
-            if (!success) {
-                logs.forEach(log => addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: log, isPlayerSource: true }));
-                return prev;
-            }
-
-            logs.forEach(log => addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: log, isPlayerSource: true }));
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Performing long-range scan of quadrant (${pos.qx},${pos.qy}). Consumed ${energyCost} power.`, isPlayerSource: true });
-            next.quadrantMap[pos.qy][pos.qx].isScanned = true;
-            
-            const scannedSector = next.quadrantMap[pos.qy][pos.qx];
-            let scanReport = `Scan complete. Results for (${pos.qx},${pos.qy}):\n`;
-
-            if (scannedSector.hasNebula) {
-                scanReport += `--> A dense nebula is present in this sector. Detailed sensor readings are impossible.\n`;
-                const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
-                if (hostileCount > 0) {
-                    scanReport += `--> CAUTION: Intermittent energy readings detected, could indicate vessel activity.`;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            if (!next.redAlert) { // Activating Red Alert
+                const energyCost = 15;
+                if (ship.energy.current < energyCost) {
+                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Not enough reserve power to activate Red Alert!`, isPlayerSource: false, color: 'border-orange-400' });
+                    return prev;
                 }
+                ship.energy.current -= energyCost;
+                next.redAlert = true;
+                ship.shields = ship.maxShields; // Max shields on activation
+                addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Shields up! Consumed ${energyCost} power.`, isPlayerSource: false, color: 'border-red-600' });
+            } else { // Deactivating Red Alert
+                next.redAlert = false;
+                ship.shields = 0; // Shields go offline
+                ship.evasive = false;
+                addLog({ sourceId: 'system', sourceName: 'Stand Down', message: 'Standing down from Red Alert. Shields offline.', isPlayerSource: false });
+            }
+            return next;
+        });
+    }, [addLog]);
+
+    const onEvasiveManeuvers = useCallback(() => {
+        setGameState(prev => {
+            if (!prev.redAlert || prev.player.ship.subsystems.engines.health <= 0) return prev;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.evasive = !next.player.ship.evasive;
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Evasive maneuvers ${next.player.ship.evasive ? 'engaged' : 'disengaged'}.`, isPlayerSource: true });
+            return next;
+        });
+    }, [addLog]);
+
+    const onSelectRepairTarget = useCallback((subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter' | null) => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            if (next.player.ship.repairTarget === subsystem) {
+                next.player.ship.repairTarget = null;
+                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Damage control team standing by.`, isPlayerSource: true });
             } else {
-                const hostileCount = scannedSector.entities.filter((e:Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
-                const hasStarbase = scannedSector.entities.some((e:Entity) => e.type === 'starbase');
-                const planetCount = scannedSector.entities.filter((e:Entity) => e.type === 'planet').length;
-                
-                const findings = [];
-                if (hostileCount > 0) findings.push(`WARNING: ${hostileCount} hostile contacts detected.`);
-                if (hasStarbase) findings.push(`Starbase signature detected.`);
-                if (planetCount > 0) findings.push(`${planetCount} planetary bodies detected.`);
-                
-                if (findings.length > 0) {
-                    scanReport += findings.map(f => `--> ${f}`).join('\n');
-                } else {
-                    scanReport += `--> No significant readings.`;
-                }
+                next.player.ship.repairTarget = subsystem;
+                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Damage control team assigned to repair ${subsystem}.`, isPlayerSource: true });
             }
-
-            addLog({ sourceId: 'system', sourceName: 'Sensors', message: scanReport.trim(), isPlayerSource: false });
-
             return next;
         });
     }, [addLog]);
 
     const onFirePhasers = useCallback((targetId: string) => {
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Phaser attack ordered. Awaiting turn end.`, isPlayerSource: true });
         setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId } }));
-    }, [addLog, gameState.player.ship.name]);
-    
+        const target = gameState.currentSector.entities.find(e => e.id === targetId);
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Targeting ${target?.name || 'unknown'} with phasers.`, isPlayerSource: true });
+    }, [addLog, gameState.currentSector.entities, gameState.player.ship.name]);
+
     const onLaunchTorpedo = useCallback((targetId: string) => {
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-            const { player, currentSector } = next; const playerShip = player.ship;
-            const target = currentSector.entities.find((e: Entity) => e.id === targetId);
-
-            if (!target) { addLog({ sourceId: 'player', sourceName: playerShip.name, message: "Cannot launch torpedo: Invalid target.", isPlayerSource: true }); return prev; }
-            if (playerShip.torpedoes.current <= 0) { addLog({ sourceId: 'player', sourceName: playerShip.name, message: "Launch failed: No torpedoes remaining.", isPlayerSource: true }); return prev; }
-            if (playerShip.subsystems.weapons.health <= 0) { addLog({ sourceId: 'player', sourceName: playerShip.name, message: "Launch failed: Weapon systems are offline.", isPlayerSource: true }); return prev; }
-            playerShip.torpedoes.current--;
-
-            const torpedo: TorpedoProjectile = {
-                id: uniqueId(), name: 'Photon Torpedo', type: 'torpedo_projectile', faction: 'Federation',
-                position: { ...playerShip.position }, targetId: targetId, sourceId: playerShip.id, stepsTraveled: 0,
-                speed: 2, path: [{ ...playerShip.position }], scanned: true, turnLaunched: next.turn, hull: 1, maxHull: 1,
-            };
-            currentSector.entities.push(torpedo);
-            addLog({ sourceId: 'player', sourceName: playerShip.name, message: `Photon torpedo launched at ${target.name}.`, isPlayerSource: true });
-            if (next.player.targeting) next.player.targeting.subsystem = null;
-            return next;
-        });
-    }, [addLog]);
-    
-    const onEvasiveManeuvers = useCallback(() => {
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-            if (!next.redAlert) {
-                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: "Cannot engage evasive maneuvers without shields raised.", isPlayerSource: true });
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            if (ship.torpedoes.current <= 0) {
+                 addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: All tubes are empty.`, isPlayerSource: true });
                 return prev;
             }
-            const isEvasive = !next.player.ship.evasive;
-            next.player.ship.evasive = isEvasive;
-            const message = isEvasive ? 'Evasive maneuvers enabled. Increases passive energy drain.' : 'Evasive maneuvers disabled.';
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message, isPlayerSource: true });
-            return next;
-        });
-    }, [addLog]);
+            const target = next.currentSector.entities.find((e: Entity) => e.id === targetId);
+            if (!target || target.type !== 'ship') {
+                 addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: Invalid target.`, isPlayerSource: true });
+                return prev;
+            }
 
-    const onDockWithStarbase = useCallback(() => { setIsDocked(true); addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Docking successful. Welcome to Starbase.', isPlayerSource: false }); }, [addLog]);
-    const onRechargeDilithium = useCallback(() => { addLog({ sourceId: 'system', sourceName: 'Starbase Ops', message: 'Dilithium crystals fully recharged.', isPlayerSource: false }); setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, dilithium: { ...prev.player.ship.dilithium, current: prev.player.ship.dilithium.max } } } })); }, [addLog]);
-    const onResupplyTorpedoes = useCallback(() => { addLog({ sourceId: 'system', sourceName: 'Starbase Ops', message: 'Torpedoes resupplied.', isPlayerSource: false }); setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, torpedoes: { ...prev.player.ship.torpedoes, current: prev.player.ship.torpedoes.max } } } })); }, [addLog]);
-    const onStarbaseRepairs = useCallback(() => {
-        if (!isDocked) return;
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); const ship = next.player.ship;
-            ship.hull = ship.maxHull; ship.energy.current = ship.energy.max;
-            // Fix: Cast each subsystem to access its properties, as type information is lost after JSON.parse.
-            Object.values(ship.subsystems).forEach(s => {
-                const subsystem = s as { health: number; maxHealth: number };
-                subsystem.health = subsystem.maxHealth;
-            });
-            ship.securityTeams.current = ship.securityTeams.max;
-            return next;
-        });
-        addLog({ sourceId: 'system', sourceName: 'Starbase Ops', message: 'Service complete: Hull, energy, all subsystems, and security teams restored to maximum.', isPlayerSource: false });
-    }, [addLog, isDocked]);
-    
-    const onSelectRepairTarget = useCallback((subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => {
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); const currentTarget = next.player.ship.repairTarget;
-            const newTarget = currentTarget === subsystem ? null : subsystem;
-            next.player.ship.repairTarget = newTarget;
-            const message = newTarget ? `Engineering teams assigned to repair the ${newTarget}.` : `Engineering has halted repairs on the ${subsystem}.`;
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message, isPlayerSource: true });
+            ship.torpedoes.current--;
+            const torpedo: TorpedoProjectile = {
+                id: uniqueId(),
+                name: 'Photon Torpedo',
+                type: 'torpedo_projectile',
+                faction: 'Federation',
+                position: { ...ship.position },
+                targetId,
+                sourceId: ship.id,
+                stepsTraveled: 0,
+                speed: 2,
+                path: [{ ...ship.position }],
+                scanned: true,
+                turnLaunched: next.turn,
+                hull: 1,
+                maxHull: 1,
+            };
+            next.currentSector.entities.push(torpedo);
+            addLog({ sourceId: 'player', sourceName: ship.name, message: `Photon torpedo launched at ${target.name}.`, isPlayerSource: true });
             return next;
         });
     }, [addLog]);
 
     const onScanTarget = useCallback(() => {
-         if (!selectedTargetId) return;
-         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Scanning target...', isPlayerSource: true });
-         setGameState(prev => {
-            const newEntities = prev.currentSector.entities.map(e => e.id === selectedTargetId ? { ...e, scanned: true } : e);
-            return { ...prev, currentSector: { ...prev.currentSector, entities: newEntities } };
-         });
-    }, [addLog, selectedTargetId, gameState.player.ship.name]);
-
-    const onInitiateRetreat = useCallback(() => {
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Retreat initiated! Evasive maneuvers for 2 turns.', isPlayerSource: true });
-        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: prev.turn + 2 } } }));
-    }, [addLog, gameState.player.ship.name]);
-
-    const onCancelRetreat = useCallback(() => {
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Retreat canceled. Resuming normal operations.', isPlayerSource: true });
-        setGameState(prev => ({ ...prev, player: { ...prev.player, ship: { ...prev.player.ship, retreatingTurn: null } } }));
-    }, [addLog, gameState.player.ship.name]);
-
-    const generateAwayMission = useCallback((planet: Planet, turn: number, usedSeeds: string[], usedTemplateIds: string[]): Omit<ActiveAwayMission, 'advice'> | null => {
-        let seed = `${planet.id}-${turn}`;
-        if (usedSeeds.includes(seed)) {
-            // This should be rare, but as a fallback, add a random element.
-            seed = `${planet.id}-${turn}-${Math.random()}`;
-        }
-        const rand = seededRandom(cyrb53(seed));
-
-        const compatibleMissions = awayMissionTemplates.filter(t => t.planetClasses.includes(planet.planetClass));
-        if (compatibleMissions.length === 0) {
-            console.error(`No compatible away missions found for planet class: ${planet.planetClass}`);
-            return null;
-        }
-
-        // Filter out missions that have already been used in this playthrough
-        let availableMissions = compatibleMissions.filter(t => !usedTemplateIds.includes(t.id));
-
-        // If all compatible missions have been used, reset the pool for this planet type.
-        if (availableMissions.length === 0) {
-            console.warn(`All missions for planet class ${planet.planetClass} have been used. Resetting pool for selection.`);
-            availableMissions = compatibleMissions;
-        }
-
-        const template = availableMissions[Math.floor(rand() * availableMissions.length)];
-
-        const activeMission: Omit<ActiveAwayMission, 'advice'> = {
-            id: template.id,
-            seed: seed,
-            title: template.title,
-            description: template.description,
-            options: template.options.map(optTemplate => {
-                const [min, max] = optTemplate.successChanceRange;
-                const calculatedSuccessChance = min + (max - min) * rand();
-                return {
-                    role: optTemplate.role,
-                    text: optTemplate.text,
-                    outcomes: optTemplate.outcomes,
-                    calculatedSuccessChance,
-                };
-            })
-        };
-        
-        console.log(`AWAY MISSION GENERATED (SEED: ${seed})`, activeMission);
-        return activeMission;
-    }, []);
-
-    const onStartAwayMission = useCallback((planetId: string) => {
-        const planet = gameState.currentSector.entities.find(e => e.id === planetId) as Planet | undefined;
-        if (!planet) return;
-        
-        const mission = generateAwayMission(planet, gameState.turn, gameState.usedAwayMissionSeeds, gameState.usedAwayMissionTemplateIds || []);
-        if (!mission) {
-             addLog({ sourceId: 'system', sourceName: 'Bridge', message: "After assessing the planet, the senior staff concludes an away mission is not viable at this time.", isPlayerSource: false });
-             return;
-        }
-
-        setActiveMissionPlanetId(planetId);
-        
-        const relevantOfficers = gameState.player.crew.filter(officer => mission.options.some(option => option.role === officer.role));
-        const advice: OfficerAdvice[] = relevantOfficers.map(officer => {
-            const adviceOptions = counselAdvice[officer.role]?.[officer.personality];
-            const message = adviceOptions ? adviceOptions[Math.floor(Math.random() * adviceOptions.length)] : "I have no specific recommendation, Captain.";
-            return { officerName: officer.name, role: officer.role, message };
-        });
-
-        const missionWithAdvice: ActiveAwayMission = { ...mission, advice };
-        setActiveAwayMission(missionWithAdvice);
-        addLog({ sourceId: 'system', sourceName: 'Bridge', message: "Preparing for away mission. Senior staff are offering their opinions.", isPlayerSource: false });
-        
-    }, [gameState.currentSector.entities, gameState.turn, gameState.usedAwayMissionSeeds, gameState.player.crew, gameState.player.ship.name, addLog, generateAwayMission]);
-
-    const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
+        if (!selectedTargetId) return;
         setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); const playerShip = next.player.ship;
-            const target = next.currentSector.entities.find((e: Entity) => e.id === targetId) as Ship;
-            let message = '';
-            if (!target) message = "Away team action failed: Invalid target.";
-            else if (playerShip.securityTeams.current <= 0) message = "Away team action failed: No security teams available.";
-            else if ((target.shields / target.maxShields) > 0.2) message = `Away team action failed: ${target.name}'s shields are too strong.`;
-            else if (playerShip.subsystems.transporter.health <= 0) message = "Away team action failed: Transporter is offline.";
-            if (message) { addLog({ sourceId: 'player', sourceName: playerShip.name, message, isPlayerSource: true }); return prev; }
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            const energyCost = 5;
+            const { success, logs } = consumeEnergy(ship, energyCost);
+            logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true }));
+            if (!success) return prev;
 
-            if (type === 'boarding') {
-                message = `Attempting to board the ${target.name}...`;
-                playerShip.securityTeams.current--;
-                const successChance = Math.max(0.1, (playerShip.crewMorale.current / 100) - (target.hull / target.maxHull) + 0.3);
-                if (Math.random() < successChance) {
-                    target.faction = 'Federation';
-                    message += `\nSuccess! The ${target.name} has been captured and is now under Federation control.`;
-                } else {
-                    message += `\nThe boarding attempt failed! We lost the team in the assault.`;
-                    playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - 10);
-                }
-            } else if (type === 'strike') {
-                message = `Sending a strike team to the ${target.name}!`;
-                const damage = 35 + Math.floor(Math.random() * 10);
-                target.hull = Math.max(0, target.hull - damage);
-                message += `\nThe strike team dealt ${damage} hull damage.`;
-                if (Math.random() < 0.25) {
-                    playerShip.securityTeams.current--;
-                    message += `\nWe lost the strike team during the action!`;
-                    playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - 5);
-                } else { message += `\nThe strike team has returned safely.`; }
-            }
-            addLog({ sourceId: 'player', sourceName: playerShip.name, message, isPlayerSource: true });
-            return next;
-        });
-    }, [addLog]);
-
-    const onChooseAwayMissionOption = useCallback((option: ActiveAwayMissionOption) => {
-        if (!activeAwayMission) return;
-    
-        const rand = seededRandom(cyrb53(activeAwayMission.seed + option.role));
-    
-        const successRoll = rand();
-        const success = successRoll < option.calculatedSuccessChance;
-    
-        const outcomes = success ? option.outcomes.success : option.outcomes.failure;
-    
-        const totalWeight = outcomes.reduce((sum, o) => sum + o.weight, 0);
-    
-        let weightRoll = rand() * totalWeight;
-    
-        const chosenOutcome = outcomes.find(o => {
-            weightRoll -= o.weight;
-            return weightRoll < 0;
-        }) || outcomes[0];
-    
-        const result: AwayMissionResult = {
-            log: chosenOutcome.log,
-            status: success ? 'success' : 'failure',
-            changes: [],
-        };
-    
-        if ((chosenOutcome.type === 'reward' || chosenOutcome.type === 'damage') && chosenOutcome.resource && chosenOutcome.amount) {
-            const changeAmount = chosenOutcome.type === 'reward' ? chosenOutcome.amount : -chosenOutcome.amount;
-            result.changes.push({
-                resource: chosenOutcome.resource,
-                amount: changeAmount,
-            });
-        }
-    
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-    
-            // Apply all changes from the result
-            result.changes.forEach(change => {
-                applyResourceChange(next.player.ship, change.resource, change.amount);
-            });
-    
-            if (activeMissionPlanetId) {
-                const planet = next.currentSector.entities.find((e: Entity) => e.id === activeMissionPlanetId) as Planet | undefined;
-                if (planet) planet.awayMissionCompleted = true;
-            }
-    
-            next.usedAwayMissionSeeds.push(activeAwayMission.seed);
-            if (!next.usedAwayMissionTemplateIds) {
-                next.usedAwayMissionTemplateIds = [];
-            }
-            if (!next.usedAwayMissionTemplateIds.includes(activeAwayMission.id)) {
-                next.usedAwayMissionTemplateIds.push(activeAwayMission.id);
+            const target = next.currentSector.entities.find((e: Entity) => e.id === selectedTargetId);
+            if (target) {
+                target.scanned = true;
+                addLog({ sourceId: 'player', sourceName: ship.name, message: `Scan complete on ${target.name}.`, isPlayerSource: true });
             }
             return next;
-        });
-    
-        setAwayMissionResult(result);
-        setActiveAwayMission(null);
-        setActiveMissionPlanetId(null);
-    }, [activeAwayMission, activeMissionPlanetId]);
-
-    const onHailTarget = useCallback(async () => {
-         if (!selectedTargetId || !ai) return;
-         const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId); if (!target) return;
-         setActiveHail({ targetId: selectedTargetId, loading: true, message: '' });
-         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Hailing ${target.name}...`, isPlayerSource: true });
-         try {
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: `You are the captain of a ${target.faction} ship called '${target.name}'. I am hailing you from the Federation starship U.S.S. Endeavour. What is your response? Be brief and in character.`,
-                config: { systemInstruction: "You are a spaceship captain in a sci-fi universe. Respond concisely." },
-              });
-            // FIX: The response object has a `text` property, not a `text()` method.
-            setActiveHail({ targetId: selectedTargetId, loading: false, message: response.text });
-         } catch (error) {
-            console.error("Hail AI error:", error);
-            addLog({ sourceId: 'system', sourceName: 'Comms', message: `Hailing failed: Could not establish a stable connection.`, isPlayerSource: false });
-            const defaultResponse = hailResponses[target.faction as keyof typeof hailResponses]?.greeting || "No response received.";
-            setActiveHail({ targetId: selectedTargetId, loading: false, message: defaultResponse });
-         }
-    }, [addLog, gameState.currentSector.entities, selectedTargetId, gameState.player.ship.name]);
-    
-    const onChooseEventOption = useCallback((option: EventTemplateOption) => {
-        if (!activeEvent) return;
-        
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); const playerShip = next.player.ship;
-            const beacon = next.currentSector.entities.find((e: Entity) => e.id === activeEvent.beaconId);
-            if (beacon && beacon.type === 'event_beacon') { beacon.isResolved = true; beacon.name = 'Resolved Signal'; }
-            const outcome = option.outcome; const amount = outcome.amount || 0;
-            switch (outcome.type) {
-                case 'reward': 
-                    if (outcome.resource) {
-                        if(outcome.resource === 'dilithium') playerShip.dilithium.current = Math.min(playerShip.dilithium.max, playerShip.dilithium.current + amount);
-                        else if(outcome.resource === 'torpedoes') playerShip.torpedoes.current = Math.min(playerShip.torpedoes.max, playerShip.torpedoes.current + amount);
-                        else if(outcome.resource === 'hull') playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + amount);
-                        else if(outcome.resource === 'energy') playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + amount);
-                        else if(outcome.resource === 'morale') playerShip.crewMorale.current = Math.min(playerShip.crewMorale.max, playerShip.crewMorale.current + amount);
-                    } 
-                    break;
-                case 'damage': 
-                    if (outcome.resource) {
-                        if (outcome.resource === 'hull') playerShip.hull = Math.max(0, playerShip.hull - amount);
-                        else if (outcome.resource === 'morale') playerShip.crewMorale.current = Math.max(0, playerShip.crewMorale.current - amount);
-                        else if (outcome.resource === 'energy') playerShip.energy.current = Math.max(0, playerShip.energy.current - amount);
-                        else if (outcome.resource === 'dilithium') playerShip.dilithium.current = Math.max(0, playerShip.dilithium.current - amount);
-                        else if (['weapons', 'engines', 'shields', 'transporter'].includes(outcome.resource)) {
-                            const subsystem = playerShip.subsystems[outcome.resource as keyof ShipSubsystems];
-                            if (subsystem) {
-                                subsystem.health = Math.max(0, subsystem.health - amount);
-                            }
-                        }
-                    }
-                    break;
-                case 'combat': if (outcome.spawn && beacon) {
-                        for (let i = 0; i < (outcome.spawnCount || 1); i++) {
-                             const stats = shipRoleStats['Escort'];
-                             next.currentSector.entities.push({
-                                id: uniqueId(), name: 'Pirate Raider', type: 'ship', faction: 'Pirate', shipModel: 'Pirate', shipRole: 'Escort',
-                                position: { x: beacon.position.x + i + 1, y: beacon.position.y }, hull: stats.maxHull, maxHull: stats.maxHull, shields: stats.maxShields, maxShields: stats.maxShields,
-                                logColor: ENEMY_LOG_COLORS[i % ENEMY_LOG_COLORS.length],
-                                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 60, shields: 40, engines: 0 },
-                                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
-                                subsystems: JSON.parse(JSON.stringify(stats.subsystems)),
-                                crewMorale: { current: 100, max: 100 }, securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, repairTarget: null,
-                            } as Ship);
-                        } next.redAlert = true;
-                    } break;
-            } return next;
-        });
-
-        // Set event result after state update to trigger dialog
-        setEventResult(option.outcome.log);
-        setActiveEvent(null);
-    }, [activeEvent, addLog]);
-
-    const onToggleRedAlert = useCallback(() => {
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); if (next.gameOver) return prev;
-            const newRedAlertState = !next.redAlert; let message = '';
-            if (newRedAlertState) {
-                const { success, logs } = consumeEnergy(next.player.ship, 15);
-                if (success) {
-                    next.redAlert = true; next.player.ship.shields = next.player.ship.maxShields;
-                    message = logs.join('\n') + `Red Alert! Shields raised. Consumed 15 reserve power.`;
-                } else { message = logs.join('\n') + `\nRed Alert failed: Insufficient power to charge shields.`; }
-            } else {
-                next.redAlert = false; next.player.ship.shields = 0;
-                message = "Standing down from Red Alert. Shields offline. Recharging reserve batteries.";
-                if (next.player.ship.evasive) { next.player.ship.evasive = false; message += "\nEvasive maneuvers disengaged."; }
-            }
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message, isPlayerSource: true });
-            return next;
-        });
-    }, [addLog]);
-
-    const onSelectSubsystem = useCallback((subsystem: 'weapons' | 'engines' | 'shields') => {
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev)); const currentTargeting = next.player.targeting;
-            let message = '';
-            if (currentTargeting && currentTargeting.entityId === selectedTargetId) {
-                if (currentTargeting.subsystem === subsystem) {
-                    currentTargeting.subsystem = null;
-                    message = `Targeting lock disengaged from ${subsystem}. Targeting main hull.`;
-                } else {
-                    currentTargeting.subsystem = subsystem; currentTargeting.consecutiveTurns = 1;
-                    message = `Targeting computers locked on enemy ${subsystem}.`;
-                }
-                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message, isPlayerSource: true });
-            } return next;
         });
     }, [selectedTargetId, addLog]);
 
-    const targetEntity = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+    const onInitiateRetreat = useCallback(() => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.retreatingTurn = next.turn + 3;
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Retreat initiated! Charging warp core. We must survive for 3 turns.`, isPlayerSource: true, color: 'border-orange-400' });
+            return next;
+        });
+    }, [addLog]);
+
+    const onCancelRetreat = useCallback(() => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.retreatingTurn = null;
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Retreat cancelled.`, isPlayerSource: true });
+            return next;
+        });
+    }, [addLog]);
     
-    useEffect(() => { setNavigationTarget(null); }, [currentView])
+    const onDockWithStarbase = useCallback(() => {
+        setIsDocked(true);
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Docking procedures initiated. Welcome to Starbase.', isPlayerSource: true });
+    }, [addLog, gameState.player.ship.name]);
+
+    const onStarbaseRepairs = useCallback(() => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            ship.hull = ship.maxHull;
+            Object.values(ship.subsystems).forEach(s => s.health = s.maxHealth);
+            ship.energy.current = ship.energy.max;
+            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Full repairs complete. All systems at 100%.', isPlayerSource: false });
+            return next;
+        });
+    }, [addLog]);
+
+    const onRechargeDilithium = useCallback(() => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.dilithium.current = next.player.ship.dilithium.max;
+            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Dilithium reserves replenished.', isPlayerSource: false });
+            return next;
+        });
+    }, [addLog]);
+
+    const onResupplyTorpedoes = useCallback(() => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.torpedoes.current = next.player.ship.torpedoes.max;
+            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Photon torpedo casings restocked.', isPlayerSource: false });
+            return next;
+        });
+    }, [addLog]);
+
+    const onStartAwayMission = useCallback((planetId: string) => {
+        const planet = gameState.currentSector.entities.find(e => e.id === planetId) as Planet;
+        if (!planet) return;
+        
+        // Filter templates for the planet class and that haven't been used.
+        const availableTemplates = awayMissionTemplates.filter(t =>
+            t.planetClasses.includes(planet.planetClass) &&
+            !gameState.usedAwayMissionTemplateIds?.includes(t.id)
+        );
+        
+        // If all templates for this class have been used, allow repeats, but not from the most recent 5.
+        let template;
+        if (availableTemplates.length > 0) {
+            template = availableTemplates[Math.floor(Math.random() * availableTemplates.length)];
+        } else {
+            const olderTemplates = awayMissionTemplates.filter(t =>
+                t.planetClasses.includes(planet.planetClass) &&
+                !gameState.usedAwayMissionTemplateIds?.slice(-5).includes(t.id)
+            );
+            if (olderTemplates.length > 0) {
+                template = olderTemplates[Math.floor(Math.random() * olderTemplates.length)];
+            } else {
+                // Fallback if all have been used very recently.
+                const allClassTemplates = awayMissionTemplates.filter(t => t.planetClasses.includes(planet.planetClass));
+                template = allClassTemplates[Math.floor(Math.random() * allClassTemplates.length)];
+            }
+        }
+
+        if (!template) {
+            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `No suitable away missions available for this planet class.`, isPlayerSource: false });
+            return;
+        }
+
+        const missionSeed = `${template.id}_${planet.id}_${gameState.turn}`;
+        const rand = seededRandom(cyrb53(missionSeed));
+
+        const activeOptions = template.options.map(opt => ({
+            ...opt,
+            calculatedSuccessChance: opt.successChanceRange[0] + rand() * (opt.successChanceRange[1] - opt.successChanceRange[0])
+        }));
+        
+        const advice: OfficerAdvice[] = gameState.player.crew.map(officer => {
+            const advicePool = counselAdvice[officer.role]?.[officer.personality];
+            return {
+                officerName: officer.name,
+                role: officer.role,
+                message: advicePool ? advicePool[Math.floor(rand() * advicePool.length)] : 'I have no specific advice, Captain.'
+            };
+        });
+
+        setActiveMissionPlanetId(planetId);
+        setGameState(prev => ({ ...prev, usedAwayMissionSeeds: [...prev.usedAwayMissionSeeds, missionSeed], usedAwayMissionTemplateIds: [...(prev.usedAwayMissionTemplateIds || []), template.id] }));
+        setActiveAwayMission({ ...template, options: activeOptions, advice, seed: missionSeed });
+    }, [gameState.currentSector.entities, gameState.turn, gameState.player.crew, gameState.usedAwayMissionTemplateIds, addLog]);
+
+    const onChooseAwayMissionOption = useCallback((option: ActiveAwayMissionOption) => {
+        if (!activeAwayMission) return;
+        const rand = seededRandom(cyrb53(activeAwayMission.seed, option.role.length));
+        const success = rand() < option.calculatedSuccessChance;
+
+        const outcomePool = success ? option.outcomes.success : option.outcomes.failure;
+        const totalWeight = outcomePool.reduce((sum, o) => sum + o.weight, 0);
+        let randomWeight = rand() * totalWeight;
+        const chosenOutcome = outcomePool.find(o => {
+            randomWeight -= o.weight;
+            return randomWeight < 0;
+        }) || outcomePool[0];
+
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            const result: AwayMissionResult = {
+                log: chosenOutcome.log,
+                status: success ? 'success' : 'failure',
+                changes: []
+            };
+            
+            if (chosenOutcome.type === 'reward' || chosenOutcome.type === 'damage') {
+                const amount = (chosenOutcome.type === 'damage' ? -1 : 1) * (chosenOutcome.amount || 0);
+                if (chosenOutcome.resource) {
+                    applyResourceChange(ship, chosenOutcome.resource, amount);
+                    result.changes.push({ resource: chosenOutcome.resource, amount });
+                }
+            }
+
+            if (activeMissionPlanetId) {
+                const planet = next.currentSector.entities.find((e: Entity): e is Planet => e.id === activeMissionPlanetId);
+                if(planet) planet.awayMissionCompleted = true;
+            }
+
+            setAwayMissionResult(result);
+            return next;
+        });
+
+        setActiveAwayMission(null);
+    }, [activeAwayMission, activeMissionPlanetId]);
+
+    const onCloseAwayMissionResult = useCallback(() => {
+        setAwayMissionResult(null);
+    }, []);
+
+    const onHailTarget = useCallback(async () => {
+        if (!selectedTargetId || !ai) {
+            addLog({sourceId: 'system', sourceName: 'Comms', message: 'Cannot hail target: AI system offline or no target selected.', isPlayerSource: false});
+            return;
+        }
+        const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+        if (!target || target.type !== 'ship') return;
+
+        setActiveHail({ targetId: target.id, loading: true, message: '' });
+
+        try {
+            const factionResponses = hailResponses[target.faction];
+            let baseResponse = factionResponses ? factionResponses.greeting : "No response.";
+            
+            const isDamaged = target.hull < target.maxHull;
+            if(isDamaged) baseResponse = factionResponses.threatened || baseResponse;
+            
+            const prompt = `You are the captain of a ${target.faction} ${target.shipRole} starship named '${target.name}'. You are being hailed by a Federation starship. Your ship is ${isDamaged ? 'damaged' : 'at full health'}. Your personality is typical for your faction: ${target.faction === 'Klingon' ? 'aggressive and honor-bound' : target.faction === 'Romulan' ? 'suspicious and arrogant' : target.faction === 'Pirate' ? 'greedy and dismissive' : 'neutral'}. Provide a short, in-character hailing response based on this base message: "${baseResponse}"`;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+                config: { temperature: 0.8, thinkingConfig: { thinkingBudget: 0 } },
+            });
+
+            setActiveHail({ targetId: target.id, loading: false, message: response.text });
+        } catch (error) {
+            console.error("Gemini API call failed:", error);
+            const factionResponses = hailResponses[target.faction];
+            const fallbackMessage = factionResponses ? factionResponses.greeting : "Static ... no response.";
+            setActiveHail({ targetId: target.id, loading: false, message: fallbackMessage });
+        }
+    }, [selectedTargetId, gameState.currentSector.entities, addLog]);
+
+    const onCloseHail = useCallback(() => {
+        setActiveHail(null);
+    }, []);
+
+    const onChooseEventOption = useCallback((option: EventTemplateOption) => {
+        if (!activeEvent) return;
+        setEventResult(option.outcome.log);
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+
+            if (option.outcome.type === 'reward' || option.outcome.type === 'damage') {
+                const amount = (option.outcome.type === 'damage' ? -1 : 1) * (option.outcome.amount || 0);
+                if (option.outcome.resource) {
+                    applyResourceChange(ship, option.outcome.resource, amount);
+                }
+            } else if (option.outcome.type === 'combat') {
+                addLog({ sourceId: 'system', sourceName: 'Tactical Alert', message: 'Hostile ships detected!', isPlayerSource: false, color: 'border-red-600' });
+                next.redAlert = true;
+            }
+
+            const beacon = next.currentSector.entities.find((e: Entity): e is EventBeacon => e.id === activeEvent.beaconId);
+            if (beacon) beacon.isResolved = true;
+
+            return next;
+        });
+        setActiveEvent(null);
+    }, [activeEvent, addLog]);
+
+    const onCloseEventResult = useCallback(() => {
+        setEventResult(null);
+    }, []);
+
+    const onSelectSubsystem = useCallback((subsystem: 'weapons' | 'engines' | 'shields') => {
+        setGameState(prev => {
+            if (!prev.player.targeting) return prev;
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            if (next.player.targeting.subsystem === subsystem) {
+                next.player.targeting.subsystem = null;
+                next.player.targeting.consecutiveTurns = 1;
+            } else {
+                next.player.targeting.subsystem = subsystem;
+                next.player.targeting.consecutiveTurns = 1;
+            }
+            return next;
+        });
+    }, []);
+
+    const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            if (ship.securityTeams.current <= 0) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: 'No security teams available to transport.', isPlayerSource: true });
+                return prev;
+            }
+            const target = next.currentSector.entities.find((e: Entity): e is Ship => e.id === targetId);
+            if (!target) return prev;
+            
+            ship.securityTeams.current--;
+            const successChance = type === 'boarding' ? 0.5 : 0.9;
+            const success = Math.random() < successChance;
+            
+            if (success) {
+                if (type === 'boarding') {
+                    target.faction = 'Federation';
+                    target.hull = 1; // Left crippled
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Boarding party successful! We have captured the ${target.name}!`, isPlayerSource: true, color: 'border-green-400' });
+                } else { // strike
+                    const damage = 25 + Math.floor(Math.random() * 10);
+                    target.hull = Math.max(0, target.hull - damage);
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Strike team successful! They sabotaged critical systems, causing ${damage} hull damage to the ${target.name}.`, isPlayerSource: true });
+                }
+            } else {
+                const moraleLoss = type === 'boarding' ? 15 : 5;
+                ship.crewMorale.current = Math.max(0, ship.crewMorale.current - moraleLoss);
+                addLog({ sourceId: 'system', sourceName: 'FATAL', message: `The ${type} team was lost! A heavy blow to the crew. Morale decreased.`, isPlayerSource: false, color: 'border-red-700' });
+            }
+            return next;
+        });
+    }, [addLog]);
+
+    const onWarp = useCallback((pos: QuadrantPosition) => {
+        setIsWarping(true);
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp drive engaged. Course laid in for quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true });
+        
+        setTimeout(() => {
+            setGameState(prev => {
+                // FIX: Explicitly type 'next' as GameState to ensure type safety.
+                const next: GameState = JSON.parse(JSON.stringify(prev));
+                const { ship, position } = next.player;
+
+                const dilithiumCost = 1;
+                if (ship.dilithium.current < dilithiumCost) {
+                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: 'Warp failed: Insufficient Dilithium.', isPlayerSource: false, color: 'border-orange-400' });
+                    setIsWarping(false);
+                    return prev;
+                }
+                ship.dilithium.current -= dilithiumCost;
+
+                next.quadrantMap[position.qy][position.qx] = next.currentSector;
+                next.player.position = pos;
+                const newSector = next.quadrantMap[pos.qy][pos.qx];
+                newSector.visited = true;
+                newSector.isScanned = true;
+                next.currentSector = newSector;
+                ship.position = { x: Math.floor(SECTOR_WIDTH / 2), y: Math.floor(SECTOR_HEIGHT / 2) };
+                
+                setNavigationTarget(null);
+                setSelectedTargetId(null);
+                delete next.player.targeting;
+                
+                return next;
+            });
+            setIsWarping(false);
+        }, 2500);
+    }, [addLog, gameState.player.ship.name]);
+
+    const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
+        setGameState(prev => {
+            // FIX: Explicitly type 'next' as GameState to ensure type safety.
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            const energyCost = 1;
+            
+            if (ship.energy.current < energyCost) {
+                addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Long-range scan failed: Insufficient reserve power.`, isPlayerSource: false, color: 'border-orange-400' });
+                return prev;
+            }
+
+            const { success, logs } = consumeEnergy(ship, energyCost);
+            logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true }));
+            if (!success) return prev;
+            
+            const sectorToScan = next.quadrantMap[pos.qy][pos.qx];
+            sectorToScan.isScanned = true;
+
+            const hostileCount = sectorToScan.entities.filter((e: Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
+            let scanLog = `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Sector is controlled by ${sectorToScan.factionOwner}. `;
+            if (hostileCount > 0) {
+                scanLog += `Detected ${hostileCount} hostile energy signature(s).`;
+            } else {
+                scanLog += 'No hostile ships detected.';
+            }
+            addLog({ sourceId: 'player', sourceName: ship.name, message: scanLog, isPlayerSource: true });
+            
+            return next;
+        });
+    }, [addLog]);
+
+    const targetEntity = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
 
     return {
-        gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail,
-        targetEntity, playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
-        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget,
-        onSetNavigationTarget, onSetView: setCurrentView, onWarp, onScanQuadrant, onDockWithStarbase, onRechargeDilithium,
-        onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat,
-        onStartAwayMission, onChooseAwayMissionOption, onHailTarget, onCloseHail: () => setActiveHail(null),
-        onSelectSubsystem, onChooseEventOption, saveGame, loadGame,
-        exportSave, importSave, onDistributeEvenly, onSendAwayTeam, onToggleRedAlert, onCloseAwayMissionResult: () => setAwayMissionResult(null),
-        onCloseEventResult: () => setEventResult(null),
+        gameState,
+        selectedTargetId,
+        navigationTarget,
+        currentView,
+        isDocked,
+        activeAwayMission,
+        activeHail,
+        targetEntity,
+        playerTurnActions,
+        activeEvent,
+        isWarping,
+        isTurnResolving,
+        awayMissionResult,
+        eventResult,
+        onEnergyChange,
+        onEndTurn,
+        onFirePhasers,
+        onLaunchTorpedo,
+        onEvasiveManeuvers,
+        onSelectTarget,
+        onSetNavigationTarget,
+        onSetView,
+        onWarp,
+        onDockWithStarbase,
+        onRechargeDilithium,
+        onResupplyTorpedoes,
+        onStarbaseRepairs,
+        onSelectRepairTarget,
+        onScanTarget,
+        onInitiateRetreat,
+        onCancelRetreat,
+        onStartAwayMission,
+        onChooseAwayMissionOption,
+        onHailTarget,
+        onCloseHail,
+        onSelectSubsystem,
+        onChooseEventOption,
+        saveGame,
+        loadGame,
+        exportSave,
+        importSave,
+        onDistributeEvenly,
+        onSendAwayTeam,
+        onToggleRedAlert,
+        onCloseAwayMissionResult,
+        onCloseEventResult,
+        onScanQuadrant,
     };
 };

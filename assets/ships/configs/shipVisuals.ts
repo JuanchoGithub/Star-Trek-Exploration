@@ -3,7 +3,7 @@ import React from 'react';
 import type { ShipModel, ShipRole } from '../../../types';
 
 import { 
-    FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon
+    FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon, FederationDreadnoughtIcon
 } from '../icons/federation';
 import { 
     KlingonCruiserIcon, KlingonEscortIcon, KlingonFreighterIcon
@@ -21,7 +21,7 @@ import {
 import { EventBeaconIcon } from '../../beacons/icons';
 
 import {
-    FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe
+    FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe, FederationDreadnoughtWireframe
 } from '../wireframes/federation';
 import {
     KlingonCruiserWireframe, KlingonEscortWireframe, KlingonFreighterWireframe
@@ -61,6 +61,7 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
             Cruiser: { icon: FederationCruiserIcon, wireframe: FederationCruiserWireframe, colorClass: 'text-blue-300' },
             Escort: { icon: FederationEscortIcon, wireframe: FederationEscortWireframe, colorClass: 'text-sky-400' },
             Freighter: { icon: FederationFreighterIcon, wireframe: FederationFreighterWireframe, colorClass: 'text-cyan-400' },
+            Dreadnought: { icon: FederationDreadnoughtIcon, wireframe: FederationDreadnoughtWireframe, colorClass: 'text-indigo-400' },
         }
     },
     Klingon: {

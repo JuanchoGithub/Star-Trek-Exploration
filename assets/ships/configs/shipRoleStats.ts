@@ -23,6 +23,19 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         torpedoes: { max: 10 },
         securityTeams: { max: 3 },
     },
+    Dreadnought: {
+        maxHull: 150,
+        maxShields: 60,
+        energy: { max: 120 },
+        subsystems: {
+            weapons: { health: 150, maxHealth: 150 },
+            engines: { health: 80, maxHealth: 80 },
+            shields: { health: 120, maxHealth: 120 },
+            transporter: { health: 100, maxHealth: 100 },
+        },
+        torpedoes: { max: 15 },
+        securityTeams: { max: 5 },
+    },
     Cruiser: {
         maxHull: 120,
         maxShields: 40,
