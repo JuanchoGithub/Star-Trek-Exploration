@@ -34,7 +34,7 @@ const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; childre
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`w-full text-left p-3 font-bold transition-all flex items-center gap-3 btn btn-accent ${accentColor}`}
+    className={`w-full text-left font-bold transition-all flex items-center gap-3 btn btn-accent ${accentColor}`}
   >
     {children}
   </button>
@@ -134,7 +134,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <button 
             onClick={() => onEndTurn()}
             disabled={isTurnResolving}
-            className="flex-grow p-3 btn btn-primary"
+            className="flex-grow btn btn-primary"
         >
             {getEndTurnButtonText()}
         </button>

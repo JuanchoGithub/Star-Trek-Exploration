@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
@@ -129,8 +130,8 @@ const App: React.FC = () => {
   const isRetreating = gameState.player.ship.retreatingTurn !== null && gameState.player.ship.retreatingTurn > gameState.turn;
 
   return (
-    <main className={`bg-bg-default text-text-primary h-screen p-4 ${theme.font} ${theme.className} flex flex-col ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
-      <div className="flex-grow grid grid-cols-[3fr_1fr] gap-4 min-h-0">
+    <main className={`bg-bg-default text-text-primary h-screen ${theme.font} ${theme.className} grid grid-rows-[1fr_auto] ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
+      <div className="grid grid-cols-[3fr_1fr] gap-4 min-h-0 p-4">
           {/* Left Column: Map/HUD */}
           <div className="flex flex-col min-h-0">
               {/* Top Section: Tabs + Map */}
@@ -209,11 +210,10 @@ const App: React.FC = () => {
           </div>
           
           {/* Right Column: Ship Status */}
-          <div className="flex flex-col">
+          <div className="flex flex-col min-h-0">
               <ShipStatus 
                   gameState={gameState} 
                   onEnergyChange={onEnergyChange} 
-                  onDistributeEvenly={onDistributeEvenly}
                   onToggleRedAlert={onToggleRedAlert}
                   onEvasiveManeuvers={onEvasiveManeuvers}
                   onSelectRepairTarget={onSelectRepairTarget}
@@ -222,7 +222,7 @@ const App: React.FC = () => {
           </div>
       </div>
       
-      <div className="flex-shrink-0 pt-4">
+      <div className="px-4 pb-4">
            <StatusLine 
             latestLog={latestLogEntry}
             onToggleLog={() => setShowLogPanel(true)}

@@ -91,17 +91,16 @@ const InteractiveStatusIndicator: React.FC<{
 interface ShipStatusProps {
   gameState: GameState;
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
-  onDistributeEvenly: () => void;
   onToggleRedAlert: () => void;
   onEvasiveManeuvers: () => void;
   onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void;
   themeName: ThemeName;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDistributeEvenly, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, themeName }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, themeName }) => {
   const { ship } = gameState.player;
   const [isRepairListVisible, setRepairListVisible] = useState(false);
-  const { TorpedoIcon, SecurityIcon, WeaponIcon, ShieldIcon, EngineIcon } = getFactionIcons(themeName);
+  const { TorpedoIcon, SecurityIcon } = getFactionIcons(themeName);
 
   const canTakeEvasive = gameState.redAlert && ship.subsystems.engines.health > 0;
   const hasDamagedSystems = ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth);
@@ -130,97 +129,98 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onDi
 
   return (
     <div className="panel-style p-3 h-full flex flex-col">
-      <h3 className="text-lg font-bold text-secondary-light mb-2">U.S.S. Endeavour Systems</h3>
+      <h3 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">U.S.S. Endeavour Systems</h3>
       
-      <div className="mb-3 border-t border-b border-bg-paper-lighter py-2 space-y-1">
-        <InteractiveStatusIndicator 
-            label="Red Alert" 
-            status={gameState.redAlert ? 'ACTIVE' : 'STANDBY'} 
-            colorClass={gameState.redAlert ? 'text-accent-red animate-pulse bg-red-900 bg-opacity-50' : 'text-text-disabled'}
-            onClick={onToggleRedAlert}
-            title={redAlertTitle}
-        />
-        <InteractiveStatusIndicator 
-            label="Evasive" 
-            status={ship.evasive ? 'ENABLED' : 'DISABLED'} 
-            colorClass={ship.evasive ? 'text-accent-green bg-green-900 bg-opacity-50' : 'text-text-disabled'}
-            onClick={onEvasiveManeuvers}
-            disabled={!canTakeEvasive}
-            title={evasiveTitle}
-        />
-        <InteractiveStatusIndicator 
-            label="Damage Control" 
-            status={ship.repairTarget ? `REPAIRING ${ship.repairTarget.toUpperCase()}` : 'INACTIVE'} 
-            colorClass={ship.repairTarget ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled'}
-            onClick={() => (hasDamagedSystems || ship.repairTarget) && setRepairListVisible(prev => !prev)}
-            disabled={!hasDamagedSystems && !ship.repairTarget}
-        />
-         {isRepairListVisible && (
-            <div className="bg-bg-paper p-2 rounded mt-2 border border-accent-yellow-darker">
-                <h4 className="text-xs font-bold text-accent-yellow mb-2 text-center">Assign Repair Crew</h4>
-                <div className="space-y-1">
-                    {systemsToRepair.map(sys => {
-                        const isAssigned = ship.repairTarget === sys.key;
-                        return (
-                            <button 
-                                key={sys.key} 
-                                onClick={() => handleSelectRepair(sys.key)} 
-                                disabled={sys.disabled && !isAssigned}
-                                className={`w-full text-left p-1 text-sm btn ${
-                                    isAssigned 
-                                    ? 'bg-accent-yellow-dark hover:bg-accent-yellow text-secondary-text' 
-                                    : 'bg-accent-yellow-darker hover:brightness-110 text-white'
-                                }`}
-                            >
-                                {isAssigned ? 'Cancel:' : 'Assign:'} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
-                            </button>
-                        )
-                    })}
-                </div>
-            </div>
-        )}
-      </div>
+      <div className="flex-grow min-h-0 overflow-y-auto pr-2">
+        <div className="mb-3 border-t border-b border-bg-paper-lighter py-2 space-y-1">
+          <InteractiveStatusIndicator 
+              label="Red Alert" 
+              status={gameState.redAlert ? 'ACTIVE' : 'STANDBY'} 
+              colorClass={gameState.redAlert ? 'text-accent-red animate-pulse bg-red-900 bg-opacity-50' : 'text-text-disabled'}
+              onClick={onToggleRedAlert}
+              title={redAlertTitle}
+          />
+          <InteractiveStatusIndicator 
+              label="Evasive" 
+              status={ship.evasive ? 'ENABLED' : 'DISABLED'} 
+              colorClass={ship.evasive ? 'text-accent-green bg-green-900 bg-opacity-50' : 'text-text-disabled'}
+              onClick={onEvasiveManeuvers}
+              disabled={!canTakeEvasive}
+              title={evasiveTitle}
+          />
+          <InteractiveStatusIndicator 
+              label="Damage Control" 
+              status={ship.repairTarget ? `REPAIRING ${ship.repairTarget.toUpperCase()}` : 'INACTIVE'} 
+              colorClass={ship.repairTarget ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled'}
+              onClick={() => (hasDamagedSystems || ship.repairTarget) && setRepairListVisible(prev => !prev)}
+              disabled={!hasDamagedSystems && !ship.repairTarget}
+          />
+          {isRepairListVisible && (
+              <div className="bg-bg-paper p-2 rounded mt-2 border border-accent-yellow-darker">
+                  <h4 className="text-xs font-bold text-accent-yellow mb-2 text-center">Assign Repair Crew</h4>
+                  <div className="space-y-1">
+                      {systemsToRepair.map(sys => {
+                          const isAssigned = ship.repairTarget === sys.key;
+                          return (
+                              <button 
+                                  key={sys.key} 
+                                  onClick={() => handleSelectRepair(sys.key)} 
+                                  disabled={sys.disabled && !isAssigned}
+                                  className={`w-full text-left p-1 text-sm btn ${
+                                      isAssigned 
+                                      ? 'bg-accent-yellow-dark hover:bg-accent-yellow text-secondary-text' 
+                                      : 'bg-accent-yellow-darker hover:brightness-110 text-white'
+                                  }`}
+                              >
+                                  {isAssigned ? 'Cancel:' : 'Assign:'} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
+                              </button>
+                          )
+                      })}
+                  </div>
+              </div>
+          )}
+        </div>
 
-      <div className="space-y-3">
-        <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
-        <StatusBar 
-            label={gameState.redAlert ? "Shields" : "Shields (OFFLINE)"} 
-            value={gameState.redAlert ? ship.shields : 0} 
-            max={ship.maxShields} 
-            colorClass={gameState.redAlert ? "bg-secondary-main" : "bg-text-disabled"}
-        />
-        <StatusBar label="Reserve Power" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow">
-            {energyStatusIcon}
-        </StatusBar>
-        <div title="Dilithium crystals are used for warping and as an emergency power source.">
-            <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
+        <div className="space-y-3">
+          <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
+          <StatusBar 
+              label={gameState.redAlert ? "Shields" : "Shields (OFFLINE)"} 
+              value={gameState.redAlert ? ship.shields : 0} 
+              max={ship.maxShields} 
+              colorClass={gameState.redAlert ? "bg-secondary-main" : "bg-text-disabled"}
+          />
+          <StatusBar label="Reserve Power" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow">
+              {energyStatusIcon}
+          </StatusBar>
+          <div title="Dilithium crystals are used for warping and as an emergency power source.">
+              <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
+          </div>
+          <div className="flex justify-between items-center text-sm">
+              <span className="font-bold">Torpedoes</span>
+              <div className="flex items-center gap-1">
+                  <TorpedoIcon className="w-5 h-5 text-secondary-main"/>
+                  <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
+              </div>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+              <span className="font-bold">Security Teams</span>
+              <div className="flex items-center gap-1">
+                  <SecurityIcon className="w-5 h-5 text-accent-red"/>
+                  <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
+              </div>
+          </div>
+          <SubsystemStatus 
+              subsystems={ship.subsystems} 
+              allocation={ship.energyAllocation}
+              maxShields={ship.maxShields}
+              themeName={themeName}
+          />
         </div>
-        <div className="flex justify-between items-center text-sm">
-            <span className="font-bold">Torpedoes</span>
-            <div className="flex items-center gap-1">
-                <TorpedoIcon className="w-5 h-5 text-secondary-main"/>
-                <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
-            </div>
-        </div>
-        <div className="flex justify-between items-center text-sm">
-            <span className="font-bold">Security Teams</span>
-            <div className="flex items-center gap-1">
-                <SecurityIcon className="w-5 h-5 text-accent-red"/>
-                <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
-            </div>
-        </div>
-        <SubsystemStatus 
-            subsystems={ship.subsystems} 
-            allocation={ship.energyAllocation}
-            maxShields={ship.maxShields}
-            themeName={themeName}
-        />
       </div>
-       <div className="mt-auto pt-3">
+       <div className="pt-3 flex-shrink-0">
         <EnergyAllocator 
             allocation={ship.energyAllocation} 
             onEnergyChange={onEnergyChange} 
-            onDistributeEvenly={onDistributeEvenly}
             themeName={themeName}
         />
       </div>

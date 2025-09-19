@@ -53,8 +53,28 @@
       }
       
       .theme-federation {
-        --shape-border-radius-button: 9999px; /* pill shape */
-        --shape-border-radius-panel: 0.75rem; /* larger rounding */
+        --color-bg-default: #000000;
+        --color-bg-paper: #111111;
+        --color-bg-paper-lighter: #222222;
+        --color-text-primary: #e0e0e0;
+        --color-text-secondary: #ff9900; /* LCARS Orange */
+        
+        --color-primary-main: #cc9966; /* LCARS Tan */
+        --color-primary-light: #ddaa77;
+        --color-primary-dark: #b88659; /* Cap color for primary */
+        --color-primary-text: #000000;
+        
+        --color-secondary-main: #ffcc66; /* LCARS Gold */
+        --color-secondary-light: #ffe088;
+        --color-secondary-dark: #eebd59; /* Cap color for secondary */
+        --color-secondary-text: #000000;
+        
+        --color-border-main: #ff9900; /* LCARS Orange */
+        --color-border-light: #ffcc66; /* LCARS Gold */
+
+        --shape-border-radius-button: 0; /* Let pseudo-elements handle radius */
+        --shape-border-radius-panel: 0.75rem;
+        --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       }
       
       .theme-klingon {
@@ -132,6 +152,42 @@
         border: var(--border-width-button) solid transparent;
       }
 
+      /* LCARS Button Styles */
+      .theme-federation .btn {
+          position: relative;
+          padding-left: 2.25em;
+          font-weight: normal;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          clip-path: none;
+          text-align: left;
+          border-radius: 0;
+          background-color: transparent !important; /* Key change: remove main bg */
+          z-index: 1; /* Establish stacking context */
+          border: none;
+      }
+      .theme-federation .btn::before,
+      .theme-federation .btn::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          z-index: -1; /* Position behind text */
+          transition: all 0.2s ease-in-out;
+      }
+      /* The rounded cap */
+      .theme-federation .btn::before {
+          left: 0;
+          width: 1.75em; /* The cap width */
+          border-radius: 1.75em 0 0 1.75em;
+      }
+      /* The rectangular body */
+      .theme-federation .btn::after {
+          left: 1.75em;
+          right: 0;
+          border-radius: 0 0.375rem 0.375rem 0;
+      }
+
       .btn-primary {
         background-color: var(--color-primary-main);
         color: var(--color-primary-text);
@@ -140,6 +196,12 @@
       .btn-primary:hover:not(:disabled) {
         background-color: var(--color-primary-light);
       }
+      .theme-federation .btn-primary { color: var(--color-primary-text); }
+      .theme-federation .btn-primary::before { background-color: var(--color-primary-dark); }
+      .theme-federation .btn-primary::after { background-color: var(--color-primary-main); }
+      .theme-federation .btn-primary:hover:not(:disabled)::before { background-color: var(--color-primary-main); }
+      .theme-federation .btn-primary:hover:not(:disabled)::after { background-color: var(--color-primary-light); }
+
 
       .btn-secondary {
         background-color: var(--color-secondary-main);
@@ -149,6 +211,11 @@
       .btn-secondary:hover:not(:disabled) {
           background-color: var(--color-secondary-light);
       }
+      .theme-federation .btn-secondary { color: var(--color-secondary-text); }
+      .theme-federation .btn-secondary::before { background-color: var(--color-secondary-dark); }
+      .theme-federation .btn-secondary::after { background-color: var(--color-secondary-main); }
+      .theme-federation .btn-secondary:hover:not(:disabled)::before { background-color: var(--color-secondary-main); }
+      .theme-federation .btn-secondary:hover:not(:disabled)::after { background-color: var(--color-secondary-light); }
 
       .btn-tertiary {
         background-color: var(--color-bg-paper-lighter);
@@ -158,6 +225,12 @@
       .btn-tertiary:hover:not(:disabled) {
         filter: brightness(1.2);
       }
+      .theme-federation .btn-tertiary { color: black; }
+      .theme-federation .btn-tertiary::before { background-color: #7c7cb3; }
+      .theme-federation .btn-tertiary::after { background-color: #9999cc; }
+      .theme-federation .btn-tertiary:hover:not(:disabled) { filter: none; }
+      .theme-federation .btn-tertiary:hover:not(:disabled)::before { background-color: #9999cc; }
+      .theme-federation .btn-tertiary:hover:not(:disabled)::after { background-color: #a3a3d4; }
       
       .btn:disabled {
         background-color: var(--color-bg-paper-lighter) !important;
@@ -165,6 +238,12 @@
         cursor: not-allowed;
         filter: none !important;
         border-color: transparent !important;
+      }
+      .theme-federation .btn:disabled::before {
+        background-color: #4a4a4a !important;
+      }
+      .theme-federation .btn:disabled::after {
+        background-color: var(--color-bg-paper-lighter) !important;
       }
       
       .btn-accent { color: white; }
@@ -177,6 +256,44 @@
       .btn-accent.sky { background-color: var(--color-accent-sky); }
       .btn-accent.teal { background-color: var(--color-accent-teal); }
       .btn-accent:hover:not(:disabled) { filter: brightness(1.15); }
+
+      /* LCARS Accent Buttons */
+      .theme-federation .btn.btn-accent {
+        background-color: transparent !important; /* Force override for accent color classes */
+        color: black;
+      }
+      .theme-federation .btn-accent.red::before { background-color: #b35959; }
+      .theme-federation .btn-accent.red::after { background-color: #cc6666; }
+
+      .theme-federation .btn-accent.green::before { background-color: #59b386; }
+      .theme-federation .btn-accent.green::after { background-color: #66cc99; }
+
+      .theme-federation .btn-accent.orange::before { background-color: #e68a00; }
+      .theme-federation .btn-accent.orange::after { background-color: #ff9900; }
+
+      .theme-federation .btn-accent.sky::before { background-color: #5986b3; }
+      .theme-federation .btn-accent.sky::after { background-color: #6699cc; }
+      
+      .theme-federation .btn-accent.yellow::before { background-color: #eebd59; }
+      .theme-federation .btn-accent.yellow::after { background-color: #ffcc66; }
+      
+      .theme-federation .btn-accent.purple::before { background-color: #7c7cb3; }
+      .theme-federation .btn-accent.purple::after { background-color: #9999cc; }
+      
+      .theme-federation .btn-accent.pink::before { background-color: #e68ab3; }
+      .theme-federation .btn-accent.pink::after { background-color: #ff99cc; }
+      
+      .theme-federation .btn-accent.indigo::before { background-color: #5959b3; }
+      .theme-federation .btn-accent.indigo::after { background-color: #6666cc; }
+
+      .theme-federation .btn-accent.teal::before { background-color: #59b3e6; }
+      .theme-federation .btn-accent.teal::after { background-color: #66ccff; }
+      
+      .theme-federation .btn-accent:hover:not(:disabled) { filter: none; }
+      .theme-federation .btn-accent:hover:not(:disabled)::before,
+      .theme-federation .btn-accent:hover:not(:disabled)::after {
+          filter: brightness(1.1); 
+      }
       
       @keyframes red-alert-pulse-animation {
         0% { background-color: var(--color-bg-paper); }

@@ -1,7 +1,142 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
 // FIX: PlayerShipIcon is not directly exported. It's an alias for FederationExplorerIcon.
 import { FederationExplorerIcon as PlayerShipIcon } from '../assets/ships/icons';
+
+// Seeded PRNG helpers from useGameLogic
+const cyrb53 = (str: string, seed = 0): number => {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
+
+const seededRandom = (seed: number): (() => number) => {
+    let state = seed;
+    return function() {
+        state = (state * 9301 + 49297) % 233280;
+        return state / 233280;
+    };
+};
+
+const QuadrantGFXBackground: React.FC = React.memo(() => {
+    const elements = useMemo(() => {
+        const seed = cyrb53("TyphonExpanseBackground"); // A fixed seed for the whole map
+        const rand = seededRandom(seed);
+        const generatedElements: React.ReactNode[] = [];
+        const width = 800; // viewbox width
+        const height = 800; // viewbox height
+
+        // Add main grid lines (like graph paper)
+        for(let i = 1; i < 8; i++) {
+            generatedElements.push(<line key={`h-grid-${i}`} x1={0} y1={i * 100} x2={width} y2={i * 100} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
+            generatedElements.push(<line key={`v-grid-${i}`} x1={i * 100} y1={0} x2={i * 100} y2={height} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
+        }
+        // Fainter sub-grid
+        for(let i = 1; i < 40; i++) {
+             if (i % 5 !== 0) {
+                generatedElements.push(<line key={`sh-grid-${i}`} x1={0} y1={i * 20} x2={width} y2={i * 20} stroke="white" strokeWidth="0.5" opacity="0.1" />);
+                generatedElements.push(<line key={`sv-grid-${i}`} x1={i * 20} y1={0} x2={i * 20} y2={height} stroke="white" strokeWidth="0.5" opacity="0.1" />);
+             }
+        }
+
+        // Generate dots
+        const numDots = 60 + Math.floor(rand() * 20);
+        for (let i = 0; i < numDots; i++) {
+            const r = rand() > 0.9 ? rand() * 8 + 6 : rand() * 4 + 2;
+            const isHalf = rand() > 0.95; // Some dots are cut off at the edge
+            let cx = rand() * width;
+            let cy = rand() * height;
+
+            if (isHalf) {
+                if (rand() > 0.5) {
+                    cx = rand() > 0.5 ? -r/2 : width + r/2;
+                } else {
+                    cy = rand() > 0.5 ? -r/2 : height + r/2;
+                }
+            }
+
+            generatedElements.push(
+                <circle
+                    key={`dot-${i}`}
+                    cx={cx}
+                    cy={cy}
+                    r={r}
+                    fill="#E5E7EB"
+                    opacity={0.7}
+                />
+            );
+        }
+
+        // Generate curved line (non-looping sine-like wave)
+        let currentX = -50; // Start off-screen
+        let currentY = rand() * height;
+        let pathData = `M ${currentX} ${currentY}`;
+        const numSegments = 5 + Math.floor(rand() * 3);
+        const segmentWidth = (width + 100) / numSegments;
+        for (let i = 0; i < numSegments; i++) {
+            const nextX = currentX + segmentWidth;
+            const nextY = rand() * height;
+
+            const cp1x = currentX + (nextX - currentX) * (0.2 + rand() * 0.2);
+            const cp1y = rand() * height;
+            const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
+            const cp2y = rand() * height;
+            
+            pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
+            currentX = nextX;
+        }
+        generatedElements.push(
+            <path
+                key="curve"
+                d={pathData}
+                stroke="#D98383"
+                strokeWidth="4"
+                fill="none"
+                opacity={0.8}
+            />
+        );
+        
+        // Add highlighted data point
+        generatedElements.push(
+            <circle
+                key="highlight-dot"
+                cx={rand() * width}
+                cy={rand() * height}
+                r={12}
+                fill="#FBBF24"
+                opacity={0.9}
+            />
+        );
+        // Add a vertical line like in the image
+        const xPos = rand() * width;
+        generatedElements.push(
+             <line key="v-line-highlight" x1={xPos} y1={0} x2={xPos} y2={height} stroke="#FBBF24" strokeWidth="1.5" opacity="0.6" />
+        );
+
+
+        return generatedElements;
+    }, []);
+
+    return (
+        <svg
+            viewBox="0 0 800 800"
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full opacity-90 z-0 pointer-events-none"
+            aria-hidden="true"
+        >
+            {elements}
+        </svg>
+    );
+});
+
 
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
@@ -17,11 +152,11 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
 
     const getFactionDisplay = (faction: FactionOwner) => {
         switch (faction) {
-            case 'Federation': return { bg: 'bg-blue-900 bg-opacity-50', border: 'border-blue-500', text: 'text-blue-300', name: 'Federation Space' };
-            case 'Klingon': return { bg: 'bg-red-900 bg-opacity-50', border: 'border-red-500', text: 'text-red-300', name: 'Klingon Empire' };
-            case 'Romulan': return { bg: 'bg-green-900 bg-opacity-50', border: 'border-green-500', text: 'text-green-300', name: 'Romulan Star Empire' };
-            case 'None': return { bg: 'bg-gray-700 bg-opacity-50', border: 'border-gray-500', text: 'text-gray-400', name: 'Uncharted Space' };
-            default: return { bg: 'bg-bg-paper', border: 'border-border-dark', text: 'text-text-disabled', name: 'Unknown' };
+            case 'Federation': return { bg: 'bg-transparent', border: 'border-blue-500', text: 'text-blue-300', name: 'Federation Space' };
+            case 'Klingon': return { bg: 'bg-transparent', border: 'border-red-500', text: 'text-red-300', name: 'Klingon Empire' };
+            case 'Romulan': return { bg: 'bg-transparent', border: 'border-green-500', text: 'text-green-300', name: 'Romulan Star Empire' };
+            case 'None': return { bg: 'bg-transparent', border: 'border-gray-500', text: 'text-gray-400', name: 'Uncharted Space' };
+            default: return { bg: 'bg-transparent', border: 'border-border-dark', text: 'text-text-disabled', name: 'Unknown' };
         }
     };
     
@@ -30,13 +165,14 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
         left: `${(contextMenu.qx / quadrantSize.width) * 100}%`,
         top: `${(contextMenu.qy / quadrantSize.height) * 100}%`,
         transform: `translate(${contextMenu.qx >= quadrantSize.width / 2 ? '-105%' : '5%'}, ${contextMenu.qy >= quadrantSize.height / 2 ? '-105%' : '5%'})`,
-        zIndex: 20,
+        zIndex: 30,
     } : {};
 
 
     return (
-        <div className="panel-style p-1 h-full flex flex-col" onClick={() => setContextMenu(null)}>
+        <div className="panel-style p-1 h-full flex flex-col bg-black" onClick={() => setContextMenu(null)}>
             <div className="grid grid-cols-8 grid-rows-8 gap-0 flex-grow relative">
+                <QuadrantGFXBackground />
                 {quadrantMap.flat().map((sector, index) => {
                     const qx = index % quadrantSize.width;
                     const qy = Math.floor(index / quadrantSize.width);
@@ -62,7 +198,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             </>
                         );
                     } else if (isScanned) {
-                        bgClass = factionDisplay.bg.replace('bg-opacity-50', 'bg-opacity-20');
+                        bgClass = factionDisplay.bg;
                         borderClass = 'border-dashed ' + factionDisplay.border;
                         textClass = factionDisplay.text.replace('300', '500');
                         title = `Scanned: ${factionDisplay.name} (${qx},${qy})`;
@@ -74,7 +210,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             </>
                         );
                     } else { // Not visited, not scanned
-                        bgClass = 'bg-black';
+                        bgClass = 'bg-black bg-opacity-60';
                         borderClass = 'border-border-dark';
                         textClass = 'text-text-disabled';
                         title = `Unexplored Sector (${qx},${qy})`;
@@ -85,13 +221,13 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                     if (isPlayerHere) {
                         borderClass = 'border-accent-yellow ring-2 ring-accent-yellow';
                     } else if (isAdjacent) {
-                        hoverClass = 'hover:bg-opacity-75 hover:border-accent-yellow cursor-pointer';
+                        hoverClass = 'hover:bg-accent-yellow hover:bg-opacity-20 cursor-pointer';
                     }
 
                     return (
                         <div
                             key={`sector-${qx}-${qy}`}
-                            className={`border ${borderClass} ${bgClass} ${hoverClass} transition-colors flex flex-col items-center justify-center relative p-1`}
+                            className={`border ${borderClass} ${bgClass} ${hoverClass} transition-colors flex flex-col items-center justify-center relative p-1 overflow-hidden z-10`}
                             onClick={(e) => {
                                 if (isAdjacent) {
                                     e.stopPropagation();
@@ -100,9 +236,11 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             }}
                             title={title}
                         >
-                            {content}
+                            <div className="relative z-10 flex flex-col items-center justify-center text-center">
+                                {content}
+                            </div>
                             {isPlayerHere && (
-                                <div className="absolute inset-0 flex items-center justify-center text-accent-yellow">
+                                <div className="absolute inset-0 flex items-center justify-center text-accent-yellow z-20">
                                     <PlayerShipIcon className="w-8 h-8 animate-pulse" />
                                 </div>
                             )}
