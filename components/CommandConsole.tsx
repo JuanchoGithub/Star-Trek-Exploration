@@ -70,7 +70,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     return "End Turn";
   }
   
-  const canBoardOrStrike = target?.type === 'ship' && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
+  const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
+  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
   const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
@@ -80,7 +81,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
   const phaserButtonText = isTargetingSubsystem
     ? `Phasers (${targeting.subsystem.charAt(0).toUpperCase()})`
-    : 'Fire Phasers';
+    : 'Phasers';
 
   return (
     <div className="flex flex-col h-full">
@@ -92,7 +93,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 </CommandButton>
                 <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || !canFireOnShip || isRetreating || isTurnResolving} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
-                    Launch Torpedo
+                    Torpedo
                 </CommandButton>
             </div>
              <div className="grid grid-cols-2 gap-2">
@@ -120,7 +121,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                         accentColor="yellow"
                     >
                         <RetreatIcon className="w-5 h-5" /> 
-                        {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Core Engaged'}
+                        {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Ready'}
                     </CommandButton>
                 ) : (
                     <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isTurnResolving} accentColor="indigo">

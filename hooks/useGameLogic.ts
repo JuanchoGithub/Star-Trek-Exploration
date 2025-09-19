@@ -1817,12 +1817,23 @@ export const useGameLogic = () => {
 
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
         setGameState(prev => {
-            // FIX: Explicitly type 'next' as GameState to ensure type safety.
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
+
+            const makeLog = (sourceId: string, sourceName: string, message: string, isPlayerSource: boolean, color?: string): LogEntry => {
+                const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), next.player.ship];
+                const sourceShip = allShips.find(s => s.id === sourceId);
+                return {
+                    id: uniqueId(),
+                    turn: next.turn,
+                    sourceId, sourceName, message, isPlayerSource,
+                    color: color || sourceShip?.logColor || SYSTEM_LOG_COLOR,
+                };
+            };
+
             if (ship.securityTeams.current <= 0) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: 'No security teams available to transport.', isPlayerSource: true });
-                return prev;
+                next.logs.push(makeLog('player', ship.name, 'No security teams available to transport.', true));
+                return next;
             }
             const target = next.currentSector.entities.find((e: Entity): e is Ship => e.id === targetId);
             if (!target) return prev;
@@ -1834,21 +1845,30 @@ export const useGameLogic = () => {
             if (success) {
                 if (type === 'boarding') {
                     target.faction = 'Federation';
-                    target.hull = 1; // Left crippled
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Boarding party successful! We have captured the ${target.name}!`, isPlayerSource: true, color: 'border-green-400' });
+                    target.hull = 1;
+                    next.logs.push(makeLog('player', ship.name, `Boarding party successful! We have captured the ${target.name}!`, true, 'border-green-400'));
                 } else { // strike
                     const damage = 25 + Math.floor(Math.random() * 10);
                     target.hull = Math.max(0, target.hull - damage);
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Strike team successful! They sabotaged critical systems, causing ${damage} hull damage to the ${target.name}.`, isPlayerSource: true });
+                    next.logs.push(makeLog('player', ship.name, `Strike team successful! They sabotaged critical systems, causing ${damage} hull damage to the ${target.name}.`, true));
+
+                    if (target.hull <= 0) {
+                        next.logs.push(makeLog('system', 'Tactical', `${target.name} has been destroyed by the strike team!`, false));
+                        next.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: 0 });
+                        next.currentSector.entities = next.currentSector.entities.filter(e => e.id !== targetId);
+                        if (next.player.targeting?.entityId === targetId) {
+                            delete next.player.targeting;
+                        }
+                    }
                 }
             } else {
                 const moraleLoss = type === 'boarding' ? 15 : 5;
                 ship.crewMorale.current = Math.max(0, ship.crewMorale.current - moraleLoss);
-                addLog({ sourceId: 'system', sourceName: 'FATAL', message: `The ${type} team was lost! A heavy blow to the crew. Morale decreased.`, isPlayerSource: false, color: 'border-red-700' });
+                next.logs.push(makeLog('system', 'FATAL', `The ${type} team was lost! A heavy blow to the crew. Morale decreased.`, false, 'border-red-700'));
             }
             return next;
         });
-    }, [addLog]);
+    }, []);
 
     const onWarp = useCallback((pos: QuadrantPosition) => {
         setIsWarping(true);
