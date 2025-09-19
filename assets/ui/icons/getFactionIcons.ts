@@ -12,7 +12,7 @@ import { TransporterIcon } from './TransporterIcon';
 import { DilithiumIcon } from './DilithiumIcon';
 import { ScanIcon } from './ScanIcon';
 import { RetreatIcon } from './RetreatIcon';
-import { HailIcon } from './HailIcon';
+import { StarfleetLogoIcon } from './StarfleetLogoIcon';
 import { ShuttleIcon } from './ShuttleIcon';
 import { PhaserIcon } from './PhaserIcon';
 
@@ -44,7 +44,7 @@ const federationIcons = {
     DilithiumIcon,
     ScanIcon,
     RetreatIcon,
-    HailIcon,
+    HailIcon: StarfleetLogoIcon,
     BoardingIcon: ShuttleIcon,
     StrikeTeamIcon: PhaserIcon,
 };

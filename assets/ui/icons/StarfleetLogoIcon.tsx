@@ -1,0 +1,16 @@
+import React from 'react';
+
+export const StarfleetLogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" {...props}>
+    <path fill="#ffc000" fillOpacity="1.00" fillRule="evenodd" d="M63.00 10.00L77.00 34.00L93.00 84.00L85.00 79.00L73.00 79.00L65.00 82.00L46.00 95.00L30.00 113.00L38.00 67.00L50.00 34.00L62.00 11.00Z M62.00 31.00L60.00 33.00L60.00 54.00L51.00 52.00L49.00 56.00L57.00 60.00L55.00 64.00L57.00 70.00L63.00 64.00L69.00 70.00L72.00 68.00L70.00 60.00L75.00 59.00L78.00 55.00L76.00 52.00L67.00 54.00L67.00 33.00L63.00 31.00Z"/>
+    <path fill="#000000" fillOpacity="1.00" fillRule="evenodd" d="M62.00 1.00L65.00 1.00L74.00 16.00L94.00 65.00L101.00 97.00L103.00 119.00L101.00 127.00L99.00 126.00L96.00 97.00L93.00 91.00L84.00 84.00L75.00 84.00L57.00 93.00L36.00 113.00L28.00 126.00L24.00 125.00L27.00 91.00L33.00 65.00L47.00 28.00L62.00 2.00Z M63.00 6.00L47.00 36.00L36.00 67.00L29.00 101.00L29.00 117.00L49.00 95.00L63.00 85.00L73.00 81.00L85.00 81.00L95.00 86.00L84.00 46.00L64.00 6.00Z M62.00 33.00L65.00 33.00L65.00 55.00L76.00 55.00L67.00 60.00L70.00 65.00L69.00 68.00L63.00 61.00L58.00 68.00L59.00 60.00L51.00 56.00L52.00 54.00L62.00 55.00L62.00 34.00Z"/>
+    <path fill="#101000" fillOpacity="1.00" fillRule="evenodd" d="M103.00 114.00L103.00 117.00L103.00 115.00Z"/>
+    <path fill="#504000" fillOpacity="1.00" fillRule="evenodd" d="M61.00 35.00L61.00 54.00L61.00 36.00Z M66.00 35.00L66.00 54.00L66.00 36.00Z"/>
+    <path fill="#302000" fillOpacity="1.00" fillRule="evenodd" d="M46.00 97.00L45.00 98.00Z"/>
+    <path fill="#202000" fillOpacity="1.00" fillRule="evenodd" d="M43.00 100.00L39.00 104.00L42.00 101.00Z"/>
+    <path fill="#504000" fillOpacity="0.75" fillRule="evenodd" d="M49.00 101.00L45.00 105.00L48.00 102.00Z"/>
+    <path fill="#403000" fillOpacity="0.88" fillRule="evenodd" d="M24.00 114.00L24.00 115.00Z"/>
+    <path fill="#e0b000" fillOpacity="1.00" fillRule="evenodd" d="M43.00 99.00L38.00 104.00L42.00 100.00Z"/>
+    <path fill="#202000" fillOpacity="0.88" fillRule="evenodd" d="M98.00 118.00L98.00 119.00Z"/>
+  </svg>
+);

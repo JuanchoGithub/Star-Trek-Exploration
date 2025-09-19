@@ -1,5 +1,5 @@
 import React from 'react';
-import { FederationIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
+import { StarfleetLogoIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
 import { SectionHeader, SubHeader } from './shared';
 
 export const TyphonExpanseSection: React.FC = () => (
@@ -21,7 +21,7 @@ export const TyphonExpanseSection: React.FC = () => (
                     <span className="text-xs font-normal">(Observing from Shadows)</span>
                 </div>
                 <div className="bg-blue-900 bg-opacity-50 p-4 flex flex-col items-center justify-center gap-2 text-center border border-blue-500 text-blue-300">
-                    <FederationIcon className="w-8 h-8" />
+                    <StarfleetLogoIcon className="w-8 h-8" />
                     <span>Federation Space</span>
                     <span className="text-xs font-normal">(Staging Ground)</span>
                 </div>
@@ -43,7 +43,7 @@ export const TyphonExpanseSection: React.FC = () => (
                 <p className="text-sm text-text-secondary mt-1">The Romulans are playing a quieter game. The Tal Shiar is undoubtedly active in the Expanse, operating from the shadows to gather intelligence on both Klingon and Federation activities. Their motives are unclear, but they likely seek technological advantages or strategic footholds. Romulan vessels will be elusive, preferring observation to open conflict, but are deadly when cornered.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-blue-400 flex items-center gap-2"><FederationIcon className="w-5 h-5" />United Federation of Planets</h4>
+                <h4 className="font-bold text-blue-400 flex items-center gap-2"><StarfleetLogoIcon className="w-5 h-5" />United Federation of Planets</h4>
                 <p className="text-sm text-text-secondary mt-1">Starfleet's primary objective is peaceful exploration and scientific discovery. The establishment of Starbases on the fringe of the Expanse serves as a launching point for these missions. However, Command is not naive to the threats posed by the other powers. Your mission, Captain, is to be our eyes, our voice, and if necessary, our sword in this new frontier.</p>
             </div>
         </div>

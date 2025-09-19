@@ -15,3 +15,4 @@ export * from './TorpedoIcon';
 export * from './TransporterIcon';
 export * from './WeaponIcon';
 export * from './FactionIcons';
+export * from './StarfleetLogoIcon';

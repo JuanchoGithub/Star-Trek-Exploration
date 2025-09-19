@@ -5,7 +5,7 @@ import { starbaseType } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
-import { FederationIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
+import { StarfleetLogoIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
 import { ShipModel, ShipRole } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -74,7 +74,7 @@ export const RegistrySection: React.FC = () => {
                 <a href="#registry-planets" className="btn btn-tertiary">Stellar Bodies</a>
             </div>
             
-            <FactionHeader name="Federation" icon={<FederationIcon className="w-8 h-8 text-blue-400" />} />
+            <FactionHeader name="Federation" icon={<StarfleetLogoIcon className="w-8 h-8" />} />
             <RoleEntry model="Federation" role="Explorer" name="Explorer" description="Balanced vessels designed for long-range missions. They boast strong shields, versatile subsystems, and high energy reserves, but are not dedicated warships. The U.S.S. Endeavour is a prime example." />
             <RoleEntry model="Federation" role="Cruiser" name="Cruiser" description="A heavier class of starship, serving as the fleet's backbone in combat situations. Well-armed and armored, they sacrifice some scientific utility for increased firepower and durability." />
             <RoleEntry model="Federation" role="Escort" name="Escort" description="Small, fast, and highly maneuverable warships designed for patrol, interception, and fleet support. While fragile, their high damage output makes them a significant threat." />
