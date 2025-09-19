@@ -3,6 +3,7 @@ import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import EnergyAllocator from './EnergyAllocator';
+import LcarsDecoration from './LcarsDecoration';
 
 interface StatusBarProps {
   label: string;
@@ -129,6 +130,12 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
 
   return (
     <div className="panel-style p-3 h-full flex flex-col">
+       {themeName === 'federation' && (
+          <>
+            <LcarsDecoration type="label" label="00A-PWR" className="top-2 right-2" seed={4} />
+            <LcarsDecoration type="numbers" className="bottom-2 left-2" seed={5} />
+          </>
+      )}
       <h3 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">U.S.S. Endeavour Systems</h3>
       
       <div className="flex-grow min-h-0 overflow-y-auto pr-2">

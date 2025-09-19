@@ -65,10 +65,10 @@ const LcarsTargetingReticle: React.FC = () => {
                     Wrapper div handles positioning and animation (translate).
                     Inner SVG handles orientation (rotate) and centering (translate).
                 */}
-                <div className="absolute top-0 left-1/2 animate-target-top" style={{ animationDelay: '0.2s' }}>
+                <div className="absolute top-0 left-1/2 animate-target-top">
                     <Arrow className="-translate-x-1/2" />
                 </div>
-                <div className="absolute bottom-0 left-1/2 animate-target-bottom" style={{ animationDelay: '0.2s' }}>
+                <div className="absolute bottom-0 left-1/2 animate-target-bottom">
                     <Arrow className="-translate-x-1/2 rotate-180" />
                 </div>
                 <div className="absolute top-1/2 left-0 animate-target-left">

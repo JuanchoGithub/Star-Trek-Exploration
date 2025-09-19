@@ -17,6 +17,7 @@ import { useTheme } from './hooks/useTheme';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import PlayerManual from './components/PlayerManual';
 import EventResultDialog from './components/EventResultDialog';
+import LcarsDecoration from './components/LcarsDecoration';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -131,7 +132,13 @@ const App: React.FC = () => {
 
   return (
     <main className={`bg-bg-default text-text-primary h-screen ${theme.font} ${theme.className} grid grid-rows-[1fr_auto] ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
-      <div className="grid grid-cols-[3fr_1fr] gap-4 min-h-0 p-4">
+      <div className="relative grid grid-cols-[3fr_1fr] gap-4 min-h-0 p-4">
+          {themeName === 'federation' && (
+            <>
+                <LcarsDecoration type="label" label={`47${gameState.turn.toString().padStart(3, '0')}.2`} className="top-2 left-2" seed={6} />
+                <LcarsDecoration type="numbers" className="bottom-2 right-1/4" seed={7} />
+            </>
+          )}
           {/* Left Column: Map/HUD */}
           <div className="flex flex-col min-h-0">
               {/* Top Section: Tabs + Map */}

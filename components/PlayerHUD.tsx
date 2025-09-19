@@ -6,6 +6,7 @@ import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
+import LcarsDecoration from './LcarsDecoration';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -143,7 +144,14 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     const awayMissionState = getAwayMissionButtonState();
 
     return (
-        <>
+        <div className="relative">
+            {themeName === 'federation' && (
+                <>
+                    <LcarsDecoration type="label" label="TGT-PROC" className="top-0 left-1/4" seed={1} />
+                    <LcarsDecoration type="numbers" className="top-0 right-1/4" seed={2} />
+                    <LcarsDecoration type="label" label="CMD-SEQ" className="bottom-0 left-1/3" seed={3} />
+                </>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="flex flex-col space-y-2">
@@ -214,7 +222,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                     />
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

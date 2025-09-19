@@ -140,6 +140,7 @@
       
       /* Generic Component Styles */
       .panel-style {
+        position: relative;
         border-width: var(--border-width-main);
         border-style: var(--border-style-main);
         border-color: var(--color-border-main);
@@ -244,11 +245,18 @@
         filter: none !important;
         border-color: transparent !important;
       }
+      /* Disabled Federation buttons maintain size but appear inactive */
+      .theme-federation .btn:disabled {
+          color: var(--color-text-disabled) !important;
+          /* No width, min-width, or padding overrides to maintain original size */
+      }
       .theme-federation .btn:disabled::before {
-        background-color: #4a4a4a !important;
+        background-color: #4a4a4a !important; /* Dark gray cap */
       }
       .theme-federation .btn:disabled::after {
-        background-color: var(--color-bg-paper-lighter) !important;
+        /* Show the rectangular part but in a disabled color */
+        display: block !important;
+        background-color: #3a3a3a !important; /* Slightly lighter gray body */
       }
       
       .btn-accent { color: white; }
@@ -267,37 +275,71 @@
         background-color: transparent !important; /* Force override for accent color classes */
         color: black;
       }
-      .theme-federation .btn-accent.red::before { background-color: #b35959; }
-      .theme-federation .btn-accent.red::after { background-color: #cc6666; }
+      .theme-federation .btn-accent.red:not(:disabled)::before { background-color: #b35959; }
+      .theme-federation .btn-accent.red:not(:disabled)::after { background-color: #cc6666; }
 
-      .theme-federation .btn-accent.green::before { background-color: #59b386; }
-      .theme-federation .btn-accent.green::after { background-color: #66cc99; }
+      .theme-federation .btn-accent.green:not(:disabled)::before { background-color: #59b386; }
+      .theme-federation .btn-accent.green:not(:disabled)::after { background-color: #66cc99; }
 
-      .theme-federation .btn-accent.orange::before { background-color: #e68a00; }
-      .theme-federation .btn-accent.orange::after { background-color: #ff9900; }
+      .theme-federation .btn-accent.orange:not(:disabled)::before { background-color: #e68a00; }
+      .theme-federation .btn-accent.orange:not(:disabled)::after { background-color: #ff9900; }
 
-      .theme-federation .btn-accent.sky::before { background-color: #5986b3; }
-      .theme-federation .btn-accent.sky::after { background-color: #6699cc; }
+      .theme-federation .btn-accent.sky:not(:disabled)::before { background-color: #5986b3; }
+      .theme-federation .btn-accent.sky:not(:disabled)::after { background-color: #6699cc; }
       
-      .theme-federation .btn-accent.yellow::before { background-color: #eebd59; }
-      .theme-federation .btn-accent.yellow::after { background-color: #ffcc66; }
+      .theme-federation .btn-accent.yellow:not(:disabled)::before { background-color: #eebd59; }
+      .theme-federation .btn-accent.yellow:not(:disabled)::after { background-color: #ffcc66; }
       
-      .theme-federation .btn-accent.purple::before { background-color: #7c7cb3; }
-      .theme-federation .btn-accent.purple::after { background-color: #9999cc; }
+      .theme-federation .btn-accent.purple:not(:disabled)::before { background-color: #7c7cb3; }
+      .theme-federation .btn-accent.purple:not(:disabled)::after { background-color: #9999cc; }
       
-      .theme-federation .btn-accent.pink::before { background-color: #e68ab3; }
-      .theme-federation .btn-accent.pink::after { background-color: #ff99cc; }
+      .theme-federation .btn-accent.pink:not(:disabled)::before { background-color: #e68ab3; }
+      .theme-federation .btn-accent.pink:not(:disabled)::after { background-color: #ff99cc; }
       
-      .theme-federation .btn-accent.indigo::before { background-color: #5959b3; }
-      .theme-federation .btn-accent.indigo::after { background-color: #6666cc; }
+      .theme-federation .btn-accent.indigo:not(:disabled)::before { background-color: #5959b3; }
+      .theme-federation .btn-accent.indigo:not(:disabled)::after { background-color: #6666cc; }
 
-      .theme-federation .btn-accent.teal::before { background-color: #59b3e6; }
-      .theme-federation .btn-accent.teal::after { background-color: #66ccff; }
+      .theme-federation .btn-accent.teal:not(:disabled)::before { background-color: #59b3e6; }
+      .theme-federation .btn-accent.teal:not(:disabled)::after { background-color: #66ccff; }
       
       .theme-federation .btn-accent:hover:not(:disabled) { filter: none; }
       .theme-federation .btn-accent:hover:not(:disabled)::before,
       .theme-federation .btn-accent:hover:not(:disabled)::after {
           filter: brightness(1.1); 
+      }
+      
+      @keyframes lcars-border-pulse {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 0.7; }
+      }
+      @keyframes lcars-pulse-bg {
+        0%, 100% { filter: brightness(1); }
+        50% { filter: brightness(1.1); }
+      }
+      .theme-federation .panel-style::before {
+        content: '';
+        position: absolute;
+        inset: calc(-1 * var(--border-width-main));
+        border: var(--border-width-main) solid var(--color-border-light);
+        border-radius: var(--shape-border-radius-panel);
+        opacity: 0;
+        animation: lcars-border-pulse 4s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .theme-federation .btn:not(:disabled)::after,
+      .theme-federation .btn:not(:disabled)::before {
+        animation: lcars-pulse-bg 3s ease-in-out infinite;
+      }
+      .lcars-decoration {
+        position: absolute;
+        font-family: 'Courier New', monospace;
+        color: var(--color-text-secondary);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        pointer-events: none; /* Make them non-interactive */
+        opacity: 0.8;
+        z-index: 2; /* Ensure they are above panel pulse */
       }
       
       @keyframes red-alert-pulse-animation {
@@ -377,129 +419,115 @@
           stroke: #32cd32; /* Green */
           filter: drop-shadow(0 0 3px #32cd32);
       }
-      .phaser-beam.pirate {
-          stroke: #ffeb3b; /* Yellow */
-          filter: drop-shadow(0 0 3px #ffeb3b);
-      }
-
-      @keyframes phaser-fire-animation {
-          0% { opacity: 0; stroke-width: 0; }
-          20% { opacity: 1; stroke-width: 3px; }
-          80% { opacity: 1; }
-          100% { opacity: 0; }
-      }
-
       .torpedo-trail-dot {
-          background-color: #f97316; /* orange-500 */
+          background-color: var(--color-accent-orange);
           border-radius: 50%;
-          box-shadow: 0 0 4px #fb923c; /* orange-400 */
-      }
-      @keyframes torpedo-explosion-animation {
-        0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 5px; }
-        100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; border-width: 0px; }
       }
       .torpedo-explosion {
-        position: absolute;
-        border-radius: 50%;
-        border-style: solid;
-        border-color: #fff;
-        background-color: #fb923c; /* orange-400 */
-        box-shadow: 0 0 15px 5px #f97316; /* orange-500 */
-        animation: torpedo-explosion-animation 0.4s ease-out forwards;
+          position: absolute;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          background-color: white;
+          animation: torpedo-explosion-animation 0.5s ease-out forwards;
       }
+      @keyframes phaser-fire-animation {
+          0% { opacity: 1; stroke-width: 3px; }
+          99% { opacity: 1; stroke-width: 1px; }
+          100% { opacity: 0; }
+      }
+      @keyframes torpedo-explosion-animation {
+        0% { transform: translate(-50%, -50%) scale(0.1); background-color: white; opacity: 1;}
+        50% { background-color: var(--color-accent-orange); }
+        100% { transform: translate(-50%, -50%) scale(1.5); background-color: var(--color-accent-red); opacity: 0; }
+      }
+      
+      /* LCARS Targeting Reticle */
+      .bg-lcars-blue-light { background-color: var(--color-lcars-blue-light); }
+      .bg-lcars-blue-dark { background-color: var(--color-lcars-blue-dark); }
+      .bg-lcars-gray { background-color: var(--color-lcars-gray); }
+      .bg-lcars-orange { background-color: var(--color-text-secondary); }
+      .text-lcars-orange { color: var(--color-text-secondary); }
 
-      /* LCARS Reticle Text Flicker */
-      @keyframes lcars-text-flicker-animation {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.85; }
+      @keyframes target-top-animation {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
-      .lcars-reticle-text {
-        animation: lcars-text-flicker-animation 1.5s ease-in-out infinite;
-      }
+      .animate-target-top { animation: target-top-animation 0.5s ease-out infinite alternate; }
 
-      /* LCARS Reticle Targeting Arrows */
-      @keyframes target-arrow-top-animation {
-        0% { transform: translateY(-12px); opacity: 0; }
-        50% { transform: translateY(-4px); opacity: 1; }
-        100% { transform: translateY(-4px); opacity: 0; }
+      @keyframes target-bottom-animation {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
-      @keyframes target-arrow-bottom-animation {
-        0% { transform: translateY(12px); opacity: 0; }
-        50% { transform: translateY(4px); opacity: 1; }
-        100% { transform: translateY(4px); opacity: 0; }
+      .animate-target-bottom { animation: target-bottom-animation 0.5s ease-out infinite alternate; }
+
+      @keyframes target-left-animation {
+        from { transform: translateX(-100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
       }
-      @keyframes target-arrow-left-animation {
-        0% { transform: translateX(-12px); opacity: 0; }
-        50% { transform: translateX(-4px); opacity: 1; }
-        100% { transform: translateX(-4px); opacity: 0; }
+      .animate-target-left { animation: target-left-animation 0.5s ease-out infinite alternate; }
+
+      @keyframes target-right-animation {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
       }
-      @keyframes target-arrow-right-animation {
-        0% { transform: translateX(12px); opacity: 0; }
-        50% { transform: translateX(4px); opacity: 1; }
-        100% { transform: translateX(4px); opacity: 0; }
-      }
-      .animate-target-top { animation: target-arrow-top-animation 1.5s ease-out infinite; }
-      .animate-target-bottom { animation: target-arrow-bottom-animation 1.5s ease-out infinite; }
-      .animate-target-left { animation: target-arrow-left-animation 1.5s ease-out infinite; }
-      .animate-target-right { animation: target-arrow-right-animation 1.5s ease-out infinite; }
+      .animate-target-right { animation: target-right-animation 0.5s ease-out infinite alternate; }
 
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0"
-  }
-}
-</script>
-<script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'bg-default': 'var(--color-bg-default)',
-            'bg-paper': 'var(--color-bg-paper)',
-            'bg-paper-lighter': 'var(--color-bg-paper-lighter)',
-            'text-primary': 'var(--color-text-primary)',
-            'text-secondary': 'var(--color-text-secondary)',
-            'text-disabled': 'var(--color-text-disabled)',
-            'primary-main': 'var(--color-primary-main)',
-            'primary-light': 'var(--color-primary-light)',
-            'primary-dark': 'var(--color-primary-dark)',
-            'primary-text': 'var(--color-primary-text)',
-            'secondary-main': 'var(--color-secondary-main)',
-            'secondary-light': 'var(--color-secondary-light)',
-            'secondary-dark': 'var(--color-secondary-dark)',
-            'secondary-text': 'var(--color-secondary-text)',
-            'border-main': 'var(--color-border-main)',
-            'border-light': 'var(--color-border-light)',
-            'border-dark': 'var(--color-border-dark)',
-            'accent-yellow': 'var(--color-accent-yellow)',
-            'accent-yellow-dark': 'var(--color-accent-yellow-dark)',
-            'accent-yellow-darker': 'var(--color-accent-yellow-darker)',
-            'accent-red': 'var(--color-accent-red)',
-            'accent-green': 'var(--color-accent-green)',
-            'accent-orange': 'var(--color-accent-orange)',
-            'accent-pink': 'var(--color-accent-pink)',
-            'accent-purple': 'var(--color-accent-purple)',
-            'accent-indigo': 'var(--color-accent-indigo)',
-            'accent-sky': 'var(--color-accent-sky)',
-            'accent-teal': 'var(--color-accent-teal)',
-            /* New colors for LCARS reticle */
-            'lcars-blue-light': 'var(--color-lcars-blue-light)',
-            'lcars-blue-dark': 'var(--color-lcars-blue-dark)',
-            'lcars-gray': 'var(--color-lcars-gray)',
-            'lcars-orange': 'var(--color-border-main)',
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'bg-default': 'var(--color-bg-default)',
+              'bg-paper': 'var(--color-bg-paper)',
+              'bg-paper-lighter': 'var(--color-bg-paper-lighter)',
+              'text-primary': 'var(--color-text-primary)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'text-disabled': 'var(--color-text-disabled)',
+              'primary-main': 'var(--color-primary-main)',
+              'primary-light': 'var(--color-primary-light)',
+              'primary-dark': 'var(--color-primary-dark)',
+              'primary-text': 'var(--color-primary-text)',
+              'secondary-main': 'var(--color-secondary-main)',
+              'secondary-light': 'var(--color-secondary-light)',
+              'secondary-dark': 'var(--color-secondary-dark)',
+              'secondary-text': 'var(--color-secondary-text)',
+              'border-main': 'var(--color-border-main)',
+              'border-light': 'var(--color-border-light)',
+              'border-dark': 'var(--color-border-dark)',
+              'accent-yellow': 'var(--color-accent-yellow)',
+              'accent-yellow-dark': 'var(--color-accent-yellow-dark)',
+              'accent-yellow-darker': 'var(--color-accent-yellow-darker)',
+              'accent-red': 'var(--color-accent-red)',
+              'accent-green': 'var(--color-accent-green)',
+              'accent-orange': 'var(--color-accent-orange)',
+              'accent-pink': 'var(--color-accent-pink)',
+              'accent-purple': 'var(--color-accent-purple)',
+              'accent-indigo': 'var(--color-accent-indigo)',
+              'accent-sky': 'var(--color-accent-sky)',
+              'accent-teal': 'var(--color-accent-teal)',
+               /* New colors for LCARS targeting reticle */
+              'lcars-blue-light': 'var(--color-lcars-blue-light)',
+              'lcars-blue-dark': 'var(--color-lcars-blue-dark)',
+              'lcars-gray': 'var(--color-lcars-gray)',
+              'lcars-orange': 'var(--color-text-secondary)',
+            }
           }
         }
       }
-    }
-  </script>
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
 </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
