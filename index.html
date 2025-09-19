@@ -75,6 +75,11 @@
         --shape-border-radius-button: 0; /* Let pseudo-elements handle radius */
         --shape-border-radius-panel: 0.75rem;
         --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+        /* New colors for LCARS targeting reticle */
+        --color-lcars-blue-light: #a3bfdb;
+        --color-lcars-blue-dark: #3d85c6;
+        --color-lcars-gray: #7f8c8d;
       }
       
       .theme-klingon {
@@ -155,7 +160,7 @@
       /* LCARS Button Styles */
       .theme-federation .btn {
           position: relative;
-          padding-left: 2.25em;
+          padding-left: 2.55em; /* Increased padding to account for gap */
           font-weight: normal;
           text-transform: uppercase;
           letter-spacing: 0.1em;
@@ -183,7 +188,7 @@
       }
       /* The rectangular body */
       .theme-federation .btn::after {
-          left: 1.75em;
+          left: 2.05em; /* Pushed right to create a 0.3em gap */
           right: 0;
           border-radius: 0 0.375rem 0.375rem 0;
       }
@@ -403,6 +408,41 @@
         animation: torpedo-explosion-animation 0.4s ease-out forwards;
       }
 
+      /* LCARS Reticle Text Flicker */
+      @keyframes lcars-text-flicker-animation {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.85; }
+      }
+      .lcars-reticle-text {
+        animation: lcars-text-flicker-animation 1.5s ease-in-out infinite;
+      }
+
+      /* LCARS Reticle Targeting Arrows */
+      @keyframes target-arrow-top-animation {
+        0% { transform: translateY(-12px); opacity: 0; }
+        50% { transform: translateY(-4px); opacity: 1; }
+        100% { transform: translateY(-4px); opacity: 0; }
+      }
+      @keyframes target-arrow-bottom-animation {
+        0% { transform: translateY(12px); opacity: 0; }
+        50% { transform: translateY(4px); opacity: 1; }
+        100% { transform: translateY(4px); opacity: 0; }
+      }
+      @keyframes target-arrow-left-animation {
+        0% { transform: translateX(-12px); opacity: 0; }
+        50% { transform: translateX(-4px); opacity: 1; }
+        100% { transform: translateX(-4px); opacity: 0; }
+      }
+      @keyframes target-arrow-right-animation {
+        0% { transform: translateX(12px); opacity: 0; }
+        50% { transform: translateX(4px); opacity: 1; }
+        100% { transform: translateX(4px); opacity: 0; }
+      }
+      .animate-target-top { animation: target-arrow-top-animation 1.5s ease-out infinite; }
+      .animate-target-bottom { animation: target-arrow-bottom-animation 1.5s ease-out infinite; }
+      .animate-target-left { animation: target-arrow-left-animation 1.5s ease-out infinite; }
+      .animate-target-right { animation: target-arrow-right-animation 1.5s ease-out infinite; }
+
     </style>
   <script type="importmap">
 {
@@ -447,6 +487,11 @@
             'accent-indigo': 'var(--color-accent-indigo)',
             'accent-sky': 'var(--color-accent-sky)',
             'accent-teal': 'var(--color-accent-teal)',
+            /* New colors for LCARS reticle */
+            'lcars-blue-light': 'var(--color-lcars-blue-light)',
+            'lcars-blue-dark': 'var(--color-lcars-blue-dark)',
+            'lcars-gray': 'var(--color-lcars-gray)',
+            'lcars-orange': 'var(--color-border-main)',
           }
         }
       }

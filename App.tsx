@@ -163,6 +163,7 @@ const App: React.FC = () => {
                           targetEntity={targetEntity}
                           selectedSubsystem={selectedSubsystem}
                           onSelectSubsystem={onSelectSubsystem}
+                          themeName={themeName}
                           />
                       ) : (
                           <QuadrantView 

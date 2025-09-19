@@ -7,6 +7,8 @@ import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { TorpedoProjectileIcon } from '../assets/projectiles/icons';
 import { NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon } from '../assets/ui/icons';
+import { ThemeName } from '../hooks/useTheme';
+import LcarsTargetingReticle from './LcarsTargetingReticle';
 
 
 interface SectorViewProps {
@@ -20,6 +22,7 @@ interface SectorViewProps {
   selectedSubsystem: 'weapons' | 'engines' | 'shields' | null;
   onSelectSubsystem: (subsystem: 'weapons' | 'engines' | 'shields') => void;
   sector: SectorState;
+  themeName: ThemeName;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -77,7 +80,7 @@ const SubsystemTarget: React.FC<{
 };
 
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, targetEntity, selectedSubsystem, onSelectSubsystem, sector }) => {
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, targetEntity, selectedSubsystem, onSelectSubsystem, sector, themeName }) => {
   const sectorSize = { width: 12, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
 
@@ -296,7 +299,12 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                         {icon}
                         {isSelected && (
                             <>
-                                <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
+                                {themeName === 'federation' ? (
+                                    <LcarsTargetingReticle />
+                                ) : (
+                                    <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
+                                )}
+
                                 {targetEntity && targetEntity.type === 'ship' && targetEntity.scanned && (
                                     <>
                                     <SubsystemTarget subsystem="weapons" {...targetEntity.subsystems.weapons} isSelected={selectedSubsystem === 'weapons'} positionClass="-top-6 -left-3 -translate-x-1/2" onSelect={() => onSelectSubsystem('weapons')}><WeaponIcon className="w-5 h-5"/></SubsystemTarget>
