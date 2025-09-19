@@ -4,3 +4,4 @@ export * from './KlingonEngineIcon';
 export * from './KlingonTorpedoIcon';
 export * from './KlingonSecurityIcon';
 export * from './BatlethIcon';
+export * from './KlingonLogoIcon';

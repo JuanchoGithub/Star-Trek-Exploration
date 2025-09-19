@@ -1,5 +1,5 @@
 import React from 'react';
-import { StarfleetLogoIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
+import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
 import { SectionHeader, SubHeader } from './shared';
 
 export const TyphonExpanseSection: React.FC = () => (
@@ -11,12 +11,12 @@ export const TyphonExpanseSection: React.FC = () => (
         <div className="w-full max-w-md mx-auto my-4 border-2 border-border-main p-1 font-bold">
             <div className="grid grid-cols-2 grid-rows-2 gap-1">
                 <div className="bg-red-900 bg-opacity-50 p-4 flex flex-col items-center justify-center gap-2 text-center border border-red-500 text-red-300">
-                    <KlingonIcon className="w-8 h-8" />
+                    <KlingonLogoIcon className="w-8 h-8" />
                     <span>Klingon Empire</span>
                     <span className="text-xs font-normal">(Asserting Dominance)</span>
                 </div>
                 <div className="bg-green-900 bg-opacity-50 p-4 flex flex-col items-center justify-center gap-2 text-center border border-green-500 text-green-300">
-                    <RomulanIcon className="w-8 h-8" />
+                    <RomulanLogoIcon className="w-8 h-8" />
                     <span>Romulan Star Empire</span>
                     <span className="text-xs font-normal">(Observing from Shadows)</span>
                 </div>
@@ -35,11 +35,11 @@ export const TyphonExpanseSection: React.FC = () => (
         <SubHeader>Major Power Analysis</SubHeader>
         <div className="space-y-4">
             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-red-400 flex items-center gap-2"><KlingonIcon className="w-5 h-5" />Klingon Empire</h4>
+                <h4 className="font-bold text-red-400 flex items-center gap-2"><KlingonLogoIcon className="w-5 h-5" />Klingon Empire</h4>
                 <p className="text-sm text-text-secondary mt-1">Intelligence suggests the High Council views the newly-opened Expanse as a source of untapped resources and, more importantly, a new arena to test their warriors and prove the Empire's might. Expect patrols to be aggressive and honor-bound. They will view any Federation presence as a challenge to their dominance.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-green-400 flex items-center gap-2"><RomulanIcon className="w-5 h-5" />Romulan Star Empire</h4>
+                <h4 className="font-bold text-green-400 flex items-center gap-2"><RomulanLogoIcon className="w-5 h-5" />Romulan Star Empire</h4>
                 <p className="text-sm text-text-secondary mt-1">The Romulans are playing a quieter game. The Tal Shiar is undoubtedly active in the Expanse, operating from the shadows to gather intelligence on both Klingon and Federation activities. Their motives are unclear, but they likely seek technological advantages or strategic footholds. Romulan vessels will be elusive, preferring observation to open conflict, but are deadly when cornered.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">

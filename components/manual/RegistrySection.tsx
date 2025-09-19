@@ -5,12 +5,12 @@ import { starbaseType } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
-import { StarfleetLogoIcon, KlingonIcon, RomulanIcon } from '../../assets/ui/icons';
+import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
 import { ShipModel, ShipRole } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
-    <div id={`registry-${name.toLowerCase()}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
+    <div id={`registry-${name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
         {icon}
         <h3 className="text-2xl font-bold">{name}</h3>
     </div>
@@ -68,9 +68,9 @@ export const RegistrySection: React.FC = () => {
             <p>A registry of all known vessels, planets, and anomalies identified by Starfleet in the Typhon Expanse.</p>
             <div className="flex gap-2 my-4 flex-wrap">
                 <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
-                <a href="#registry-klingon" className="btn btn-tertiary">Klingon</a>
-                <a href="#registry-romulan" className="btn btn-tertiary">Romulan</a>
-                <a href="#registry-pirate" className="btn btn-tertiary">Pirate</a>
+                <a href="#registry-klingon-empire" className="btn btn-tertiary">Klingon</a>
+                <a href="#registry-romulan-star-empire" className="btn btn-tertiary">Romulan</a>
+                <a href="#registry-pirate-&-orion-syndicate" className="btn btn-tertiary">Pirate</a>
                 <a href="#registry-planets" className="btn btn-tertiary">Stellar Bodies</a>
             </div>
             
@@ -80,12 +80,12 @@ export const RegistrySection: React.FC = () => {
             <RoleEntry model="Federation" role="Escort" name="Escort" description="Small, fast, and highly maneuverable warships designed for patrol, interception, and fleet support. While fragile, their high damage output makes them a significant threat." />
             <RoleEntry model="Federation" role="Freighter" name="Freighter" description="Civilian cargo haulers under Federation registry. They have large hulls but are slow and possess only minimal defensive capabilities. Often require assistance when attacked." />
 
-            <FactionHeader name="Klingon Empire" icon={<KlingonIcon className="w-8 h-8 text-red-500" />} />
+            <FactionHeader name="Klingon Empire" icon={<KlingonLogoIcon className="w-8 h-8 text-red-500" />} />
             <RoleEntry model="Klingon" role="Cruiser" name="Cruiser (Bird-of-Prey)" description="The workhorse of the Klingon Defense Force. A versatile combat vessel with powerful disruptors and a cloaking device, designed for direct, honorable confrontation." />
             <RoleEntry model="Klingon" role="Escort" name="Escort (Raptor)" description="A fast attack craft, more nimble than the standard Bird-of-Prey. Used for raiding, reconnaissance, and overwhelming smaller targets with speed and aggression." />
             <RoleEntry model="Klingon" role="Freighter" name="Freighter" description="Armored Klingon transports. While primarily for cargo, they are more heavily armed than their civilian counterparts and should not be underestimated." />
 
-            <FactionHeader name="Romulan Star Empire" icon={<RomulanIcon className="w-8 h-8 text-green-500" />} />
+            <FactionHeader name="Romulan Star Empire" icon={<RomulanLogoIcon className="w-8 h-8 text-green-500" />} />
             <RoleEntry model="Romulan" role="Cruiser" name="Cruiser (Warbird)" description="The iconic symbol of Romulan power. These massive warships are heavily armed and possess superior cloaking technology, preferring to strike from the shadows with devastating precision." />
             <RoleEntry model="Romulan" role="Escort" name="Escort (Hawk)" description="A smaller, faster class of warship. While less powerful than a Warbird, they are still a deadly threat, often used for patrols along the Neutral Zone and for surgical strikes." />
             

@@ -1,6 +1,6 @@
 export const themes = {
     federation: { name: 'LCARS', className: 'theme-federation', font: 'font-sans' },
-    klingon: { name: 'Klingon', className: 'theme-klingon', font: 'font-serif' },
+    klingon: { name: 'Klingon Tactical', className: 'theme-klingon', font: 'font-serif' },
     romulan: { name: 'Romulan', className: 'theme-romulan', font: 'font-mono' },
 };
 

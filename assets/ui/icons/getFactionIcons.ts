@@ -23,6 +23,7 @@ import { KlingonEngineIcon } from './klingon/KlingonEngineIcon';
 import { KlingonTorpedoIcon } from './klingon/KlingonTorpedoIcon';
 import { KlingonSecurityIcon } from './klingon/KlingonSecurityIcon';
 import { BatlethIcon } from './klingon/BatlethIcon';
+import { KlingonLogoIcon } from './klingon/KlingonLogoIcon';
 
 // Romulan
 import { RomulanWeaponIcon } from './romulan/RomulanWeaponIcon';
@@ -31,6 +32,7 @@ import { RomulanEngineIcon } from './romulan/RomulanEngineIcon';
 import { RomulanTorpedoIcon } from './romulan/RomulanTorpedoIcon';
 import { RomulanSecurityIcon } from './romulan/RomulanSecurityIcon';
 import { DisruptorIcon } from './romulan/DisruptorIcon';
+import { RomulanLogoIcon } from './romulan';
 
 const federationIcons = {
     WeaponIcon,
@@ -57,6 +59,7 @@ const klingonIcons = {
     TorpedoIcon: KlingonTorpedoIcon,
     SecurityIcon: KlingonSecurityIcon,
     StrikeTeamIcon: BatlethIcon,
+    HailIcon: KlingonLogoIcon,
 };
 
 const romulanIcons = {
@@ -67,6 +70,7 @@ const romulanIcons = {
     TorpedoIcon: RomulanTorpedoIcon,
     SecurityIcon: RomulanSecurityIcon,
     StrikeTeamIcon: DisruptorIcon,
+    HailIcon: RomulanLogoIcon,
 };
 
 
