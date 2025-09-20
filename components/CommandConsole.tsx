@@ -91,16 +91,16 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || isRetreating || isTurnResolving} accentColor="red">
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || !canFireOnShip || isRetreating || isTurnResolving} accentColor="sky">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || !canFireOnShip || isRetreating || isTurnResolving || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>
             </div>
              <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} accentColor="purple">
+                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
                     <BoardingIcon className="w-5 h-5" /> Board Ship
                 </CommandButton>
-                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving} accentColor="orange">
+                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike Team
                 </CommandButton>
             </div>

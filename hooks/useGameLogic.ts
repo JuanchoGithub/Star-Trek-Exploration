@@ -1514,6 +1514,10 @@ export const useGameLogic = () => {
     }, [addLog, gameState.currentSector.entities, gameState.player.ship.name]);
 
     const onLaunchTorpedo = useCallback((targetId: string) => {
+        if (playerTurnActions.hasLaunchedTorpedo) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Torpedo tubes are reloading. Only one launch per turn.', isPlayerSource: true });
+            return;
+        }
         setGameState(prev => {
             // FIX: Explicitly type 'next' as GameState to ensure type safety.
             const next: GameState = JSON.parse(JSON.stringify(prev));
@@ -1549,7 +1553,8 @@ export const useGameLogic = () => {
             addLog({ sourceId: 'player', sourceName: ship.name, message: `Photon torpedo launched at ${target.name}.`, isPlayerSource: true });
             return next;
         });
-    }, [addLog]);
+        setPlayerTurnActions(prev => ({ ...prev, hasLaunchedTorpedo: true }));
+    }, [addLog, playerTurnActions, gameState.player.ship.name]);
 
     const onScanTarget = useCallback(() => {
         if (!selectedTargetId) return;
@@ -1816,6 +1821,10 @@ export const useGameLogic = () => {
     }, []);
 
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
+        if (playerTurnActions.hasUsedAwayTeam) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Transporter room is cycling. Only one away team action per turn.', isPlayerSource: true });
+            return;
+        }
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
@@ -1868,7 +1877,8 @@ export const useGameLogic = () => {
             }
             return next;
         });
-    }, []);
+        setPlayerTurnActions(prev => ({ ...prev, hasUsedAwayTeam: true }));
+    }, [addLog, playerTurnActions, gameState.player.ship.name]);
 
     const onWarp = useCallback((pos: QuadrantPosition) => {
         setIsWarping(true);

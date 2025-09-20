@@ -179,9 +179,11 @@ export interface ActiveHail {
 
 export interface PlayerTurnActions {
     combat?: {
-        type: 'phasers'; // Torpedoes are no longer a turn action
+        type: 'phasers';
         targetId: string;
     };
+    hasLaunchedTorpedo?: boolean;
+    hasUsedAwayTeam?: boolean;
 }
 
 export interface EventTemplateOption {
