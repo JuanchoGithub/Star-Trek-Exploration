@@ -18,6 +18,7 @@ import ThemeSwitcher from './components/ThemeSwitcher';
 import PlayerManual from './components/PlayerManual';
 import EventResultDialog from './components/EventResultDialog';
 import LcarsDecoration from './components/LcarsDecoration';
+import RomulanDecoration from './components/RomulanDecoration';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -139,6 +140,7 @@ const App: React.FC = () => {
                 <LcarsDecoration type="numbers" className="bottom-2 right-1/4" seed={7} />
             </>
           )}
+          {themeName === 'romulan' && <RomulanDecoration />}
           {/* Left Column: Map/HUD */}
           <div className="flex flex-col min-h-0">
               {/* Top Section: Tabs + Map */}
@@ -179,6 +181,7 @@ const App: React.FC = () => {
                           onWarp={onWarp}
                           onScanQuadrant={onScanQuadrant}
                           isInCombat={gameState.redAlert}
+                          themeName={themeName}
                           />
                       )}
                       {isWarping && <WarpAnimation />}

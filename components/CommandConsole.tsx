@@ -114,25 +114,29 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                  <CommandButton onClick={onHailTarget} disabled={!hasTarget || isRetreating || isTurnResolving} accentColor="teal">
                     <HailIcon className="w-5 h-5" /> Hail
                 </CommandButton>
-                {isRetreating ? (
-                    <CommandButton 
-                        onClick={onCancelRetreat} 
-                        disabled={isTurnResolving || turnsToRetreat === 0} 
-                        accentColor="yellow"
-                    >
-                        <RetreatIcon className="w-5 h-5" /> 
-                        {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Ready'}
-                    </CommandButton>
-                ) : (
-                    <CommandButton onClick={onInitiateRetreat} disabled={!hasEnemy || isTurnResolving} accentColor="indigo">
-                        <RetreatIcon className="w-5 h-5" /> 
-                        Retreat
-                    </CommandButton>
-                )}
             </div>
         </div>
       <div className="flex items-center gap-2 mt-2 flex-shrink-0">
-        <button 
+        {isRetreating ? (
+            <button
+                onClick={onCancelRetreat}
+                disabled={isTurnResolving || turnsToRetreat === 0}
+                className="font-bold transition-all flex items-center gap-3 btn btn-accent yellow flex-shrink-0"
+            >
+                <RetreatIcon className="w-5 h-5" />
+                {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Ready'}
+            </button>
+        ) : (
+            <button
+                onClick={onInitiateRetreat}
+                disabled={!hasEnemy || isTurnResolving}
+                className="font-bold transition-all flex items-center gap-3 btn btn-accent indigo flex-shrink-0"
+            >
+                <RetreatIcon className="w-5 h-5" />
+                Retreat
+            </button>
+        )}
+        <button
             onClick={() => onEndTurn()}
             disabled={isTurnResolving}
             className="flex-grow btn btn-primary"

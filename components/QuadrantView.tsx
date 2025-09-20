@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
 // FIX: PlayerShipIcon is not directly exported. It's an alias for FederationExplorerIcon.
 import { FederationExplorerIcon as PlayerShipIcon } from '../assets/ships/icons';
+import { ThemeName } from '../hooks/useTheme';
 
 // Seeded PRNG helpers from useGameLogic
 const cyrb53 = (str: string, seed = 0): number => {
@@ -144,9 +145,10 @@ interface QuadrantViewProps {
     onWarp: (pos: { qx: number; qy: number }) => void;
     onScanQuadrant: (pos: QuadrantPosition) => void;
     isInCombat: boolean;
+    themeName: ThemeName;
 }
 
-const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, onWarp, onScanQuadrant, isInCombat }) => {
+const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, onWarp, onScanQuadrant, isInCombat, themeName }) => {
     const quadrantSize = { width: 8, height: 8 };
     const [contextMenu, setContextMenu] = useState<{ qx: number; qy: number } | null>(null);
 
@@ -224,10 +226,19 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                         hoverClass = 'hover:bg-accent-yellow hover:bg-opacity-20 cursor-pointer';
                     }
 
+                    const cellClasses = [
+                        'border',
+                        borderClass,
+                        bgClass,
+                        hoverClass,
+                        'transition-colors flex flex-col items-center justify-center relative p-1 overflow-hidden z-10',
+                        themeName === 'klingon' ? 'klingon-quad-cell' : ''
+                    ].join(' ');
+
                     return (
                         <div
                             key={`sector-${qx}-${qy}`}
-                            className={`border ${borderClass} ${bgClass} ${hoverClass} transition-colors flex flex-col items-center justify-center relative p-1 overflow-hidden z-10`}
+                            className={cellClasses}
                             onClick={(e) => {
                                 if (isAdjacent) {
                                     e.stopPropagation();

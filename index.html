@@ -109,33 +109,46 @@
         --border-style-main: double;
         --shape-border-radius-button: 0px;
         --shape-border-radius-panel: 0px;
-        --panel-clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
-        --button-clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+        --panel-clip-path: polygon(0 20px, 20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px));
+        --button-clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
       }
       
       .theme-romulan {
-        --color-bg-default: #18181b; /* zinc-900 */
-        --color-bg-paper: #27272a; /* zinc-800 */
-        --color-bg-paper-lighter: #3f3f46; /* zinc-700 */
-        --color-text-primary: #e4e4e7; /* zinc-200 */
-        --color-text-secondary: #a1a1aa; /* zinc-400 */
-        --color-text-disabled: #71717a; /* zinc-500 */
-        --color-primary-main: #166534; /* green-800 */
-        --color-primary-light: #15803d; /* green-700 */
-        --color-primary-dark: #14532d; /* green-900 */
-        --color-primary-text: #f0fdf4; /* green-50 */
-        --color-secondary-main: #a1a1aa; /* zinc-400 */
-        --color-secondary-light: #d4d4d8; /* zinc-300 */
-        --color-secondary-dark: #71717a; /* zinc-500 */
+        --color-bg-default: #000000;
+        --color-plasma-green: #65f800;
+        --color-lime-green: #a3e635;
+        --color-dark-green: #166534;
+        --color-darker-green: #103b22;
+
+        --color-bg-paper: transparent;
+        --color-bg-paper-lighter: #101c18;
+        --color-text-primary: var(--color-plasma-green);
+        --color-text-secondary: var(--color-lime-green);
+        --color-text-disabled: #4d7c0f;
+        
+        --color-primary-main: var(--color-plasma-green);
+        --color-primary-light: #bef264;
+        --color-primary-dark: var(--color-dark-green);
+        --color-primary-text: #000000;
+        
+        --color-secondary-main: var(--color-lime-green);
+        --color-secondary-light: #d9f99d;
+        --color-secondary-dark: #4d7c0f;
         --color-secondary-text: #000000;
-        --color-border-main: #22c55e; /* green-500 */
-        --color-border-light: #a1a1aa; /* zinc-400 */
-        --color-border-dark: #064e3b; /* green-900 */
+        
+        --color-border-main: var(--color-plasma-green);
+        --color-border-light: var(--color-lime-green);
+        --color-border-dark: var(--color-dark-green);
+        
+        --color-accent-green: var(--color-lime-green);
         --font-family: 'Courier New', monospace;
 
-        --border-width-main: 1px;
-        --shape-border-radius-button: 0.75rem 0 0.75rem 0;
-        --shape-border-radius-panel: 1rem 0 1rem 0;
+        --border-width-main: 0px;
+        --border-style-main: solid;
+        --shape-border-radius-button: 0px;
+        --shape-border-radius-panel: 0px;
+        --panel-clip-path: polygon(0 1rem, 1rem 0, calc(100% - 1rem) 0, 100% 1rem, 100% calc(100% - 1rem), calc(100% - 1rem) 100%, 1rem 100%, 0 calc(100% - 1rem));
+        --button-clip-path: polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%);
       }
       
       /* Generic Component Styles */
@@ -350,6 +363,14 @@
       .red-alert-pulse {
         animation: red-alert-pulse-animation 2s ease-in-out infinite;
       }
+      @keyframes klingon-red-alert-pulse {
+        0%, 100% { box-shadow: inset 0 0 0 0px var(--color-accent-red); }
+        50% { box-shadow: inset 0 0 40px 10px var(--color-accent-red); }
+      }
+      .theme-klingon.red-alert-pulse {
+        animation: klingon-red-alert-pulse 1.5s ease-in-out infinite;
+      }
+
       @keyframes wireframe-glow-animation {
         0%, 100% { filter: drop-shadow(0 0 2px var(--color-accent-yellow)); opacity: 0.8; }
         50% { filter: drop-shadow(0 0 5px var(--color-accent-yellow)); opacity: 1; }
@@ -416,8 +437,8 @@
           filter: drop-shadow(0 0 3px #daa520);
       }
       .phaser-beam.romulan {
-          stroke: #32cd32; /* Green */
-          filter: drop-shadow(0 0 3px #32cd32);
+          stroke: var(--color-plasma-green);
+          filter: drop-shadow(0 0 5px var(--color-plasma-green));
       }
       .torpedo-trail-dot {
           background-color: var(--color-accent-orange);
@@ -472,6 +493,193 @@
       }
       .animate-target-right { animation: target-right-animation 0.5s ease-out infinite alternate; }
 
+      /* Klingon UI Enhancements */
+      .theme-klingon .klingon-quad-cell {
+        position: relative;
+      }
+      .theme-klingon .klingon-quad-cell::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to top right, transparent 49.5%, var(--color-border-dark) 49.5%, var(--color-border-dark) 50.5%, transparent 50.5%);
+        pointer-events: none;
+        opacity: 0.7;
+      }
+      .klingon-sector-grid-overlay {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(120deg, var(--color-border-dark) 1px, transparent 1px),
+            linear-gradient(60deg, var(--color-border-dark) 1px, transparent 1px),
+            linear-gradient(0deg, var(--color-border-dark) 1px, transparent 1px);
+        background-size: 3rem 5.2rem;
+        opacity: 0.25;
+        pointer-events: none;
+        z-index: 1;
+        border-radius: 0 0.375rem 0.375rem 0;
+      }
+      .klingon-reticle-bracket {
+        transform-origin: center;
+        animation: klingon-target-pulse 1.5s ease-in-out infinite;
+        stroke: var(--color-accent-red);
+        stroke-width: 3;
+        fill: none;
+        filter: drop-shadow(0 0 3px var(--color-accent-red));
+      }
+      @keyframes klingon-target-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1) rotate(2deg); opacity: 0.7; }
+      }
+      
+      /* Klingon Energy Allocator */
+      .klingon-allocator-svg {
+        cursor: crosshair;
+        touch-action: none;
+      }
+      .klingon-allocator-triangle-bg {
+        fill: var(--color-bg-paper-lighter);
+        stroke: var(--color-border-dark);
+        stroke-width: 1;
+      }
+      .klingon-allocator-triangle-outline {
+        fill: none;
+        stroke: var(--color-primary-main);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .klingon-allocator-handle {
+        fill: url(#klingon-handle-gradient);
+        stroke: var(--color-accent-red);
+        stroke-width: 1.5;
+        cursor: grab;
+        transition: all 0.1s ease;
+      }
+      .klingon-allocator-handle:active {
+        cursor: grabbing;
+        r: 8;
+        filter: drop-shadow(0 0 5px var(--color-accent-red));
+      }
+      .klingon-allocator-label {
+        font-family: var(--font-family);
+        fill: var(--color-text-secondary);
+        font-size: 10px;
+        font-weight: bold;
+        text-anchor: middle;
+        text-transform: uppercase;
+        pointer-events: none;
+        letter-spacing: 1px;
+        -webkit-user-select: none; /* Safari */
+        -ms-user-select: none; /* IE 10+ */
+        user-select: none; /* Standard syntax */
+      }
+
+      /* Romulan UI Enhancements */
+      .theme-romulan .panel-style {
+          background-color: transparent;
+          border-width: 0;
+          box-shadow: 0 0 0 1px var(--color-plasma-green), 0 0 0 3px var(--color-darker-green);
+      }
+      .theme-romulan .panel-style::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          clip-path: var(--panel-clip-path);
+          box-shadow: inset 0 0 20px var(--color-dark-green);
+          pointer-events: none;
+          z-index: -1;
+      }
+      .theme-romulan .panel-style::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--color-dark-green) 1px, transparent 1px),
+          linear-gradient(to right, var(--color-dark-green) 1px, transparent 1px);
+        background-size: 2rem 2rem;
+        opacity: 0.2;
+        pointer-events: none;
+        clip-path: var(--panel-clip-path);
+      }
+      .theme-romulan .btn {
+          background-color: var(--color-darker-green);
+          color: var(--color-plasma-green);
+          border: 1px solid var(--color-dark-green);
+          box-shadow: 0 0 0 1px var(--color-dark-green);
+          text-transform: uppercase;
+          text-align: center;
+          /* CHANGE: Added flex properties for centering and increased horizontal padding for slant */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1.75rem;
+      }
+      .theme-romulan .btn:hover:not(:disabled) {
+          background-color: var(--color-dark-green);
+          color: white;
+          border-color: var(--color-dark-green);
+          box-shadow: 0 0 0 1px var(--color-lime-green), 0 0 10px var(--color-plasma-green);
+          transform: translateY(-1px) scale(1.02);
+      }
+       .theme-romulan .btn:disabled {
+          background-color: transparent !important;
+          color: var(--color-text-disabled) !important;
+          box-shadow: 0 0 0 1px var(--color-text-disabled);
+          border-color: transparent;
+          transform: none;
+      }
+
+      /* Romulan HUD Frame */
+      .romulan-frame-decoration {
+        position: absolute;
+        z-index: 0; /* Behind UI but above background */
+        pointer-events: none;
+        color: var(--color-plasma-green);
+      }
+      @keyframes romulan-flicker {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.75; }
+      }
+      .romulan-frame-decoration svg {
+        position: absolute;
+        overflow: visible;
+        animation: romulan-flicker 5s ease-in-out infinite;
+      }
+      .romulan-frame-decoration svg path, 
+      .romulan-frame-decoration svg line,
+      .romulan-frame-decoration svg rect,
+      .romulan-frame-decoration svg polyline,
+      .romulan-frame-decoration svg polygon {
+          stroke: var(--color-plasma-green);
+          stroke-width: 2;
+          fill: none;
+      }
+      .romulan-frame-decoration svg .border-inner {
+        stroke-width: 1px;
+        stroke: var(--color-dark-green);
+      }
+      .romulan-frame-decoration svg text {
+          fill: var(--color-plasma-green);
+          font-family: var(--font-family);
+          font-size: 14px;
+          text-transform: uppercase;
+      }
+      
+      @keyframes romulan-target-pulse {
+        0%, 100% { stroke-opacity: 0.6; transform: scale(0.98); }
+        50% { stroke-opacity: 1; transform: scale(1.02); }
+      }
+      .romulan-reticle-bracket {
+        stroke: var(--color-plasma-green);
+        stroke-width: 2;
+        fill: none;
+        animation: romulan-target-pulse 1.5s ease-in-out infinite;
+        transform-origin: center;
+        filter: drop-shadow(0 0 4px var(--color-plasma-green));
+      }
     </style>
     <script>
       tailwind.config = {

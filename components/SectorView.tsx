@@ -9,6 +9,8 @@ import { TorpedoProjectileIcon } from '../assets/projectiles/icons';
 import { NavigationTargetIcon, WeaponIcon, ShieldIcon, EngineIcon } from '../assets/ui/icons';
 import { ThemeName } from '../hooks/useTheme';
 import LcarsTargetingReticle from './LcarsTargetingReticle';
+import KlingonTargetingReticle from './KlingonTargetingReticle';
+import RomulanTargetingReticle from './RomulanTargetingReticle';
 
 
 interface SectorViewProps {
@@ -105,6 +107,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   return (
     <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
+      {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       {sector.hasNebula && (
         <div className="absolute inset-0 bg-accent-purple opacity-30 z-0 pointer-events-none"></div>
       )}
@@ -301,6 +304,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                             <>
                                 {themeName === 'federation' ? (
                                     <LcarsTargetingReticle />
+                                ) : themeName === 'klingon' ? (
+                                    <KlingonTargetingReticle />
+                                ) : themeName === 'romulan' ? (
+                                    <RomulanTargetingReticle />
                                 ) : (
                                     <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
                                 )}
