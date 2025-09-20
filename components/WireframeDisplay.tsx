@@ -7,6 +7,7 @@ import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { TorpedoWireframe } from '../assets/projectiles/wireframes';
+import { FederationShuttleWireframe } from '../assets/ships/wireframes/federation';
 
 interface WireframeDisplayProps {
     target: Entity;
@@ -50,6 +51,9 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
             break;
         case 'torpedo_projectile':
             WireframeComponent = TorpedoWireframe;
+            break;
+        case 'shuttle':
+            WireframeComponent = FederationShuttleWireframe;
             break;
         default:
             return null;

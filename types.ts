@@ -22,7 +22,7 @@ export interface ShipSubsystems {
 interface BaseEntity {
   id: string;
   name: string;
-  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'torpedo_projectile';
+  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'torpedo_projectile' | 'shuttle';
   faction: string;
   position: Position;
   scanned: boolean;
@@ -52,6 +52,11 @@ export interface Ship extends BaseEntity {
   securityTeams: { current: number; max: number };
   repairTarget: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter' | null;
   logColor: string;
+  // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
+  desperationMove?: {
+    type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
+    targetId?: string;
+  };
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
@@ -78,6 +83,11 @@ export interface EventBeacon extends BaseEntity {
     isResolved: boolean;
 }
 
+export interface Shuttle extends BaseEntity {
+    type: 'shuttle';
+    crewCount: number;
+}
+
 export interface TorpedoProjectile extends BaseEntity {
     type: 'torpedo_projectile';
     targetId: string;
@@ -90,7 +100,7 @@ export interface TorpedoProjectile extends BaseEntity {
     maxHull: number;
 }
 
-export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile;
+export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile | Shuttle;
 
 export type FactionOwner = 'Federation' | 'Klingon' | 'Romulan' | 'None';
 

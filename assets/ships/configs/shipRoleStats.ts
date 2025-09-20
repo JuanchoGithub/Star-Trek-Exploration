@@ -7,6 +7,7 @@ export interface ShipRoleStats {
     subsystems: ShipSubsystems;
     torpedoes: { max: number };
     securityTeams: { max: number };
+    shuttleCount: number;
 }
 
 export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
@@ -22,6 +23,7 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         },
         torpedoes: { max: 10 },
         securityTeams: { max: 3 },
+        shuttleCount: 3,
     },
     Dreadnought: {
         maxHull: 150,
@@ -35,6 +37,7 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         },
         torpedoes: { max: 15 },
         securityTeams: { max: 5 },
+        shuttleCount: 5,
     },
     Cruiser: {
         maxHull: 120,
@@ -48,6 +51,7 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         },
         torpedoes: { max: 8 },
         securityTeams: { max: 5 },
+        shuttleCount: 2,
     },
     Escort: {
         maxHull: 80,
@@ -61,6 +65,7 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         },
         torpedoes: { max: 4 },
         securityTeams: { max: 3 },
+        shuttleCount: 1,
     },
     Freighter: {
         maxHull: 150,
@@ -74,5 +79,6 @@ export const shipRoleStats: Record<ShipRole, ShipRoleStats> = {
         },
         torpedoes: { max: 0 },
         securityTeams: { max: 1 },
+        shuttleCount: 1,
     }
 };
