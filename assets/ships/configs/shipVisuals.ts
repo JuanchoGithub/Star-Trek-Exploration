@@ -21,7 +21,12 @@ import {
 import { EventBeaconIcon } from '../../beacons/icons';
 
 import {
-    FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe, FederationDreadnoughtWireframe
+    FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe, FederationDreadnoughtWireframe,
+    FederationExplorerSaucerWireframe, FederationExplorerEngineeringWireframe,
+    FederationCruiserSaucerWireframe, FederationCruiserEngineeringWireframe,
+    FederationEscortSaucerWireframe, FederationEscortEngineeringWireframe,
+    FederationDreadnoughtSaucerWireframe, FederationDreadnoughtEngineeringWireframe,
+    FederationFreighterSaucerWireframe, FederationFreighterEngineeringWireframe
 } from '../wireframes/federation';
 import {
     KlingonCruiserWireframe, KlingonEscortWireframe, KlingonFreighterWireframe
@@ -43,6 +48,8 @@ export interface ShipTypeConfig {
     icon: React.FC<React.SVGProps<SVGSVGElement>>;
     wireframe: React.FC;
     colorClass: string;
+    saucerWireframe?: React.FC;
+    engineeringWireframe?: React.FC;
 }
 
 // FIX: Modified FactionVisuals to allow for the special 'Unknown' role key.
@@ -57,11 +64,41 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
     Federation: {
         defaultRole: 'Explorer',
         roles: {
-            Explorer: { icon: FederationExplorerIcon, wireframe: FederationExplorerWireframe, colorClass: 'text-blue-400' },
-            Cruiser: { icon: FederationCruiserIcon, wireframe: FederationCruiserWireframe, colorClass: 'text-blue-300' },
-            Escort: { icon: FederationEscortIcon, wireframe: FederationEscortWireframe, colorClass: 'text-sky-400' },
-            Freighter: { icon: FederationFreighterIcon, wireframe: FederationFreighterWireframe, colorClass: 'text-cyan-400' },
-            Dreadnought: { icon: FederationDreadnoughtIcon, wireframe: FederationDreadnoughtWireframe, colorClass: 'text-indigo-400' },
+            Explorer: { 
+                icon: FederationExplorerIcon, 
+                wireframe: FederationExplorerWireframe, 
+                colorClass: 'text-blue-400',
+                saucerWireframe: FederationExplorerSaucerWireframe,
+                engineeringWireframe: FederationExplorerEngineeringWireframe,
+            },
+            Cruiser: { 
+                icon: FederationCruiserIcon, 
+                wireframe: FederationCruiserWireframe, 
+                colorClass: 'text-blue-300',
+                saucerWireframe: FederationCruiserSaucerWireframe,
+                engineeringWireframe: FederationCruiserEngineeringWireframe,
+            },
+            Escort: { 
+                icon: FederationEscortIcon, 
+                wireframe: FederationEscortWireframe, 
+                colorClass: 'text-sky-400',
+                saucerWireframe: FederationEscortSaucerWireframe,
+                engineeringWireframe: FederationEscortEngineeringWireframe,
+            },
+            Freighter: { 
+                icon: FederationFreighterIcon, 
+                wireframe: FederationFreighterWireframe, 
+                colorClass: 'text-cyan-400',
+                saucerWireframe: FederationFreighterSaucerWireframe,
+                engineeringWireframe: FederationFreighterEngineeringWireframe,
+            },
+            Dreadnought: { 
+                icon: FederationDreadnoughtIcon, 
+                wireframe: FederationDreadnoughtWireframe, 
+                colorClass: 'text-indigo-400',
+                saucerWireframe: FederationDreadnoughtSaucerWireframe,
+                engineeringWireframe: FederationDreadnoughtEngineeringWireframe,
+            },
         }
     },
     Klingon: {

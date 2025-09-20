@@ -680,6 +680,162 @@
         transform-origin: center;
         filter: drop-shadow(0 0 4px var(--color-plasma-green));
       }
+
+      /* Desperation Move Animation - Klingon Ram */
+      @keyframes ram-animation-source {
+        0% { left: -20%; top: 35%; transform: translate(-50%, -50%) rotate(-25deg); opacity: 1; }
+        60% { left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
+        61%, 100% { opacity: 0; }
+      }
+      @keyframes ram-animation-target {
+          0%, 60% { transform: scale(1) rotate(0deg); opacity: 1; }
+          65% { transform: scale(1.2) rotate(15deg); opacity: 1; }
+          70%, 100% { transform: scale(0); opacity: 0; }
+      }
+      @keyframes ram-animation-explosion {
+          0%, 60% { transform: scale(0); opacity: 0; }
+          61% { transform: scale(0.1); opacity: 1; }
+          100% { transform: scale(2.5); opacity: 0; }
+      }
+      .ram-animation-source {
+          animation: ram-animation-source 3s ease-in forwards;
+      }
+      .ram-animation-target {
+          animation: ram-animation-target 3s ease-out forwards;
+      }
+      .ram-animation-explosion {
+          width: 15rem;
+          height: 15rem;
+          border-radius: 50%;
+          background: radial-gradient(circle, white, var(--color-accent-yellow), var(--color-accent-orange), var(--color-accent-red));
+          animation: ram-animation-explosion 3s ease-out forwards;
+      }
+
+      /* Desperation Move Animation - Romulan Escape */
+      @keyframes romulan-escape-charge {
+        0% { transform: scale(0.8); opacity: 0; filter: brightness(1); }
+        20% { transform: scale(1); opacity: 1; filter: brightness(1.5); }
+        40% { transform: translate(-1px, 1px) scale(1.05); filter: brightness(2); }
+        60% { transform: translate(1px, -1px) scale(1.05); filter: brightness(2.5); }
+        80%, 100% { transform: translate(0, 0) scale(1.1); opacity: 1; filter: brightness(3); }
+      }
+      @keyframes romulan-escape-success {
+        from { transform: scale(1.1, 1.1); opacity: 1; }
+        to { transform: scale(5, 0.1); opacity: 0; }
+      }
+      @keyframes romulan-escape-failure-ship {
+        0% { opacity: 1; transform: scale(1.1); filter: brightness(3); }
+        5% { opacity: 1; transform: scale(1.5); filter: brightness(5); }
+        10%, 100% { opacity: 0; transform: scale(0); }
+      }
+      @keyframes romulan-escape-failure-explosion {
+        0%, 60% { transform: scale(0); opacity: 0; }
+        61% { transform: scale(0.1); opacity: 1; }
+        100% { transform: scale(2.5); opacity: 0; }
+      }
+      .romulan-escape-ship.success {
+        animation: romulan-escape-charge 2.5s ease-in-out forwards, romulan-escape-success 0.5s 2.5s ease-in forwards;
+      }
+      .romulan-escape-ship.failure {
+        animation: romulan-escape-charge 2.5s ease-in-out forwards, romulan-escape-failure-ship 0.5s 2.5s ease-out forwards;
+      }
+      .romulan-escape-explosion {
+        width: 15rem;
+        height: 15rem;
+        border-radius: 50%;
+        background: radial-gradient(circle, white, var(--color-lime-green), var(--color-plasma-green), var(--color-dark-green));
+        animation: romulan-escape-failure-explosion 0.8s 2.5s ease-out forwards;
+        transform: scale(0); /* Initially hidden */
+      }
+
+      /* Desperation Move Animation - Pirate Self-Destruct */
+      @keyframes pirate-overload {
+        0% { transform: scale(1) rotate(0deg); filter: brightness(1) drop-shadow(0 0 2px var(--color-accent-orange)); }
+        25% { transform: scale(1.05) rotate(-2deg); filter: brightness(2) drop-shadow(0 0 8px white); }
+        50% { transform: scale(0.95) rotate(2deg); filter: brightness(1.5) drop-shadow(0 0 4px var(--color-accent-red)); }
+        75% { transform: scale(1.1) rotate(0deg); filter: brightness(3) drop-shadow(0 0 12px white); }
+        100% { transform: scale(1.1); filter: brightness(3) drop-shadow(0 0 12px white); }
+      }
+
+      @keyframes pirate-vanish {
+        to { transform: scale(0); opacity: 0; }
+      }
+
+      @keyframes pirate-explosion {
+        0% { transform: scale(0); opacity: 0; }
+        1% { transform: scale(0.1); opacity: 1; }
+        100% { transform: scale(3); opacity: 0; }
+      }
+
+      .pirate-self-destruct-ship {
+        animation: pirate-overload 2.5s ease-in-out forwards, pirate-vanish 0.1s 2.5s forwards;
+      }
+
+      .pirate-self-destruct-explosion {
+        width: 15rem;
+        height: 15rem;
+        border-radius: 50%;
+        background: radial-gradient(circle, white, var(--color-accent-yellow), var(--color-accent-orange), var(--color-accent-red));
+        animation: pirate-explosion 0.8s 2.5s ease-out forwards;
+        transform: scale(0); /* Initially hidden */
+      }
+
+      /* Desperation Move Animation - Federation Evacuate */
+      @keyframes fed-evac-shuttle-1 {
+        0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+        10% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-150px, -200px) scale(0.5); opacity: 0; }
+      }
+      @keyframes fed-evac-shuttle-2 {
+        0%, 10% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+        20% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(180px, -150px) scale(0.5); opacity: 0; }
+      }
+      @keyframes fed-evac-shuttle-3 {
+        0%, 20% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+        30% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-100px, 200px) scale(0.5); opacity: 0; }
+      }
+      @keyframes fed-evac-shuttle-4 {
+        0%, 30% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+        40% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(200px, 180px) scale(0.5); opacity: 0; }
+      }
+
+      .fed-evac-shuttle-1 { animation: fed-evac-shuttle-1 3s 0s ease-out forwards; }
+      .fed-evac-shuttle-2 { animation: fed-evac-shuttle-2 3s 0.2s ease-out forwards; }
+      .fed-evac-shuttle-3 { animation: fed-evac-shuttle-3 3s 0.4s ease-out forwards; }
+      .fed-evac-shuttle-4 { animation: fed-evac-shuttle-4 3s 0.6s ease-out forwards; }
+      .fed-evac-shuttle-5 { animation: fed-evac-shuttle-1 3s 0.8s ease-out forwards; } /* reuse for simplicity */
+
+
+      @keyframes fed-evac-ship-hold {
+        0%, 60% { opacity: 1; transform: translate(0,0) rotate(0deg); }
+        61% { opacity: 0; }
+        100% { opacity: 0; }
+      }
+      .fed-evac-ship-hold {
+        animation: fed-evac-ship-hold 4s forwards;
+      }
+
+
+      @keyframes fed-evac-saucer-drift {
+        0%, 60% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+        61% { opacity: 1; }
+        100% { opacity: 1; transform: translate(-40px, -20px) rotate(-15deg); }
+      }
+      .fed-evac-saucer-drift {
+        animation: fed-evac-saucer-drift 4s ease-out forwards;
+      }
+
+      @keyframes fed-evac-engineering-drift {
+        0%, 60% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+        61% { opacity: 1; }
+        100% { opacity: 1; transform: translate(40px, 20px) rotate(10deg); }
+      }
+      .fed-evac-engineering-drift {
+        animation: fed-evac-engineering-drift 4s ease-out forwards;
+      }
     </style>
     <script>
       tailwind.config = {

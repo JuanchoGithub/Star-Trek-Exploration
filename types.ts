@@ -271,4 +271,10 @@ export interface GameState {
   isRetreatingWarp: boolean;
   usedAwayMissionSeeds: string[];
   usedAwayMissionTemplateIds?: string[];
+  desperationMoveAnimations: {
+      source: Ship;
+      target?: Ship;
+      type: string;
+      outcome?: 'success' | 'failure';
+  }[];
 }

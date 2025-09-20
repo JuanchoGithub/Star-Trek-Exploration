@@ -4,6 +4,7 @@ import type { GameState, Ship } from '../../types';
 export interface AIActions {
     addLog: (log: any) => void;
     applyPhaserDamage: (target: Ship, damage: number, subsystem: any, source: Ship, state: GameState) => string[];
+    triggerDesperationAnimation: (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => void;
 }
 
 // Abstract base class for all faction-specific AI.

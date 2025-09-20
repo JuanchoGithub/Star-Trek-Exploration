@@ -14,6 +14,8 @@ export class KlingonAI extends FactionAI {
         const target = findClosestTarget(ship, enemyShips);
 
         if (target) {
+            actions.triggerDesperationAnimation({ source: ship, target, type: 'ram' });
+
             const shieldPercent = target.maxShields > 0 ? target.shields / target.maxShields : 0;
             const shieldDamageMultiplier = shieldPercent < 0.2 ? 1.0 : 0.8;
             const hullDamageMultiplier = shieldPercent < 0.2 ? 0.8 : 0.4;

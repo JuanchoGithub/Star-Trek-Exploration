@@ -285,5 +285,7 @@ export const createInitialGameState = (): GameState => {
     isRetreatingWarp: false,
     usedAwayMissionSeeds: [],
     usedAwayMissionTemplateIds: [],
+    // FIX: Added missing 'desperationMoveAnimations' property to align with the GameState interface.
+    desperationMoveAnimations: [],
   };
 };

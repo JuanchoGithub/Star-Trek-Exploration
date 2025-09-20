@@ -6,7 +6,7 @@ import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 export class FederationAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         const { currentSector } = gameState;
-        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle');
+        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
 
         // Priority 1: Rescue shuttles
         if (shuttles.length > 0) {
@@ -24,15 +24,18 @@ export class FederationAI extends FactionAI {
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const shuttleCount = shipRoleStats[ship.shipRole]?.shuttleCount || 1;
+
+        actions.triggerDesperationAnimation({ source: ship, type: 'evacuate' });
+        
         for (let i = 0; i < shuttleCount; i++) {
             const shuttle: Shuttle = {
                 id: uniqueId(),
-                name: "Federation Shuttle",
+                name: "Escape Shuttle",
                 type: 'shuttle',
-                faction: 'Federation',
+                faction: ship.faction,
                 position: { ...ship.position },
                 scanned: true,
-                crewCount: 5,
+                crewCount: 5 + Math.floor(Math.random() * 10),
             };
             gameState.currentSector.entities.push(shuttle);
         }

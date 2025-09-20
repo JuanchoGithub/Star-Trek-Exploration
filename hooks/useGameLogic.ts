@@ -167,7 +167,7 @@ const createInitialGameState = (): GameState => {
     player: { ship: playerShip, position: playerPosition, crew: playerCrew },
     quadrantMap, currentSector: startSector, turn: 1, logs: [{ id: uniqueId(), turn: 1, sourceId: 'system', sourceName: "Captain's Log", message: "Stardate 47458.2. We have entered the Typhon Expanse.", color: SYSTEM_LOG_COLOR, isPlayerSource: false }],
     gameOver: false, gameWon: false, redAlert: false, combatEffects: [], isRetreatingWarp: false,
-    usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [],
+    usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [], desperationMoveAnimations: [],
   };
 };
 
@@ -187,6 +187,7 @@ export const useGameLogic = () => {
                     if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
                     if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
                     if (savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
+                    if (savedState.desperationMoveAnimations === undefined) savedState.desperationMoveAnimations = [];
                     
                     const migrateShip = (ship: Ship) => {
                         if ((ship as any).shipClass) {
@@ -332,6 +333,15 @@ export const useGameLogic = () => {
     }, [gameState.combatEffects]);
 
     useEffect(() => {
+        if (gameState.desperationMoveAnimations.length > 0) {
+            const timer = setTimeout(() => {
+                setGameState(prev => ({ ...prev, desperationMoveAnimations: [] }));
+            }, 4000); // Animation duration
+            return () => clearTimeout(timer);
+        }
+    }, [gameState.desperationMoveAnimations]);
+
+    useEffect(() => {
         if (gameState.isRetreatingWarp) {
             setIsWarping(true);
             const timer = setTimeout(() => {
@@ -423,6 +433,9 @@ export const useGameLogic = () => {
             const sourceShip = allShips.find(s => s.id === logData.sourceId);
             // FIX: Removed 'as any' type assertion which is no longer needed with the correct signature.
             next.logs.push({ id: uniqueId(), turn: next.turn, ...logData, color: logData.color || sourceShip?.logColor || SYSTEM_LOG_COLOR });
+        };
+        const triggerDesperationAnimation = (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => {
+            next.desperationMoveAnimations.push(animation);
         };
 
         const { player, currentSector } = next;
@@ -548,7 +561,7 @@ export const useGameLogic = () => {
         });
         next.currentSector.entities = next.currentSector.entities.filter(e => !destroyedProjectileIds.has(e.id));
         
-        const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage };
+        const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
         processAITurns(next, aiActions);
         
         [playerShip, ...currentSector.entities].forEach(e => { if (e.type === 'ship') { const ship = e as Ship; const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1); ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount); } });
@@ -1173,6 +1186,7 @@ export const useGameLogic = () => {
         isTurnResolving,
         awayMissionResult,
         eventResult,
+        desperationMoveAnimation: gameState.desperationMoveAnimations.length > 0 ? gameState.desperationMoveAnimations[0] : null,
         onEnergyChange,
         onEndTurn,
         onFirePhasers,

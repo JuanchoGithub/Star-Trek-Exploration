@@ -9,10 +9,11 @@ import {
     MechanicsSection,
     CombatSection,
     AdvancedTacticsSection,
-    CombatSimulationSection
+    CombatSimulationSection,
+    AnimationsSection,
 } from './manual';
 
-type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations';
+type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations';
 
 interface PlayerManualProps {
     onClose: () => void;
@@ -39,19 +40,20 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             case 'combat': return <CombatSection />;
             case 'advanced': return <AdvancedTacticsSection themeName={themeName} />;
             case 'simulations': return <CombatSimulationSection />;
+            case 'animations': return <AnimationsSection />;
             default: return null;
         }
     }
 
     return (
         <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="panel-style h-full w-full max-w-6xl flex flex-col p-4">
+            <div className="panel-style h-full w-full max-w-7xl flex flex-col p-4">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h1 className="text-2xl font-bold text-primary-light">STARFLEET PLAYER'S MANUAL</h1>
                     <button onClick={onClose} className="btn btn-tertiary">Close Manual</button>
                 </div>
                 <div className="flex-grow flex gap-4 min-h-0">
-                    <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
+                    <nav className="w-1/5 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
                          <SectionLink active={activeSection === 'intro'} onClick={() => setActiveSection('intro')}>Introduction</SectionLink>
                          <SectionLink active={activeSection === 'ui'} onClick={() => setActiveSection('ui')}>Bridge Interface</SectionLink>
                          <SectionLink active={activeSection === 'registry'} onClick={() => setActiveSection('registry')}>Entity Registry</SectionLink>
@@ -61,8 +63,9 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                          <SectionLink active={activeSection === 'combat'} onClick={() => setActiveSection('combat')}>Advanced Combat</SectionLink>
                          <SectionLink active={activeSection === 'advanced'} onClick={() => setActiveSection('advanced')}>Advanced Tactics</SectionLink>
                          <SectionLink active={activeSection === 'simulations'} onClick={() => setActiveSection('simulations')}>Appendix: Combat Sims</SectionLink>
+                         <SectionLink active={activeSection === 'animations'} onClick={() => setActiveSection('animations')}>Animation Library</SectionLink>
                     </nav>
-                    <main className="w-3/4 flex-grow panel-style p-4 overflow-y-auto">
+                    <main className="w-4/5 flex-grow panel-style p-4 overflow-y-auto">
                         {renderContent()}
                     </main>
                 </div>

@@ -11,6 +11,9 @@ export class PirateAI extends FactionAI {
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const adjacentShips = allShips.filter(s => s.id !== ship.id && calculateDistance(ship.position, s.position) <= 1);
+        
+        actions.triggerDesperationAnimation({ source: ship, type: 'self_destruct' });
+
         let logMessage = `"${ship.name}" overloads its reactor! The ship explodes violently!`;
         
         adjacentShips.forEach(target => {

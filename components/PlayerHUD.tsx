@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship } from '../types';
 import CommandConsole from './CommandConsole';
@@ -7,6 +6,7 @@ import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import LcarsDecoration from './LcarsDecoration';
+import DesperationMoveAnimation from './DesperationMoveAnimation';
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -29,6 +29,12 @@ interface PlayerHUDProps {
   isTurnResolving: boolean;
   onSendAwayTeam: (targetId: string, type: 'boarding' | 'strike') => void;
   themeName: ThemeName;
+  desperationMoveAnimation: {
+      source: Ship;
+      target?: Ship;
+      type: string;
+      outcome?: 'success' | 'failure';
+  } | null;
 }
 
 const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
@@ -111,7 +117,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     gameState, onEndTurn, onFirePhasers, onLaunchTorpedo,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
-    playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName
+    playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
+    desperationMoveAnimation
 }) => {
     const playerShip = gameState.player.ship;
     
@@ -154,7 +161,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
-                <div className="flex flex-col space-y-2">
+                <div className="relative flex flex-col space-y-2">
                     {target ? <TargetInfo target={target} themeName={themeName} /> : (
                          <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
@@ -189,6 +196,12 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                                 {awayMissionState.text}
                             </button>
                         </div>
+                    )}
+
+                    {desperationMoveAnimation && (
+                        <DesperationMoveAnimation 
+                            animation={desperationMoveAnimation}
+                        />
                     )}
                 </div>
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
@@ -86,6 +85,7 @@ const App: React.FC = () => {
     isTurnResolving,
     awayMissionResult,
     eventResult,
+    desperationMoveAnimation,
     onEnergyChange,
     onEndTurn,
     onFirePhasers,
@@ -216,6 +216,7 @@ const App: React.FC = () => {
                     isTurnResolving={isTurnResolving}
                     onSendAwayTeam={onSendAwayTeam}
                     themeName={themeName}
+                    desperationMoveAnimation={desperationMoveAnimation}
                   />
               </div>
           </div>
