@@ -1,4 +1,3 @@
-
 import type { GameState, Ship } from '../../types';
 import { AIDirector } from './AIDirector';
 import type { AIActions } from './FactionAI';
@@ -12,7 +11,7 @@ export function processAITurns(
     const aiShips = gameState.currentSector.entities.filter((e): e is Ship => e.type === 'ship' && e.id !== 'player');
 
     for (const ship of aiShips) {
-        if (ship.hull <= 0) continue;
+        if (ship.hull <= 0 || ship.isDerelict || ship.captureInfo) continue;
 
         const factionAI = AIDirector.getAIForFaction(ship.faction);
 

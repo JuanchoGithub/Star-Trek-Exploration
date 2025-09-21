@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 // FIX: Added Position to the type import and changed QuadrantPosition to Position in createEntityFromTemplate signature.
@@ -22,6 +21,17 @@ import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 
 
 const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
+
+const getEnergyOutputMultiplier = (engineHealthPercent: number): number => {
+    const H = engineHealthPercent;
+    if (H > 0.75) {
+        return 0.9 + (H - 0.75) * 0.4; // Interpolate between (1.0, 1.0) and (0.75, 0.9)
+    }
+    if (H > 0.25) {
+        return 0.5 + (H - 0.25) * 0.8; // Interpolate between (0.75, 0.9) and (0.25, 0.5)
+    }
+    return H * 2; // Interpolate between (0.25, 0.5) and (0.0, 0.0)
+};
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -102,6 +112,9 @@ const createEntityFromTemplate = (
                 cloakState: 'visible',
                 cloakCooldown: 0,
                 isStunned: false,
+                engineFailureTurn: null,
+                isDerelict: false,
+                captureInfo: null,
             } as Ship;
         }
         case 'planet': {
@@ -217,6 +230,9 @@ const createInitialGameState = (): GameState => {
     cloakState: 'visible',
     cloakCooldown: 0,
     isStunned: false,
+    engineFailureTurn: null,
+    isDerelict: false,
+    captureInfo: null,
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -333,6 +349,9 @@ export const useGameLogic = () => {
                         }
                         ship.cloakCooldown = ship.cloakCooldown || 0;
                         ship.isStunned = ship.isStunned || false;
+                        if (ship.engineFailureTurn === undefined) ship.engineFailureTurn = null;
+                        if (ship.isDerelict === undefined) ship.isDerelict = false;
+                        if (ship.captureInfo === undefined) ship.captureInfo = null;
                     };
                     migrateShip(savedState.player.ship);
                      if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
@@ -701,7 +720,7 @@ export const useGameLogic = () => {
         const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
         processAITurns(next, aiActions);
         
-        // Shield regeneration and health checks for all ships
+        // Shield and Energy regeneration and health checks for all ships
         [playerShip, ...currentSector.entities].forEach(e => {
             if (e.type === 'ship') {
                 const ship = e as Ship;
@@ -717,6 +736,17 @@ export const useGameLogic = () => {
                 } else {
                     // If shields are too damaged, they go offline and cannot recharge.
                     ship.shields = 0;
+                }
+
+                // AI ship energy regeneration
+                if (ship.id !== 'player') {
+                    const engineHealthPercent = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
+                    if (engineHealthPercent > 0) {
+                        const energyMultiplier = getEnergyOutputMultiplier(engineHealthPercent);
+                        // AI gets a slightly lower base recharge to make attrition a viable strategy
+                        const rechargeAmount = Math.round(8 * energyMultiplier); 
+                        ship.energy.current = Math.min(ship.energy.max, ship.energy.current + rechargeAmount);
+                    }
                 }
             }
         });
@@ -770,8 +800,47 @@ export const useGameLogic = () => {
             playerShip.cloakCooldown--;
         }
 
+        // AI ship cloak state resolution
+        currentSector.entities.forEach(e => {
+            if (e.type === 'ship') {
+                const ship = e as Ship;
+                if (ship.id === 'player') return;
+
+                const aiStats = shipClasses[ship.shipModel]?.[ship.shipClass];
+                if (aiStats && ship.cloakingCapable) {
+                    if (ship.cloakState === 'cloaked') {
+                        const { success } = consumeEnergy(ship, aiStats.cloakEnergyCost.maintain);
+                        if (!success) {
+                            ship.cloakState = 'visible';
+                            ship.cloakCooldown = 3; // Cooldown after failure
+                            ship.isStunned = true;
+                            addLogForTurn({
+                                sourceId: ship.id,
+                                sourceName: ship.name,
+                                message: 'CRITICAL: Insufficient power to maintain cloak! Device failed, causing a ship-wide power surge. Systems are temporarily offline!',
+                                isPlayerSource: false,
+                                color: 'border-red-500'
+                            });
+                        }
+                    }
+                }
+                if (ship.cloakCooldown > 0) {
+                    ship.cloakCooldown--;
+                }
+            }
+        });
+
+        // Engine failure checks
+        allShips.forEach(ship => {
+            if (ship.subsystems.engines.health <= 0 && ship.engineFailureTurn === null) {
+                ship.engineFailureTurn = next.turn;
+                addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `CRITICAL: Main engineering has gone offline! No power is being generated!`, isPlayerSource: ship.id === 'player', color: 'border-red-500' });
+            }
+        });
+
         const destroyedIds = new Set<string>();
         currentSector.entities.forEach(e => {
+            if (e.type === 'ship' && (e as Ship).isDerelict) return;
             const entityWithHull = e as any;
             if (entityWithHull.hull !== undefined && entityWithHull.hull <= 0) {
                 if (e.type === 'torpedo_projectile') { addLogForTurn({ sourceId: 'system', sourceName: 'Tactical', message: `${e.name} was intercepted.`, isPlayerSource: false }); next.combatEffects.push({ type: 'torpedo_hit', position: e.position, delay: 0 }); }
@@ -792,7 +861,16 @@ export const useGameLogic = () => {
             next.isRetreatingWarp = true;
         }
         
-        if (playerShip.hull <= 0) { next.gameOver = true; addLogForTurn({ sourceId: 'system', sourceName: 'FATAL', message: "CRITICAL: U.S.S. Endeavour has been destroyed. Game Over.", isPlayerSource: false, color: 'border-red-700' }); }
+        if (playerShip.hull <= 0 && !playerShip.isDerelict) { 
+             if (playerShip.faction === 'Federation') {
+                triggerDesperationAnimation({ source: playerShip, type: 'evacuate' });
+                playerShip.isDerelict = true;
+                playerShip.hull = 1;
+                addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Hull breach critical! All hands abandon ship!`, isPlayerSource: true, color: 'border-red-700' });
+            }
+            next.gameOver = true; 
+            addLogForTurn({ sourceId: 'system', sourceName: 'FATAL', message: "CRITICAL: U.S.S. Endeavour has been lost. Game Over.", isPlayerSource: false, color: 'border-red-700' }); 
+        }
         
         const hasEnemies = next.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
         if (next.redAlert && !hasEnemies) {
@@ -817,13 +895,105 @@ export const useGameLogic = () => {
             if (energyDrain > 0) {
                 const { success, logs: energyLogs } = consumeEnergy(playerShip, energyDrain);
                 energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-                if (!success) addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `WARNING: Insufficient power for combat systems!`, isPlayerSource: true });
-                else addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Combat systems consumed ${energyDrain} reserve power.`, isPlayerSource: true });
+                if (!success) {
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `WARNING: Insufficient power for combat systems! Dropping shields!`, isPlayerSource: true });
+                    next.redAlert = false;
+                    playerShip.shields = 0;
+                    playerShip.evasive = false;
+                } else {
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Combat systems consumed ${energyDrain} reserve power.`, isPlayerSource: true });
+                }
             }
         } else if (!next.redAlert) {
-            if (playerShip.energy.current < playerShip.energy.max) { playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + 10); }
+            if (playerShip.energy.current < playerShip.energy.max) {
+                const engineHealthPercent = playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth;
+                const energyMultiplier = getEnergyOutputMultiplier(engineHealthPercent);
+                const rechargeAmount = Math.round(10 * energyMultiplier);
+                playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + rechargeAmount); 
+                if (energyMultiplier < 1.0) {
+                     addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Damaged engines operating at ${Math.round(energyMultiplier*100)}% efficiency. Recharged ${rechargeAmount} power.`, isPlayerSource: true });
+                }
+            }
         }
         
+        // Final checks for derelicts, repairs, and life support failure
+        const finalAllShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
+        finalAllShips.forEach(ship => {
+            // Life support checks due to engine failure. Skips captured ships under repair.
+            if (ship.engineFailureTurn !== null && !ship.isDerelict && !ship.captureInfo) {
+                ship.energy.current = Math.max(0, ship.energy.current - ship.energy.max * 0.10);
+
+                addLogForTurn({
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message: `Reserve power at ${ship.energy.current.toFixed(0)}/${ship.energy.max}. No power being generated.`,
+                    isPlayerSource: ship.id === 'player',
+                    color: 'border-orange-500'
+                });
+
+                if (ship.energy.current <= 0) {
+                    const turnsSinceFailure = next.turn - ship.engineFailureTurn;
+                    const turnsUntilFailure = 3 - turnsSinceFailure;
+
+                    if (turnsUntilFailure > 0) {
+                        addLogForTurn({
+                            sourceId: ship.id,
+                            sourceName: ship.name,
+                            message: `WARNING: Life support on emergency power. ${turnsUntilFailure} turn(s) until total system failure.`,
+                            isPlayerSource: ship.id === 'player',
+                            color: 'border-red-600'
+                        });
+                    } else if (!ship.isDerelict) { // This is the turn it fails
+                        ship.isDerelict = true;
+                        if (ship.faction === 'Federation') {
+                             triggerDesperationAnimation({ source: ship, type: 'evacuate' });
+                             addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has failed due to prolonged power loss! The crew is abandoning ship!`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
+                        } else {
+                             addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has failed due to prolonged power loss! The crew is lost.`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
+                        }
+                        if (ship.id === 'player') {
+                            next.gameOver = true;
+                        }
+                    }
+                }
+            }
+            
+            // Check for ongoing capture repairs and log progress
+            if (ship.captureInfo && next.turn > ship.captureInfo.repairTurn && next.turn < ship.captureInfo.repairTurn + 5) {
+                const captor = finalAllShips.find(s => s.id === ship.captureInfo!.captorId);
+                const turnsRemaining = (ship.captureInfo.repairTurn + 5) - next.turn;
+                addLogForTurn({
+                    sourceId: ship.captureInfo.captorId,
+                    sourceName: captor ? `${captor.name}'s Repair Crew` : 'Repair Crew',
+                    message: `Repairs on ${ship.name} continue. ${turnsRemaining} turn(s) until operational.`,
+                    isPlayerSource: ship.captureInfo.captorId === 'player',
+                });
+            }
+
+            // Check for completed capture repairs
+            if (ship.captureInfo && next.turn >= ship.captureInfo.repairTurn + 5) {
+                Object.values(ship.subsystems).forEach(subsystem => {
+                    if (subsystem.health < subsystem.maxHealth * 0.3) {
+                        subsystem.health = subsystem.maxHealth * 0.3;
+                    }
+                });
+                if (ship.hull < ship.maxHull * 0.3) {
+                    ship.hull = ship.maxHull * 0.3;
+                }
+                ship.energy.current = ship.energy.max * 0.5;
+                const captor = finalAllShips.find(s => s.id === ship.captureInfo!.captorId);
+                addLogForTurn({ 
+                    sourceId: ship.captureInfo.captorId, 
+                    sourceName: captor ? `${captor.name}'s Repair Crew` : 'Repair Crew', 
+                    message: `Emergency repairs on the ${ship.name} are complete. The ship is now operational.`, 
+                    isPlayerSource: ship.captureInfo.captorId === 'player'
+                });
+                ship.captureInfo = null;
+                ship.engineFailureTurn = null;
+                ship.isDerelict = false;
+            }
+        });
+
         next.turn++;
         addLogForTurn({ sourceId: 'system', sourceName: 'Log', message: `Turn ${next.turn} begins.`, isPlayerSource: false, color: 'border-gray-700' });
         
@@ -1394,15 +1564,26 @@ export const useGameLogic = () => {
             shipInNext.securityTeams.current--;
             addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Sending a security team to ${targetInNext.name}...`, isPlayerSource: true });
             
-            // Simplified combat logic
-            const successChance = type === 'boarding' ? 0.5 : 0.8;
+            let successChance = type === 'boarding' ? 0.5 : 0.8;
+            if (targetInNext.isDerelict && type === 'boarding') {
+                successChance = 1.0;
+            }
             const success = Math.random() < successChance;
 
             if (success) {
                 if (type === 'boarding') {
+                    const wasDerelict = targetInNext.isDerelict;
+
                     targetInNext.faction = 'Federation';
                     targetInNext.logColor = 'border-blue-300';
-                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Boarding successful! We have captured the ${targetInNext.name}!`, isPlayerSource: true });
+                    targetInNext.isDerelict = false;
+                    targetInNext.captureInfo = { captorId: shipInNext.id, repairTurn: next.turn };
+
+                    const message = wasDerelict
+                        ? `Boarding successful! We have secured the derelict ${targetInNext.name}! An engineering team is being dispatched to begin repairs.`
+                        : `Boarding successful! We have captured the ${targetInNext.name}! An engineering team is being dispatched to stabilize and repair the vessel.`;
+                        
+                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: message, isPlayerSource: true });
                 } else { // strike
                     const damage = 20 + Math.floor(Math.random() * 10);
                     targetInNext.hull = Math.max(0, targetInNext.hull - damage);

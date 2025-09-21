@@ -177,8 +177,18 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           let factionColor = 'text-gray-400';
           let entityName = entity.name;
           let transformStyle = { transform: `translate(-50%, -50%)` };
-          const isCloaked = entity.type === 'ship' && ((entity as Ship).cloakState === 'cloaked' || (entity as Ship).cloakState === 'cloaking');
-          const wrapperClass = isCloaked ? 'opacity-50 transition-opacity duration-500' : '';
+          
+          let wrapperClass = 'transition-opacity duration-500';
+          if (entity.type === 'ship') {
+              const ship = entity as Ship;
+              if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+                  wrapperClass += ' opacity-50';
+              }
+              if (ship.isDerelict) {
+                  wrapperClass += ' opacity-60 grayscale';
+                  entityName = `${entity.name} (Derelict)`;
+              }
+          }
 
           if (entity.type === 'torpedo_projectile') {
                const torpedo = entity as TorpedoProjectile;

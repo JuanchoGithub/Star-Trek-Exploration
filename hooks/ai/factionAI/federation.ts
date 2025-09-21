@@ -40,6 +40,9 @@ export class FederationAI extends FactionAI {
             gameState.currentSector.entities.push(shuttle);
         }
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.` });
-        ship.hull = 0;
+        
+        // Instead of being destroyed, the ship becomes a derelict hulk
+        ship.isDerelict = true;
+        ship.hull = 1; // Keep it on the map
     }
 }

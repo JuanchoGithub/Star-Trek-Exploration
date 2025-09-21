@@ -128,6 +128,19 @@ const TargetInfo: React.FC<{
         return { disabled: false, text: 'Begin Away Mission' };
     };
     const awayMissionState = getAwayMissionButtonState();
+    
+    let targetingButtonText = 'Targeting: Hull';
+    if (target.type === 'ship' && !isUnscannedShip) {
+        const shipTarget = target as Ship;
+        if (selectedSubsystem) {
+            const subsystem = shipTarget.subsystems[selectedSubsystem];
+            const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
+            targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
+        } else {
+            const healthPercent = Math.round((shipTarget.hull / shipTarget.maxHull) * 100);
+            targetingButtonText = `Targeting: Hull (${healthPercent}%)`;
+        }
+    }
 
     return (
         <div className="panel-style p-3 h-full flex flex-col">
@@ -187,7 +200,7 @@ const TargetInfo: React.FC<{
                             onClick={() => setPickerVisible(prev => !prev)}
                             className="w-full btn btn-secondary"
                         >
-                            Targeting: {selectedSubsystem ? subsystemFullNames[selectedSubsystem] : 'Hull'}
+                            {targetingButtonText}
                         </button>
                         {isPickerVisible && (
                             <div ref={pickerRef} className="absolute bottom-full left-0 right-0 mb-2 w-full panel-style p-2 z-10">

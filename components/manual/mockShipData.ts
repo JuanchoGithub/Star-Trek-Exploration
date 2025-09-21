@@ -19,6 +19,9 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         cloakState: 'visible',
         cloakCooldown: 0,
         isStunned: false,
+        engineFailureTurn: null,
+        isDerelict: false,
+        captureInfo: null,
     };
 };
 

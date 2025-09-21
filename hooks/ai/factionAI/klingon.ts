@@ -1,10 +1,13 @@
 import type { GameState, Ship } from '../../../types';
 import { AIActions, FactionAI } from '../FactionAI';
-import { processCommonTurn } from './common';
+import { processCommonTurn, tryCaptureDerelict } from './common';
 import { findClosestTarget } from '../aiUtilities';
 
 export class KlingonAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+        if (tryCaptureDerelict(ship, gameState, actions)) {
+            return; // Turn spent capturing
+        }
         processCommonTurn(ship, gameState.player.ship, gameState, actions.applyPhaserDamage, actions.addLog);
     }
 

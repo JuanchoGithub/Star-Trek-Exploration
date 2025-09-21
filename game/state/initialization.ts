@@ -208,6 +208,9 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                     cloakState: 'visible',
                     cloakCooldown: 0,
                     isStunned: false,
+                    engineFailureTurn: null,
+                    isDerelict: false,
+                    captureInfo: null,
                 } as Ship);
             }
         }
@@ -251,6 +254,9 @@ export const createInitialGameState = (): GameState => {
     cloakState: 'visible',
     cloakCooldown: 0,
     isStunned: false,
+    engineFailureTurn: null,
+    isDerelict: false,
+    captureInfo: null,
   };
 
   const playerCrew: BridgeOfficer[] = [
