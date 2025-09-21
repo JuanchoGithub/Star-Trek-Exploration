@@ -5,7 +5,8 @@ import { NavigationTargetIcon } from '../../assets/ui/icons';
 import { SectionHeader, SubHeader } from './shared';
 
 export const UISection: React.FC = () => {
-    const PlayerShipIcon = shipVisuals.Federation.roles.Explorer!.icon;
+    // FIX: Accessed ship visuals via ship class name ('Galaxy-class') instead of non-existent role.
+    const PlayerShipIcon = shipVisuals.Federation.classes['Galaxy-class']!.icon;
     const MClassIcon = planetTypes.M.icon;
     return (
         <div>

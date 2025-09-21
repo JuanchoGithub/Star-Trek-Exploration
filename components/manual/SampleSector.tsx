@@ -5,6 +5,8 @@ import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
+// FIX: Import shipClasses to find a representative ship class for a given role.
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
 interface SampleSectorProps {
     template: SectorTemplate;
@@ -22,14 +24,25 @@ const entityPositions = [
 const getIconForTemplate = (entityTemplate: EntityTemplate) => {
     switch (entityTemplate.type) {
         case 'ship': {
+            // FIX: Reworked logic to find a representative ship class for a given role to look up visuals.
             const faction = (entityTemplate.faction === 'Inherit' ? 'Federation' : entityTemplate.faction) as ShipModel;
             const visualConfig = shipVisuals[faction];
-            if (!visualConfig) return null;
-            const role = Array.isArray(entityTemplate.shipRole) ? entityTemplate.shipRole[0] : entityTemplate.shipRole || visualConfig.defaultRole;
-            const roleConfig = visualConfig.roles[role] ?? visualConfig.roles[visualConfig.defaultRole];
-            if (!roleConfig) return null;
-            const IconComponent = roleConfig.icon;
-            return <IconComponent className={`w-6 h-6 ${roleConfig.colorClass}`} />;
+            const factionAllClasses = shipClasses[faction];
+            if (!visualConfig || !factionAllClasses) return null;
+
+            const role = Array.isArray(entityTemplate.shipRole) ? entityTemplate.shipRole[0] : entityTemplate.shipRole;
+            if (!role) return null;
+
+            const matchingClassName = Object.keys(factionAllClasses).find(cn => factionAllClasses[cn].role === role);
+
+            const classNameToUse = matchingClassName || Object.keys(visualConfig.classes)[0];
+            if (!classNameToUse) return null;
+            
+            const classConfig = visualConfig.classes[classNameToUse];
+            if (!classConfig) return null;
+            
+            const IconComponent = classConfig.icon;
+            return <IconComponent className={`w-6 h-6 ${classConfig.colorClass}`} />;
         }
         case 'planet': {
             const planetClass = Array.isArray(entityTemplate.planetClass) ? entityTemplate.planetClass[0] : entityTemplate.planetClass || 'M';

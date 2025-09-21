@@ -1,15 +1,17 @@
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
-import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
 import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
-import { ShipModel, ShipRole } from '../../types';
+import { ShipModel } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
 import { torpedoType } from '../../assets/projectiles/configs/projectileType';
+import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
+import { PirateEscortIcon } from '../../assets/ships/icons';
+import { IndependentFreighterIcon } from '../../assets/ships/icons';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
     <div id={`registry-${name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
@@ -18,26 +20,147 @@ const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name
     </div>
 );
 
-const RoleEntry: React.FC<{ model: ShipModel, role: ShipRole, name: string, description: string }> = ({ model, role, name, description }) => {
-    const visualConfig = shipVisuals[model].roles[role];
-    if (!visualConfig) return null;
-    const stats = shipRoleStats[role];
+const shipTacticalInfo: Record<string, { description: string; notes: string; torpedoType?: string }> = {
+    // Federation
+    'Sovereign-class': {
+        description: 'The pinnacle of Starfleet engineering. This powerful dreadnought serves as a flagship, boasting formidable weaponry, advanced systems, and an exceptionally durable hull. The U.S.S. Endeavour is of this class.',
+        notes: 'Equipped with Quantum Torpedoes and a high-capacity shuttlebay for extensive away missions.',
+        torpedoType: 'Quantum',
+    },
+    'Constitution-class': {
+        description: 'A legendary class of heavy cruiser designed for long-range exploration and defense. It represents a perfect balance between scientific capability and combat readiness.',
+        notes: 'A true multi-role vessel, capable in almost any situation.',
+        torpedoType: 'Photon',
+    },
+    'Galaxy-class': {
+        description: 'A massive explorer-type vessel, designed for multi-generational missions into deep space. While not a dedicated warship, its immense size allows for incredibly powerful shields and robust systems, making it a defensive powerhouse.',
+        notes: 'Can perform saucer separation in extreme emergencies, though this feature is not implemented in this simulation.',
+        torpedoType: 'Photon',
+    },
+    'Intrepid-class': {
+        description: 'A small, swift scout ship equipped with the latest sensor technology. It is one of the fastest and most maneuverable ships in the fleet, ideal for reconnaissance and rapid response.',
+        notes: 'Equipped with bio-neural gel packs for enhanced performance, but lacks heavy armor.',
+        torpedoType: 'Photon',
+    },
+    'Defiant-class': {
+        description: 'Originally designed to fight the Borg, this escort is little more than an engine with weapons attached. It is exceptionally powerful for its size but lacks amenities for long-term missions.',
+        notes: 'Possesses a rare, treaty-permitted cloaking device, making it an excellent anti-cloak platform. Use in non-Federation space may cause diplomatic incidents.',
+        torpedoType: 'Quantum',
+    },
+    // Klingon
+    'B\'rel-class Bird-of-Prey': {
+        description: 'A classic Klingon vessel, the Bird-of-Prey is a versatile raider and scout. Its speed, cloaking device, and powerful forward-facing disruptors make it perfect for hit-and-run ambushes.',
+        notes: 'Vulnerable if its cloak is penetrated or if it is caught in a sustained fight.',
+        torpedoType: 'Photon',
+    },
+    'K\'t\'inga-class': {
+        description: "The workhorse of the Klingon Defense Force. This battlecruiser is a durable and straightforward assault vessel, designed for direct, honorable combat without the subtlety of a cloak.",
+        notes: 'Relies on brute force and heavy forward disruptor cannons.',
+        torpedoType: 'Photon',
+    },
+    'Vor\'cha-class': {
+        description: "A modern Klingon attack cruiser that balances firepower, durability, and maneuverability. Some variants are equipped with cloaking devices, making them a versatile and unpredictable mid-game threat.",
+        notes: 'Often serves as a command ship for smaller battle groups.',
+        torpedoType: 'Photon',
+    },
+    'Negh\'Var-class': {
+        description: 'The largest and most powerful warship in the Klingon fleet. A true battleship, it is slow but immensely powerful, capable of withstanding incredible punishment while delivering devastating barrages.',
+        notes: 'Lacks a cloaking device, announcing its formidable presence to all in the sector.',
+        torpedoType: 'Heavy Photon',
+    },
+    // Romulan
+    'D\'deridex-class': {
+        description: 'The iconic symbol of Romulan power. This massive warbird is a stealth powerhouse, combining a superior cloaking device with devastating plasma torpedoes to strike from the shadows.',
+        notes: 'Its primary weakness is its relatively slow speed and large target profile when decloaked.',
+        torpedoType: 'Heavy Plasma',
+    },
+    'Valdore-type': {
+        description: 'A newer, more agile class of warbird. While not as heavily armed as a D\'deridex, its speed and advanced cloaking systems make it a superb infiltrator and scout.',
+        notes: 'Often operates in pairs, a "Talon" of ships, to overwhelm targets.',
+        torpedoType: 'Plasma',
+    },
+    'Scimitar-class': {
+        description: 'A terrifyingly powerful command ship. While slow and ponderous, its overwhelming shields, incredible firepower, and advanced cloak make it a true flagship.',
+        notes: 'Complex power systems may cause a delay between decloaking and firing main weapons. Can fire while cloaked, a unique and deadly ability.',
+        torpedoType: 'Thalaron-laced Plasma',
+    },
+    // Pirate
+    'Orion Raider': {
+        description: 'A light, fast vessel favored by Orion pirates and other raiders. It is a classic scavenger and harasser, sacrificing durability for speed and maneuverability.',
+        notes: 'Often operates in packs and will flee if outmatched.',
+        torpedoType: 'Photon (Stolen)',
+    },
+    'Ferengi Marauder': {
+        description: 'While ostensibly a trade vessel, the D\'Kora-class Marauder is surprisingly well-armed. It is often used by Ferengi to "disrupt" trade rivals and defend their profitable ventures.',
+        notes: 'Favors disabling attacks on engines to capture vessels intact for "salvage".',
+        torpedoType: 'Photon',
+    },
+    'Nausicaan Battleship': {
+        description: 'A brute-force raider built for one purpose: smashing through defenses. It is slow and lacks finesse, but its heavy armor and powerful weapons make it a serious threat in a direct confrontation.',
+        notes: 'Will press the attack relentlessly, even when heavily damaged.',
+        torpedoType: 'Heavy Photon (Modified)',
+    },
+    // Independent
+    'Civilian Freighter': {
+        description: 'A common cargo hauler found throughout the quadrant. They have large hulls but are slow and possess only minimal defensive capabilities. Often require assistance when attacked.',
+        notes: 'Generally not a threat, but may be carrying valuable cargo.',
+        torpedoType: 'None',
+    }
+};
 
+const StatRating: React.FC<{ label: string, value: string }> = ({ label, value }) => (
+    <div>
+        <dt className="text-xs font-bold uppercase text-text-disabled">{label}</dt>
+        <dd className="text-sm text-text-primary">{value}</dd>
+    </div>
+);
+
+const getQualitativeRating = (value: number, thresholds: [number, number, number, number]): string => {
+    if (value >= thresholds[3]) return 'Extreme';
+    if (value >= thresholds[2]) return 'Very Strong';
+    if (value >= thresholds[1]) return 'Strong';
+    if (value >= thresholds[0]) return 'Medium';
+    return 'Light';
+};
+
+const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({ model, shipClass }) => {
+    const visualConfig = shipVisuals[model]?.classes[shipClass.name] ?? shipVisuals.Unknown.classes['Unknown'];
+    if (!visualConfig) return null;
+    
     const Wireframe = visualConfig.wireframe;
     const Icon = visualConfig.icon;
+    const tacticalInfo = shipTacticalInfo[shipClass.name] || { description: 'No tactical summary available.', notes: 'None' };
+
+    const weaponRating = getQualitativeRating(shipClass.subsystems.weapons.maxHealth, [80, 120, 160, 200]);
+    const shieldRating = getQualitativeRating(shipClass.maxShields, [60, 90, 110, 130]);
+    const hullRating = getQualitativeRating(shipClass.maxHull, [200, 300, 400, 500]);
 
     return (
-         <div className="grid grid-cols-[1fr_2fr] gap-4 items-center mb-6 p-3 bg-bg-paper-lighter rounded">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-start mb-6 p-3 bg-bg-paper-lighter rounded">
             <div className="flex flex-col items-center">
-                <div className="w-24 h-24"><Wireframe /></div>
-                <Icon className={`w-12 h-12 mt-2 ${visualConfig.colorClass}`} />
+                <div className="w-32 h-32"><Wireframe /></div>
+                <Icon className={`w-16 h-16 -mt-4 ${visualConfig.colorClass}`} />
             </div>
             <div>
-                <h4 className="text-lg font-bold text-secondary-light">{name}</h4>
-                <p className="text-text-secondary text-sm mb-2">{description}</p>
-                <p className="font-mono text-accent-orange text-xs bg-black p-2 rounded">
-                    HULL: {stats.maxHull} | SHIELDS: {stats.maxShields} | ENERGY: {stats.energy.max} | TORPS: {stats.torpedoes.max}
-                </p>
+                <h4 className="text-xl font-bold text-secondary-light">{shipClass.name}</h4>
+                <p className="text-md italic text-text-disabled mb-2">Role: {shipClass.role}</p>
+                <p className="text-text-secondary text-sm mb-3">{tacticalInfo.description}</p>
+                
+                <div className="panel-style p-3 bg-black">
+                    <h5 className="text-sm font-bold text-accent-yellow mb-2">Tactical Profile</h5>
+                    <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                        <StatRating label="Hull Integrity" value={`${hullRating} (${shipClass.maxHull})`} />
+                        <StatRating label="Shield Capacity" value={`${shieldRating} (${shipClass.maxShields})`} />
+                        <StatRating label="Weapon Power" value={weaponRating} />
+                        <StatRating label="Cloaking Device" value={shipClass.cloakingCapable ? 'Yes' : 'No'} />
+                        <StatRating label="Torpedoes" value={`${shipClass.torpedoes.max} (${tacticalInfo.torpedoType || 'Unknown'})`} />
+                        <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
+                        <div className="col-span-full">
+                            <dt className="text-xs font-bold uppercase text-text-disabled">Special Notes</dt>
+                            <dd className="text-sm text-text-primary">{tacticalInfo.notes}</dd>
+                        </div>
+                    </dl>
+                </div>
             </div>
         </div>
     )
@@ -62,7 +185,7 @@ const OtherEntityEntry: React.FC<{ config: {icon: React.FC<any>, wireframe: Reac
 };
 
 export const RegistrySection: React.FC = () => {
-    const PirateIcon = shipVisuals.Pirate.roles.Escort!.icon;
+    const PirateIcon = shipVisuals.Pirate.classes['Orion Raider']!.icon;
 
     return (
         <div>
@@ -72,29 +195,22 @@ export const RegistrySection: React.FC = () => {
                 <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
                 <a href="#registry-klingon-empire" className="btn btn-tertiary">Klingon</a>
                 <a href="#registry-romulan-star-empire" className="btn btn-tertiary">Romulan</a>
-                <a href="#registry-pirate-&-orion-syndicate" className="btn btn-tertiary">Pirate</a>
+                <a href="#registry-pirate-&-independent" className="btn btn-tertiary">Pirate &amp; Independent</a>
                 <a href="#registry-other-entities" className="btn btn-tertiary">Other Entities</a>
             </div>
             
             <FactionHeader name="Federation" icon={<StarfleetLogoIcon className="w-8 h-8" />} />
-            <RoleEntry model="Federation" role="Dreadnought" name="Dreadnought" description="A powerful capital ship representing the pinnacle of Federation engineering. Slower than other classes, but boasts formidable weaponry, advanced systems, and an exceptionally durable hull. The U.S.S. Endeavour is of this class." />
-            <RoleEntry model="Federation" role="Explorer" name="Explorer" description="Balanced vessels designed for long-range missions. They boast strong shields, versatile subsystems, and high energy reserves, but are not dedicated warships." />
-            <RoleEntry model="Federation" role="Cruiser" name="Cruiser" description="A heavier class of starship, serving as the fleet's backbone in combat situations. Well-armed and armored, they sacrifice some scientific utility for increased firepower and durability." />
-            <RoleEntry model="Federation" role="Escort" name="Escort" description="Small, fast, and highly maneuverable warships designed for patrol, interception, and fleet support. While fragile, their high damage output makes them a significant threat." />
-            <RoleEntry model="Federation" role="Freighter" name="Freighter" description="Civilian cargo haulers under Federation registry. They have large hulls but are slow and possess only minimal defensive capabilities. Often require assistance when attacked." />
+            {Object.values(shipClasses.Federation).map(sc => <ClassEntry key={sc.name} model="Federation" shipClass={sc} />)}
 
             <FactionHeader name="Klingon Empire" icon={<KlingonLogoIcon className="w-8 h-8 text-red-500" />} />
-            <RoleEntry model="Klingon" role="Cruiser" name="Cruiser (Bird-of-Prey)" description="The workhorse of the Klingon Defense Force. A versatile combat vessel with powerful disruptors and a cloaking device, designed for direct, honorable confrontation." />
-            <RoleEntry model="Klingon" role="Escort" name="Escort (Raptor)" description="A fast attack craft, more nimble than the standard Bird-of-Prey. Used for raiding, reconnaissance, and overwhelming smaller targets with speed and aggression." />
-            <RoleEntry model="Klingon" role="Freighter" name="Freighter" description="Armored Klingon transports. While primarily for cargo, they are more heavily armed than their civilian counterparts and should not be underestimated." />
+            {Object.values(shipClasses.Klingon).map(sc => <ClassEntry key={sc.name} model="Klingon" shipClass={sc} />)}
 
             <FactionHeader name="Romulan Star Empire" icon={<RomulanLogoIcon className="w-8 h-8 text-green-500" />} />
-            <RoleEntry model="Romulan" role="Cruiser" name="Cruiser (Warbird)" description="The iconic symbol of Romulan power. These massive warships are heavily armed and possess superior cloaking technology, preferring to strike from the shadows with devastating precision." />
-            <RoleEntry model="Romulan" role="Escort" name="Escort (Hawk)" description="A smaller, faster class of warship. While less powerful than a Warbird, they are still a deadly threat, often used for patrols along the Neutral Zone and for surgical strikes." />
+            {Object.values(shipClasses.Romulan).map(sc => <ClassEntry key={sc.name} model="Romulan" shipClass={sc} />)}
             
-            <FactionHeader name="Pirate & Orion Syndicate" icon={<PirateIcon className="w-8 h-8 text-orange-500" />} />
-            <RoleEntry model="Pirate" role="Escort" name="Raider/Escort" description="A fast, lightly armored ship favored by pirates. They are glass cannons, boasting high-powered engines and weapons but suffering from weak hulls and shields. Typically rely on ambush tactics." />
-            <RoleEntry model="Pirate" role="Cruiser" name="Cruiser" description="A captured and heavily modified freighter or older warship. Bristling with mismatched weapon systems and reinforced plating, these vessels are surprisingly durable and dangerous in a brawl." />
+            <FactionHeader name="Pirate & Independent" icon={<div className="flex items-center gap-2"><PirateIcon className="w-8 h-8 text-orange-500" /><IndependentFreighterIcon className="w-8 h-8 text-gray-300" /></div>} />
+            {Object.values(shipClasses.Pirate).map(sc => <ClassEntry key={sc.name} model="Pirate" shipClass={sc} />)}
+            {Object.values(shipClasses.Independent).map(sc => <ClassEntry key={sc.name} model="Independent" shipClass={sc} />)}
 
             <SubHeader id="registry-other-entities">Other Entities & Installations</SubHeader>
             {Object.values(starbaseTypes).map(starbase => (

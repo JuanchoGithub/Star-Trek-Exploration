@@ -32,12 +32,14 @@ interface BaseEntity {
   scanned: boolean;
 }
 
-export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter' | 'Dreadnought';
+export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter' | 'Dreadnought' | 'Scout' | 'Attack Cruiser' | 'Battleship' | 'Warbird' | 'Command Ship' | 'Raider' | 'Marauder';
 // FIX: Exported ShipModel type to be used across the application.
 export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
 
 export interface Ship extends BaseEntity {
   type: 'ship';
+  shipClass: string;
+  cloakingCapable: boolean;
   // FIX: Used the exported ShipModel type.
   shipModel: ShipModel;
   shipRole: ShipRole;
@@ -57,6 +59,8 @@ export interface Ship extends BaseEntity {
   repairTarget: 'hull' | keyof ShipSubsystems | null;
   logColor: string;
   lifeSupportReserves: { current: number; max: number };
+  isCloaked: boolean;
+  cloakCooldown: number; // Turns until cloak is available again
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';

@@ -14,3 +14,6 @@ export * from './DreadnoughtSaucerWireframe';
 export * from './DreadnoughtEngineeringWireframe';
 export * from './FreighterSaucerWireframe';
 export * from './FreighterEngineeringWireframe';
+export * from './DefiantWireframe';
+export * from './GalaxyWireframe';
+export * from './IntrepidWireframe';

@@ -84,6 +84,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const visibleEntities = allEntities.filter(entity => {
       if (entity.id === playerShip.id) return true;
+      if (entity.type === 'ship' && (entity as Ship).isCloaked && !entity.scanned) return false;
       if (scannerHealthPercent < 50) return false; // Below 50%, scanners are off.
       if (scannerHealthPercent < 90) {
           // Below 90%, can only see large objects.
@@ -176,6 +177,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           let factionColor = 'text-gray-400';
           let entityName = entity.name;
           let transformStyle = { transform: `translate(-50%, -50%)` };
+          const isCloaked = entity.type === 'ship' && (entity as Ship).isCloaked;
+          const wrapperClass = isCloaked ? 'opacity-50' : '';
 
           if (entity.type === 'torpedo_projectile') {
                const torpedo = entity as TorpedoProjectile;
@@ -217,28 +220,27 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
               const shipEntity = entity as Ship;
               
               if (!shipEntity.scanned && !isPlayer) {
-                  const config = shipVisuals.Unknown.roles.Unknown!;
+                  const config = shipVisuals.Unknown.classes['Unknown']!;
                   const IconComponent = config.icon;
                   icon = <IconComponent className="w-8 h-8"/>;
                   factionColor = config.colorClass;
                   entityName = 'Unknown Contact';
               } else {
                   const visualConfig = shipVisuals[shipEntity.shipModel];
-                  const roleConfig = visualConfig?.roles[shipEntity.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
-                  const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown!;
-                  const IconComponent = finalConfig.icon;
+                  const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+                  const IconComponent = classConfig.icon;
                   icon = <IconComponent className="w-8 h-8"/>;
                   
                   if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
-                      factionColor = shipVisuals.Federation.roles.Explorer!.colorClass;
+                      factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
                   } else {
-                      factionColor = finalConfig.colorClass;
+                      factionColor = classConfig.colorClass;
                   }
               }
 
           } else if (entity.type === 'shuttle') {
               icon = <FederationShuttleIcon className="w-6 h-6" />;
-              factionColor = shipVisuals.Federation.roles.Explorer!.colorClass;
+              factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
           } else if (entity.type === 'starbase') {
               const starbase = entity as Starbase;
               const config = starbaseTypes[starbase.starbaseType];
@@ -273,7 +275,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           return (
               <div
                   key={entity.id}
-                  className={`absolute flex flex-col items-center justify-center transition-all duration-300 z-30 cursor-pointer`}
+                  className={`absolute flex flex-col items-center justify-center transition-all duration-300 z-30 cursor-pointer ${wrapperClass}`}
                   style={{ 
                       left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, 
                       top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,

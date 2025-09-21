@@ -8,11 +8,11 @@ interface RomulanEscapeAnimationProps {
 }
 
 const RomulanEscapeAnimation: React.FC<RomulanEscapeAnimationProps> = ({ source, outcome }) => {
+    // FIX: Replaced incorrect logic that used 'roles' with correct logic using 'classes' and ship.shipClass.
     const getShipIcon = (ship: Ship) => {
         const visualConfig = shipVisuals[ship.shipModel];
-        const roleConfig = visualConfig?.roles[ship.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
-        const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown!;
-        return { Icon: finalConfig.icon, colorClass: finalConfig.colorClass };
+        const classConfig = visualConfig?.classes[ship.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+        return { Icon: classConfig.icon, colorClass: classConfig.colorClass };
     };
 
     const { Icon: SourceIcon, colorClass: sourceColor } = getShipIcon(source);

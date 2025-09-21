@@ -15,7 +15,8 @@ const FederationEvacuateAnimation: React.FC<FederationEvacuateAnimationProps> = 
     const shuttles = Array.from({ length: shuttleCount });
     
     // Dynamically get wireframes from shipVisuals config, with fallbacks
-    const visualConfig = shipVisuals[source.shipModel]?.roles[source.shipRole];
+    // FIX: Accessed ship visuals via ship class instead of non-existent role.
+    const visualConfig = shipVisuals[source.shipModel]?.classes[source.shipClass];
 
     const FullWireframe = visualConfig?.wireframe || FederationExplorerWireframe;
     const SaucerWireframe = visualConfig?.saucerWireframe || FederationExplorerSaucerWireframe;

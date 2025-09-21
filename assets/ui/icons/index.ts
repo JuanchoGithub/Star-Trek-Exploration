@@ -16,6 +16,7 @@ export * from './TransporterIcon';
 export * from './WeaponIcon';
 export * from './FactionIcons';
 export * from './StarfleetLogoIcon';
+export * from './CloakIcon';
 // FIX: Export icons from subdirectories to make them available for import.
 export * from './klingon';
 export * from './romulan';

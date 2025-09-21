@@ -15,6 +15,7 @@ import { RetreatIcon } from './RetreatIcon';
 import { StarfleetLogoIcon } from './StarfleetLogoIcon';
 import { ShuttleIcon } from './ShuttleIcon';
 import { PhaserIcon } from './PhaserIcon';
+import { CloakIcon } from './CloakIcon';
 
 // Klingon
 import { KlingonWeaponIcon } from './klingon/KlingonWeaponIcon';
@@ -46,6 +47,7 @@ const federationIcons = {
     DilithiumIcon,
     ScanIcon,
     RetreatIcon,
+    CloakIcon,
     HailIcon: StarfleetLogoIcon,
     BoardingIcon: ShuttleIcon,
     StrikeTeamIcon: PhaserIcon,

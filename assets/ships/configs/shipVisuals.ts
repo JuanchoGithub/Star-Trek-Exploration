@@ -1,23 +1,21 @@
 import React from 'react';
-// FIX: Imported missing ShipModel and ShipRole types.
-import type { ShipModel, ShipRole } from '../../../types';
+import type { ShipModel } from '../../../types';
 
 import { 
-    FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon, FederationDreadnoughtIcon
+    FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon, FederationDreadnoughtIcon, IntrepidIcon, DefiantIcon, GalaxyIcon
 } from '../icons/federation';
 import { 
-    KlingonCruiserIcon, KlingonEscortIcon, KlingonFreighterIcon
+    KlingonCruiserIcon, KlingonEscortIcon, VorchaIcon, NeghvarIcon
 } from '../icons/klingon';
 import { 
-    RomulanCruiserIcon, RomulanEscortIcon
+    RomulanEscortIcon, DderidexIcon, ValdoreIcon, ScimitarIcon
 } from '../icons/romulan';
 import {
-    PirateCruiserIcon, PirateEscortIcon
+    OrionRaiderIcon, FerengiMarauderIcon, NausicaanBattleshipIcon
 } from '../icons/pirate';
 import {
     IndependentFreighterIcon, IndependentExplorerIcon
 } from '../icons/independent';
-// FIX: Replaced import of missing UnknownShipIcon with a suitable fallback from an existing file.
 import { EventBeaconIcon } from '../../beacons/icons';
 
 import {
@@ -26,25 +24,25 @@ import {
     FederationCruiserSaucerWireframe, FederationCruiserEngineeringWireframe,
     FederationEscortSaucerWireframe, FederationEscortEngineeringWireframe,
     FederationDreadnoughtSaucerWireframe, FederationDreadnoughtEngineeringWireframe,
-    FederationFreighterSaucerWireframe, FederationFreighterEngineeringWireframe
+    FederationFreighterSaucerWireframe, FederationFreighterEngineeringWireframe,
+    IntrepidWireframe, DefiantWireframe, GalaxyWireframe,
 } from '../wireframes/federation';
 import {
-    KlingonCruiserWireframe, KlingonEscortWireframe, KlingonFreighterWireframe
+    KlingonCruiserWireframe, KlingonEscortWireframe, VorchaWireframe, NeghvarWireframe,
 } from '../wireframes/klingon';
 import {
-    RomulanCruiserWireframe, RomulanEscortWireframe
+    DderidexWireframe, ValdoreWireframe, ScimitarWireframe
 } from '../wireframes/romulan';
 import {
-    PirateCruiserWireframe, PirateEscortWireframe
+    OrionRaiderWireframe, FerengiMarauderWireframe, NausicaanBattleshipWireframe,
 } from '../wireframes/pirate';
 import {
     IndependentFreighterWireframe, IndependentExplorerWireframe
 } from '../wireframes/independent';
-// FIX: Replaced import of missing UnknownShipWireframe with a suitable fallback from an existing file.
 import { EventBeaconWireframe } from '../../beacons/wireframes';
 
 
-export interface ShipTypeConfig {
+export interface ShipVisualsConfig {
     icon: React.FC<React.SVGProps<SVGSVGElement>>;
     wireframe: React.FC;
     colorClass: string;
@@ -52,89 +50,80 @@ export interface ShipTypeConfig {
     engineeringWireframe?: React.FC;
 }
 
-// FIX: Modified FactionVisuals to allow for the special 'Unknown' role key.
 export interface FactionVisuals {
-    defaultRole: ShipRole;
-    // FIX: Simplified the union type to a single Partial Record to resolve type errors.
-    roles: Partial<Record<ShipRole | 'Unknown', ShipTypeConfig>>;
+    classes: Partial<Record<string, ShipVisualsConfig>>;
 }
 
-// FIX: Corrected the type to use an index signature of `ShipModel | 'Unknown'`.
 export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
     Federation: {
-        defaultRole: 'Explorer',
-        roles: {
-            Explorer: { 
-                icon: FederationExplorerIcon, 
-                wireframe: FederationExplorerWireframe, 
-                colorClass: 'text-blue-400',
-                saucerWireframe: FederationExplorerSaucerWireframe,
-                engineeringWireframe: FederationExplorerEngineeringWireframe,
-            },
-            Cruiser: { 
-                icon: FederationCruiserIcon, 
-                wireframe: FederationCruiserWireframe, 
-                colorClass: 'text-blue-300',
-                saucerWireframe: FederationCruiserSaucerWireframe,
-                engineeringWireframe: FederationCruiserEngineeringWireframe,
-            },
-            Escort: { 
-                icon: FederationEscortIcon, 
-                wireframe: FederationEscortWireframe, 
-                colorClass: 'text-sky-400',
-                saucerWireframe: FederationEscortSaucerWireframe,
-                engineeringWireframe: FederationEscortEngineeringWireframe,
-            },
-            Freighter: { 
-                icon: FederationFreighterIcon, 
-                wireframe: FederationFreighterWireframe, 
-                colorClass: 'text-cyan-400',
-                saucerWireframe: FederationFreighterSaucerWireframe,
-                engineeringWireframe: FederationFreighterEngineeringWireframe,
-            },
-            Dreadnought: { 
+        classes: {
+            'Sovereign-class': { 
                 icon: FederationDreadnoughtIcon, 
                 wireframe: FederationDreadnoughtWireframe, 
                 colorClass: 'text-indigo-400',
                 saucerWireframe: FederationDreadnoughtSaucerWireframe,
                 engineeringWireframe: FederationDreadnoughtEngineeringWireframe,
             },
+            'Constitution-class': { 
+                icon: FederationCruiserIcon, 
+                wireframe: FederationCruiserWireframe, 
+                colorClass: 'text-blue-300',
+                saucerWireframe: FederationCruiserSaucerWireframe,
+                engineeringWireframe: FederationCruiserEngineeringWireframe,
+            },
+             'Galaxy-class': { 
+                icon: GalaxyIcon, 
+                wireframe: GalaxyWireframe, 
+                colorClass: 'text-blue-400',
+                saucerWireframe: FederationExplorerSaucerWireframe,
+                engineeringWireframe: FederationExplorerEngineeringWireframe,
+            },
+            'Intrepid-class': { 
+                icon: IntrepidIcon, 
+                wireframe: IntrepidWireframe, 
+                colorClass: 'text-sky-300',
+                saucerWireframe: FederationEscortSaucerWireframe, // Fallback
+                engineeringWireframe: FederationEscortEngineeringWireframe, // Fallback
+            },
+            'Defiant-class': { 
+                icon: DefiantIcon, 
+                wireframe: DefiantWireframe, 
+                colorClass: 'text-sky-400',
+                saucerWireframe: FederationEscortSaucerWireframe, // Fallback
+                engineeringWireframe: FederationEscortEngineeringWireframe, // Fallback
+            },
         }
     },
     Klingon: {
-        defaultRole: 'Cruiser',
-        roles: {
-            Cruiser: { icon: KlingonCruiserIcon, wireframe: KlingonCruiserWireframe, colorClass: 'text-red-500' },
-            Escort: { icon: KlingonEscortIcon, wireframe: KlingonEscortWireframe, colorClass: 'text-red-400' },
-            Freighter: { icon: KlingonFreighterIcon, wireframe: KlingonFreighterWireframe, colorClass: 'text-orange-400' },
+        classes: {
+            'K\'t\'inga-class': { icon: KlingonCruiserIcon, wireframe: KlingonCruiserWireframe, colorClass: 'text-red-500' },
+            'B\'rel-class Bird-of-Prey': { icon: KlingonEscortIcon, wireframe: KlingonEscortWireframe, colorClass: 'text-red-400' },
+            'Vor\'cha-class': { icon: VorchaIcon, wireframe: VorchaWireframe, colorClass: 'text-red-400' },
+            'Negh\'Var-class': { icon: NeghvarIcon, wireframe: NeghvarWireframe, colorClass: 'text-red-600' },
         }
     },
     Romulan: {
-        defaultRole: 'Cruiser',
-        roles: {
-            Cruiser: { icon: RomulanCruiserIcon, wireframe: RomulanCruiserWireframe, colorClass: 'text-green-500' },
-            Escort: { icon: RomulanEscortIcon, wireframe: RomulanEscortWireframe, colorClass: 'text-green-400' },
+        classes: {
+            'D\'deridex-class': { icon: DderidexIcon, wireframe: DderidexWireframe, colorClass: 'text-teal-400' },
+            'Valdore-type': { icon: ValdoreIcon, wireframe: ValdoreWireframe, colorClass: 'text-green-300' },
+            'Scimitar-class': { icon: ScimitarIcon, wireframe: ScimitarWireframe, colorClass: 'text-teal-500' },
         }
     },
     Pirate: {
-        defaultRole: 'Escort',
-        roles: {
-            Escort: { icon: PirateEscortIcon, wireframe: PirateEscortWireframe, colorClass: 'text-orange-500' },
-            Cruiser: { icon: PirateCruiserIcon, wireframe: PirateCruiserWireframe, colorClass: 'text-yellow-500' },
+        classes: {
+            'Orion Raider': { icon: OrionRaiderIcon, wireframe: OrionRaiderWireframe, colorClass: 'text-orange-400' },
+            'Ferengi Marauder': { icon: FerengiMarauderIcon, wireframe: FerengiMarauderWireframe, colorClass: 'text-yellow-600' },
+            'Nausicaan Battleship': { icon: NausicaanBattleshipIcon, wireframe: NausicaanBattleshipWireframe, colorClass: 'text-orange-600' },
         }
     },
     Independent: {
-        defaultRole: 'Freighter',
-        roles: {
-            Freighter: { icon: IndependentFreighterIcon, wireframe: IndependentFreighterWireframe, colorClass: 'text-gray-300' },
-            Explorer: { icon: IndependentExplorerIcon, wireframe: IndependentExplorerWireframe, colorClass: 'text-gray-400' },
+        classes: {
+            'Civilian Freighter': { icon: IndependentFreighterIcon, wireframe: IndependentFreighterWireframe, colorClass: 'text-gray-300' },
         }
     },
     Unknown: {
-        defaultRole: 'Explorer', // Not used, but required for type
-        roles: {
-            // FIX: Using EventBeacon assets as a fallback for the missing UnknownShip assets.
-            Unknown: { icon: EventBeaconIcon, wireframe: EventBeaconWireframe, colorClass: 'text-yellow-400' }
+        classes: {
+            'Unknown': { icon: EventBeaconIcon, wireframe: EventBeaconWireframe, colorClass: 'text-yellow-400' }
         }
     }
 };

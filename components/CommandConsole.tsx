@@ -2,6 +2,7 @@ import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
@@ -10,6 +11,7 @@ interface CommandConsoleProps {
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
+  onToggleCloak: () => void;
   retreatingTurn: number | null;
   currentTurn: number;
   hasTarget: boolean;
@@ -22,13 +24,15 @@ interface CommandConsoleProps {
   target?: Entity;
   targeting?: GameState['player']['targeting'];
   themeName: ThemeName;
+  gameState: GameState;
 }
 
-const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, accentColor: string}> = ({ onClick, disabled, children, accentColor }) => (
+const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, accentColor: string, title?: string}> = ({ onClick, disabled, children, accentColor, title }) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className={`w-full text-left font-bold transition-all flex items-center gap-3 btn btn-accent ${accentColor}`}
+    title={title}
   >
     {children}
   </button>
@@ -40,10 +44,10 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, onLaunchTorpedo,
+    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
     onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
     retreatingTurn, currentTurn, hasTarget, hasEnemy, 
-    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName
+    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn >= currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
@@ -69,8 +73,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   
   const isTargetFriendly = target?.faction === 'Federation';
   const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
-  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health >= playerShip.subsystems.transporter.maxHealth;
-  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon } = getFactionIcons(themeName);
+  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxHull) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health >= playerShip.subsystems.transporter.maxHealth;
+  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
@@ -81,6 +85,15 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const phaserButtonText = isTargetingSubsystem
     ? `Phasers (${targeting.subsystem.charAt(0).toUpperCase()})`
     : 'Phasers';
+
+  const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
+  const canCloak = playerShip.cloakingCapable && cloakStats;
+  const isCloakOnCooldown = playerShip.cloakCooldown > 0 && !playerShip.isCloaked;
+  const cannotCloakReason = 
+      !canCloak ? "Cloaking device not equipped" :
+      isCloakOnCooldown ? `Cloak recharging (${playerShip.cloakCooldown} turns)` : 
+      (gameState.redAlert && !playerShip.isCloaked) ? "Cannot cloak while at Red Alert" : 
+      "";
 
   return (
     <div className="flex flex-col h-full">
@@ -93,6 +106,14 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || isRetreating || isTurnResolving || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
+                </CommandButton>
+                 <CommandButton 
+                    onClick={onToggleCloak} 
+                    disabled={!canCloak || isCloakOnCooldown || (gameState.redAlert && !playerShip.isCloaked) || isTurnResolving}
+                    accentColor="teal"
+                    title={cannotCloakReason}
+                 >
+                    <CloakIcon className="w-5 h-5" /> {playerShip.isCloaked ? 'Decloak' : 'Cloak'}
                 </CommandButton>
                 <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
                     <BoardingIcon className="w-5 h-5" /> Board

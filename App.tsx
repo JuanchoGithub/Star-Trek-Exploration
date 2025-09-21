@@ -120,6 +120,7 @@ const App: React.FC = () => {
     onCloseEventResult,
     onScanQuadrant,
     onEnterOrbit,
+    onToggleCloak,
   } = useGameLogic();
 
   const { theme, themeName, setTheme } = useTheme();
@@ -199,6 +200,7 @@ const App: React.FC = () => {
                     onEndTurn={onEndTurn}
                     onFirePhasers={onFirePhasers}
                     onLaunchTorpedo={onLaunchTorpedo}
+                    onToggleCloak={onToggleCloak}
                     target={target}
                     isDocked={isDocked}
                     onDockWithStarbase={onDockWithStarbase}
@@ -232,6 +234,7 @@ const App: React.FC = () => {
                   onToggleRedAlert={onToggleRedAlert}
                   onEvasiveManeuvers={onEvasiveManeuvers}
                   onSelectRepairTarget={onSelectRepairTarget}
+                  onToggleCloak={onToggleCloak}
                   themeName={themeName}
               />
           </div>

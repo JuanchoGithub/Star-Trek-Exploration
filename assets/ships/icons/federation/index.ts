@@ -4,3 +4,6 @@ export * from './EscortIcon';
 export * from './FreighterIcon';
 export * from './DreadnoughtIcon';
 export * from './ShuttleIcon';
+export * from './DefiantIcon';
+export * from './GalaxyIcon';
+export * from './IntrepidIcon';

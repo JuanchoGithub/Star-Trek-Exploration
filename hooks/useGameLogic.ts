@@ -1,14 +1,14 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 // FIX: Added Position to the type import and changed QuadrantPosition to Position in createEntityFromTemplate signature.
-import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems, SectorTemplate, EntityTemplate, FactionOwner, Position, StarbaseType } from '../types';
+import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems, SectorTemplate, EntityTemplate, FactionOwner, Position, StarbaseType, ShipRole } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { applyPhaserDamage } from './combatUtilities';
 import { processAITurns } from './ai/aiProcessor';
 import { AIActions } from './ai/FactionAI';
-import { shipRoleStats } from '../assets/ships/configs/shipRoleStats';
-import { ShipRole } from '../types';
+import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { seededRandom, cyrb53 } from './ai/aiUtilities';
 import { consumeEnergy } from './combatUtilities';
 import { uniqueId, moveOneStep } from './ai/aiUtilities';
@@ -61,25 +61,36 @@ const createEntityFromTemplate = (
 
     switch (template.type) {
         case 'ship': {
-            if (chosenFaction === 'None' || chosenFaction === 'Unknown') return null;
-            let shipRole: ShipRole;
+            if (chosenFaction === 'None' || chosenFaction === 'Unknown' || chosenFaction === 'Federation') return null; // Player faction ships are not randomly generated this way
+            
+            const factionShipClasses = shipClasses[chosenFaction];
+            if (!factionShipClasses) return null;
+
+            let potentialRoles: ShipRole[];
             if (Array.isArray(template.shipRole)) {
-                shipRole = template.shipRole[Math.floor(Math.random() * template.shipRole.length)];
+                potentialRoles = template.shipRole;
+            } else if (template.shipRole) {
+                potentialRoles = [template.shipRole];
             } else {
-                shipRole = template.shipRole || 'Escort';
+                potentialRoles = Object.values(factionShipClasses).map(c => c.role);
             }
 
-            const stats = shipRoleStats[shipRole];
+            const validClasses = Object.values(factionShipClasses).filter(c => potentialRoles.includes(c.role));
+            if (validClasses.length === 0) return null;
+
+            const stats = validClasses[Math.floor(Math.random() * validClasses.length)];
+
             let energyAllocation: Ship['energyAllocation'];
             switch (chosenFaction) {
                 case 'Klingon': case 'Romulan': energyAllocation = { weapons: 50, shields: 50, engines: 0 }; break;
                 case 'Pirate': energyAllocation = { weapons: 60, shields: 40, engines: 0 }; break;
-                case 'Federation': energyAllocation = { weapons: 33, shields: 34, engines: 33 }; break;
                 default: energyAllocation = { weapons: 0, shields: 0, engines: 100 }; break;
             }
 
             return {
-                id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction, shipRole, faction: chosenFaction, position, 
+                id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction, 
+                shipClass: stats.name, shipRole: stats.role, cloakingCapable: stats.cloakingCapable,
+                faction: chosenFaction, position, 
                 hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields, 
                 energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation, 
                 torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, 
@@ -87,7 +98,9 @@ const createEntityFromTemplate = (
                 securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, 
                 dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, 
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), 
-                lifeSupportReserves: { current: 100, max: 100 }
+                lifeSupportReserves: { current: 100, max: 100 },
+                isCloaked: false,
+                cloakCooldown: 0,
             } as Ship;
         }
         case 'planet': {
@@ -187,9 +200,10 @@ const createSectorFromTemplate = (
 
 
 const createInitialGameState = (): GameState => {
-  const playerStats = shipRoleStats.Dreadnought;
+  const playerStats = shipClasses.Federation['Sovereign-class'];
   const playerShip: Ship = {
-    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', shipRole: 'Dreadnought',
+    id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', 
+    shipClass: playerStats.name, shipRole: playerStats.role, cloakingCapable: playerStats.cloakingCapable,
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
@@ -199,6 +213,8 @@ const createInitialGameState = (): GameState => {
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
     lifeSupportReserves: { current: 100, max: 100 },
+    isCloaked: false,
+    cloakCooldown: 0,
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -281,17 +297,14 @@ export const useGameLogic = () => {
                             ship.shipModel = (ship as any).shipClass;
                             delete (ship as any).shipClass;
                         }
-                        if (!ship.shipRole) {
-                            let role: ShipRole;
-                            let model = ship.shipModel || ship.faction;
-                            switch(model) {
-                                case 'Klingon': case 'Romulan': role = 'Cruiser'; break;
-                                case 'Pirate': role = 'Escort'; break;
-                                case 'Federation': role = 'Dreadnought'; break;
-                                default: role = 'Freighter'; break;
-                            }
-                            ship.shipRole = role;
-                            const stats = shipRoleStats[role];
+                        const factionClasses = shipClasses[ship.shipModel];
+                        const matchingClass = factionClasses ? Object.values(factionClasses).find(c => c.name === ship.shipClass) : null;
+                        
+                        if (!ship.shipRole || matchingClass) {
+                            const stats = matchingClass || shipClasses.Independent['Civilian Freighter'];
+                            ship.shipRole = stats.role;
+                            ship.shipClass = stats.name;
+                            ship.cloakingCapable = stats.cloakingCapable;
                             ship.maxHull = stats.maxHull;
                             ship.hull = Math.min(ship.hull, stats.maxHull);
                             ship.maxShields = stats.maxShields;
@@ -310,6 +323,8 @@ export const useGameLogic = () => {
                         }
                         if((ship as any).desperationMove !== undefined) delete (ship as any).desperationMove;
                         if (!ship.lifeSupportReserves) ship.lifeSupportReserves = { current: 100, max: 100 };
+                        if (ship.isCloaked === undefined) ship.isCloaked = false;
+                        if (ship.cloakCooldown === undefined) ship.cloakCooldown = 0;
                     };
                     migrateShip(savedState.player.ship);
                      if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
@@ -555,11 +570,17 @@ export const useGameLogic = () => {
             }
         }
         
+        if (playerShip.isCloaked && (playerTurnActions.combat || playerTurnActions.hasLaunchedTorpedo || playerTurnActions.hasUsedAwayTeam)) {
+            playerShip.isCloaked = false;
+            playerShip.cloakCooldown = 2; // Standard cooldown after offensive action
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Taking offensive action has disengaged the cloaking device.', isPlayerSource: true });
+        }
+        
         if (playerShip.retreatingTurn !== null) {
             addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Attempting to retreat, cannot take other actions.", isPlayerSource: true });
         } else {
             if (navigationTarget) {
-                const movementSpeed = next.redAlert ? 1 : 3;
+                const movementSpeed = (next.redAlert || playerShip.isCloaked) ? 1 : 3;
                 let moved = false; const initialPosition = { ...playerShip.position };
                 for (let i = 0; i < movementSpeed; i++) {
                     if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) break;
@@ -682,6 +703,23 @@ export const useGameLogic = () => {
                 ship.lifeSupportReserves.current = Math.min(ship.lifeSupportReserves.max, ship.lifeSupportReserves.current + (100/80)); // Regenerate over 4 days
             }
         });
+
+        // Player ship cloak maintenance and cooldown
+        if (playerShip.cloakCooldown > 0 && !playerShip.isCloaked) {
+            playerShip.cloakCooldown--;
+        }
+        if (playerShip.isCloaked) {
+            const stats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
+            if (stats && stats.cloakingCapable) {
+                const { success, logs: energyLogs } = consumeEnergy(playerShip, stats.cloakEnergyCost.maintain);
+                energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
+                if (!success) {
+                    playerShip.isCloaked = false;
+                    playerShip.cloakCooldown = 3;
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Insufficient power to maintain cloak! Cloaking device disengaged.', isPlayerSource: true, color: 'border-orange-400' });
+                }
+            }
+        }
 
         const destroyedIds = new Set<string>();
         currentSector.entities.forEach(e => {
@@ -1294,6 +1332,63 @@ export const useGameLogic = () => {
         });
     }, [addLog]);
 
+    const onToggleCloak = useCallback(() => {
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+
+            if (!ship.cloakingCapable) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true });
+                return prev;
+            }
+
+            const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
+            if (!stats) return prev;
+
+            if (ship.isCloaked) {
+                // Decloaking
+                ship.isCloaked = false;
+                ship.cloakCooldown = 2; // Cooldown after decloaking
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged.", isPlayerSource: true });
+            } else {
+                // Cloaking
+                if (ship.cloakCooldown > 0) {
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true });
+                    return prev;
+                }
+                if (next.redAlert) {
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while at Red Alert.", isPlayerSource: true });
+                    return prev;
+                }
+
+                const { success, logs } = consumeEnergy(ship, stats.cloakEnergyCost.initial);
+                logs.forEach((log: any) => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true }));
+                if (!success) {
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Insufficient power to engage cloaking device.", isPlayerSource: true });
+                    return next;
+                }
+                
+                addLog({ sourceId: 'player', sourceName: ship.name, message: `Consumed ${stats.cloakEnergyCost.initial} power to engage cloak.`, isPlayerSource: true });
+
+                if (Math.random() < stats.cloakFailureChance) {
+                    ship.cloakCooldown = 3;
+                    const subsystems: (keyof ShipSubsystems)[] = ['engines', 'shields', 'weapons'];
+                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
+                    const damage = 10 + Math.floor(Math.random() * 10);
+                    targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+                    addLog({ sourceId: 'system', sourceName: 'Engineering', message: `Cloaking device failed to engage! A plasma feedback damaged the ${randomSubsystemKey} system!`, isPlayerSource: false, color: 'border-red-500' });
+
+                } else {
+                    ship.isCloaked = true;
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device engaged.", isPlayerSource: true });
+                }
+            }
+
+            return next;
+        });
+    }, [addLog]);
+
     return {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
         playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
@@ -1301,6 +1396,6 @@ export const useGameLogic = () => {
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, onRechargeDilithium,
         onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
-        onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit,
+        onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak,
     };
 };

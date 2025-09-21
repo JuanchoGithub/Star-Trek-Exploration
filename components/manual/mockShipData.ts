@@ -3,15 +3,23 @@ import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
 import { shipNames } from '../../assets/ships/configs/shipNames';
 
 // A helper to create a mock ship object
-const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: string): Ship => ({
-    id, name, type: 'ship', shipModel: model, shipRole: role, faction: model,
-    position: { x: 0, y: 0 }, hull: 1, maxHull: shipRoleStats[role].maxHull,
-    shields: 0, maxShields: shipRoleStats[role].maxShields,
-    subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, torpedoes: {} as any, dilithium: {} as any,
-    scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
-    // FIX: Added missing 'lifeSupportReserves' property to conform to the Ship interface.
-    lifeSupportReserves: { current: 100, max: 100 },
-});
+const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: string): Ship => {
+    // FIX: Get stats from shipRoleStats to access role-specific properties.
+    const stats = shipRoleStats[role];
+    return {
+        id, name, type: 'ship', shipModel: model, shipRole: role, faction: model,
+        // FIX: Added missing properties 'shipClass' and 'cloakingCapable' to conform to the Ship type.
+        shipClass: stats.name,
+        cloakingCapable: stats.cloakingCapable,
+        position: { x: 0, y: 0 }, hull: 1, maxHull: stats.maxHull,
+        shields: 0, maxShields: stats.maxShields,
+        subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, torpedoes: {} as any, dilithium: {} as any,
+        scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
+        lifeSupportReserves: { current: 100, max: 100 },
+        isCloaked: false,
+        cloakCooldown: 0,
+    };
+};
 
 // Create a comprehensive list of all possible ships for dropdowns
 export const allMockShips: Ship[] = [

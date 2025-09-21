@@ -1,6 +1,5 @@
 import React from 'react';
-// FIX: Imported ShipModel type.
-import type { Entity, Planet, Ship, ShipModel, Starbase } from '../types';
+import type { Entity, Planet, Ship, ShipModel, Starbase } from '../../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
@@ -19,19 +18,12 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
     switch (target.type) {
         case 'ship': {
             const ship = target as Ship;
-            // FIX: Corrected type to include 'Unknown' as a possibility.
             const model: ShipModel | 'Unknown' = ship.scanned ? ship.shipModel : 'Unknown';
+            const shipClass = ship.scanned ? ship.shipClass : 'Unknown';
 
-            if (model === 'Unknown') {
-                // FIX: Added non-null assertion as 'Unknown' role is guaranteed to exist.
-                WireframeComponent = shipVisuals.Unknown.roles.Unknown!.wireframe;
-            } else {
-                const visualConfig = shipVisuals[model];
-                const roleConfig = visualConfig?.roles[ship.shipRole] ?? visualConfig?.roles[visualConfig.defaultRole];
-                // FIX: Added non-null assertion for the final fallback to 'Unknown'.
-                const finalConfig = roleConfig ?? shipVisuals.Unknown.roles.Unknown!;
-                WireframeComponent = finalConfig.wireframe;
-            }
+            const visualConfig = shipVisuals[model];
+            const classConfig = visualConfig?.classes[shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+            WireframeComponent = classConfig.wireframe;
             break;
         }
         case 'planet': {

@@ -99,10 +99,11 @@ interface ShipStatusProps {
   onToggleRedAlert: () => void;
   onEvasiveManeuvers: () => void;
   onSelectRepairTarget: (subsystem: 'hull' | keyof ShipSubsystems) => void;
+  onToggleCloak: () => void;
   themeName: ThemeName;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, themeName }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, themeName }) => {
   const { ship } = gameState.player;
   const [isRepairListVisible, setRepairListVisible] = useState(false);
   const { TorpedoIcon, SecurityIcon } = getFactionIcons(themeName);
@@ -133,6 +134,10 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
   const energyStatusIcon = gameState.redAlert ? 
         <span className="text-accent-red" title="Draining">▼</span> :
         (ship.energy.current < ship.energy.max ? <span className="text-accent-green" title="Recharging">▲</span> : null);
+  
+  const cloakStatusText = ship.isCloaked ? 'ACTIVE' : ship.cloakCooldown > 0 ? `RECHARGING (${ship.cloakCooldown})` : 'READY';
+  const isCloakDisabled = !ship.cloakingCapable || (ship.cloakCooldown > 0 && !ship.isCloaked) || (gameState.redAlert && !ship.isCloaked);
+  const cloakTitle = !ship.cloakingCapable ? "Device not installed." : isCloakDisabled ? "Cannot engage cloak." : "Toggle cloaking device.";
 
   return (
     <div className="panel-style p-3 h-full flex flex-col">
@@ -161,6 +166,16 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
               disabled={!canTakeEvasive}
               title={evasiveTitle}
           />
+           {ship.cloakingCapable && (
+             <InteractiveStatusIndicator 
+                label="Cloak" 
+                status={cloakStatusText}
+                colorClass={ship.isCloaked ? 'text-accent-teal bg-teal-900 bg-opacity-50' : 'text-text-disabled'}
+                onClick={onToggleCloak}
+                disabled={isCloakDisabled}
+                title={cloakTitle}
+            />
+           )}
           <InteractiveStatusIndicator 
               label="Damage Control" 
               status={ship.repairTarget ? `REPAIRING ${ship.repairTarget.toUpperCase()}` : 'INACTIVE'} 

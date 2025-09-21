@@ -193,6 +193,9 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                 
                 newEntities.push({
                     id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipModel: faction, shipRole, faction, position,
+                    // FIX: Added missing shipClass and cloakingCapable properties.
+                    shipClass: stats.name,
+                    cloakingCapable: stats.cloakingCapable,
                     hull: stats.maxHull, maxHull: stats.maxHull,
                     shields: 0, maxShields: stats.maxShields,
                     energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation,
@@ -201,8 +204,10 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                     securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
                     dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                     crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(),
-                    // FIX: Added missing 'lifeSupportReserves' property to conform to the Ship interface.
                     lifeSupportReserves: { current: 100, max: 100 },
+                    // FIX: Added missing isCloaked and cloakCooldown properties to conform to the Ship interface.
+                    isCloaked: false,
+                    cloakCooldown: 0,
                 } as Ship);
             }
         }
@@ -231,6 +236,9 @@ export const createInitialGameState = (): GameState => {
   const playerStats = shipRoleStats.Dreadnought;
   const playerShip: Ship = {
     id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', shipRole: 'Dreadnought',
+    // FIX: Added missing shipClass and cloakingCapable properties to conform to the Ship interface.
+    shipClass: playerStats.name,
+    cloakingCapable: playerStats.cloakingCapable,
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
@@ -239,8 +247,10 @@ export const createInitialGameState = (): GameState => {
     scanned: true, evasive: false, retreatingTurn: null,
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
-    // FIX: Added missing 'lifeSupportReserves' property to conform to the Ship interface.
     lifeSupportReserves: { current: 100, max: 100 },
+    // FIX: Added missing isCloaked and cloakCooldown properties to conform to the Ship interface.
+    isCloaked: false,
+    cloakCooldown: 0,
   };
 
   const playerCrew: BridgeOfficer[] = [

@@ -15,6 +15,7 @@ interface PlayerHUDProps {
   onEndTurn: () => void;
   onFirePhasers: (targetId: string) => void;
   onLaunchTorpedo: (targetId:string) => void;
+  onToggleCloak: () => void;
   target?: Entity;
   isDocked: boolean;
   onRechargeDilithium: () => void;
@@ -140,8 +141,8 @@ const TargetInfo: React.FC<{
                         <p className="text-sm text-text-disabled">Scan to reveal details.</p>
                     ) : (
                         <>
-                            <p className="text-sm text-text-disabled">{target.faction} {target.type}</p>
-                            {target.type === 'ship' && <p className="text-sm text-text-primary">{(target as Ship).shipRole} Role</p>}
+                            <p className="text-sm text-text-disabled">{target.faction} {(target as Ship).shipRole}</p>
+                            {target.type === 'ship' && <p className="text-sm text-text-primary">{(target as Ship).shipClass}</p>}
                         </>
                     )}
                     {target.type === 'ship' && !isUnscannedShip && (
@@ -199,8 +200,8 @@ const TargetInfo: React.FC<{
                                         <div className="flex justify-between items-center w-full">
                                             <span className="font-bold">HULL</span>
                                             <span 
-                                                className={!isFederation ? 'text-gray-400' : ''}
-                                                style={isFederation ? { color: '#9ca3af' } : undefined}
+                                                className={!isFederation ? (themeName === 'klingon' && selectedSubsystem ? 'text-gray-700' : 'text-gray-400') : ''}
+                                                style={isFederation ? { color: 'inherit' } : undefined}
                                             >
                                                 Default
                                             </span>
@@ -215,6 +216,23 @@ const TargetInfo: React.FC<{
                                         let colorHex = '#4ade80';
                                         if (healthPercentage < 60) { colorClass = 'text-yellow-400'; colorHex = '#facc15'; }
                                         if (healthPercentage < 25) { colorClass = 'text-red-500'; colorHex = '#ef4444'; }
+
+                                        if (isFederation) {
+                                            colorHex = '#14532d'; // dark green
+                                            if (healthPercentage < 60) { colorHex = '#b45309'; } // dark orange/brown
+                                            if (healthPercentage < 25) { colorHex = '#7f1d1d'; } // dark red
+                                        } else if (themeName === 'klingon') {
+                                            const isSelected = selectedSubsystem === key;
+                                            if (isSelected) { // Primary button: dark red bg, light text
+                                                colorClass = 'text-yellow-200'; // Healthy
+                                                if (healthPercentage < 60) { colorClass = 'text-yellow-300'; } // Medium
+                                                if (healthPercentage < 25) { colorClass = 'text-orange-400'; } // Damaged
+                                            } else { // Secondary button: yellow bg, dark text
+                                                colorClass = 'text-green-800'; // Healthy
+                                                if (healthPercentage < 60) { colorClass = 'text-yellow-700'; } // Medium
+                                                if (healthPercentage < 25) { colorClass = 'text-red-800'; } // Damaged
+                                            }
+                                        }
 
                                         return (
                                             <button
@@ -245,7 +263,7 @@ const TargetInfo: React.FC<{
 };
 
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
-    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo,
+    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
@@ -317,12 +335,14 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 {/* Column 2: Command & Control */}
                 <div className="flex flex-col h-full">
                     <CommandConsole 
+                        gameState={gameState}
                         onEndTurn={onEndTurn}
                         onFirePhasers={() => target && onFirePhasers(target.id)}
                         onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
                         onInitiateRetreat={onInitiateRetreat}
                         onCancelRetreat={onCancelRetreat}
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
+                        onToggleCloak={onToggleCloak}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
                         hasTarget={!!target}
