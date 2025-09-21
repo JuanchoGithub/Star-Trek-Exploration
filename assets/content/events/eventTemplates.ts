@@ -87,9 +87,9 @@ export const eventTemplates: Record<EventTemplate['type'], EventTemplate[]> = {
                     text: 'Attempt full salvage of its components.',
                     outcome: {
                         type: 'damage',
-                        resource: 'shields',
-                        amount: 20,
-                        log: "The salvage operation triggers a containment breach in the ship's damaged warp core! The resulting explosion damages your shield emitters."
+                        resource: 'scanners',
+                        amount: 25,
+                        log: "The salvage operation triggers a containment breach in the ship's damaged warp core! The resulting feedback damages your sensitive scanner arrays."
                     }
                 },
                 {

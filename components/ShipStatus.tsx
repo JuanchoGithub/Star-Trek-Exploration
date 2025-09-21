@@ -4,6 +4,7 @@ import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import EnergyAllocator from './EnergyAllocator';
 import LcarsDecoration from './LcarsDecoration';
+import { ScienceIcon, ShuttleIcon } from '../assets/ui/icons';
 
 interface StatusBarProps {
   label: string;
@@ -34,35 +35,38 @@ const SubsystemStatus: React.FC<{
   maxShields: number;
   themeName: ThemeName;
 }> = ({ subsystems, allocation, maxShields, themeName }) => {
-    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } = getFactionIcons(themeName);
+    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, ScanIcon } = getFactionIcons(themeName);
     const weaponBonus = (20 * (allocation.weapons / 100)).toFixed(1);
     const shieldBonus = ((allocation.shields / 100) * (maxShields * 0.1)).toFixed(1);
     const engineBonus = (allocation.engines / 5).toFixed(0); // Represents a fictional evasion bonus for UI feedback
 
     const systems = [
-        { name: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons, bonus: `+${weaponBonus} DMG`, bonusColor: 'text-red-400' },
-        { name: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields, bonus: `+${shieldBonus} REG/t`, bonusColor: 'text-cyan-400' },
-        { name: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines, bonus: `+${engineBonus} EVA`, bonusColor: 'text-green-400' },
-        { name: 'Transport', icon: <TransporterIcon className="w-5 h-5"/>, data: subsystems.transporter, bonus: ``, bonusColor: '' },
+        { name: 'WPN', fullName: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons, bonus: `+${weaponBonus} DMG`, bonusColor: 'text-red-400' },
+        { name: 'SHD', fullName: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields, bonus: `+${shieldBonus} REG/t`, bonusColor: 'text-cyan-400' },
+        { name: 'ENG', fullName: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines, bonus: `+${engineBonus} EVA`, bonusColor: 'text-green-400' },
+        { name: 'SCN', fullName: 'Scanners', icon: <ScanIcon className="w-5 h-5"/>, data: subsystems.scanners, bonus: ``, bonusColor: '' },
+        { name: 'CPU', fullName: 'Computer', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>, data: subsystems.computer, bonus: ``, bonusColor: '' },
+        { name: 'LFS', fullName: 'Life Support', icon: <ScienceIcon className="w-5 h-5"/>, data: subsystems.lifeSupport, bonus: ``, bonusColor: '' },
+        { name: 'TRN', fullName: 'Transporter', icon: <TransporterIcon className="w-5 h-5"/>, data: subsystems.transporter, bonus: ``, bonusColor: '' },
+        { name: 'SHTL', fullName: 'Shuttlecraft', icon: <ShuttleIcon className="w-5 h-5"/>, data: subsystems.shuttlecraft, bonus: ``, bonusColor: '' },
     ];
     return (
-        <div className="grid grid-cols-4 gap-2 mt-3">
+        <div className="grid grid-cols-4 gap-1 mt-2">
             {systems.map(system => {
+                 if (system.data.maxHealth === 0) return null;
                 const healthPercentage = (system.data.health / system.data.maxHealth) * 100;
                 let color = 'text-green-400';
                 if (healthPercentage < 60) color = 'text-yellow-400';
                 if (healthPercentage < 25) color = 'text-red-500';
-                if (system.name === 'Transport') {
-                    color = healthPercentage > 50 ? 'text-purple-400' : 'text-yellow-400';
-                     if (healthPercentage < 25) color = 'text-red-500';
-                }
 
                 return (
-                    <div key={system.name} className={`flex flex-col items-center p-2 rounded bg-bg-paper-lighter`}>
+                    <div key={system.name} className={`flex flex-col items-center p-1 rounded bg-bg-paper-lighter text-center`} title={system.fullName}>
                         <div className={color}>{system.icon}</div>
-                        <span className="text-xs mt-1 text-text-secondary">{system.name}</span>
-                        <span className={`text-sm font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
-                        <span className={`text-xs font-bold ${system.bonusColor}`}>{system.bonus}</span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                            <span className="text-[11px] text-text-secondary truncate font-bold">{system.name}</span>
+                            <span className={`text-[11px] font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
+                        </div>
+                        {system.bonus && <span className={`text-[10px] font-bold ${system.bonusColor}`}>{system.bonus}</span>}
                     </div>
                 );
             })}
@@ -94,7 +98,7 @@ interface ShipStatusProps {
   onEnergyChange: (type: 'weapons' | 'shields' | 'engines', value: number) => void;
   onToggleRedAlert: () => void;
   onEvasiveManeuvers: () => void;
-  onSelectRepairTarget: (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => void;
+  onSelectRepairTarget: (subsystem: 'hull' | keyof ShipSubsystems) => void;
   themeName: ThemeName;
 }
 
@@ -106,17 +110,19 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
   const canTakeEvasive = gameState.redAlert && ship.subsystems.engines.health > 0;
   const hasDamagedSystems = ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth);
 
-  const handleSelectRepair = (subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter') => {
+  const handleSelectRepair = (subsystem: 'hull' | keyof ShipSubsystems) => {
       onSelectRepairTarget(subsystem);
       setRepairListVisible(false);
   };
   
   const systemsToRepair = [
       { key: 'hull' as const, name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
-      { key: 'weapons' as const, name: 'Weapons', ...ship.subsystems.weapons, disabled: ship.subsystems.weapons.health === ship.subsystems.weapons.maxHealth },
-      { key: 'engines' as const, name: 'Engines', ...ship.subsystems.engines, disabled: ship.subsystems.engines.health === ship.subsystems.engines.maxHealth },
-      { key: 'shields' as const, name: 'Shields', ...ship.subsystems.shields, disabled: ship.subsystems.shields.health === ship.subsystems.shields.maxHealth },
-      { key: 'transporter' as const, name: 'Transporter', ...ship.subsystems.transporter, disabled: ship.subsystems.transporter.health === ship.subsystems.transporter.maxHealth },
+      ...Object.entries(ship.subsystems).map(([key, value]) => ({
+          key: key as keyof ShipSubsystems,
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          ...value,
+          disabled: value.health === value.maxHealth || value.maxHealth === 0,
+      })).sort((a,b) => a.name.localeCompare(b.name))
   ];
 
   const redAlertTitle = "Raise shields for combat. Costs 15 energy to activate and drains reserve power each turn. When offline, shields are down and energy recharges.";
@@ -167,6 +173,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                   <h4 className="text-xs font-bold text-accent-yellow mb-2 text-center">Assign Repair Crew</h4>
                   <div className="space-y-1">
                       {systemsToRepair.map(sys => {
+                          if (sys.maxHealth === 0) return null;
                           const isAssigned = ship.repairTarget === sys.key;
                           return (
                               <button 
@@ -199,6 +206,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
           <StatusBar label="Reserve Power" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow">
               {energyStatusIcon}
           </StatusBar>
+           <StatusBar label="Life Support Reserves" value={ship.lifeSupportReserves.current} max={ship.lifeSupportReserves.max} colorClass="bg-accent-green" />
           <div title="Dilithium crystals are used for warping and as an emergency power source.">
               <StatusBar label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} colorClass="bg-accent-pink" />
           </div>

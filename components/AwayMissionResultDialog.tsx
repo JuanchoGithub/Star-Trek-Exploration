@@ -3,6 +3,7 @@ import type { AwayMissionResult, ResourceType } from '../types';
 
 // Helper to format resource names
 const formatResourceName = (resource: ResourceType): string => {
+    // FIX: Added missing resource types to satisfy the Record<ResourceType, string> type.
     const names: Record<ResourceType, string> = {
         hull: 'Hull Integrity',
         shields: 'Shield Systems',
@@ -14,6 +15,10 @@ const formatResourceName = (resource: ResourceType): string => {
         engines: 'Engine Systems',
         transporter: 'Transporter Systems',
         security_teams: 'Security Teams',
+        scanners: 'Scanner Systems',
+        computer: 'Computer Core',
+        lifeSupport: 'Life Support',
+        shuttlecraft: 'Shuttlebay',
     };
     return names[resource] || resource.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };

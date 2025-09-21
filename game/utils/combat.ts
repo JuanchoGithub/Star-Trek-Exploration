@@ -42,7 +42,9 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
 };
 
 export const applyPhaserDamage = (
-    target: Ship, damage: number, subsystem: 'weapons' | 'engines' | 'shields' | null,
+    target: Ship, damage: number, 
+// FIX: Changed the type of 'subsystem' to 'keyof ShipSubsystems' to match the more general type used for targeting, resolving a type error.
+subsystem: keyof ShipSubsystems | null,
     sourceShip: Ship, gameState: GameState
 ): string[] => {
     const logs: string[] = [];

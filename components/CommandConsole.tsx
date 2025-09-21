@@ -7,17 +7,11 @@ interface CommandConsoleProps {
   onEndTurn: () => void;
   onFirePhasers: () => void;
   onLaunchTorpedo: () => void;
-  onScanTarget: () => void;
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
-  onHailTarget: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
   retreatingTurn: number | null;
   currentTurn: number;
-  canFire: boolean;
-  canLaunchTorpedo: boolean;
-  isTargetFriendly: boolean;
-  isTargetScanned: boolean;
   hasTarget: boolean;
   hasEnemy: boolean;
   playerTurnActions: PlayerTurnActions;
@@ -46,9 +40,9 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, canFire, onLaunchTorpedo, canLaunchTorpedo,
-    onScanTarget, onInitiateRetreat, onCancelRetreat, onHailTarget, onSendAwayTeam,
-    retreatingTurn, currentTurn, isTargetFriendly, isTargetScanned, hasTarget, hasEnemy, 
+    onEndTurn, onFirePhasers, onLaunchTorpedo,
+    onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
+    retreatingTurn, currentTurn, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn >= currentTurn;
@@ -65,18 +59,23 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         return "End Turn & Fire";
     }
     if (navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y)) {
-        return "End Turn & Move";
+      if (playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
+        return "Engines Offline";
+      }
+      return "End Turn & Move";
     }
     return "End Turn";
   }
   
+  const isTargetFriendly = target?.faction === 'Federation';
   const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
-  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health > 0;
-  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, ScanIcon, HailIcon, RetreatIcon } = getFactionIcons(themeName);
+  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxShields) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health >= playerShip.subsystems.transporter.maxHealth;
+  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
-  const canUsePhasers = canFire && (canFireOnShip || canFireOnTorpedo);
+  const canUsePhasers = playerShip.subsystems.weapons.health > 0 && (canFireOnShip || canFireOnTorpedo);
+  const canLaunchTorpedoFinal = playerShip.torpedoes.current > 0 && (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) >= 0.34;
 
   const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
   const phaserButtonText = isTargetingSubsystem
@@ -86,33 +85,20 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   return (
     <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
-            <SectionHeader title="Combat" />
+            <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2">
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || isRetreating || isTurnResolving} accentColor="red">
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedo || !canFireOnShip || isRetreating || isTurnResolving || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || isRetreating || isTurnResolving || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>
-            </div>
-             <div className="grid grid-cols-2 gap-2">
                 <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
-                    <BoardingIcon className="w-5 h-5" /> Board Ship
+                    <BoardingIcon className="w-5 h-5" /> Board
                 </CommandButton>
                 <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
-                    <StrikeTeamIcon className="w-5 h-5" /> Strike Team
-                </CommandButton>
-            </div>
-
-
-            <SectionHeader title="Maneuvers & Systems" />
-            <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onScanTarget} disabled={!hasTarget || isTargetScanned || isRetreating || isTurnResolving} accentColor="yellow">
-                    <ScanIcon className="w-5 h-5" /> Scan
-                </CommandButton>
-                 <CommandButton onClick={onHailTarget} disabled={!hasTarget || isRetreating || isTurnResolving} accentColor="teal">
-                    <HailIcon className="w-5 h-5" /> Hail
+                    <StrikeTeamIcon className="w-5 h-5" /> Strike
                 </CommandButton>
             </div>
         </div>
@@ -138,7 +124,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         )}
         <button
             onClick={() => onEndTurn()}
-            disabled={isTurnResolving}
+            disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5)}
             className="flex-grow btn btn-primary"
         >
             {getEndTurnButtonText()}

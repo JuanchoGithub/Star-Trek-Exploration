@@ -42,7 +42,7 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
 };
 
 export const applyPhaserDamage = (
-    target: Ship, damage: number, subsystem: 'weapons' | 'engines' | 'shields' | null,
+    target: Ship, damage: number, subsystem: keyof ShipSubsystems | null,
     sourceShip: Ship, gameState: GameState
 ): string[] => {
     const logs: string[] = [];
@@ -65,9 +65,15 @@ export const applyPhaserDamage = (
         return logs;
     }
     
-    logs.push(`--> HIT! Initial damage: ${Math.round(damage)}.`);
+    const phaserEfficiency = sourceShip.subsystems.weapons.health / sourceShip.subsystems.weapons.maxHealth;
+    const baseDamage = damage * phaserEfficiency;
+    if (phaserEfficiency < 1.0) {
+       logs.push(`--> Damaged phasers are operating at ${Math.round(phaserEfficiency * 100)}% efficiency.`);
+    }
     
-    let effectiveDamage = damage;
+    logs.push(`--> HIT! Initial damage: ${Math.round(baseDamage)}.`);
+    
+    let effectiveDamage = baseDamage;
     const logModifiers: string[] = [];
 
     const distance = calculateDistance(sourceShip.position, target.position);

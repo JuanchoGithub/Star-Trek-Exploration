@@ -119,6 +119,7 @@ const App: React.FC = () => {
     onCloseAwayMissionResult,
     onCloseEventResult,
     onScanQuadrant,
+    onEnterOrbit,
   } = useGameLogic();
 
   const { theme, themeName, setTheme } = useTheme();
@@ -130,6 +131,7 @@ const App: React.FC = () => {
   const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
   const latestLogEntry = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
   const isRetreating = gameState.player.ship.retreatingTurn !== null && gameState.player.ship.retreatingTurn > gameState.turn;
+  const isComputerDamaged = gameState.player.ship.subsystems.computer.health < gameState.player.ship.subsystems.computer.maxHealth;
 
   return (
     <main className={`bg-bg-default text-text-primary h-screen ${theme.font} ${theme.className} grid grid-rows-[1fr_auto] ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
@@ -152,14 +154,14 @@ const App: React.FC = () => {
                       </button>
                       <button 
                         onClick={() => onSetView('quadrant')} 
-                        disabled={isRetreating}
-                        title={isRetreating ? "Cannot access Quadrant Map while retreating" : "Switch to Quadrant Map"}
+                        disabled={isRetreating || isComputerDamaged}
+                        title={isRetreating ? "Cannot access Quadrant Map while retreating" : isComputerDamaged ? "Cannot access Quadrant Map: Computer damaged" : "Switch to Quadrant Map"}
                         className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-paper-lighter`}>
                           <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Quadrant Map</span>
                       </button>
                   </div>
                   {/* Map Container */}
-                  <div className="flex-grow min-h-0 relative">
+                  <div className="flex-grow min-h-0 relative z-10">
                       {currentView === 'sector' ? (
                           <SectorView
                           sector={gameState.currentSector}
@@ -169,9 +171,6 @@ const App: React.FC = () => {
                           onSelectTarget={onSelectTarget}
                           navigationTarget={navigationTarget}
                           onSetNavigationTarget={onSetNavigationTarget}
-                          targetEntity={targetEntity}
-                          selectedSubsystem={selectedSubsystem}
-                          onSelectSubsystem={onSelectSubsystem}
                           themeName={themeName}
                           />
                       ) : (
@@ -194,7 +193,7 @@ const App: React.FC = () => {
                   </div>
               </div>
               {/* Bottom Section: HUD */}
-              <div className="flex-shrink-0 pt-4">
+              <div className="flex-shrink-0 pt-4 relative z-20">
                 <PlayerHUD
                     gameState={gameState}
                     onEndTurn={onEndTurn}
@@ -217,6 +216,10 @@ const App: React.FC = () => {
                     onSendAwayTeam={onSendAwayTeam}
                     themeName={themeName}
                     desperationMoveAnimation={desperationMoveAnimation}
+                    selectedSubsystem={selectedSubsystem}
+                    onSelectSubsystem={onSelectSubsystem}
+                    onEnterOrbit={onEnterOrbit}
+                    orbitingPlanetId={gameState.orbitingPlanetId}
                   />
               </div>
           </div>

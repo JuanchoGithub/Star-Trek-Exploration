@@ -17,6 +17,10 @@ export interface ShipSubsystems {
   engines: { health: number; maxHealth: number };
   shields: { health: number; maxHealth: number };
   transporter: { health: number; maxHealth: number };
+  scanners: { health: number; maxHealth: number };
+  computer: { health: number; maxHealth: number };
+  lifeSupport: { health: number; maxHealth: number };
+  shuttlecraft: { health: number; maxHealth: number };
 }
 
 interface BaseEntity {
@@ -50,8 +54,9 @@ export interface Ship extends BaseEntity {
   retreatingTurn: number | null;
   crewMorale: { current: number; max: number };
   securityTeams: { current: number; max: number };
-  repairTarget: 'hull' | 'weapons' | 'engines' | 'shields' | 'transporter' | null;
+  repairTarget: 'hull' | keyof ShipSubsystems | null;
   logColor: string;
+  lifeSupportReserves: { current: number; max: number };
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
@@ -121,7 +126,7 @@ export interface OfficerAdvice {
 }
 
 export type OutcomeType = 'reward' | 'damage' | 'nothing' | 'special';
-export type ResourceType = 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'security_teams';
+export type ResourceType = 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'security_teams' | 'scanners' | 'computer' | 'lifeSupport' | 'shuttlecraft';
 
 export interface AwayMissionOutcome {
     type: OutcomeType;
@@ -197,17 +202,17 @@ export interface PlayerTurnActions {
 }
 
 export interface EventTemplateOption {
-    text: string;
     outcome: {
         type: 'reward' | 'damage' | 'combat' | 'nothing' | 'special' | 'mission';
         log: string;
         amount?: number;
         // FIX: Added subsystem types to allow for damaging engines, weapons, etc., in events.
-        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter';
+        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'scanners' | 'computer' | 'lifeSupport' | 'shuttlecraft';
         spawn?: 'pirate_raider';
         spawnCount?: number;
         missionId?: string;
     };
+    text: string;
 }
 
 export interface EventTemplate {
@@ -256,7 +261,7 @@ export interface GameState {
     crew: BridgeOfficer[];
     targeting?: {
         entityId: string;
-        subsystem: 'weapons' | 'engines' | 'shields' | null;
+        subsystem: keyof ShipSubsystems | null;
         consecutiveTurns: number;
     };
   };
@@ -277,4 +282,5 @@ export interface GameState {
       type: string;
       outcome?: 'success' | 'failure';
   }[];
+  orbitingPlanetId: string | null;
 }

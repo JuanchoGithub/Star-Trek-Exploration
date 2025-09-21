@@ -199,6 +199,8 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                     securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
                     dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                     crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(),
+                    // FIX: Added missing 'lifeSupportReserves' property to conform to the Ship interface.
+                    lifeSupportReserves: { current: 100, max: 100 },
                 } as Ship);
             }
         }
@@ -235,6 +237,8 @@ export const createInitialGameState = (): GameState => {
     scanned: true, evasive: false, retreatingTurn: null,
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
+    // FIX: Added missing 'lifeSupportReserves' property to conform to the Ship interface.
+    lifeSupportReserves: { current: 100, max: 100 },
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -287,5 +291,7 @@ export const createInitialGameState = (): GameState => {
     usedAwayMissionTemplateIds: [],
     // FIX: Added missing 'desperationMoveAnimations' property to align with the GameState interface.
     desperationMoveAnimations: [],
+    // FIX: Added missing 'orbitingPlanetId' property to conform to the GameState interface.
+    orbitingPlanetId: null,
   };
 };

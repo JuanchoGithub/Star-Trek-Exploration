@@ -58,7 +58,8 @@ export function resolveTurn(
                 }
                 if (playerShip.hull === playerShip.maxHull) isComplete = true;
             } else {
-                const subsystem = playerShip.subsystems[targetSystem as 'weapons' | 'engines' | 'shields' | 'transporter'];
+                // FIX: Removed unnecessary and incorrect type assertion. `targetSystem` is already known to be `keyof ShipSubsystems` here.
+                const subsystem = playerShip.subsystems[targetSystem];
                 if (subsystem) {
                     const oldHealth = subsystem.health;
                     subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);

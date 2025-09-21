@@ -45,7 +45,7 @@ export const CombatSection: React.FC = () => (
          <SubHeader>Torpedoes, Boarding, and Retreat</SubHeader>
           <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Photon Torpedoes:</strong> Fire-and-forget weapons that travel across the map. They are powerful but have limited ammo and can be shot down by enemy point-defense fire. They always target the hull.</li>
-            <li><strong>Boarding / Strike Teams:</strong> If an enemy's shields are below 20%, you can use your Transporter to send a Security team. A <span className="text-purple-400">Boarding</span> action attempts to capture the ship, but you lose the team if it fails. A <span className="text-orange-400">Strike Team</span> deals direct hull damage, with a small chance of losing the team. Both actions require an operational Transporter.</li>
+            <li><strong>Boarding / Strike Actions:</strong> If an enemy's shields are below 20%, you can use your Transporter to send a Security team. A <span className="text-purple-400">Boarding</span> action attempts to capture the ship, but you lose the team if it fails. A <span className="text-orange-400">Strike</span> action deals direct hull damage, with a small chance of losing the team. Both actions require an operational Transporter.</li>
             <li><strong>Retreat:</strong> If there are hostiles present, you can initiate a retreat. For 3 turns, you will be unable to take action as your ship prepares to warp. If you survive, all hostile ships will be removed from the sector.</li>
         </ul>
     </div>

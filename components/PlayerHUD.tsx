@@ -1,5 +1,5 @@
-import React from 'react';
-import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship, ShipSubsystems } from '../types';
 import CommandConsole from './CommandConsole';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
@@ -7,6 +7,8 @@ import WireframeDisplay from './WireframeDisplay';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import LcarsDecoration from './LcarsDecoration';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
+import { ScienceIcon, ShuttleIcon } from '../assets/ui/icons';
+
 
 interface PlayerHUDProps {
   gameState: GameState;
@@ -35,39 +37,106 @@ interface PlayerHUDProps {
       type: string;
       outcome?: 'success' | 'failure';
   } | null;
+  selectedSubsystem: keyof ShipSubsystems | null;
+  onSelectSubsystem: (subsystem: keyof ShipSubsystems | null) => void;
+  onEnterOrbit: (planetId: string) => void;
+  orbitingPlanetId: string | null;
 }
 
-const SubsystemStatusDisplay: React.FC<{subsystem: {health: number, maxHealth: number}, name: string, icon: React.ReactNode}> = ({subsystem, name, icon}) => {
-    if (subsystem.maxHealth === 0) return null;
+const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
+    weapons: 'WPN',
+    engines: 'ENG',
+    shields: 'SHD',
+    transporter: 'TRN',
+    scanners: 'SCN',
+    computer: 'CPU',
+    lifeSupport: 'LFS',
+    shuttlecraft: 'SHTL',
+};
 
-    const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
-    let color = 'text-accent-green';
-    if (healthPercentage < 60) color = 'text-accent-yellow';
-    if (healthPercentage < 25) color = 'text-accent-red';
+const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
+    weapons: 'Weapons',
+    engines: 'Engines',
+    shields: 'Shields',
+    transporter: 'Transporter',
+    scanners: 'Scanners',
+    computer: 'Computer',
+    lifeSupport: 'Life Support',
+    shuttlecraft: 'Shuttlecraft',
+};
 
-    return (
-        <div className={`flex items-center gap-2 ${color}`}>
-            {icon}
-            <span className="flex-grow">{name}</span>
-            <span className="font-bold">{Math.round(healthPercentage)}%</span>
-        </div>
-    )
-}
 
-const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, themeName}) => {
-    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } = getFactionIcons(themeName);
+const TargetInfo: React.FC<{
+    target: Entity; 
+    themeName: ThemeName;
+    selectedSubsystem: keyof ShipSubsystems | null;
+    onSelectSubsystem: (subsystem: keyof ShipSubsystems | null) => void;
+    playerShip: Ship;
+    hasEnemy: boolean;
+    orbitingPlanetId: string | null;
+    isTurnResolving: boolean;
+    onScanTarget: () => void;
+    onHailTarget: () => void;
+    onStartAwayMission: (planetId: string) => void;
+    onEnterOrbit: (planetId: string) => void;
+}> = ({
+    target, themeName, selectedSubsystem, onSelectSubsystem, playerShip, hasEnemy, 
+    orbitingPlanetId, isTurnResolving, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit
+}) => {
+    const [isPickerVisible, setPickerVisible] = useState(false);
+    const pickerRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (pickerRef.current && !pickerRef.current.contains(event.target as Node) && buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+                setPickerVisible(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const isUnscannedShip = target.type === 'ship' && !target.scanned;
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
+    const isFederation = themeName === 'federation';
+
+    const handleSelect = (key: keyof ShipSubsystems | null) => {
+        onSelectSubsystem(key);
+        setPickerVisible(false);
+    };
+    
+    const isOrbiting = orbitingPlanetId === target.id;
+    const isAdjacent = target.type === 'planet' ? Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1 : false;
+
+    const getAwayMissionButtonState = () => {
+        if (target.type !== 'planet') return { disabled: true, text: ''};
+        
+        if (hasEnemy) return { disabled: true, text: 'Cannot Begin Mission: Hostiles Present' };
+        
+        if (target.planetClass === 'J') {
+             if (playerShip.subsystems.shuttlecraft.health < playerShip.subsystems.shuttlecraft.maxHealth) {
+                return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
+            }
+        } else {
+            if (playerShip.subsystems.transporter.health < playerShip.subsystems.transporter.maxHealth) {
+                return { disabled: true, text: 'Cannot Begin Mission: Transporter Offline' };
+            }
+        }
+        if (target.awayMissionCompleted) return { disabled: true, text: 'Planet Surveyed' };
+        return { disabled: false, text: 'Begin Away Mission' };
+    };
+    const awayMissionState = getAwayMissionButtonState();
 
     return (
         <div className="panel-style p-3 h-full flex flex-col">
-            <div className="flex-grow grid grid-cols-[1fr_2fr] gap-3 items-center min-h-0">
-                <div className="h-full w-full">
+            <div className="grid grid-cols-[auto_1fr] gap-3 items-start mb-2 pb-2 border-b border-border-dark flex-shrink-0">
+                <div className="h-24 w-24 flex-shrink-0">
                      <WireframeDisplay target={target} />
                 </div>
-                <div className="h-full flex flex-col justify-center">
+                <div className="flex flex-col justify-center">
                     <h3 className="text-lg font-bold text-accent-yellow mb-1 truncate" title={name}>Target: {name}</h3>
-                    {isUnscannedShip ? (
+                     {isUnscannedShip ? (
                         <p className="text-sm text-text-disabled">Scan to reveal details.</p>
                     ) : (
                         <>
@@ -75,39 +144,101 @@ const TargetInfo: React.FC<{target: Entity; themeName: ThemeName}> = ({target, t
                             {target.type === 'ship' && <p className="text-sm text-text-primary">{(target as Ship).shipRole} Role</p>}
                         </>
                     )}
-                    
-                    {target.type === 'planet' && target.scanned && (
-                         <div className="text-sm mt-2">
-                             <span className="text-text-secondary">Classification: </span>
-                             <span>{planetTypes[target.planetClass]?.name || 'Unknown'}</span>
-                         </div>
-                    )}
-                     {target.type === 'torpedo_projectile' && (
-                         <div className="text-sm mt-2">
-                             <span className="text-text-secondary">Type: </span>
-                             <span>Projectile</span>
-                         </div>
-                    )}
-
-
                     {target.type === 'ship' && !isUnscannedShip && (
-                        <>
-                            <div className="text-sm mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                                <span className="text-text-secondary">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
-                                <span className="text-text-secondary">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-bg-paper-lighter">
-                                <h4 className="text-xs font-bold text-text-secondary mb-2 uppercase tracking-wider">Subsystems</h4>
-                                <div className="space-y-1 text-sm">
-                                <SubsystemStatusDisplay subsystem={target.subsystems.weapons} name="Weapons" icon={<WeaponIcon className="w-5 h-5"/>} />
-                                <SubsystemStatusDisplay subsystem={target.subsystems.engines} name="Engines" icon={<EngineIcon className="w-5 h-5"/>} />
-                                <SubsystemStatusDisplay subsystem={target.subsystems.shields} name="Shields" icon={<ShieldIcon className="w-5 h-5"/>} />
-                                <SubsystemStatusDisplay subsystem={target.subsystems.transporter} name="Transporter" icon={<TransporterIcon className="w-5 h-5"/>} />
+                        <div className="text-sm mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0">
+                            <span className="text-text-secondary">Hull:</span><span>{Math.round(target.hull)} / {target.maxHull}</span>
+                            <span className="text-text-secondary">Shields:</span><span>{Math.round(target.shields)} / {target.maxShields}</span>
+                        </div>
+                     )}
+                </div>
+            </div>
+            
+            <div className="flex-grow flex flex-col justify-end space-y-2">
+                {/* Ship Actions */}
+                {target.type === 'ship' && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={onScanTarget} disabled={target.scanned || isTurnResolving} className="btn btn-accent yellow">Scan</button>
+                        <button onClick={onHailTarget} disabled={isTurnResolving} className="btn btn-accent teal">Hail</button>
+                    </div>
+                )}
+
+                {/* Planet Actions */}
+                {target.type === 'planet' && isAdjacent && !isOrbiting && (
+                    <button onClick={() => onEnterOrbit(target.id)} className="w-full btn btn-primary">Enter Orbit</button>
+                )}
+                {target.type === 'planet' && isOrbiting && (
+                    <div className="panel-style p-2 bg-bg-paper-lighter">
+                        <h4 className="text-md font-bold text-accent-green mb-2 text-center">Orbital Operations</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={onScanTarget} disabled={target.scanned} className="w-full btn btn-accent yellow">Detailed Scan</button>
+                            <button onClick={() => onStartAwayMission(target.id)} className="w-full btn btn-accent green" disabled={awayMissionState.disabled} title={awayMissionState.text}>
+                                Away Mission
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Subsystem Targeting (for ships) */}
+                {target.type === 'ship' && !isUnscannedShip && (
+                    <div className="relative">
+                        <button
+                            ref={buttonRef}
+                            onClick={() => setPickerVisible(prev => !prev)}
+                            className="w-full btn btn-secondary"
+                        >
+                            Targeting: {selectedSubsystem ? subsystemFullNames[selectedSubsystem] : 'Hull'}
+                        </button>
+                        {isPickerVisible && (
+                            <div ref={pickerRef} className="absolute bottom-full left-0 right-0 mb-2 w-full panel-style p-2 z-10">
+                                <h4 className="text-xs font-bold text-text-secondary mb-2 text-center uppercase tracking-wider">Select Subsystem Target</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleSelect(null)}
+                                        className={`btn ${!selectedSubsystem ? 'btn-primary' : 'btn-secondary'} col-span-2 w-full text-sm`}
+                                    >
+                                        <div className="flex justify-between items-center w-full">
+                                            <span className="font-bold">HULL</span>
+                                            <span 
+                                                className={!isFederation ? 'text-gray-400' : ''}
+                                                style={isFederation ? { color: '#9ca3af' } : undefined}
+                                            >
+                                                Default
+                                            </span>
+                                        </div>
+                                    </button>
+                                    {(Object.keys((target as Ship).subsystems) as Array<keyof ShipSubsystems>).map((key) => {
+                                        const subsystem = (target as Ship).subsystems[key];
+                                        if (subsystem.maxHealth === 0) return null;
+                                        const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
+                                        
+                                        let colorClass = 'text-green-400';
+                                        let colorHex = '#4ade80';
+                                        if (healthPercentage < 60) { colorClass = 'text-yellow-400'; colorHex = '#facc15'; }
+                                        if (healthPercentage < 25) { colorClass = 'text-red-500'; colorHex = '#ef4444'; }
+
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => handleSelect(key)}
+                                                className={`btn ${selectedSubsystem === key ? 'btn-primary' : 'btn-secondary'} w-full text-sm`}
+                                            >
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span className="font-bold">{subsystemAbbr[key]}</span>
+                                                    <span
+                                                        className={!isFederation ? colorClass : ''}
+                                                        style={isFederation ? { color: colorHex } : undefined}
+                                                    >
+                                                        {Math.round(healthPercentage)}%
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        </>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -118,37 +249,12 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
-    desperationMoveAnimation
+    desperationMoveAnimation, selectedSubsystem, onSelectSubsystem, onEnterOrbit, orbitingPlanetId
 }) => {
     const playerShip = gameState.player.ship;
     
-    const canFire = playerShip.subsystems.weapons.health > 0;
-    const canLaunchTorpedo = playerShip.torpedoes.current > 0 && playerShip.subsystems.weapons.health > 0;
-    const isTargetFriendly = target?.faction === 'Federation';
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
-    const orbitingPlanet = gameState.currentSector.entities.find(e => e.type === 'planet' && Math.max(Math.abs(e.position.x - playerShip.position.x), Math.abs(e.position.y - playerShip.position.y)) <= 1) as Planet | undefined;
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
-
-    const getAwayMissionButtonState = () => {
-        if (!orbitingPlanet) {
-            return { disabled: true, text: '' }; // Should not render anyway
-        }
-
-        if (hasEnemy) {
-            return { disabled: true, text: 'Cannot Begin Mission: Hostiles Present' };
-        }
-        // Non-J class missions may require a transporter. J-class missions are assumed to use probes/shuttles.
-        if (playerShip.subsystems.transporter.health <= 0 && orbitingPlanet.planetClass !== 'J') {
-            return { disabled: true, text: 'Cannot Begin Mission: Transporter Offline' };
-        }
-        if (orbitingPlanet.awayMissionCompleted) {
-            return { disabled: true, text: 'Planet Surveyed' };
-        }
-
-        return { disabled: false, text: 'Begin Away Mission' };
-    };
-
-    const awayMissionState = getAwayMissionButtonState();
 
     return (
         <div className="relative">
@@ -162,7 +268,22 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1: Contextual Info & Operations */}
                 <div className="relative flex flex-col space-y-2">
-                    {target ? <TargetInfo target={target} themeName={themeName} /> : (
+                    {target ? (
+                        <TargetInfo 
+                            target={target} 
+                            themeName={themeName} 
+                            selectedSubsystem={selectedSubsystem} 
+                            onSelectSubsystem={onSelectSubsystem}
+                            playerShip={playerShip}
+                            hasEnemy={hasEnemy}
+                            orbitingPlanetId={orbitingPlanetId}
+                            isTurnResolving={isTurnResolving}
+                            onScanTarget={onScanTarget}
+                            onHailTarget={onHailTarget}
+                            onStartAwayMission={onStartAwayMission}
+                            onEnterOrbit={onEnterOrbit}
+                        />
+                    ) : (
                          <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
                             <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
@@ -185,19 +306,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             </div>
                         </div>
                     )}
-                    {orbitingPlanet && (
-                        <div className="panel-style p-3 text-center">
-                            <h3 className="text-lg font-bold text-accent-green mb-3">Planet Operations</h3>
-                            <button 
-                                onClick={() => orbitingPlanet && onStartAwayMission(orbitingPlanet.id)} 
-                                className="w-full btn btn-accent green text-white"
-                                disabled={awayMissionState.disabled}
-                            >
-                                {awayMissionState.text}
-                            </button>
-                        </div>
-                    )}
-
+                    
                     {desperationMoveAnimation && (
                         <DesperationMoveAnimation 
                             animation={desperationMoveAnimation}
@@ -211,17 +320,11 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         onEndTurn={onEndTurn}
                         onFirePhasers={() => target && onFirePhasers(target.id)}
                         onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
-                        onScanTarget={onScanTarget}
                         onInitiateRetreat={onInitiateRetreat}
                         onCancelRetreat={onCancelRetreat}
-                        onHailTarget={onHailTarget}
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
-                        canFire={canFire}
-                        canLaunchTorpedo={canLaunchTorpedo}
-                        isTargetFriendly={!!isTargetFriendly}
-                        isTargetScanned={!!target?.scanned}
                         hasTarget={!!target}
                         hasEnemy={hasEnemy}
                         playerTurnActions={playerTurnActions}

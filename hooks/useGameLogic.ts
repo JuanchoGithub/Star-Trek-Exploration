@@ -1,15 +1,16 @@
 
+
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 // FIX: Imported missing types 'LogEntry', 'Planet', 'BridgeOfficer', and 'OfficerAdvice' to resolve type errors.
-import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice } from '../types';
+import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { applyPhaserDamage } from './combatUtilities';
 import { processAITurns } from './ai/aiProcessor';
 import { AIActions } from './ai/FactionAI';
 import { shipRoleStats } from '../assets/ships/configs/shipRoleStats';
-import { ShipSubsystems, ShipRole } from '../types';
+import { ShipRole } from '../types';
 // FIX: Moved seededRandom and cyrb53 to aiUtilities.ts and imported them.
 import { seededRandom, cyrb53 } from './ai/aiUtilities';
 import { consumeEnergy } from './combatUtilities';
@@ -47,6 +48,7 @@ const createInitialGameState = (): GameState => {
     scanned: true, evasive: false, retreatingTurn: null,
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
+    lifeSupportReserves: { current: 100, max: 100 },
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -149,7 +151,7 @@ const createInitialGameState = (): GameState => {
                             default: shipRole = 'Freighter'; faction = 'Independent'; energyAllocation = { weapons: 0, shields: 0, engines: 100 }; break;
                         }
                         const stats = shipRoleStats[shipRole];
-                        newEntities.push({ id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipModel: faction, shipRole, faction, position, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields, energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation, torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor() } as Ship);
+                        newEntities.push({ id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipModel: faction, shipRole, faction, position, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields, energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation, torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), lifeSupportReserves: { current: 100, max: 100 } } as Ship);
                     }
                 }
             }
@@ -167,7 +169,7 @@ const createInitialGameState = (): GameState => {
     player: { ship: playerShip, position: playerPosition, crew: playerCrew },
     quadrantMap, currentSector: startSector, turn: 1, logs: [{ id: uniqueId(), turn: 1, sourceId: 'system', sourceName: "Captain's Log", message: "Stardate 47458.2. We have entered the Typhon Expanse.", color: SYSTEM_LOG_COLOR, isPlayerSource: false }],
     gameOver: false, gameWon: false, redAlert: false, combatEffects: [], isRetreatingWarp: false,
-    usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [], desperationMoveAnimations: [],
+    usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [], desperationMoveAnimations: [], orbitingPlanetId: null,
   };
 };
 
@@ -188,6 +190,7 @@ export const useGameLogic = () => {
                     if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
                     if (savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
                     if (savedState.desperationMoveAnimations === undefined) savedState.desperationMoveAnimations = [];
+                    if (savedState.orbitingPlanetId === undefined) savedState.orbitingPlanetId = null;
                     
                     const migrateShip = (ship: Ship) => {
                         if ((ship as any).shipClass) {
@@ -222,6 +225,7 @@ export const useGameLogic = () => {
                             });
                         }
                         if((ship as any).desperationMove !== undefined) delete (ship as any).desperationMove;
+                        if (!ship.lifeSupportReserves) ship.lifeSupportReserves = { current: 100, max: 100 };
                     };
                     migrateShip(savedState.player.ship);
                      if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
@@ -427,11 +431,9 @@ export const useGameLogic = () => {
             return next;
         }
 
-        // FIX: Updated addLogForTurn signature to make 'color' optional, resolving multiple type errors.
         const addLogForTurn = (logData: Omit<LogEntry, 'id' | 'turn' | 'color'> & { color?: string }) => {
             const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), next.player.ship];
             const sourceShip = allShips.find(s => s.id === logData.sourceId);
-            // FIX: Removed 'as any' type assertion which is no longer needed with the correct signature.
             next.logs.push({ id: uniqueId(), turn: next.turn, ...logData, color: logData.color || sourceShip?.logColor || SYSTEM_LOG_COLOR });
         };
         const triggerDesperationAnimation = (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => {
@@ -456,7 +458,7 @@ export const useGameLogic = () => {
                     if (playerShip.hull > oldHull) { addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Engineering teams continue repairs on the hull, restoring ${Math.round(playerShip.hull - oldHull)} integrity.`, isPlayerSource: true }); repaired = true; }
                     if (playerShip.hull === playerShip.maxHull) isComplete = true;
                 } else {
-                    const subsystem = playerShip.subsystems[targetSystem as 'weapons' | 'engines' | 'shields' | 'transporter'];
+                    const subsystem = playerShip.subsystems[targetSystem as keyof ShipSubsystems];
                     if (subsystem) {
                         const oldHealth = subsystem.health;
                         subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
@@ -489,6 +491,18 @@ export const useGameLogic = () => {
                 }
                 if (moved) { addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Moving from (${initialPosition.x},${initialPosition.y}) to (${playerShip.position.x},${playerShip.position.y}).`, isPlayerSource: true }); }
                 if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) { setNavigationTarget(null); addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Arrived at navigation target.`, isPlayerSource: true }); }
+                 if (next.orbitingPlanetId && moved) {
+                    const planet = next.currentSector.entities.find(e => e.id === next.orbitingPlanetId);
+                    if (planet) {
+                        const distance = Math.max(Math.abs(playerShip.position.x - planet.position.x), Math.abs(playerShip.position.y - planet.position.y));
+                        if (distance > 1) {
+                            next.orbitingPlanetId = null;
+                            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Leaving orbit of ${planet.name}.`, isPlayerSource: true });
+                        }
+                    } else {
+                        next.orbitingPlanetId = null;
+                    }
+                }
             }
             if (playerTurnActions.combat?.type === 'phasers') {
                 const target = currentSector.entities.find((e: Entity) => e.id === playerTurnActions.combat!.targetId);
@@ -566,6 +580,25 @@ export const useGameLogic = () => {
         
         [playerShip, ...currentSector.entities].forEach(e => { if (e.type === 'ship') { const ship = e as Ship; const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1); ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount); } });
         
+        // Process life support for all ships
+        allShips.forEach(ship => {
+            if (ship.subsystems.lifeSupport.health < ship.subsystems.lifeSupport.maxHealth) {
+                ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - (100 / 40)); // Lasts 40 turns (2 days)
+                if (ship.lifeSupportReserves.current <= 0 && ship.hull > 0) {
+                    ship.hull = 0;
+                    if (ship.id === 'player') {
+                        addLogForTurn({ sourceId: 'system', sourceName: 'Life Support', message: 'CRITICAL: Life support reserves depleted. Catastrophic crew loss.', isPlayerSource: false, color: 'border-red-700' });
+                    } else {
+                        addLogForTurn({ sourceId: 'system', sourceName: 'Sensors', message: `${ship.name} has suffered catastrophic life support failure.`, isPlayerSource: false });
+                    }
+                } else if (ship.id === 'player' && ship.lifeSupportReserves.current > 0) {
+                     addLogForTurn({ sourceId: 'system', sourceName: 'Life Support', message: `WARNING: Life support failing. ${ship.lifeSupportReserves.current.toFixed(0)}% reserves remaining.`, isPlayerSource: false, color: 'border-orange-400' });
+                }
+            } else {
+                ship.lifeSupportReserves.current = Math.min(ship.lifeSupportReserves.max, ship.lifeSupportReserves.current + (100/80)); // Regenerate over 4 days
+            }
+        });
+
         const destroyedIds = new Set<string>();
         currentSector.entities.forEach(e => {
             const entityWithHull = e as any;
@@ -585,7 +618,7 @@ export const useGameLogic = () => {
         if (playerShip.retreatingTurn !== null && next.turn >= playerShip.retreatingTurn) {
             playerShip.retreatingTurn = null; next.currentSector.entities = next.currentSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate');
             addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Retreat successful!`, isPlayerSource: true });
-            next.isRetreatingWarp = true; // Trigger animation
+            next.isRetreatingWarp = true;
         }
         
         if (playerShip.hull <= 0) { next.gameOver = true; addLogForTurn({ sourceId: 'system', sourceName: 'FATAL', message: "CRITICAL: U.S.S. Endeavour has been destroyed. Game Over.", isPlayerSource: false, color: 'border-red-700' }); }
@@ -679,6 +712,62 @@ export const useGameLogic = () => {
         setCurrentView(view);
     }, []);
 
+    const onWarp = useCallback((pos: QuadrantPosition) => {
+        const { ship } = gameState.player;
+        const warpEnginesHealth = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
+        
+        if (warpEnginesHealth < 0.50) {
+            addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot initiate warp: Main engines are too damaged.", isPlayerSource: true });
+            return;
+        }
+
+        if (gameState.redAlert) {
+            addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot initiate warp while on Red Alert.", isPlayerSource: true });
+            return;
+        }
+
+        const { current: dilithium } = gameState.player.ship.dilithium;
+        if (dilithium <= 0) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Cannot warp: No dilithium crystals available.", isPlayerSource: true });
+            return;
+        }
+        
+        setIsWarping(true);
+        setTimeout(() => {
+          setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            next.quadrantMap[prev.player.position.qy][prev.player.position.qx] = next.currentSector;
+            next.player.position = pos;
+            const newSector = next.quadrantMap[pos.qy][pos.qx];
+            newSector.visited = true;
+            next.currentSector = newSector;
+            next.player.ship.position = { x: Math.floor(SECTOR_WIDTH / 2), y: Math.floor(SECTOR_HEIGHT - 2) };
+            next.player.ship.dilithium.current -= 1;
+            next.orbitingPlanetId = null;
+            return next;
+          });
+          setIsWarping(false);
+          setCurrentView('sector');
+          addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true });
+        }, 2000);
+    }, [gameState, addLog]);
+
+    const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            const energyCost = 1;
+            if(ship.energy.current < energyCost) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: 'Insufficient power for long-range scan.', isPlayerSource: true });
+                return prev;
+            }
+            ship.energy.current -= energyCost;
+            next.quadrantMap[pos.qy][pos.qx].isScanned = true;
+            addLog({ sourceId: 'player', sourceName: ship.name, message: `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Consumed ${energyCost} power.`, isPlayerSource: true });
+            return next;
+        });
+    }, [addLog]);
+
     const onToggleRedAlert = useCallback(() => {
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
@@ -713,7 +802,7 @@ export const useGameLogic = () => {
         });
     }, [addLog]);
 
-    const onSelectRepairTarget = useCallback((subsystem: 'weapons' | 'engines' | 'shields' | 'hull' | 'transporter' | null) => {
+    const onSelectRepairTarget = useCallback((subsystem: 'hull' | keyof ShipSubsystems | null) => {
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             if (next.player.ship.repairTarget === subsystem) {
@@ -938,6 +1027,7 @@ export const useGameLogic = () => {
                         case 'morale': ship.crewMorale.current = Math.max(0, Math.min(ship.crewMorale.max, ship.crewMorale.current + amount)); break;
                         case 'security_teams': ship.securityTeams.current = Math.max(0, Math.min(ship.securityTeams.max, ship.securityTeams.current + amount)); break;
                         case 'weapons': case 'engines': case 'shields': case 'transporter':
+                        case 'scanners': case 'computer': case 'lifeSupport': case 'shuttlecraft':
                             const subsystem = ship.subsystems[res];
                             if (subsystem) subsystem.health = Math.max(0, Math.min(subsystem.maxHealth, subsystem.health + amount));
                             break;
@@ -1018,6 +1108,7 @@ export const useGameLogic = () => {
                         case 'torpedoes': ship.torpedoes.current = Math.max(0, Math.min(ship.torpedoes.max, ship.torpedoes.current + amount)); break;
                         case 'morale': ship.crewMorale.current = Math.max(0, Math.min(ship.crewMorale.max, ship.crewMorale.current + amount)); break;
                         case 'weapons': case 'engines': case 'shields': case 'transporter':
+                        case 'scanners': case 'computer': case 'lifeSupport': case 'shuttlecraft':
                             const subsystem = ship.subsystems[res];
                             if (subsystem) subsystem.health = Math.max(0, Math.min(subsystem.maxHealth, subsystem.health + amount));
                             break;
@@ -1040,17 +1131,20 @@ export const useGameLogic = () => {
         setEventResult(null);
     }, []);
 
-    const onSelectSubsystem = useCallback((subsystem: 'weapons' | 'engines' | 'shields') => {
+    const onSelectSubsystem = useCallback((subsystem: keyof ShipSubsystems | null) => {
         setGameState(prev => {
             if (!prev.player.targeting) return prev;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            if (next.player.targeting.subsystem === subsystem) {
-                next.player.targeting.subsystem = null;
-                next.player.targeting.consecutiveTurns = 1;
-            } else {
-                next.player.targeting.subsystem = subsystem;
-                next.player.targeting.consecutiveTurns = 1;
+            const currentTarget = next.player.targeting;
+            
+            const oldSubsystem = currentTarget.subsystem;
+            currentTarget.subsystem = subsystem;
+
+            // Reset the focus bonus if the target changes
+            if (oldSubsystem !== subsystem) {
+                currentTarget.consecutiveTurns = 1;
             }
+            
             return next;
         });
     }, []);
@@ -1078,147 +1172,51 @@ export const useGameLogic = () => {
             const shipInNext = next.player.ship;
             const targetInNext = next.currentSector.entities.find((e: Entity): e is Ship => e.id === targetId);
     
-            if (!targetInNext) return prev;
-    
+            if (!targetInNext) return prev; // Should not happen
+
             shipInNext.securityTeams.current--;
-            const successChance = type === 'boarding' ? 0.5 : 0.9;
-            const success = Math.random() < successChance;
+            addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Sending a security team to ${targetInNext.name}...`, isPlayerSource: true });
             
+            // Simplified combat logic
+            const successChance = type === 'boarding' ? 0.5 : 0.8;
+            const success = Math.random() < successChance;
+
             if (success) {
                 if (type === 'boarding') {
                     targetInNext.faction = 'Federation';
-                    targetInNext.hull = 1;
-                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Boarding party successful! We have captured the ${targetInNext.name}!`, isPlayerSource: true, color: 'border-green-400' });
-                } else {
-                    const damage = 25 + Math.floor(Math.random() * 10);
+                    targetInNext.logColor = 'border-blue-300';
+                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Boarding successful! We have captured the ${targetInNext.name}!`, isPlayerSource: true });
+                } else { // strike
+                    const damage = 20 + Math.floor(Math.random() * 10);
                     targetInNext.hull = Math.max(0, targetInNext.hull - damage);
-                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Strike team successful! They sabotaged critical systems, causing ${damage} hull damage to the ${targetInNext.name}.`, isPlayerSource: true });
+                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Strike team successful! They have sabotaged the enemy hull, dealing ${damage} damage.`, isPlayerSource: true });
                 }
             } else {
-                const moraleLoss = type === 'boarding' ? 15 : 5;
-                shipInNext.crewMorale.current = Math.max(0, shipInNext.crewMorale.current - moraleLoss);
-                addLog({ sourceId: 'system', sourceName: 'FATAL', message: `The ${type} team was lost! A heavy blow to the crew. Morale decreased.`, isPlayerSource: false, color: 'border-red-700' });
+                shipInNext.crewMorale.current = Math.max(0, shipInNext.crewMorale.current - 10);
+                addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `The away team was repelled! We have lost a security team and crew morale has dropped.`, isPlayerSource: true, color: 'border-red-500' });
             }
+
             return next;
         });
-    }, [addLog, playerTurnActions, gameState]);
+    }, [addLog, gameState, playerTurnActions]);
 
-    const onWarp = useCallback((pos: QuadrantPosition) => {
-        setIsWarping(true);
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp drive engaged. Course laid in for quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true });
-        
-        setTimeout(() => {
-            setGameState(prev => {
-                const next: GameState = JSON.parse(JSON.stringify(prev));
-                const { ship, position } = next.player;
-
-                const dilithiumCost = 1;
-                if (ship.dilithium.current < dilithiumCost) {
-                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: 'Warp failed: Insufficient Dilithium.', isPlayerSource: false, color: 'border-orange-400' });
-                    setIsWarping(false);
-                    return prev;
-                }
-                ship.dilithium.current -= dilithiumCost;
-
-                next.quadrantMap[position.qy][position.qx] = next.currentSector;
-                next.player.position = pos;
-                const newSector = next.quadrantMap[pos.qy][pos.qx];
-                newSector.visited = true;
-                newSector.isScanned = true;
-                next.currentSector = newSector;
-                ship.position = { x: 6, y: 5 };
-                
-                setNavigationTarget(null);
-                setSelectedTargetId(null);
-                delete next.player.targeting;
-                
-                return next;
-            });
-            setIsWarping(false);
-        }, 2500);
-    }, [addLog, gameState.player.ship.name]);
-
-    const onScanQuadrant = useCallback((pos: QuadrantPosition) => {
+    const onEnterOrbit = useCallback((planetId: string) => {
         setGameState(prev => {
-            const next: GameState = JSON.parse(JSON.stringify(prev));
-            const { ship } = next.player;
-            const energyCost = 1;
-            
-            if (ship.energy.current < energyCost) {
-                addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Long-range scan failed: Insufficient reserve power.`, isPlayerSource: false, color: 'border-orange-400' });
-                return prev;
-            }
-
-            const { success, logs } = consumeEnergy(ship, energyCost);
-            logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true }));
-            if (!success) return prev;
-            
-            const sectorToScan = next.quadrantMap[pos.qy][pos.qx];
-            sectorToScan.isScanned = true;
-
-            const hostileCount = sectorToScan.entities.filter((e: Entity) => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
-            let scanLog = `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Sector is controlled by ${sectorToScan.factionOwner}. `;
-            if (hostileCount > 0) {
-                scanLog += `Detected ${hostileCount} hostile energy signature(s).`;
-            } else {
-                scanLog += 'No hostile ships detected.';
-            }
-            addLog({ sourceId: 'player', sourceName: ship.name, message: scanLog, isPlayerSource: true });
-            
+            const next = JSON.parse(JSON.stringify(prev));
+            next.orbitingPlanetId = planetId;
+            const planet = next.currentSector.entities.find((e:Entity) => e.id === planetId);
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Entering orbit of ${planet?.name || 'the planet'}.`, isPlayerSource: true });
             return next;
         });
     }, [addLog]);
 
-    const targetEntity = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
-
     return {
-        gameState,
-        selectedTargetId,
-        navigationTarget,
-        currentView,
-        isDocked,
-        activeAwayMission,
-        activeHail,
-        targetEntity,
-        playerTurnActions,
-        activeEvent,
-        isWarping,
-        isTurnResolving,
-        awayMissionResult,
-        eventResult,
+        gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
+        playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
         desperationMoveAnimation: gameState.desperationMoveAnimations.length > 0 ? gameState.desperationMoveAnimations[0] : null,
-        onEnergyChange,
-        onEndTurn,
-        onFirePhasers,
-        onLaunchTorpedo,
-        onEvasiveManeuvers,
-        onSelectTarget,
-        onSetNavigationTarget,
-        onSetView,
-        onWarp,
-        onDockWithStarbase,
-        onRechargeDilithium,
-        onResupplyTorpedoes,
-        onStarbaseRepairs,
-        onSelectRepairTarget,
-        onScanTarget,
-        onInitiateRetreat,
-        onCancelRetreat,
-        onStartAwayMission,
-        onChooseAwayMissionOption,
-        onHailTarget,
-        onCloseHail,
-        onSelectSubsystem,
-        onChooseEventOption,
-        saveGame,
-        loadGame,
-        exportSave,
-        importSave,
-        onDistributeEvenly,
-        onSendAwayTeam,
-        onToggleRedAlert,
-        onCloseAwayMissionResult,
-        onCloseEventResult,
-        onScanQuadrant,
+        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, onRechargeDilithium,
+        onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
+        onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
+        onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit,
     };
 };
