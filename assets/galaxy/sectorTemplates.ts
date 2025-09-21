@@ -51,7 +51,7 @@ export const sectorTemplates: SectorTemplate[] = [
         entityTemplates: [
             { type: 'starbase', faction: 'Inherit', count: [1, 1], starbaseType: 'trading_outpost' },
             { type: 'ship', faction: 'Independent', count: [2, 4], shipRole: 'Freighter' },
-            { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Escort' },
+            { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Raider' },
         ],
     },
     {
@@ -75,7 +75,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 100,
         allowedFactions: ['Federation'],
         entityTemplates: [
-            { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Escort', 'Cruiser'] },
+            { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Escort', 'Cruiser', 'Scout'] },
             { type: 'planet', faction: 'None', count: [1, 2] },
         ],
     },
@@ -98,7 +98,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['Federation'],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: ['command_station', 'trading_outpost'] },
-            { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer', 'Freighter'] },
+            { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer', 'Cruiser', 'Scout'] },
             { type: 'ship', faction: 'Independent', count: [0, 2], shipRole: 'Freighter' },
             { type: 'planet', faction: 'None', count: [1, 2] },
         ],
@@ -147,7 +147,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 70,
         allowedFactions: ['Klingon'],
         entityTemplates: [
-            { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: ['Cruiser'] },
+            { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: ['Cruiser', 'Attack Cruiser'] },
             { type: 'asteroid_field', faction: 'None', count: [1, 3] },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: 'J' },
         ],
@@ -182,7 +182,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 15,
         allowedFactions: ['Klingon'],
         entityTemplates: [
-            { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort'] },
+            { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort', 'Attack Cruiser'] },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['L'] },
         ],
     },
@@ -196,7 +196,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 100,
         allowedFactions: ['Romulan'],
         entityTemplates: [
-            { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Escort'] },
+            { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Scout'] },
             { type: 'planet', faction: 'None', count: [1, 2] },
         ],
         hasNebulaChance: 0.3,
@@ -208,7 +208,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['Romulan'],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [0, 1], starbaseType: 'deep_space_sensor' },
-            { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Cruiser' },
+            { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Warbird' },
             { type: 'asteroid_field', faction: 'None', count: [2, 3] },
         ],
         hasNebulaChance: 0.8,
@@ -220,7 +220,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['Romulan'],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
-            { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
+            { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Warbird', 'Scout'] },
             { type: 'planet', faction: 'None', count: [1, 1] },
         ],
     },
@@ -230,7 +230,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 20,
         allowedFactions: ['Romulan'],
         entityTemplates: [
-            { type: 'ship', faction: 'Romulan', count: [2, 2], shipRole: ['Cruiser'] },
+            { type: 'ship', faction: 'Romulan', count: [2, 2], shipRole: ['Warbird', 'Command Ship'] },
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'ancient_probe' },
         ],
         hasNebulaChance: 0.5,
@@ -241,7 +241,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 15,
         allowedFactions: ['Romulan'],
         entityTemplates: [
-            { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Escort'] },
+            { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Scout'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 4] },
         ],
         hasNebulaChance: 0.9,
@@ -256,7 +256,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 60,
         allowedFactions: ['None'],
         entityTemplates: [
-            { type: 'ship', faction: 'Pirate', count: [2, 3], shipRole: 'Escort' },
+            { type: 'ship', faction: 'Pirate', count: [2, 3], shipRole: 'Raider' },
             { type: 'asteroid_field', faction: 'None', count: [2, 2] },
         ],
         hasNebulaChance: 0.5,
@@ -267,7 +267,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 30,
         allowedFactions: ['None'],
         entityTemplates: [
-            { type: 'ship', faction: 'Pirate', count: [2, 4], shipRole: ['Escort', 'Cruiser'] },
+            { type: 'ship', faction: 'Pirate', count: [2, 4], shipRole: ['Raider', 'Marauder'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 4] },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: 'D' },
         ],
@@ -279,7 +279,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['None'],
         entityTemplates: [
             { type: 'ship', faction: 'Independent', count: [1, 2], shipRole: 'Freighter' },
-            { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Escort' },
+            { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Raider' },
             { type: 'asteroid_field', faction: 'None', count: [1, 2] },
         ],
         hasNebulaChance: 0.6,
@@ -310,6 +310,29 @@ export const sectorTemplates: SectorTemplate[] = [
     // == RARE TEMPLATES (Low Weight) ==
     // =================================================================
     {
+        id: 'rare-federation-task-force',
+        name: 'Federation Task Force',
+        weight: 8,
+        allowedFactions: ['Federation'],
+        entityTemplates: [
+            { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Dreadnought' },
+            { type: 'ship', faction: 'Federation', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
+        ]
+    },
+    {
+        id: 'rare-pirate-stronghold',
+        name: 'Pirate Stronghold',
+        weight: 12,
+        allowedFactions: ['None'],
+        entityTemplates: [
+            { type: 'ship', faction: 'Pirate', count: [1, 1], shipRole: 'Battleship' },
+            { type: 'ship', faction: 'Pirate', count: [2, 3], shipRole: ['Marauder', 'Raider'] },
+            { type: 'asteroid_field', faction: 'None', count: [2, 3] },
+            { type: 'planet', faction: 'None', count: [1, 1], planetClass: 'D' },
+        ],
+        hasNebulaChance: 0.4
+    },
+    {
         id: 'rare-klingon-civil-war',
         name: 'Klingon Civil War Skirmish',
         weight: 10,
@@ -326,7 +349,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['None'],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
-            { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
+            { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Warbird', 'Scout'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 3] },
         ],
         hasNebulaChance: 1.0,
@@ -405,7 +428,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 20,
         allowedFactions: ['Klingon'],
         entityTemplates: [
-            { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort'] },
+            { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort', 'Attack Cruiser', 'Battleship'] },
             { type: 'starbase', faction: 'Klingon', count: [1, 1], starbaseType: 'military_outpost' },
         ]
     },
@@ -415,7 +438,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 20,
         allowedFactions: ['Romulan'],
         entityTemplates: [
-            { type: 'ship', faction: 'Romulan', count: [3, 5], shipRole: ['Cruiser', 'Escort'] },
+            { type: 'ship', faction: 'Romulan', count: [3, 5], shipRole: ['Warbird', 'Scout', 'Command Ship'] },
         ],
         hasNebulaChance: 0.6
     },
@@ -447,8 +470,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 35,
         allowedFactions: ['Klingon'],
         entityTemplates: [
-            { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: 'Freighter' },
-            { type: 'ship', faction: 'Klingon', count: [0, 1], shipRole: 'Escort' },
+            { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: 'Escort' },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['D'] },
             { type: 'asteroid_field', faction: 'None', count: [1, 2] },
         ]
@@ -459,7 +481,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 30,
         allowedFactions: ['None', 'Federation'], // They spy everywhere
         entityTemplates: [
-            { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Escort' },
+            { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Scout' },
             { type: 'ship', faction: 'Independent', count: [1, 2], shipRole: 'Freighter' },
         ],
         hasNebulaChance: 0.7

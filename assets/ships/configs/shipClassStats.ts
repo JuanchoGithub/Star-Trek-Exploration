@@ -1,5 +1,6 @@
 import { ShipRole, ShipModel, ShipSubsystems } from '../../../types';
 
+// FIX: Exported the ShipClassStats interface to be used for type annotations.
 export interface ShipClassStats {
     name: string;
     role: ShipRole;

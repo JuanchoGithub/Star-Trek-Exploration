@@ -1,5 +1,6 @@
+
 import type { GameState, Ship, Shuttle } from '../../../types';
-import { FactionAI, AIActions } from '../FactionAI';
+import { AIActions, FactionAI } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { uniqueId } from '../../utils/helpers';
@@ -7,11 +8,10 @@ import { uniqueId } from '../../utils/helpers';
 export class FederationAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         const { currentSector } = gameState;
-        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle');
+        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
 
         // Priority 1: Rescue shuttles
         if (shuttles.length > 0) {
-            // Type assertion, as findClosestTarget expects Ships
             const closestShuttle = findClosestTarget(ship, shuttles as any);
             if (closestShuttle) {
                 ship.position = moveOneStep(ship.position, closestShuttle.position);
@@ -23,7 +23,6 @@ export class FederationAI extends FactionAI {
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
     }
 
-    // FIX: Replaced `getDesperationMove` with the required `processDesperationMove` method to satisfy the abstract class.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const shuttleCount = shipRoleStats[ship.shipRole]?.shuttleCount || 1;
 

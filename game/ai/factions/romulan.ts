@@ -1,16 +1,18 @@
+
 import type { GameState, Ship } from '../../../types';
-import { FactionAI, AIActions } from '../FactionAI';
-import { processCommonTurn } from './common';
+import { AIActions, FactionAI } from '../FactionAI';
+import { processCommonTurn, tryCaptureDerelict } from './common';
 
 export class RomulanAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
-        // Romulans use aggressive common tactics.
-        // FIX: Added missing `gameState.player.ship` argument to the function call.
+        if (tryCaptureDerelict(ship, gameState, actions)) {
+            return; // Turn spent capturing
+        }
         processCommonTurn(ship, gameState.player.ship, gameState, actions);
     }
 
-    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the escape logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
+        // Romulans try to escape. 30% chance of failure.
         const escapeFails = Math.random() < 0.3;
 
         if (escapeFails) {

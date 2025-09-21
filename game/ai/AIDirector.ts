@@ -1,24 +1,28 @@
+
 import { FactionAI } from './FactionAI';
-import { FederationAI } from './factions/FederationAI';
-import { KlingonAI } from './factions/KlingonAI';
-import { PirateAI } from './factions/PirateAI';
-import { RomulanAI } from './factions/RomulanAI';
 
-// A map holding an instance of each AI class.
-const aiMap: Record<string, FactionAI> = {
-    Federation: new FederationAI(),
-    Klingon: new KlingonAI(),
-    Romulan: new RomulanAI(),
-    Pirate: new PirateAI(),
-    Independent: new FederationAI(), // Independents use passive Federation logic
-};
+class Director {
+    private aiMap: Record<string, FactionAI> = {};
+    private defaultAI: FactionAI | null = null; 
 
-// A default fallback AI for any unknown factions.
-const defaultAI = new PirateAI();
-
-// The AIDirector provides a single point of access for getting the correct AI logic.
-export const AIDirector = {
-    getAIForFaction(faction: string): FactionAI {
-        return aiMap[faction] || defaultAI;
+    public register(factionName: string, aiInstance: FactionAI): void {
+        this.aiMap[factionName] = aiInstance;
     }
-};
+    
+    public setDefault(aiInstance: FactionAI): void {
+        if (!this.defaultAI) {
+            this.defaultAI = aiInstance;
+        }
+    }
+
+    public getAIForFaction(faction: string): FactionAI {
+        const ai = this.aiMap[faction];
+        if (ai) return ai;
+        
+        if (!this.defaultAI) {
+            throw new Error("No AI has been registered and no default AI is set.");
+        }
+        return this.defaultAI;
+    }
+}
+export const AIDirector = new Director();

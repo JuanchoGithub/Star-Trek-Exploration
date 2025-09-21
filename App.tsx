@@ -121,6 +121,7 @@ const App: React.FC = () => {
     onScanQuadrant,
     onEnterOrbit,
     onToggleCloak,
+    onTachyonScan,
   } = useGameLogic();
 
   const { theme, themeName, setTheme } = useTheme();
@@ -222,6 +223,7 @@ const App: React.FC = () => {
                     onSelectSubsystem={onSelectSubsystem}
                     onEnterOrbit={onEnterOrbit}
                     orbitingPlanetId={gameState.orbitingPlanetId}
+                    onTachyonScan={onTachyonScan}
                   />
               </div>
           </div>

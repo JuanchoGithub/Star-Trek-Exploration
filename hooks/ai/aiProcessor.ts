@@ -6,11 +6,13 @@ import './factionAI/index'; // This import ensures the registration script runs
 
 export function processAITurns(
     gameState: GameState,
-    actions: AIActions
+    actions: AIActions,
+    actedShipIds: Set<string>
 ) {
     const aiShips = gameState.currentSector.entities.filter((e): e is Ship => e.type === 'ship' && e.id !== 'player');
 
     for (const ship of aiShips) {
+        if (actedShipIds.has(ship.id)) continue;
         if (ship.hull <= 0 || ship.isDerelict || ship.captureInfo) continue;
 
         const factionAI = AIDirector.getAIForFaction(ship.faction);

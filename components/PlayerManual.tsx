@@ -12,9 +12,10 @@ import {
     CombatSimulationSection,
     AnimationsSection,
     GalaxyGenerationSection,
+    AIBehaviorSection,
 } from './manual';
 
-type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation';
+type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation' | 'ai';
 
 interface PlayerManualProps {
     onClose: () => void;
@@ -42,6 +43,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             case 'combat': return <CombatSection />;
             case 'advanced': return <AdvancedTacticsSection themeName={themeName} />;
             case 'simulations': return <CombatSimulationSection />;
+            case 'ai': return <AIBehaviorSection />;
             case 'animations': return <AnimationsSection />;
             default: return null;
         }
@@ -66,6 +68,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                          <SectionLink active={activeSection === 'combat'} onClick={() => setActiveSection('combat')}>Advanced Combat</SectionLink>
                          <SectionLink active={activeSection === 'advanced'} onClick={() => setActiveSection('advanced')}>Advanced Tactics</SectionLink>
                          <SectionLink active={activeSection === 'simulations'} onClick={() => setActiveSection('simulations')}>Appendix: Combat Sims</SectionLink>
+                         <SectionLink active={activeSection === 'ai'} onClick={() => setActiveSection('ai')}>Appendix: AI Doctrine</SectionLink>
                          <SectionLink active={activeSection === 'animations'} onClick={() => setActiveSection('animations')}>Animation Library</SectionLink>
                     </nav>
                     <main className="w-4/5 flex-grow panel-style p-4 overflow-y-auto">

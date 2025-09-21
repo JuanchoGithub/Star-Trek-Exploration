@@ -1,16 +1,17 @@
+
 import type { GameState, Ship } from '../../../types';
-import { FactionAI, AIActions } from '../FactionAI';
-import { processCommonTurn } from './common';
+import { AIActions, FactionAI } from '../FactionAI';
+import { processCommonTurn, tryCaptureDerelict } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
-        // Klingons use aggressive common tactics.
-        // FIX: Added missing `gameState.player.ship` argument to the function call.
+        if (tryCaptureDerelict(ship, gameState, actions)) {
+            return; // Turn spent capturing
+        }
         processCommonTurn(ship, gameState.player.ship, gameState, actions);
     }
 
-    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the ramming logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const enemyShips = allShips.filter(s => s.faction !== ship.faction);

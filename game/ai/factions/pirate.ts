@@ -1,16 +1,17 @@
+
 import type { GameState, Ship } from '../../../types';
-import { FactionAI, AIActions } from '../FactionAI';
-import { processCommonTurn } from './common';
+import { AIActions, FactionAI } from '../FactionAI';
+import { processCommonTurn, tryCaptureDerelict } from './common';
 import { calculateDistance } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
-        // Pirates use aggressive common tactics.
-        // FIX: Added missing `gameState.player.ship` argument to the function call.
+        if (tryCaptureDerelict(ship, gameState, actions)) {
+            return; // Turn spent capturing
+        }
         processCommonTurn(ship, gameState.player.ship, gameState, actions);
     }
 
-    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the self-destruct logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const adjacentShips = allShips.filter(s => s.id !== ship.id && calculateDistance(ship.position, s.position) <= 1);

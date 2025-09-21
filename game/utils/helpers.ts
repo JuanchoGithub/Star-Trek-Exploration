@@ -1,3 +1,4 @@
+
 export const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const cyrb53 = (str: string, seed = 0): number => {

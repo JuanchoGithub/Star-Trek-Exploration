@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -65,7 +64,7 @@ export const MechanicsSection: React.FC = () => (
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Life Support</h4>
-                <p className="text-sm text-text-secondary">Life support systems must be 100% functional to generate food and oxygen needed to sustain life. Without a functioning life support system, the ship can last only two days on reserves.</p>
+                <p className="text-sm text-text-secondary">When life support systems are damaged below 100%, they cease to produce oxygen. The ship then switches to emergency reserves, which last for exactly two turns. If life support is not repaired within that time, the crew is lost, and the ship becomes a derelict hulk, ripe for salvage or capture. This applies to all ships in the sector, including yours.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Transporter</h4>

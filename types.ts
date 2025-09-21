@@ -214,6 +214,7 @@ export interface PlayerTurnActions {
     hasLaunchedTorpedo?: boolean;
     hasUsedAwayTeam?: boolean;
     hasTakenMajorAction?: boolean;
+    hasUsedTachyonScan?: boolean;
 }
 
 export interface EventTemplateOption {

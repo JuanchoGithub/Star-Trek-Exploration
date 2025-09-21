@@ -45,6 +45,13 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     </div>
                 </div>
             </div>
+            <SubHeader>Anti-Cloak Operations: Tachyon Scan</SubHeader>
+            <p className="text-text-secondary mb-4">The U.S.S. Endeavour is equipped with a Tachyon Scanner, a specialized tool for countering cloaked vessels. When activated, this system consumes a significant amount of reserve power to flood the immediate area with tachyon particles.</p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-1">
+                <li><strong>Activation:</strong> This is a major action available from the Command Console, usable once per turn. It requires your scanners to be at least 50% operational.</li>
+                <li><strong>Detection:</strong> The scan has a radius of 5 hexes. The chance to detect a cloaked ship is based on your scanner's health and your proximity to the target. Closer targets are easier to detect.</li>
+                <li><strong>Effect:</strong> A successful scan will force a cloaked enemy ship to decloak and will disrupt their cloaking device, preventing them from re-cloaking for two turns. This provides a critical window to target and neutralize the threat.</li>
+            </ul>
             <SubHeader>Away Team & Transporter Doctrine</SubHeader>
             <p className="text-text-secondary mb-4">Your Security Teams and Transporter Room are a versatile strategic asset, not just a last resort. Proper deployment can end a battle or complete a mission without firing a shot.</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-1">

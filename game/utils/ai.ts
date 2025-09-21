@@ -1,6 +1,5 @@
-import type { Position, Ship } from '../../types';
 
-export const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+import type { Position, Ship } from '../../types';
 
 export const calculateDistance = (pos1: Position, pos2: Position): number => {
     return Math.max(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y));
