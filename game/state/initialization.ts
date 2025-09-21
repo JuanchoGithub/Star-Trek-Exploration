@@ -205,9 +205,9 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
                     dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
                     crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(),
                     lifeSupportReserves: { current: 100, max: 100 },
-                    // FIX: Added missing isCloaked and cloakCooldown properties to conform to the Ship interface.
-                    isCloaked: false,
+                    cloakState: 'visible',
                     cloakCooldown: 0,
+                    isStunned: false,
                 } as Ship);
             }
         }
@@ -248,9 +248,9 @@ export const createInitialGameState = (): GameState => {
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
     lifeSupportReserves: { current: 100, max: 100 },
-    // FIX: Added missing isCloaked and cloakCooldown properties to conform to the Ship interface.
-    isCloaked: false,
+    cloakState: 'visible',
     cloakCooldown: 0,
+    isStunned: false,
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -308,4 +308,4 @@ export const createInitialGameState = (): GameState => {
     // FIX: Added missing 'orbitingPlanetId' property to conform to the GameState interface.
     orbitingPlanetId: null,
   };
-};
+}

@@ -99,8 +99,9 @@ const createEntityFromTemplate = (
                 dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, 
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), 
                 lifeSupportReserves: { current: 100, max: 100 },
-                isCloaked: false,
+                cloakState: 'visible',
                 cloakCooldown: 0,
+                isStunned: false,
             } as Ship;
         }
         case 'planet': {
@@ -213,8 +214,9 @@ const createInitialGameState = (): GameState => {
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR,
     lifeSupportReserves: { current: 100, max: 100 },
-    isCloaked: false,
+    cloakState: 'visible',
     cloakCooldown: 0,
+    isStunned: false,
   };
 
   const playerCrew: BridgeOfficer[] = [
@@ -323,8 +325,14 @@ export const useGameLogic = () => {
                         }
                         if((ship as any).desperationMove !== undefined) delete (ship as any).desperationMove;
                         if (!ship.lifeSupportReserves) ship.lifeSupportReserves = { current: 100, max: 100 };
-                        if (ship.isCloaked === undefined) ship.isCloaked = false;
-                        if (ship.cloakCooldown === undefined) ship.cloakCooldown = 0;
+                        if ((ship as any).isCloaked !== undefined) {
+                            ship.cloakState = (ship as any).isCloaked ? 'cloaked' : 'visible';
+                            delete (ship as any).isCloaked;
+                        } else if (!ship.cloakState) {
+                            ship.cloakState = 'visible';
+                        }
+                        ship.cloakCooldown = ship.cloakCooldown || 0;
+                        ship.isStunned = ship.isStunned || false;
                     };
                     migrateShip(savedState.player.ship);
                      if (!savedState.player.ship.shipModel) savedState.player.ship.shipModel = 'Federation';
@@ -541,7 +549,23 @@ export const useGameLogic = () => {
 
         const { player, currentSector } = next;
         const playerShip = player.ship;
+        
+        if (playerShip.isStunned) {
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Ship systems were offline. All power restored.", isPlayerSource: true, color: 'border-orange-400' });
+            playerShip.isStunned = false;
+            next.turn++;
+            addLogForTurn({ sourceId: 'system', sourceName: 'Log', message: `Turn ${next.turn} begins.`, isPlayerSource: false, color: 'border-gray-700' });
+            return next;
+        }
+
         let maintainedTargetLock = false;
+
+        // Auto-decloak if offensive actions were taken
+        if (playerShip.cloakState === 'cloaked' && (playerTurnActions.combat || playerTurnActions.hasLaunchedTorpedo || playerTurnActions.hasUsedAwayTeam)) {
+            playerShip.cloakState = 'visible';
+            playerShip.cloakCooldown = 2; // Standard cooldown after offensive action
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Taking offensive action has disengaged the cloaking device.', isPlayerSource: true });
+        }
 
         if (playerShip.repairTarget) {
             const energyCost = 10;
@@ -570,17 +594,11 @@ export const useGameLogic = () => {
             }
         }
         
-        if (playerShip.isCloaked && (playerTurnActions.combat || playerTurnActions.hasLaunchedTorpedo || playerTurnActions.hasUsedAwayTeam)) {
-            playerShip.isCloaked = false;
-            playerShip.cloakCooldown = 2; // Standard cooldown after offensive action
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Taking offensive action has disengaged the cloaking device.', isPlayerSource: true });
-        }
-        
         if (playerShip.retreatingTurn !== null) {
             addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Attempting to retreat, cannot take other actions.", isPlayerSource: true });
         } else {
             if (navigationTarget) {
-                const movementSpeed = (next.redAlert || playerShip.isCloaked) ? 1 : 3;
+                const movementSpeed = playerShip.cloakState === 'cloaked' ? 1 : (next.redAlert ? 1 : 3);
                 let moved = false; const initialPosition = { ...playerShip.position };
                 for (let i = 0; i < movementSpeed; i++) {
                     if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) break;
@@ -683,12 +701,29 @@ export const useGameLogic = () => {
         const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
         processAITurns(next, aiActions);
         
-        [playerShip, ...currentSector.entities].forEach(e => { if (e.type === 'ship') { const ship = e as Ship; const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1); ship.shields = Math.min(ship.maxShields, ship.shields + regenAmount); } });
+        // Shield regeneration and health checks for all ships
+        [playerShip, ...currentSector.entities].forEach(e => {
+            if (e.type === 'ship') {
+                const ship = e as Ship;
+                const shieldHealthPercent = ship.subsystems.shields.maxHealth > 0 ? ship.subsystems.shields.health / ship.subsystems.shields.maxHealth : 0;
+
+                // Shields can only recharge if the generator is at least 25% operational.
+                if (shieldHealthPercent >= 0.25) {
+                    // Shield recharge rate is proportional to shield subsystem health.
+                    const rechargeRateMultiplier = shieldHealthPercent;
+                    const baseRegenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
+                    const finalRegenAmount = baseRegenAmount * rechargeRateMultiplier;
+                    ship.shields = Math.min(ship.maxShields, ship.shields + finalRegenAmount);
+                } else {
+                    // If shields are too damaged, they go offline and cannot recharge.
+                    ship.shields = 0;
+                }
+            }
+        });
         
-        // Process life support for all ships
         allShips.forEach(ship => {
             if (ship.subsystems.lifeSupport.health < ship.subsystems.lifeSupport.maxHealth) {
-                ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - (100 / 40)); // Lasts 40 turns (2 days)
+                ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - (100 / 40)); 
                 if (ship.lifeSupportReserves.current <= 0 && ship.hull > 0) {
                     ship.hull = 0;
                     if (ship.id === 'player') {
@@ -700,25 +735,39 @@ export const useGameLogic = () => {
                      addLogForTurn({ sourceId: 'system', sourceName: 'Life Support', message: `WARNING: Life support failing. ${ship.lifeSupportReserves.current.toFixed(0)}% reserves remaining.`, isPlayerSource: false, color: 'border-orange-400' });
                 }
             } else {
-                ship.lifeSupportReserves.current = Math.min(ship.lifeSupportReserves.max, ship.lifeSupportReserves.current + (100/80)); // Regenerate over 4 days
+                ship.lifeSupportReserves.current = Math.min(ship.lifeSupportReserves.max, ship.lifeSupportReserves.current + (100/80)); 
             }
         });
 
-        // Player ship cloak maintenance and cooldown
-        if (playerShip.cloakCooldown > 0 && !playerShip.isCloaked) {
-            playerShip.cloakCooldown--;
-        }
-        if (playerShip.isCloaked) {
-            const stats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
-            if (stats && stats.cloakingCapable) {
+        // Player ship cloak state resolution
+        const stats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
+        if (stats && playerShip.cloakingCapable) {
+            if (playerShip.cloakState === 'cloaking') {
+                const { success: energySuccess } = consumeEnergy(playerShip, stats.cloakEnergyCost.initial);
+                if (!energySuccess) {
+                    playerShip.cloakState = 'visible';
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Cloaking sequence failed: Insufficient initial power.', isPlayerSource: true, color: 'border-orange-400' });
+                } else if (Math.random() < stats.cloakFailureChance) {
+                    playerShip.cloakState = 'visible';
+                    playerShip.cloakCooldown = 3;
+                    addLogForTurn({ sourceId: 'system', sourceName: 'Engineering', message: `Cloaking device failed to engage!`, isPlayerSource: false, color: 'border-red-500' });
+                } else {
+                    playerShip.cloakState = 'cloaked';
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Cloaking device engaged. Ship is now hidden from sensors.`, isPlayerSource: true });
+                }
+            } else if (playerShip.cloakState === 'cloaked') {
                 const { success, logs: energyLogs } = consumeEnergy(playerShip, stats.cloakEnergyCost.maintain);
                 energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
                 if (!success) {
-                    playerShip.isCloaked = false;
+                    playerShip.cloakState = 'visible';
                     playerShip.cloakCooldown = 3;
-                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Insufficient power to maintain cloak! Cloaking device disengaged.', isPlayerSource: true, color: 'border-orange-400' });
+                    playerShip.isStunned = true;
+                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'CRITICAL: Insufficient power to maintain cloak! Device failed, causing a ship-wide power surge. Systems are temporarily offline!', isPlayerSource: true, color: 'border-red-500' });
                 }
             }
+        }
+        if (playerShip.cloakCooldown > 0) {
+            playerShip.cloakCooldown--;
         }
 
         const destroyedIds = new Set<string>();
@@ -746,6 +795,23 @@ export const useGameLogic = () => {
         if (playerShip.hull <= 0) { next.gameOver = true; addLogForTurn({ sourceId: 'system', sourceName: 'FATAL', message: "CRITICAL: U.S.S. Endeavour has been destroyed. Game Over.", isPlayerSource: false, color: 'border-red-700' }); }
         
         const hasEnemies = next.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+        if (next.redAlert && !hasEnemies) {
+            next.redAlert = false;
+            playerShip.shields = 0;
+            playerShip.evasive = false;
+            addLogForTurn({ sourceId: 'system', sourceName: 'Stand Down', message: "Hostiles clear. Standing down from Red Alert.", isPlayerSource: false });
+        } else if (!next.redAlert && hasEnemies) {
+            next.redAlert = true;
+            const shieldHealthPercent = playerShip.subsystems.shields.maxHealth > 0 ? playerShip.subsystems.shields.health / playerShip.subsystems.shields.maxHealth : 0;
+            if (shieldHealthPercent >= 0.25) {
+                playerShip.shields = playerShip.maxShields;
+                addLogForTurn({ sourceId: 'system', sourceName: 'RED ALERT!', message: "Hostiles detected! Shields up!", isPlayerSource: false, color: 'border-red-600' });
+            } else {
+                playerShip.shields = 0;
+                addLogForTurn({ sourceId: 'system', sourceName: 'RED ALERT!', message: "Hostiles detected! Warning: Shield generator is below 25% health!", isPlayerSource: false, color: 'border-red-600' });
+            }
+        }
+
         if (next.redAlert && hasEnemies) {
             let energyDrain = 5; if (playerShip.evasive) energyDrain += 5;
             if (energyDrain > 0) {
@@ -757,9 +823,7 @@ export const useGameLogic = () => {
         } else if (!next.redAlert) {
             if (playerShip.energy.current < playerShip.energy.max) { playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + 10); }
         }
-        if (next.redAlert && !hasEnemies) { next.redAlert = false; playerShip.shields = 0; playerShip.evasive = false; addLogForTurn({ sourceId: 'system', sourceName: 'Stand Down', message: "Hostiles clear. Standing down from Red Alert.", isPlayerSource: false }); }
-        else if (!next.redAlert && hasEnemies) { next.redAlert = true; addLogForTurn({ sourceId: 'system', sourceName: 'RED ALERT!', message: "Hostiles detected! Shields up!", isPlayerSource: false, color: 'border-red-600' }); playerShip.shields = playerShip.maxShields; }
-
+        
         next.turn++;
         addLogForTurn({ sourceId: 'system', sourceName: 'Log', message: `Turn ${next.turn} begins.`, isPlayerSource: false, color: 'border-gray-700' });
         
@@ -895,15 +959,41 @@ export const useGameLogic = () => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
             if (!next.redAlert) { // Activating Red Alert
-                const energyCost = 15;
-                if (ship.energy.current < energyCost) {
-                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Not enough reserve power to activate Red Alert!`, isPlayerSource: false, color: 'border-orange-400' });
+                 if (ship.cloakState !== 'visible') {
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot go to Red Alert while cloaking device is active.`, isPlayerSource: true });
                     return prev;
                 }
+
+                const shieldHealthPercent = ship.subsystems.shields.maxHealth > 0 ? ship.subsystems.shields.health / ship.subsystems.shields.maxHealth : 0;
+                
+                const baseEnergyCost = 15;
+                let energyCost = baseEnergyCost;
+                
+                // If shields are functional, their damage increases the energy cost to raise them.
+                if (shieldHealthPercent > 0) {
+                    const damagePercent = 1 - shieldHealthPercent;
+                    const energyCostMultiplier = 1 + (damagePercent / 2);
+                    energyCost = baseEnergyCost * energyCostMultiplier;
+                }
+
+                if (ship.energy.current < energyCost) {
+                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Not enough reserve power to activate Red Alert! (Required: ${Math.round(energyCost)}, Available: ${Math.round(ship.energy.current)})`, isPlayerSource: false, color: 'border-orange-400' });
+                    return prev;
+                }
+
                 ship.energy.current -= energyCost;
                 next.redAlert = true;
-                ship.shields = ship.maxShields;
-                addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Shields up! Consumed ${energyCost} power.`, isPlayerSource: false, color: 'border-red-600' });
+
+                if (shieldHealthPercent < 0.25) {
+                    ship.shields = 0;
+                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Warning: Shield generator is below 25% health! Shields cannot be raised. Consumed ${Math.round(energyCost)} power for alert status.`, isPlayerSource: false, color: 'border-red-600' });
+                } else {
+                    ship.shields = ship.maxShields;
+                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Shields up! Consumed ${Math.round(energyCost)} power.`, isPlayerSource: false, color: 'border-red-600' });
+                    if (shieldHealthPercent < 1.0) {
+                        addLog({ sourceId: 'system', sourceName: 'Engineering', message: `Note: Shield generator at ${Math.round(shieldHealthPercent * 100)}% efficiency. Energy consumption for shield operations is increased.`, isPlayerSource: false, color: 'border-orange-400' });
+                    }
+                }
             } else { // Deactivating Red Alert
                 next.redAlert = false;
                 ship.shields = 0;
@@ -939,12 +1029,14 @@ export const useGameLogic = () => {
     }, [addLog]);
 
     const onFirePhasers = useCallback((targetId: string) => {
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId } }));
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Targeting ${target?.name || 'unknown'} with phasers.`, isPlayerSource: true });
-    }, [addLog, gameState.currentSector.entities, gameState.player.ship.name]);
+    }, [addLog, gameState, playerTurnActions]);
 
     const onLaunchTorpedo = useCallback((targetId: string) => {
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         if (playerTurnActions.hasLaunchedTorpedo) {
             addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Torpedo tubes are reloading. Only one launch per turn.', isPlayerSource: true });
             return;
@@ -992,7 +1084,7 @@ export const useGameLogic = () => {
     }, [addLog, playerTurnActions, gameState]);
 
     const onScanTarget = useCallback(() => {
-        if (!selectedTargetId) return;
+        if (!selectedTargetId || gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
@@ -1008,16 +1100,17 @@ export const useGameLogic = () => {
             }
             return next;
         });
-    }, [selectedTargetId, addLog]);
+    }, [selectedTargetId, addLog, gameState, playerTurnActions]);
 
     const onInitiateRetreat = useCallback(() => {
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             next.player.ship.retreatingTurn = next.turn + 3;
             addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Retreat initiated! Charging warp core. We must survive for 3 turns.`, isPlayerSource: true, color: 'border-orange-400' });
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState, playerTurnActions]);
 
     const onCancelRetreat = useCallback(() => {
         setGameState(prev => {
@@ -1064,6 +1157,7 @@ export const useGameLogic = () => {
     }, [addLog]);
 
     const onStartAwayMission = useCallback((planetId: string) => {
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         const planet = gameState.currentSector.entities.find(e => e.id === planetId);
         if (!planet || planet.type !== 'planet') return;
         
@@ -1113,7 +1207,7 @@ export const useGameLogic = () => {
         setActiveMissionPlanetId(planetId);
         setGameState(prev => ({ ...prev, usedAwayMissionSeeds: [...prev.usedAwayMissionSeeds, missionSeed], usedAwayMissionTemplateIds: [...(prev.usedAwayMissionTemplateIds || []), template.id] }));
         setActiveAwayMission({ ...template, options: activeOptions, advice, seed: missionSeed });
-    }, [gameState, addLog]);
+    }, [gameState, addLog, playerTurnActions]);
 
     const onChooseAwayMissionOption = useCallback((option: ActiveAwayMissionOption) => {
         if (!activeAwayMission) return;
@@ -1272,6 +1366,7 @@ export const useGameLogic = () => {
     }, []);
 
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         if (playerTurnActions.hasUsedAwayTeam) {
             addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Transporter room is cycling. Only one away team action per turn.', isPlayerSource: true });
             return;
@@ -1337,6 +1432,11 @@ export const useGameLogic = () => {
             const next = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
 
+            if (playerTurnActions.hasTakenMajorAction) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot perform another action this turn.", isPlayerSource: true });
+                return prev;
+            }
+
             if (!ship.cloakingCapable) {
                 addLog({ sourceId: 'player', sourceName: ship.name, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true });
                 return prev;
@@ -1345,49 +1445,33 @@ export const useGameLogic = () => {
             const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
             if (!stats) return prev;
 
-            if (ship.isCloaked) {
-                // Decloaking
-                ship.isCloaked = false;
-                ship.cloakCooldown = 2; // Cooldown after decloaking
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged.", isPlayerSource: true });
-            } else {
-                // Cloaking
+            if (ship.cloakState === 'cloaked') {
+                ship.cloakState = 'visible';
+                ship.cloakCooldown = 2; 
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged. This has used our tactical action for the turn.", isPlayerSource: true });
+                setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
+            } else if (ship.cloakState === 'visible') {
                 if (ship.cloakCooldown > 0) {
                     addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true });
                     return prev;
                 }
                 if (next.redAlert) {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while at Red Alert.", isPlayerSource: true });
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true });
                     return prev;
                 }
-
-                const { success, logs } = consumeEnergy(ship, stats.cloakEnergyCost.initial);
-                logs.forEach((log: any) => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true }));
+                const { success } = consumeEnergy(ship, stats.cloakEnergyCost.initial);
                 if (!success) {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Insufficient power to engage cloaking device.", isPlayerSource: true });
-                    return next;
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Insufficient power to initiate cloaking sequence.", isPlayerSource: true });
+                    return prev;
                 }
                 
-                addLog({ sourceId: 'player', sourceName: ship.name, message: `Consumed ${stats.cloakEnergyCost.initial} power to engage cloak.`, isPlayerSource: true });
-
-                if (Math.random() < stats.cloakFailureChance) {
-                    ship.cloakCooldown = 3;
-                    const subsystems: (keyof ShipSubsystems)[] = ['engines', 'shields', 'weapons'];
-                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
-                    const damage = 10 + Math.floor(Math.random() * 10);
-                    targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
-                    addLog({ sourceId: 'system', sourceName: 'Engineering', message: `Cloaking device failed to engage! A plasma feedback damaged the ${randomSubsystemKey} system!`, isPlayerSource: false, color: 'border-red-500' });
-
-                } else {
-                    ship.isCloaked = true;
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device engaged.", isPlayerSource: true });
-                }
+                ship.cloakState = 'cloaking';
+                addLog({ sourceId: 'player', sourceName: ship.name, message: `Initiating cloaking sequence. Ship is vulnerable.`, isPlayerSource: true });
+                setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
             }
-
             return next;
         });
-    }, [addLog]);
+    }, [addLog, playerTurnActions]);
 
     return {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),

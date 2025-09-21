@@ -36,6 +36,8 @@ export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter' | 'Dreadn
 // FIX: Exported ShipModel type to be used across the application.
 export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
 
+export type CloakState = 'visible' | 'cloaking' | 'cloaked';
+
 export interface Ship extends BaseEntity {
   type: 'ship';
   shipClass: string;
@@ -59,8 +61,9 @@ export interface Ship extends BaseEntity {
   repairTarget: 'hull' | keyof ShipSubsystems | null;
   logColor: string;
   lifeSupportReserves: { current: number; max: number };
-  isCloaked: boolean;
+  cloakState: CloakState;
   cloakCooldown: number; // Turns until cloak is available again
+  isStunned: boolean; // Skips next turn if true
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
@@ -206,6 +209,7 @@ export interface PlayerTurnActions {
     };
     hasLaunchedTorpedo?: boolean;
     hasUsedAwayTeam?: boolean;
+    hasTakenMajorAction?: boolean;
 }
 
 export interface EventTemplateOption {

@@ -16,8 +16,9 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, torpedoes: {} as any, dilithium: {} as any,
         scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
         lifeSupportReserves: { current: 100, max: 100 },
-        isCloaked: false,
+        cloakState: 'visible',
         cloakCooldown: 0,
+        isStunned: false,
     };
 };
 

@@ -53,15 +53,10 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
   
   const getEndTurnButtonText = () => {
-    if (isTurnResolving) {
-        return "Resolving...";
-    }
-    if (isRetreating && turnsToRetreat === 0) {
-        return "Engage Emergency Warp";
-    }
-    if (playerTurnActions.combat) {
-        return "End Turn & Fire";
-    }
+    if (playerShip.isStunned) return "Systems Stunned";
+    if (isTurnResolving) return "Resolving...";
+    if (isRetreating && turnsToRetreat === 0) return "Engage Emergency Warp";
+    if (playerTurnActions.combat) return "End Turn & Fire";
     if (navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y)) {
       if (playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
         return "Engines Offline";
@@ -80,6 +75,9 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
   const canUsePhasers = playerShip.subsystems.weapons.health > 0 && (canFireOnShip || canFireOnTorpedo);
   const canLaunchTorpedoFinal = playerShip.torpedoes.current > 0 && (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) >= 0.34;
+  const hasTakenMajorAction = playerTurnActions.hasTakenMajorAction || false;
+
+  const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction;
 
   const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
   const phaserButtonText = isTargetingSubsystem
@@ -88,11 +86,16 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
 
   const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
   const canCloak = playerShip.cloakingCapable && cloakStats;
-  const isCloakOnCooldown = playerShip.cloakCooldown > 0 && !playerShip.isCloaked;
+  const isCloaking = playerShip.cloakState === 'cloaking';
+  const isCloaked = playerShip.cloakState === 'cloaked';
+  const isCloakOnCooldown = playerShip.cloakCooldown > 0;
+  
   const cannotCloakReason = 
       !canCloak ? "Cloaking device not equipped" :
+      isCloaking ? "Cloaking sequence in progress." :
       isCloakOnCooldown ? `Cloak recharging (${playerShip.cloakCooldown} turns)` : 
-      (gameState.redAlert && !playerShip.isCloaked) ? "Cannot cloak while at Red Alert" : 
+      gameState.redAlert ? "Cannot cloak while at Red Alert" : 
+      hasTakenMajorAction ? "Major action already taken this turn." :
       "";
 
   return (
@@ -100,25 +103,25 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || isRetreating || isTurnResolving} accentColor="red">
+                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked} accentColor="red">
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || isRetreating || isTurnResolving || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>
                  <CommandButton 
                     onClick={onToggleCloak} 
-                    disabled={!canCloak || isCloakOnCooldown || (gameState.redAlert && !playerShip.isCloaked) || isTurnResolving}
+                    disabled={!canCloak || isCloaking || (isCloaked && hasTakenMajorAction) || (!isCloaked && (isCloakOnCooldown || gameState.redAlert || hasTakenMajorAction))}
                     accentColor="teal"
                     title={cannotCloakReason}
                  >
-                    <CloakIcon className="w-5 h-5" /> {playerShip.isCloaked ? 'Decloak' : 'Cloak'}
+                    <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : isCloaking ? 'Engaging...' : 'Cloak'}
                 </CommandButton>
-                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
+                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
                     <BoardingIcon className="w-5 h-5" /> Board
                 </CommandButton>
-                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || isRetreating || isTurnResolving || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
+                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike
                 </CommandButton>
             </div>
@@ -136,7 +139,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         ) : (
             <button
                 onClick={onInitiateRetreat}
-                disabled={!hasEnemy || isTurnResolving}
+                disabled={!hasEnemy || isTurnResolving || hasTakenMajorAction || isCloaked}
                 className="font-bold transition-all flex items-center gap-3 btn btn-accent indigo flex-shrink-0"
             >
                 <RetreatIcon className="w-5 h-5" />
@@ -145,7 +148,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         )}
         <button
             onClick={() => onEndTurn()}
-            disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5)}
+            disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
             className="flex-grow btn btn-primary"
         >
             {getEndTurnButtonText()}

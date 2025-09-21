@@ -8,7 +8,7 @@ export function processCommonTurn(
     applyPhaserDamage: (target: Ship, damage: number, subsystem: any, source: Ship, state: GameState) => string[],
     addLog: (log: any) => void
 ) {
-    if (playerShip.isCloaked) {
+    if (playerShip.cloakState === 'cloaked') {
         addLog({ sourceId: ship.id, sourceName: ship.name, message: "Unable to acquire a target lock on the enemy vessel.", isPlayerSource: false });
         // AI will hold position or move randomly when unable to target
         // For now, they just do nothing.

@@ -84,7 +84,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const visibleEntities = allEntities.filter(entity => {
       if (entity.id === playerShip.id) return true;
-      if (entity.type === 'ship' && (entity as Ship).isCloaked && !entity.scanned) return false;
+      if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false; // Hide cloaked AI ships
       if (scannerHealthPercent < 50) return false; // Below 50%, scanners are off.
       if (scannerHealthPercent < 90) {
           // Below 90%, can only see large objects.
@@ -177,8 +177,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           let factionColor = 'text-gray-400';
           let entityName = entity.name;
           let transformStyle = { transform: `translate(-50%, -50%)` };
-          const isCloaked = entity.type === 'ship' && (entity as Ship).isCloaked;
-          const wrapperClass = isCloaked ? 'opacity-50' : '';
+          const isCloaked = entity.type === 'ship' && ((entity as Ship).cloakState === 'cloaked' || (entity as Ship).cloakState === 'cloaking');
+          const wrapperClass = isCloaked ? 'opacity-50 transition-opacity duration-500' : '';
 
           if (entity.type === 'torpedo_projectile') {
                const torpedo = entity as TorpedoProjectile;

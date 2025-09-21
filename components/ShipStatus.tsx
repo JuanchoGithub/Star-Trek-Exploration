@@ -135,8 +135,17 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
         <span className="text-accent-red" title="Draining">▼</span> :
         (ship.energy.current < ship.energy.max ? <span className="text-accent-green" title="Recharging">▲</span> : null);
   
-  const cloakStatusText = ship.isCloaked ? 'ACTIVE' : ship.cloakCooldown > 0 ? `RECHARGING (${ship.cloakCooldown})` : 'READY';
-  const isCloakDisabled = !ship.cloakingCapable || (ship.cloakCooldown > 0 && !ship.isCloaked) || (gameState.redAlert && !ship.isCloaked);
+  const cloakStatusText =
+    ship.cloakState === 'cloaked' ? 'ACTIVE' :
+    ship.cloakState === 'cloaking' ? 'ENGAGING' :
+    ship.cloakCooldown > 0 ? `RECHARGING (${ship.cloakCooldown})` : 'READY';
+
+  const isCloakDisabled = !ship.cloakingCapable || 
+                        ship.cloakState === 'cloaking' ||
+                        (ship.cloakState === 'visible' && ship.cloakCooldown > 0) ||
+                        (ship.cloakState === 'visible' && gameState.redAlert) ||
+                        ship.isStunned;
+
   const cloakTitle = !ship.cloakingCapable ? "Device not installed." : isCloakDisabled ? "Cannot engage cloak." : "Toggle cloaking device.";
 
   return (
@@ -170,7 +179,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
              <InteractiveStatusIndicator 
                 label="Cloak" 
                 status={cloakStatusText}
-                colorClass={ship.isCloaked ? 'text-accent-teal bg-teal-900 bg-opacity-50' : 'text-text-disabled'}
+                colorClass={ship.cloakState === 'cloaked' ? 'text-accent-teal bg-teal-900 bg-opacity-50' : (ship.cloakState === 'cloaking' ? 'text-accent-yellow animate-pulse bg-yellow-900 bg-opacity-50' : 'text-text-disabled')}
                 onClick={onToggleCloak}
                 disabled={isCloakDisabled}
                 title={cloakTitle}
