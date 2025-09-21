@@ -29,7 +29,7 @@ const seededRandom = (seed: number): (() => number) => {
 
 const QuadrantGFXBackground: React.FC = React.memo(() => {
     const elements = useMemo(() => {
-        const seed = cyrb53("TyphonExpanseBackground"); // A fixed seed for the whole map
+        const seed = cyrb53(String(Math.random())); // Randomly generate seed each time
         const rand = seededRandom(seed);
         const generatedElements: React.ReactNode[] = [];
         const width = 800; // viewbox width
@@ -76,7 +76,7 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
             );
         }
 
-        // Generate curved line (non-looping sine-like wave)
+        // Generate smooth curved line (non-looping sine-like wave)
         let currentX = -50; // Start off-screen
         let currentY = rand() * height;
         let pathData = `M ${currentX} ${currentY}`;
@@ -86,13 +86,22 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
             const nextX = currentX + segmentWidth;
             const nextY = rand() * height;
 
-            const cp1x = currentX + (nextX - currentX) * (0.2 + rand() * 0.2);
-            const cp1y = rand() * height;
-            const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
-            const cp2y = rand() * height;
+            if (i === 0) {
+                // The first segment must use a full cubic Bézier to establish the initial direction.
+                const cp1x = currentX + (nextX - currentX) * (0.2 + rand() * 0.2);
+                const cp1y = rand() * height;
+                const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
+                const cp2y = rand() * height;
+                pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
+            } else {
+                // Subsequent segments use the smooth curveto command, which reflects the previous control point.
+                const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
+                const cp2y = rand() * height;
+                pathData += ` S ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
+            }
             
-            pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
             currentX = nextX;
+            currentY = nextY;
         }
         generatedElements.push(
             <path
