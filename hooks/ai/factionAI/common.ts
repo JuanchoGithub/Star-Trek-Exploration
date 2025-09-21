@@ -1,6 +1,9 @@
 import type { GameState, Ship, TorpedoProjectile, CombatEffect } from '../../../types';
 import { calculateDistance, moveOneStep, uniqueId } from '../aiUtilities';
 import { AIActions } from '../FactionAI';
+// FIX: Add imports for ship and torpedo stats to create valid torpedo projectiles.
+import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
+import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
 
 export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AIActions): boolean {
     const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
@@ -137,14 +140,24 @@ export function processCommonTurn(
         if (ship.energy.current >= torpedoCost) {
             ship.energy.current -= torpedoCost;
             ship.torpedoes.current--;
+            // FIX: Added logic to get torpedo stats and create a valid TorpedoProjectile.
+            const shipStats = shipClasses[ship.shipModel][ship.shipClass];
+            if (shipStats.torpedoType === 'None') return;
+            const torpedoData = torpedoStats[shipStats.torpedoType];
+
             const torpedo: TorpedoProjectile = {
                 id: uniqueId(),
-                name: 'Enemy Torpedo', type: 'torpedo_projectile', faction: ship.faction,
+                name: torpedoData.name, 
+                type: 'torpedo_projectile', faction: ship.faction,
                 position: { ...ship.position }, targetId: playerShip.id, sourceId: ship.id, stepsTraveled: 0,
-                speed: 2, path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
+                speed: torpedoData.speed, 
+                path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
+                torpedoType: shipStats.torpedoType,
+                damage: torpedoData.damage,
+                specialDamage: torpedoData.specialDamage,
             };
             currentSector.entities.push(torpedo);
-            addLog({ sourceId: ship.id, sourceName: ship.name, message: `Has launched a torpedo!`, isPlayerSource: false });
+            addLog({ sourceId: ship.id, sourceName: ship.name, message: `Has launched a ${torpedoData.name}!`, isPlayerSource: false });
         }
     }
 }

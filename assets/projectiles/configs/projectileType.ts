@@ -1,9 +1,8 @@
 import { EntityTypeConfig } from '../../types';
-import { TorpedoProjectileIcon } from '../icons';
-import { TorpedoWireframe } from '../wireframes';
+import { torpedoStats } from './torpedoTypes';
 
 export const torpedoType: EntityTypeConfig = {
-    icon: TorpedoProjectileIcon,
-    wireframe: TorpedoWireframe,
-    colorClass: 'text-accent-orange'
+    icon: torpedoStats.Photon.icon,
+    wireframe: torpedoStats.Photon.wireframe,
+    colorClass: torpedoStats.Photon.colorClass
 };

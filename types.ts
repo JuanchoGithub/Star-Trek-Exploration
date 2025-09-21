@@ -38,6 +38,12 @@ export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Indep
 
 export type CloakState = 'visible' | 'cloaking' | 'cloaked';
 
+export type StatusEffect = {
+    type: 'plasma_burn';
+    damage: number;
+    turnsRemaining: number;
+};
+
 export interface Ship extends BaseEntity {
   type: 'ship';
   shipClass: string;
@@ -68,6 +74,7 @@ export interface Ship extends BaseEntity {
   lifeSupportFailureTurn: number | null;
   isDerelict: boolean;
   captureInfo: { captorId: string; repairTurn: number; } | null;
+  statusEffects: StatusEffect[];
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
@@ -107,6 +114,8 @@ export interface Shuttle extends BaseEntity {
     crewCount: number;
 }
 
+export type TorpedoType = 'Photon' | 'Quantum' | 'Plasma' | 'HeavyPlasma' | 'HeavyPhoton';
+
 export interface TorpedoProjectile extends BaseEntity {
     type: 'torpedo_projectile';
     targetId: string;
@@ -117,6 +126,13 @@ export interface TorpedoProjectile extends BaseEntity {
     turnLaunched: number;
     hull: number;
     maxHull: number;
+    torpedoType: TorpedoType;
+    damage: number;
+    specialDamage?: {
+        type: 'plasma_burn';
+        damage: number;
+        duration: number;
+    };
 }
 
 export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile | Shuttle;
@@ -249,6 +265,7 @@ export type CombatEffect = {
     type: 'torpedo_hit';
     position: Position;
     delay: number;
+    torpedoType: TorpedoType;
 };
 
 export interface LogEntry {

@@ -8,7 +8,7 @@ import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../asset
 import { ShipModel } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
-import { torpedoType } from '../../assets/projectiles/configs/projectileType';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
 import { PirateEscortIcon } from '../../assets/ships/icons';
 import { IndependentFreighterIcon } from '../../assets/ships/icons';
@@ -223,7 +223,31 @@ export const RegistrySection: React.FC = () => {
             <OtherEntityEntry config={asteroidType} name="Asteroid Field" description="A dense field of rock and ice. Navigating adjacent to these fields is hazardous, as micrometeoroid impacts can damage shields and hull." />
             <OtherEntityEntry config={beaconType} name="Event Beacon" description="An unidentified signal source. Approaching these beacons can trigger unique events, ranging from derelict ships and distress calls to ancient alien artifacts." />
             <OtherEntityEntry config={shuttleType} name="Shuttle" description="Small, short-range auxiliary craft. Used for away missions on gas giants where transporters are ineffective, and as escape pods during emergencies. Lacks weapons or significant defenses." />
-            <OtherEntityEntry config={torpedoType} name="Photon Torpedo" description="A powerful projectile weapon. Torpedoes travel across the sector to their target but can be intercepted by enemy point-defense fire. They deal significant damage directly to the hull if they connect." />
+            <OtherEntityEntry 
+                config={torpedoStats.Photon} 
+                name="Photon Torpedo" 
+                description="Standard Federation and Klingon antimatter warhead. It is heavily mitigated by shields but deals significant hull damage if they are down. Can be intercepted by point-defense phasers." 
+            />
+            <OtherEntityEntry 
+                config={torpedoStats.Quantum} 
+                name="Quantum Torpedo" 
+                description="A highly advanced projectile utilizing a zero-point energy warhead. It is faster than standard torpedoes and a portion of its damage bypasses enemy shields. It is also significantly harder for point-defense systems to intercept." 
+            />
+            <OtherEntityEntry 
+                config={torpedoStats.Plasma} 
+                name="Plasma Torpedo" 
+                description="The signature projectile of the Romulan Star Empire. It delivers a moderate initial impact followed by a lingering plasma 'burn' effect that damages the hull directly over several turns, bypassing shields entirely. It is relatively slow-moving." 
+            />
+            <OtherEntityEntry 
+                config={torpedoStats.HeavyPlasma} 
+                name="Heavy Plasma Torpedo" 
+                description="A larger, more potent version of the standard plasma torpedo, typically found on capital ships like the D'deridex Warbird. It has a greater initial impact and a more severe plasma burn effect." 
+            />
+            <OtherEntityEntry 
+                config={torpedoStats.HeavyPhoton} 
+                name="Heavy Photon Torpedo" 
+                description="A brute-force weapon favored by Klingon battleships. It is slow and easy to intercept, but delivers devastating damage if it connects with a depleted shield facing. It offers no special properties beyond sheer destructive power." 
+            />
 
         </div>
     )

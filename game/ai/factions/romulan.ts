@@ -1,13 +1,55 @@
 
 import type { GameState, Ship } from '../../../types';
-import { AIActions, FactionAI } from '../FactionAI';
+import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
 
 export class RomulanAI extends FactionAI {
+    determineStance(ship: Ship, playerShip: Ship): AIStance {
+        // Romulans are tactical and cautious.
+        const shipHealth = ship.hull / ship.maxHull;
+
+        if (shipHealth < 0.5) {
+            return 'Defensive'; // Preserve the ship if significantly damaged.
+        }
+        if (playerShip.shields <= 0) {
+            return 'Aggressive'; // Exploit a critical weakness.
+        }
+        return 'Balanced';
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
+        
+        const stance = this.determineStance(ship, gameState.player.ship);
+        let stanceChanged = false;
+
+        switch (stance) {
+            case 'Aggressive':
+                if (ship.energyAllocation.weapons !== 70) {
+                    ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                    stanceChanged = true;
+                }
+                break;
+            case 'Defensive':
+                if (ship.energyAllocation.shields !== 80) {
+                    ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                    stanceChanged = true;
+                }
+                break;
+            case 'Balanced':
+                if (ship.energyAllocation.weapons !== 50) {
+                    ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                    stanceChanged = true;
+                }
+                break;
+        }
+        
+        if (stanceChanged) {
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power distribution for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
+        }
+        
         processCommonTurn(ship, gameState.player.ship, gameState, actions);
     }
 

@@ -1,12 +1,12 @@
 import React from 'react';
-import type { Entity, Planet, Ship, ShipModel, Starbase } from '../../types';
+import type { Entity, Planet, Ship, ShipModel, Starbase, TorpedoProjectile } from '../../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
-import { TorpedoWireframe } from '../assets/projectiles/wireframes';
 import { FederationShuttleWireframe } from '../assets/ships/wireframes/federation';
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 interface WireframeDisplayProps {
     target: Entity;
@@ -44,9 +44,11 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
         case 'event_beacon':
             WireframeComponent = beaconType.wireframe;
             break;
-        case 'torpedo_projectile':
-            WireframeComponent = TorpedoWireframe;
+        case 'torpedo_projectile': {
+            const torpedo = target as TorpedoProjectile;
+            WireframeComponent = torpedoStats[torpedo.torpedoType].wireframe;
             break;
+        }
         case 'shuttle':
             WireframeComponent = FederationShuttleWireframe;
             break;

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems } from '../types';
+import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { createInitialGameState } from '../game/state/initialization';
@@ -8,6 +8,8 @@ import { resolveTurn } from '../game/turn/turnManager';
 import { seededRandom, cyrb53 } from '../game/utils/helpers';
 import { consumeEnergy } from '../game/utils/combat';
 import { OfficerAdvice, ActiveAwayMissionOption, Planet } from '../types';
+import { shipClasses } from '../assets/ships/configs/shipClassStats';
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 // Initialize AI and register faction handlers
 import '../game/ai/factions'; 
@@ -35,6 +37,7 @@ export const useGameLogic = () => {
                     if(savedState.orbitingPlanetId === undefined) savedState.orbitingPlanetId = null;
                     if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
                     if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
+                    if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
                     return savedState;
                  }
             } catch (e) { console.error("Could not parse saved state, starting new game.", e); }
@@ -416,8 +419,13 @@ export const useGameLogic = () => {
         }
         
         const { ship } = gameState.player;
+        const shipStats = shipClasses[ship.shipModel][ship.shipClass];
+        if (shipStats.torpedoType === 'None') return;
+
+        const torpedoData = torpedoStats[shipStats.torpedoType];
+        
         if (ship.torpedoes.current <= 0) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: All tubes are empty.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch ${torpedoData.name}: All tubes are empty.`, isPlayerSource: true, color: 'border-blue-400' });
             return;
         }
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
@@ -433,16 +441,36 @@ export const useGameLogic = () => {
             const shipInNext = next.player.ship;
             const targetInNext = next.currentSector.entities.find(e => e.id === targetId);
     
+            // FIX: Re-evaluate ship stats inside the state updater to ensure type safety and use current data.
+            const currentShipStats = shipClasses[shipInNext.shipModel][shipInNext.shipClass];
+            if (currentShipStats.torpedoType === 'None') {
+                // This should be caught by the outside check, but this ensures type safety.
+                return prev;
+            }
+            const currentTorpedoData = torpedoStats[currentShipStats.torpedoType];
+
             shipInNext.torpedoes.current--;
-            const torpedo = {
+            const torpedo: TorpedoProjectile = {
                 id: `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`,
-                name: 'Photon Torpedo', type: 'torpedo_projectile' as const, faction: 'Federation' as const,
-                position: { ...shipInNext.position }, targetId, sourceId: shipInNext.id, stepsTraveled: 0,
-                speed: 2, path: [{ ...shipInNext.position }], scanned: true, turnLaunched: next.turn,
-                hull: 1, maxHull: 1,
+                name: currentTorpedoData.name,
+                type: 'torpedo_projectile',
+                faction: 'Federation',
+                position: { ...shipInNext.position },
+                targetId,
+                sourceId: shipInNext.id,
+                stepsTraveled: 0,
+                speed: currentTorpedoData.speed,
+                path: [{ ...shipInNext.position }],
+                scanned: true,
+                turnLaunched: next.turn,
+                hull: 1,
+                maxHull: 1,
+                torpedoType: currentShipStats.torpedoType,
+                damage: currentTorpedoData.damage,
+                specialDamage: currentTorpedoData.specialDamage,
             };
             next.currentSector.entities.push(torpedo);
-            addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Photon torpedo launched at ${targetInNext?.name}.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `${currentTorpedoData.name} launched at ${targetInNext?.name}.`, isPlayerSource: true, color: 'border-blue-400' });
             return next;
         });
     }, [addLog, playerTurnActions, gameState]);

@@ -171,9 +171,10 @@ export function resolveTurn(
             torpedo.position = moveOneStep(torpedo.position, targetEntity.position);
             
             if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) {
-                const combatLogs = applyPhaserDamage(targetEntity, 50, null, allShipsForProjectiles.find(s=>s.id === torpedo.sourceId)!, next); // Simulating torpedo damage via phaser logic for now
-                next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0 });
-                combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: 'Torpedo', message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
+                // FIX: Replaced incorrect damage simulation with actual torpedo damage and added missing torpedoType to combat effect.
+                const combatLogs = applyPhaserDamage(targetEntity, torpedo.damage, null, allShipsForProjectiles.find(s=>s.id === torpedo.sourceId)!, next); // Simulating torpedo damage via phaser logic for now
+                next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0, torpedoType: torpedo.torpedoType });
+                combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
                 destroyedProjectileIds.add(torpedo.id);
                 return;
             }

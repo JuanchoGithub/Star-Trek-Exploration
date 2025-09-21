@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CombatEffect, Entity } from '../types';
+import type { CombatEffect, Entity, TorpedoType } from '../types';
 
 interface CombatFXLayerProps {
     effects: CombatEffect[];
@@ -23,6 +23,20 @@ const getPhaserClass = (faction: string): string => {
     }
     return 'phaser-beam federation'; // Default to federation red for others
 };
+
+const getExplosionColors = (torpedoType: TorpedoType): [string, string, string] => {
+    switch(torpedoType) {
+        case 'Quantum':
+            return ['white', 'var(--color-accent-indigo)', 'var(--color-accent-purple)'];
+        case 'Plasma':
+        case 'HeavyPlasma':
+            return ['white', 'var(--color-accent-teal)', 'var(--color-accent-green)'];
+        case 'HeavyPhoton':
+        case 'Photon':
+        default:
+            return ['white', 'var(--color-accent-orange)', 'var(--color-accent-red)'];
+    }
+}
 
 
 const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
@@ -60,6 +74,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
             {effects.map((effect, index) => {
                  if (effect.type === 'torpedo_hit') {
                     const coords = getPercentageCoords(effect.position);
+                    const [color1, color2, color3] = getExplosionColors(effect.torpedoType);
                     return (
                         <div
                             key={`explosion-${index}`}
@@ -70,7 +85,9 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                                 width: '5vw',
                                 height: '5vw',
                                 animationDelay: `${effect.delay}ms`,
-                            }}
+                                '--color-accent-orange': color2, // Override CSS variables for animation
+                                '--color-accent-red': color3,
+                            } as React.CSSProperties}
                         />
                     );
                 }

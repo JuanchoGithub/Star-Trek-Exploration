@@ -6,13 +6,12 @@ import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { FederationShuttleIcon } from '../assets/ships/icons/federation';
-import { TorpedoProjectileIcon } from '../assets/projectiles/icons';
 import { NavigationTargetIcon } from '../assets/ui/icons';
 import { ThemeName } from '../hooks/useTheme';
 import LcarsTargetingReticle from './LcarsTargetingReticle';
 import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
-
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -197,6 +196,9 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                   const angle = Math.atan2(target.position.y - entity.position.y, target.position.x - entity.position.x) * 180 / Math.PI;
                   transformStyle = { transform: `translate(-50%, -50%) rotate(${angle}deg)` };
                }
+               
+               const torpedoConfig = torpedoStats[torpedo.torpedoType];
+               const TorpedoIcon = torpedoConfig.icon;
 
                return (
                   <React.Fragment key={torpedo.id}>
@@ -221,7 +223,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                           }}
                            onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
                       >
-                          <TorpedoProjectileIcon className="w-6 h-6 text-accent-orange" />
+                          <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass}`} />
                       </div>
                   </React.Fragment>
                );

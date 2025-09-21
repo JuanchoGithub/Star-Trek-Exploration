@@ -8,26 +8,55 @@ interface AdvancedTacticsSectionProps {
 }
 
 export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ themeName }) => {
-    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon } = getFactionIcons(themeName);
+    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, CloakIcon } = getFactionIcons(themeName);
+    // FIX: getFactionIcons is a function. To get a specific icon set, it must be called with the theme name.
+    const { ScanIcon: FederationScanIcon } = getFactionIcons('federation');
     
     return (
         <div>
             <SectionHeader>Advanced Tactical Operations</SectionHeader>
-            <SubHeader>Subsystem Targeting Strategy</SubHeader>
-            <p className="text-text-secondary mb-4">A discerning captain knows that simply pounding on an enemy's hull is inefficient. Crippling key systems can neutralize a threat with less risk and greater tactical advantage. An enemy ship is only as dangerous as its functioning components.</p>
+            <p className="text-text-secondary mb-4">Victory is not achieved through superior firepower alone, but through superior strategy. This section details advanced concepts that separate seasoned captains from rookie commanders.</p>
+
+            <SubHeader>Energy Allocation Doctrine</SubHeader>
+            <p className="text-text-secondary mb-4">Your energy allocation is your most flexible tactical tool, allowing you to adapt your ship's performance profile mid-battle. A wise captain shifts power preemptively, not reactively. Consider these standard doctrines:</p>
             <div className="space-y-3">
+                <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-red-400">Alpha Strike Configuration (100% Weapons)</h4>
+                    <p className="text-sm text-text-secondary">Divert all non-essential power to weapons. This profile maximizes your initial phaser damage, ideal for a powerful opening salvo or for finishing a critically damaged enemy. Be warned: this leaves your shields unable to regenerate and your evasion bonus nullified, making you extremely vulnerable to counter-attack.</p>
+                </div>
+                <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-cyan-400">Defensive Shell (100% Shields)</h4>
+                    <p className="text-sm text-text-secondary">Maximize power to shields for rapid regeneration. This is the optimal configuration when under heavy fire from multiple opponents, when attempting to survive until your torpedoes connect, or when trying to weather a particularly nasty plasma burn. Your offensive capabilities will be minimal in this state.</p>
+                </div>
+                <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-green-400">Maneuvering Profile (100% Engines)</h4>
+                    <p className="text-sm text-text-secondary">Boost power to engines to gain a slight edge in evasion. While not a substitute for dedicated Evasive Maneuvers, this can be the difference-maker in a long-range duel. Use this when attempting to close distance, open range for a torpedo shot, or simply make yourself a harder target while other systems are offline.</p>
+                </div>
+            </div>
+
+            <SubHeader>Positional Warfare</SubHeader>
+            <p className="text-text-secondary mb-4">The sector grid is your chessboard. Where you place your ship is as important as how you equip it.</p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                <li><strong>Optimal Range:</strong> Phaser damage drops off sharply with distance. Your ideal engagement range is 2-3 hexes. Conversely, if an enemy is slow but powerful (like a Klingon Negh'Var), try to stay at maximum range (5-6 hexes), a practice known as "kiting", to pepper them with long-range fire while minimizing their devastating return volleys.</li>
+                <li><strong>Using the Environment:</strong> Do not ignore the battlefield. Lure aggressive enemies through <span className="text-gray-400">Asteroid Fields</span> to inflict free damage. Fight inside a <span className="text-purple-400">Nebula</span> to reduce the accuracy of phaser-heavy opponents, giving your more reliable torpedoes a distinct advantage.</li>
+                <li><strong>Focus Fire:</strong> In multi-ship engagements, it is always better to destroy one enemy than to damage two. Concentrate all fire on a single target until it is neutralized before moving to the next. Prioritize destroying high-damage, low-health threats (like a B'rel Bird-of-Prey) first.</li>
+            </ul>
+
+            <SubHeader>Subsystem Targeting: A Surgical Approach</SubHeader>
+            <p className="text-text-secondary mb-4">A discerning captain knows that simply pounding on an enemy's hull is inefficient. Crippling key systems can neutralize a threat with less risk and greater tactical advantage. An enemy ship is only as dangerous as its functioning components.</p>
+             <div className="space-y-3">
                 <div className="flex items-start gap-4 p-2 bg-bg-paper-lighter rounded">
                     <WeaponIcon className="w-8 h-8 text-accent-red flex-shrink-0 mt-1"/>
                     <div>
                         <h4 className="font-bold">Targeting: Weapons</h4>
-                        <p className="text-sm text-text-secondary">Disabling an enemy's weapon systems is the most direct way to reduce incoming damage. A ship with zero weapon health cannot fire phasers or launch torpedoes, rendering it harmless from a distance. This is the priority target when facing a high-damage vessel like a Klingon Bird-of-Prey.</p>
+                        <p className="text-sm text-text-secondary">Disabling an enemy's weapon systems is the most direct way to reduce incoming damage. A ship with zero weapon health cannot fire phasers or launch torpedoes, rendering it harmless. This is the priority target when facing a "glass cannon" vessel like a Klingon Bird-of-Prey.</p>
                     </div>
                 </div>
                  <div className="flex items-start gap-4 p-2 bg-bg-paper-lighter rounded">
                     <EngineIcon className="w-8 h-8 text-accent-green flex-shrink-0 mt-1"/>
                     <div>
                         <h4 className="font-bold">Targeting: Engines</h4>
-                        <p className="text-sm text-text-secondary">A ship that cannot move is a sitting duck. Disabling engines will leave a vessel dead in space, unable to pursue, retreat, or adjust its range. This makes them exceptionally vulnerable to slow-moving, high-damage torpedoes and allows you to control the engagement distance.</p>
+                        <p className="text-sm text-text-secondary">A ship that cannot move is a sitting duck. Disabling engines will leave a vessel dead in space, unable to pursue, retreat, or adjust its range. This makes them exceptionally vulnerable to slow-moving, high-damage torpedoes and allows you to control the engagement distance entirely.</p>
                     </div>
                 </div>
                  <div className="flex items-start gap-4 p-2 bg-bg-paper-lighter rounded">
@@ -41,30 +70,36 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     <TransporterIcon className="w-8 h-8 text-accent-purple flex-shrink-0 mt-1"/>
                     <div>
                         <h4 className="font-bold">Targeting: Transporter</h4>
-                        <p className="text-sm text-text-secondary">While most hostile ships lack transporters, those that possess them (primarily other Federation or high-tier vessels) use them to repel boarders and conduct rapid internal repairs. Disabling their transporter makes them highly vulnerable to your own boarding actions and strike teams.</p>
+                        <p className="text-sm text-text-secondary">While most hostile ships lack transporters, those that possess them use them to repel boarders and conduct rapid internal repairs. Disabling their transporter makes them highly vulnerable to your own boarding actions and strike teams.</p>
                     </div>
                 </div>
             </div>
-            <SubHeader>Anti-Cloak Operations: Tachyon Scan</SubHeader>
-            <p className="text-text-secondary mb-4">The U.S.S. Endeavour is equipped with a Tachyon Scanner, a specialized tool for countering cloaked vessels. When activated, this system consumes a significant amount of reserve power to flood the immediate area with tachyon particles.</p>
-            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-1">
-                <li><strong>Activation:</strong> This is a major action available from the Command Console, usable once per turn. It requires your scanners to be at least 50% operational.</li>
-                <li><strong>Detection:</strong> The scan has a radius of 5 hexes. The chance to detect a cloaked ship is based on your scanner's health and your proximity to the target. Closer targets are easier to detect.</li>
-                <li><strong>Effect:</strong> A successful scan will force a cloaked enemy ship to decloak and will disrupt their cloaking device, preventing them from re-cloaking for two turns. This provides a critical window to target and neutralize the threat.</li>
-            </ul>
-            <SubHeader>Away Team & Transporter Doctrine</SubHeader>
-            <p className="text-text-secondary mb-4">Your Security Teams and Transporter Room are a versatile strategic asset, not just a last resort. Proper deployment can end a battle or complete a mission without firing a shot.</p>
-            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-1">
-                <li><strong>Condition for Transport:</strong> All transport-based actions (Away Missions, Boarding, Strikes) require two conditions: your Transporter must be online, and the target's shields must be down (or below 20% for enemy ships).</li>
-                <li><strong>Boarding:</strong> A high-risk, high-reward maneuver. Success instantly captures the enemy vessel, changing its icon to friendly blue on the tactical display. Failure results in the loss of the entire security team and a significant blow to crew morale. Only to be attempted when victory is uncertain or a ship must be taken intact.</li>
-                <li><strong>Strike:</strong> A lower-risk alternative to boarding. A security team transports over, sabotages a critical system dealing direct hull damage, and transports back. There is a small but non-zero chance of losing the team in the firefight, with a minor morale penalty.</li>
-                 <li><strong>Planetary Away Missions:</strong> The primary method of investigating planets. The composition of the away team (Science, Security, Engineering) is determined by your command choice, influencing the probability of success. A disabled Transporter makes these missions impossible.</li>
-            </ul>
-             <SubHeader>General Order 1: The Prime Directive</SubHeader>
-            <div className="border-l-4 border-border-main pl-4 italic text-text-secondary my-4">
-                "As the right of each sentient species to live in accordance with its normal cultural evolution is considered sacred, no Starfleet personnel may interfere with the healthy and normal development of alien life and culture. Such interference includes the introduction of superior knowledge, strength, or technology to a world whose society is incapable of handling such advantages wisely."
+
+            <SubHeader>Cloaking and Anti-Cloak Operations</SubHeader>
+            <p className="text-text-secondary mb-4">Stealth technology is a cornerstone of Romulan strategy and a rare but powerful tool in your own arsenal.</p>
+            <div className="p-3 bg-bg-paper-lighter rounded space-y-2">
+                <h4 className="font-bold text-accent-teal flex items-center gap-2"><CloakIcon className="w-6 h-6"/>Using Your Cloak (Defiant-Class)</h4>
+                <p className="text-sm text-text-secondary">Your cloaking device is a powerful strategic tool. Use it to bypass enemy patrols to reach a critical objective, to position yourself for a devastating surprise torpedo volley, or to disengage from a losing battle. Remember the costs: you cannot fire weapons while cloaked, and decloaking will consume your major action for that turn, preventing you from firing immediately.</p>
+                <h4 className="font-bold text-accent-yellow flex items-center gap-2"><FederationScanIcon className="w-6 h-6"/>Countering Cloaks: Tachyon Scan</h4>
+                <p className="text-sm text-text-secondary">The Tachyon Scan is your primary counter to cloaked vessels. It floods the area with particles that reveal cloaked ships. A successful scan will force an enemy to decloak and disrupt their systems, preventing them from re-cloaking for several turns. Use this to create a window of vulnerability.</p>
             </div>
-            <p className="text-text-secondary">This is Starfleet's most important mandate. On missions involving pre-warp civilizations—societies that have not yet discovered warp drive on their own—you are forbidden from revealing your ship, your technology, or the existence of extraterrestrial life. This directive will present you with profound ethical dilemmas. You may be forced to allow a natural disaster to run its course to prevent cultural contamination, or find a clever, indirect way to assist that does not violate the spirit of the law. Your choices in these situations will define your career as a Starfleet captain.</p>
+
+            <SubHeader>Countering Faction Doctrines</SubHeader>
+            <p className="text-text-secondary mb-4">Each faction's AI has a distinct personality. Exploit their tendencies to secure victory.</p>
+            <div className="space-y-3">
+                <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-red-500">Countering Klingons</h4>
+                    <p className="text-sm text-text-secondary">Klingons are honorable and aggressive. They will charge into phaser range and favor an <span className="font-bold">Aggressive</span> power stance. Weather their initial attack with a <span className="font-bold">Defensive</span> stance of your own, then cripple their <span className="font-bold">Weapon Systems</span>. Their code of honor makes them unlikely to retreat, allowing you to systematically dismantle their disabled ship.</p>
+                </div>
+                 <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-green-500">Countering Romulans</h4>
+                    <p className="text-sm text-text-secondary">Romulans are cautious and tactical. They will use their cloak to get into optimal position and will shift power defensively if damaged. Your first priority is the <span className="font-bold">Tachyon Scan</span>. Once a Romulan is decloaked, they are vulnerable. They will try to exploit weakness; if your shields drop, expect them to shift to an <span className="font-bold">Aggressive</span> stance. Keep your shields healthy and focus fire, as they will attempt to escape if their hull becomes critical.</p>
+                </div>
+                 <div className="p-3 bg-bg-paper-lighter rounded">
+                    <h4 className="font-bold text-orange-500">Countering Pirates</h4>
+                    <p className="text-sm text-text-secondary">Pirates are opportunistic cowards. They will press the attack if they sense weakness (low player hull) but will quickly switch to a <span className="font-bold">Defensive</span> stance if they take significant damage. A strong, decisive opening salvo ("Alpha Strike") can force them onto the back foot early. Be wary of their desperation move; if a pirate ship is critically damaged, move away from it to avoid its self-destruct radius.</p>
+                </div>
+            </div>
         </div>
     );
 };

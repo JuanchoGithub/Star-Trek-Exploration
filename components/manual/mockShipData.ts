@@ -24,6 +24,8 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         lifeSupportFailureTurn: null,
         isDerelict: false,
         captureInfo: null,
+        // FIX: Added missing 'statusEffects' property to conform to the Ship interface.
+        statusEffects: [],
     };
 };
 

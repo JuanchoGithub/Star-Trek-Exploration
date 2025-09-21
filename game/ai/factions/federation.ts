@@ -1,11 +1,15 @@
 
 import type { GameState, Ship, Shuttle } from '../../../types';
-import { AIActions, FactionAI } from '../FactionAI';
+import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { uniqueId } from '../../utils/helpers';
 
 export class FederationAI extends FactionAI {
+    determineStance(ship: Ship, playerShip: Ship): AIStance {
+        return 'Balanced'; // Friendly ships are always balanced.
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         const { currentSector } = gameState;
         const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
