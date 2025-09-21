@@ -101,6 +101,8 @@ const generateSectorContent = (sector: SectorState, qx: number, qy: number, avai
             id: uniqueId(), name: `Starbase ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase',
             faction: mainFaction === 'Klingon' || mainFaction === 'Romulan' ? mainFaction : 'Federation', 
             position: getUniquePosition(), scanned: false, hull: 500, maxHull: 500,
+            // FIX: Added missing 'starbaseType' property to conform to the Starbase interface.
+            starbaseType: 'command_station',
         });
     }
 
@@ -271,7 +273,9 @@ export const createInitialGameState = (): GameState => {
   if (!startSector.entities.some(e => e.type === 'starbase')) {
     startSector.entities.push({
         id: uniqueId(), name: `Starbase 364`, type: 'starbase', faction: 'Federation',
-        position: { x: 2, y: 2 }, scanned: true, hull: 500, maxHull: 500
+        position: { x: 2, y: 2 }, scanned: true, hull: 500, maxHull: 500,
+        // FIX: Added missing 'starbaseType' property to conform to the Starbase interface.
+        starbaseType: 'command_station',
     });
   }
   startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');

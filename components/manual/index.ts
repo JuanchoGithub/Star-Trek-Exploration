@@ -8,3 +8,4 @@ export * from './CombatSection';
 export * from './AdvancedTacticsSection';
 export * from './CombatSimulationSection';
 export * from './AnimationsSection';
+export * from './GalaxyGenerationSection';

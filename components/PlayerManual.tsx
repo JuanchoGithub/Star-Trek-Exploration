@@ -11,9 +11,10 @@ import {
     AdvancedTacticsSection,
     CombatSimulationSection,
     AnimationsSection,
+    GalaxyGenerationSection,
 } from './manual';
 
-type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations';
+type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation';
 
 interface PlayerManualProps {
     onClose: () => void;
@@ -36,6 +37,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             case 'registry': return <RegistrySection />;
             case 'officers': return <OfficerDossiersSection themeName={themeName} />;
             case 'lore': return <TyphonExpanseSection />;
+            case 'generation': return <GalaxyGenerationSection />;
             case 'mechanics': return <MechanicsSection />;
             case 'combat': return <CombatSection />;
             case 'advanced': return <AdvancedTacticsSection themeName={themeName} />;
@@ -59,6 +61,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                          <SectionLink active={activeSection === 'registry'} onClick={() => setActiveSection('registry')}>Entity Registry</SectionLink>
                          <SectionLink active={activeSection === 'officers'} onClick={() => setActiveSection('officers')}>Bridge Officer Dossiers</SectionLink>
                          <SectionLink active={activeSection === 'lore'} onClick={() => setActiveSection('lore')}>Typhon Expanse Primer</SectionLink>
+                         <SectionLink active={activeSection === 'generation'} onClick={() => setActiveSection('generation')}>Galaxy Generation</SectionLink>
                          <SectionLink active={activeSection === 'mechanics'} onClick={() => setActiveSection('mechanics')}>Core Mechanics</SectionLink>
                          <SectionLink active={activeSection === 'combat'} onClick={() => setActiveSection('combat')}>Advanced Combat</SectionLink>
                          <SectionLink active={activeSection === 'advanced'} onClick={() => setActiveSection('advanced')}>Advanced Tactics</SectionLink>

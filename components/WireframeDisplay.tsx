@@ -1,9 +1,9 @@
 import React from 'react';
 // FIX: Imported ShipModel type.
-import type { Entity, Planet, Ship, ShipModel } from '../types';
+import type { Entity, Planet, Ship, ShipModel, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
-import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
+import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { TorpedoWireframe } from '../assets/projectiles/wireframes';
@@ -40,9 +40,12 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
             WireframeComponent = config?.wireframe || planetTypes['M'].wireframe;
             break;
         }
-        case 'starbase':
-            WireframeComponent = starbaseType.wireframe;
+        case 'starbase': {
+            const starbase = target as Starbase;
+            const config = starbaseTypes[starbase.starbaseType];
+            WireframeComponent = config.wireframe;
             break;
+        }
         case 'asteroid_field':
             WireframeComponent = asteroidType.wireframe;
             break;

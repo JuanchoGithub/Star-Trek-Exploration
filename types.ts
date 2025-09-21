@@ -72,10 +72,13 @@ export interface Planet extends BaseEntity {
   awayMissionCompleted?: boolean;
 }
 
+export type StarbaseType = 'command_station' | 'science_station' | 'trading_outpost' | 'deep_space_sensor' | 'military_outpost';
+
 export interface Starbase extends BaseEntity {
   type: 'starbase';
   hull: number;
   maxHull: number;
+  starbaseType: StarbaseType;
 }
 
 export interface AsteroidField extends BaseEntity {
@@ -297,6 +300,7 @@ export interface EntityTemplate {
     shipRole?: ShipRole | ShipRole[];
     planetClass?: PlanetClass | PlanetClass[];
     eventType?: EventBeacon['eventType'] | EventBeacon['eventType'][];
+    starbaseType?: StarbaseType | StarbaseType[];
 }
 
 export interface SectorTemplate {

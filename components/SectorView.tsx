@@ -1,8 +1,8 @@
 import React from 'react';
-import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle } from '../types';
+import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
-import { starbaseType } from '../assets/starbases/configs/starbaseTypes';
+import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { FederationShuttleIcon } from '../assets/ships/icons/federation';
@@ -240,9 +240,11 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
               icon = <FederationShuttleIcon className="w-6 h-6" />;
               factionColor = shipVisuals.Federation.roles.Explorer!.colorClass;
           } else if (entity.type === 'starbase') {
-              const IconComponent = starbaseType.icon;
+              const starbase = entity as Starbase;
+              const config = starbaseTypes[starbase.starbaseType];
+              const IconComponent = config.icon;
               icon = <IconComponent className="w-12 h-12" />;
-              factionColor = starbaseType.colorClass;
+              factionColor = config.colorClass;
           } else if (entity.type === 'asteroid_field') {
               const IconComponent = asteroidType.icon;
               icon = <IconComponent className="w-12 h-12" />;

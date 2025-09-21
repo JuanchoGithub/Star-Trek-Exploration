@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 // FIX: Added Position to the type import and changed QuadrantPosition to Position in createEntityFromTemplate signature.
-import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems, SectorTemplate, EntityTemplate, FactionOwner, Position } from '../types';
+import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems, SectorTemplate, EntityTemplate, FactionOwner, Position, StarbaseType } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { applyPhaserDamage } from './combatUtilities';
@@ -18,6 +18,7 @@ import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipNames } from '../assets/ships/configs/shipNames';
 import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
 
 
 const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
@@ -106,7 +107,28 @@ const createEntityFromTemplate = (
         }
         case 'starbase': {
              if (chosenFaction === 'None' || chosenFaction === 'Pirate' || chosenFaction === 'Independent' || chosenFaction === 'Unknown') return null;
-             return { id: uniqueId(), name: `Starbase ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase', faction: chosenFaction, position, scanned: false, hull: 500, maxHull: 500 };
+             
+             let starbaseType: StarbaseType;
+             if (Array.isArray(template.starbaseType)) {
+                starbaseType = template.starbaseType[Math.floor(Math.random() * template.starbaseType.length)];
+             } else {
+                starbaseType = template.starbaseType || 'command_station';
+             }
+
+             const config = starbaseTypes[starbaseType];
+             const namePrefix = config.namePrefix[Math.floor(Math.random() * config.namePrefix.length)];
+
+             return {
+                 id: uniqueId(),
+                 name: `${namePrefix} ${Math.floor(Math.random() * 100) + 1}`,
+                 type: 'starbase',
+                 faction: chosenFaction,
+                 position,
+                 scanned: false,
+                 hull: config.maxHull,
+                 maxHull: config.maxHull,
+                 starbaseType: config.key
+             };
         }
         case 'asteroid_field': {
             return { id: uniqueId(), name: 'Asteroid Field', type: 'asteroid_field', faction: 'None', position, scanned: true };
@@ -217,7 +239,14 @@ const createInitialGameState = (): GameState => {
     for (let qy = 0; qy < QUADRANT_SIZE; qy++) for (let qx = 0; qx < QUADRANT_SIZE; qx++) if (quadrantMap[qy][qx].factionOwner === 'Federation') { quadrantMap[qy][qx].visited = true; quadrantMap[qy][qx].isScanned = true; }
     let startSector = quadrantMap[playerPosition.qy][playerPosition.qx];
     startSector.visited = true; startSector.isScanned = true;
-    if (!startSector.entities.some(e => e.type === 'starbase')) startSector.entities.push({ id: uniqueId(), name: `Starbase 364`, type: 'starbase', faction: 'Federation', position: { x: 2, y: 2 }, scanned: true, hull: 500, maxHull: 500 });
+    if (!startSector.entities.some(e => e.type === 'starbase')) {
+        const stationConfig = starbaseTypes.command_station;
+        startSector.entities.push({
+            id: uniqueId(), name: `Starbase 364`, type: 'starbase', faction: 'Federation',
+            position: { x: 2, y: 2 }, scanned: true, hull: stationConfig.maxHull, maxHull: stationConfig.maxHull,
+            starbaseType: 'command_station'
+        });
+    }
     startSector.entities = startSector.entities.filter(e => e.faction !== 'Klingon' && e.faction !== 'Romulan' && e.faction !== 'Pirate' && e.type !== 'event_beacon');
 
   return {

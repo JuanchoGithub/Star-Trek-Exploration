@@ -44,6 +44,17 @@ export const sectorTemplates: SectorTemplate[] = [
         ],
     },
     {
+        id: 'common-trade-hub',
+        name: 'Trade Hub',
+        weight: 50,
+        allowedFactions: ['None', 'Federation'],
+        entityTemplates: [
+            { type: 'starbase', faction: 'Inherit', count: [1, 1], starbaseType: 'trading_outpost' },
+            { type: 'ship', faction: 'Independent', count: [2, 4], shipRole: 'Freighter' },
+            { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Escort' },
+        ],
+    },
+    {
         id: 'common-unstable-nebula',
         name: 'Unstable Nebula',
         weight: 80,
@@ -74,6 +85,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 80,
         allowedFactions: ['Federation'],
         entityTemplates: [
+            { type: 'starbase', faction: 'Federation', count: [0, 1], starbaseType: 'science_station' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Explorer' },
             { type: 'planet', faction: 'None', count: [2, 3], planetClass: ['M', 'J'] },
         ],
@@ -85,7 +97,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 60,
         allowedFactions: ['Federation'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Federation', count: [1, 1] },
+            { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: ['command_station', 'trading_outpost'] },
             { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer', 'Freighter'] },
             { type: 'ship', faction: 'Independent', count: [0, 2], shipRole: 'Freighter' },
             { type: 'planet', faction: 'None', count: [1, 2] },
@@ -108,6 +120,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 30,
         allowedFactions: ['Federation'],
         entityTemplates: [
+            { type: 'starbase', faction: 'Federation', count: [0, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Escort' },
             { type: 'asteroid_field', faction: 'None', count: [2, 3] },
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'distress_call' },
@@ -146,7 +159,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 50,
         allowedFactions: ['Klingon'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Klingon', count: [1, 1] },
+            { type: 'starbase', faction: 'Klingon', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Klingon', count: [1, 3], shipRole: ['Cruiser', 'Escort'] },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['D'] },
         ],
@@ -194,6 +207,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 70,
         allowedFactions: ['Romulan'],
         entityTemplates: [
+            { type: 'starbase', faction: 'Romulan', count: [0, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Cruiser' },
             { type: 'asteroid_field', faction: 'None', count: [2, 3] },
         ],
@@ -205,7 +219,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 40,
         allowedFactions: ['Romulan'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Romulan', count: [1, 1] },
+            { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
             { type: 'planet', faction: 'None', count: [1, 1] },
         ],
@@ -311,7 +325,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 10,
         allowedFactions: ['None'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Romulan', count: [1, 1] },
+            { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 3] },
         ],
@@ -323,7 +337,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 10,
         allowedFactions: ['Federation'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Federation', count: [1, 1] },
+            { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Explorer' },
         ]
     },
@@ -379,7 +393,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 20,
         allowedFactions: ['Federation'],
         entityTemplates: [
-            { type: 'starbase', faction: 'Federation', count: [1, 1] },
+            { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: 'science_station' },
             { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer'] },
             { type: 'planet', faction: 'None', count: [1, 2], planetClass: ['M', 'J'] }
         ],
@@ -392,7 +406,7 @@ export const sectorTemplates: SectorTemplate[] = [
         allowedFactions: ['Klingon'],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort'] },
-            { type: 'starbase', faction: 'Klingon', count: [1, 1] },
+            { type: 'starbase', faction: 'Klingon', count: [1, 1], starbaseType: 'military_outpost' },
         ]
     },
     {

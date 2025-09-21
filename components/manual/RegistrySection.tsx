@@ -1,13 +1,15 @@
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
-import { starbaseType } from '../../assets/starbases/configs/starbaseTypes';
+import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
 import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
 import { ShipModel, ShipRole } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
+import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
+import { torpedoType } from '../../assets/projectiles/configs/projectileType';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
     <div id={`registry-${name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
@@ -71,11 +73,12 @@ export const RegistrySection: React.FC = () => {
                 <a href="#registry-klingon-empire" className="btn btn-tertiary">Klingon</a>
                 <a href="#registry-romulan-star-empire" className="btn btn-tertiary">Romulan</a>
                 <a href="#registry-pirate-&-orion-syndicate" className="btn btn-tertiary">Pirate</a>
-                <a href="#registry-planets" className="btn btn-tertiary">Stellar Bodies</a>
+                <a href="#registry-other-entities" className="btn btn-tertiary">Other Entities</a>
             </div>
             
             <FactionHeader name="Federation" icon={<StarfleetLogoIcon className="w-8 h-8" />} />
-            <RoleEntry model="Federation" role="Explorer" name="Explorer" description="Balanced vessels designed for long-range missions. They boast strong shields, versatile subsystems, and high energy reserves, but are not dedicated warships. The U.S.S. Endeavour is a prime example." />
+            <RoleEntry model="Federation" role="Dreadnought" name="Dreadnought" description="A powerful capital ship representing the pinnacle of Federation engineering. Slower than other classes, but boasts formidable weaponry, advanced systems, and an exceptionally durable hull. The U.S.S. Endeavour is of this class." />
+            <RoleEntry model="Federation" role="Explorer" name="Explorer" description="Balanced vessels designed for long-range missions. They boast strong shields, versatile subsystems, and high energy reserves, but are not dedicated warships." />
             <RoleEntry model="Federation" role="Cruiser" name="Cruiser" description="A heavier class of starship, serving as the fleet's backbone in combat situations. Well-armed and armored, they sacrifice some scientific utility for increased firepower and durability." />
             <RoleEntry model="Federation" role="Escort" name="Escort" description="Small, fast, and highly maneuverable warships designed for patrol, interception, and fleet support. While fragile, their high damage output makes them a significant threat." />
             <RoleEntry model="Federation" role="Freighter" name="Freighter" description="Civilian cargo haulers under Federation registry. They have large hulls but are slow and possess only minimal defensive capabilities. Often require assistance when attacked." />
@@ -93,14 +96,18 @@ export const RegistrySection: React.FC = () => {
             <RoleEntry model="Pirate" role="Escort" name="Raider/Escort" description="A fast, lightly armored ship favored by pirates. They are glass cannons, boasting high-powered engines and weapons but suffering from weak hulls and shields. Typically rely on ambush tactics." />
             <RoleEntry model="Pirate" role="Cruiser" name="Cruiser" description="A captured and heavily modified freighter or older warship. Bristling with mismatched weapon systems and reinforced plating, these vessels are surprisingly durable and dangerous in a brawl." />
 
-            <SubHeader id="registry-planets">Stellar Bodies & Anomalies</SubHeader>
+            <SubHeader id="registry-other-entities">Other Entities & Installations</SubHeader>
+            {Object.values(starbaseTypes).map(starbase => (
+                <OtherEntityEntry key={starbase.key} config={starbase} name={starbase.name} description={starbase.description} />
+            ))}
             <OtherEntityEntry config={planetTypes.M} name="M-Class Planet" description="A terrestrial, Earth-like world capable of supporting carbon-based life. Often home to civilizations or valuable biological resources. Prime candidates for away missions." />
             <OtherEntityEntry config={planetTypes.J} name="J-Class Planet" description="A massive gas giant, rich in various gases that may be valuable but unsuitable for standard away missions. Often has numerous moons." />
             <OtherEntityEntry config={planetTypes.L} name="L-Class Planet" description="A marginally habitable world with a thin atmosphere or extreme temperatures. Life may exist, but it is often primitive or highly adapted. Suitable for some away missions." />
             <OtherEntityEntry config={planetTypes.D} name="D-Class Planet" description="A barren rock or asteroid, devoid of atmosphere and life. May contain valuable mineral deposits but is otherwise unremarkable." />
-            <OtherEntityEntry config={starbaseType} name="Starbase" description="Federation outposts that serve as hubs for repair, resupply, and refuge. Docking with a starbase provides full repairs and replenishment of torpedoes and dilithium." />
             <OtherEntityEntry config={asteroidType} name="Asteroid Field" description="A dense field of rock and ice. Navigating adjacent to these fields is hazardous, as micrometeoroid impacts can damage shields and hull." />
-             <OtherEntityEntry config={beaconType} name="Event Beacon" description="An unidentified signal source. Approaching these beacons can trigger unique events, ranging from derelict ships and distress calls to ancient alien artifacts." />
+            <OtherEntityEntry config={beaconType} name="Event Beacon" description="An unidentified signal source. Approaching these beacons can trigger unique events, ranging from derelict ships and distress calls to ancient alien artifacts." />
+            <OtherEntityEntry config={shuttleType} name="Shuttle" description="Small, short-range auxiliary craft. Used for away missions on gas giants where transporters are ineffective, and as escape pods during emergencies. Lacks weapons or significant defenses." />
+            <OtherEntityEntry config={torpedoType} name="Photon Torpedo" description="A powerful projectile weapon. Torpedoes travel across the sector to their target but can be intercepted by enemy point-defense fire. They deal significant damage directly to the hull if they connect." />
 
         </div>
     )
