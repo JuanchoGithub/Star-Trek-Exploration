@@ -284,3 +284,26 @@ export interface GameState {
   }[];
   orbitingPlanetId: string | null;
 }
+
+// ---- New types for the template system ----
+
+export type EntityTemplateType = 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon';
+
+export interface EntityTemplate {
+    type: EntityTemplateType;
+    faction: ShipModel | 'None' | 'Unknown' | 'Inherit'; // 'Inherit' uses sector's factionOwner
+    count: [number, number]; // [min, max]
+    // Optional specifiers
+    shipRole?: ShipRole | ShipRole[];
+    planetClass?: PlanetClass | PlanetClass[];
+    eventType?: EventBeacon['eventType'] | EventBeacon['eventType'][];
+}
+
+export interface SectorTemplate {
+    id: string;
+    name: string;
+    weight: number; // Higher is more common
+    allowedFactions: FactionOwner[]; // Factions this can spawn in
+    entityTemplates: EntityTemplate[];
+    hasNebulaChance?: number; // 0 to 1
+}

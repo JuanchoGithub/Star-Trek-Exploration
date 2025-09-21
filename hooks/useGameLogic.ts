@@ -1,9 +1,7 @@
-
-
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-// FIX: Imported missing types 'LogEntry', 'Planet', 'BridgeOfficer', and 'OfficerAdvice' to resolve type errors.
-import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems } from '../types';
+// FIX: Added Position to the type import and changed QuadrantPosition to Position in createEntityFromTemplate signature.
+import type { GameState, QuadrantPosition, Ship, AwayMissionTemplate, ActiveHail, ActiveAwayMission, Entity, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, PlanetClass, ActiveAwayMissionOption, AwayMissionResult, ResourceType, LogEntry, Planet, BridgeOfficer, OfficerAdvice, ShipSubsystems, SectorTemplate, EntityTemplate, FactionOwner, Position } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { applyPhaserDamage } from './combatUtilities';
@@ -11,16 +9,15 @@ import { processAITurns } from './ai/aiProcessor';
 import { AIActions } from './ai/FactionAI';
 import { shipRoleStats } from '../assets/ships/configs/shipRoleStats';
 import { ShipRole } from '../types';
-// FIX: Moved seededRandom and cyrb53 to aiUtilities.ts and imported them.
 import { seededRandom, cyrb53 } from './ai/aiUtilities';
 import { consumeEnergy } from './combatUtilities';
 import { uniqueId, moveOneStep } from './ai/aiUtilities';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../assets/configs/logColors';
 import { QUADRANT_SIZE, SECTOR_HEIGHT, SECTOR_WIDTH } from '../assets/configs/gameConstants';
-// FIX: Corrected import path for planetNames. It is not in planetTypes.ts.
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { planetClasses, planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipNames } from '../assets/ships/configs/shipNames';
+import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
 
 
 const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
@@ -35,6 +32,137 @@ const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['fa
     
     return 'None';
 };
+
+const createEntityFromTemplate = (
+    template: EntityTemplate,
+    position: Position,
+    factionOwner: FactionOwner,
+    availableShipNames: Record<string, string[]>,
+    availablePlanetNames: Record<string, string[]>,
+    colorIndex: { current: number }
+): Entity | null => {
+    const getUniqueShipName = (faction: string): string => {
+        if (availableShipNames[faction]?.length > 0) {
+            const nameList = availableShipNames[faction];
+            const nameIndex = Math.floor(Math.random() * nameList.length);
+            return nameList.splice(nameIndex, 1)[0];
+        }
+        return `${faction} Vessel ${uniqueId().substr(-4)}`;
+    };
+
+    const getNextShipColor = (): string => {
+        const color = ENEMY_LOG_COLORS[colorIndex.current];
+        colorIndex.current = (colorIndex.current + 1) % ENEMY_LOG_COLORS.length;
+        return color;
+    };
+    
+    const chosenFaction = template.faction === 'Inherit' ? factionOwner : template.faction;
+
+    switch (template.type) {
+        case 'ship': {
+            if (chosenFaction === 'None' || chosenFaction === 'Unknown') return null;
+            let shipRole: ShipRole;
+            if (Array.isArray(template.shipRole)) {
+                shipRole = template.shipRole[Math.floor(Math.random() * template.shipRole.length)];
+            } else {
+                shipRole = template.shipRole || 'Escort';
+            }
+
+            const stats = shipRoleStats[shipRole];
+            let energyAllocation: Ship['energyAllocation'];
+            switch (chosenFaction) {
+                case 'Klingon': case 'Romulan': energyAllocation = { weapons: 50, shields: 50, engines: 0 }; break;
+                case 'Pirate': energyAllocation = { weapons: 60, shields: 40, engines: 0 }; break;
+                case 'Federation': energyAllocation = { weapons: 33, shields: 34, engines: 33 }; break;
+                default: energyAllocation = { weapons: 0, shields: 0, engines: 100 }; break;
+            }
+
+            return {
+                id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction, shipRole, faction: chosenFaction, position, 
+                hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields, 
+                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation, 
+                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, 
+                subsystems: JSON.parse(JSON.stringify(stats.subsystems)), 
+                securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, 
+                dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, 
+                crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), 
+                lifeSupportReserves: { current: 100, max: 100 }
+            } as Ship;
+        }
+        case 'planet': {
+             let planetClass: PlanetClass;
+            if (Array.isArray(template.planetClass)) {
+                planetClass = template.planetClass[Math.floor(Math.random() * template.planetClass.length)];
+            } else {
+                planetClass = template.planetClass || planetClasses[Math.floor(Math.random() * planetClasses.length)];
+            }
+            const planetConfig = planetTypes[planetClass];
+            let name: string;
+            const nameList = availablePlanetNames[planetConfig.typeName as PlanetClass];
+            if (nameList?.length > 0) name = nameList.splice(Math.floor(Math.random() * nameList.length), 1)[0];
+            else name = `Uncharted Planet ${uniqueId().substr(-4)}`;
+            
+            return { id: uniqueId(), name, type: 'planet', faction: 'None', position, scanned: false, planetClass, awayMissionCompleted: false };
+        }
+        case 'starbase': {
+             if (chosenFaction === 'None' || chosenFaction === 'Pirate' || chosenFaction === 'Independent' || chosenFaction === 'Unknown') return null;
+             return { id: uniqueId(), name: `Starbase ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase', faction: chosenFaction, position, scanned: false, hull: 500, maxHull: 500 };
+        }
+        case 'asteroid_field': {
+            return { id: uniqueId(), name: 'Asteroid Field', type: 'asteroid_field', faction: 'None', position, scanned: true };
+        }
+        case 'event_beacon': {
+             const eventTypes: EventBeacon['eventType'][] = ['derelict_ship', 'distress_call', 'ancient_probe'];
+             let eventType: EventBeacon['eventType'];
+             if(Array.isArray(template.eventType)) {
+                eventType = template.eventType[Math.floor(Math.random() * template.eventType.length)];
+             } else {
+                eventType = template.eventType || eventTypes[Math.floor(Math.random() * eventTypes.length)];
+             }
+             return { id: uniqueId(), name: 'Unidentified Signal', type: 'event_beacon', eventType, faction: 'Unknown', position, scanned: false, isResolved: false };
+        }
+        default:
+            return null;
+    }
+};
+
+const createSectorFromTemplate = (
+    template: SectorTemplate,
+    factionOwner: FactionOwner,
+    availablePlanetNames: Record<string, string[]>,
+    availableShipNames: Record<string, string[]>,
+    colorIndex: { current: number }
+): GameState['currentSector'] => {
+    const newEntities: Entity[] = [];
+    const takenPositions = new Set<string>();
+
+    const getUniquePosition = () => {
+        let pos;
+        let tries = 0;
+        do {
+            pos = { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * SECTOR_HEIGHT) };
+            tries++;
+        } while (takenPositions.has(`${pos.x},${pos.y}`) && tries < 50);
+        takenPositions.add(`${pos.x},${pos.y}`);
+        return pos;
+    };
+    
+    template.entityTemplates.forEach(entityTemplate => {
+        const count = Math.floor(Math.random() * (entityTemplate.count[1] - entityTemplate.count[0] + 1)) + entityTemplate.count[0];
+        for (let i = 0; i < count; i++) {
+            const position = getUniquePosition();
+            const newEntity = createEntityFromTemplate(entityTemplate, position, factionOwner, availableShipNames, availablePlanetNames, colorIndex);
+            if (newEntity) {
+                newEntities.push(newEntity);
+            }
+        }
+    });
+
+    const hasNebula = Math.random() < (template.hasNebulaChance || 0.1);
+
+    return { entities: newEntities, visited: false, hasNebula, factionOwner, isScanned: false };
+}
+
 
 const createInitialGameState = (): GameState => {
   const playerStats = shipRoleStats.Dreadnought;
@@ -57,9 +185,9 @@ const createInitialGameState = (): GameState => {
     { id: 'officer-3', name: 'Lt. Cmdr. Singh', role: 'Engineering', personality: 'Cautious' },
   ];
 
-  let quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () =>
-    Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, factionOwner: 'None', isScanned: false }))
-  );
+    let quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () =>
+        Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, factionOwner: 'None', isScanned: false }))
+    );
 
     const availablePlanetNames: Record<string, string[]> = JSON.parse(JSON.stringify(planetNames));
     const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
@@ -67,97 +195,24 @@ const createInitialGameState = (): GameState => {
 
     for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
         for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
-            const sector = quadrantMap[qy][qx];
-            sector.factionOwner = getFactionOwner(qx, qy);
+            const factionOwner = getFactionOwner(qx, qy);
+
+            const validTemplates = sectorTemplates.filter(t => t.allowedFactions.includes(factionOwner));
             
-            const newEntities: Entity[] = [];
-            const entityCount = Math.floor(Math.random() * 4) + 2;
-            const takenPositions = new Set<string>();
+            const totalWeight = validTemplates.reduce((sum, t) => sum + t.weight, 0);
+            let roll = Math.random() * totalWeight;
+            
+            const chosenTemplate = validTemplates.find(t => {
+                roll -= t.weight;
+                return roll <= 0;
+            }) || validTemplates[0];
 
-            const getUniquePosition = () => {
-                let pos; let tries = 0;
-                do {
-                    pos = { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * SECTOR_HEIGHT) };
-                    tries++;
-                } while (takenPositions.has(`${pos.x},${pos.y}`) && tries < 50);
-                takenPositions.add(`${pos.x},${pos.y}`);
-                return pos;
-            };
-
-            const getUniqueShipName = (faction: string): string => {
-                if (availableShipNames[faction]?.length > 0) {
-                    const nameList = availableShipNames[faction];
-                    const nameIndex = Math.floor(Math.random() * nameList.length);
-                    return nameList.splice(nameIndex, 1)[0];
-                }
-                return `${faction} Vessel ${uniqueId().substr(-4)}`;
-            };
-
-            const getNextShipColor = (): string => {
-                const color = ENEMY_LOG_COLORS[colorIndex.current];
-                colorIndex.current = (colorIndex.current + 1) % ENEMY_LOG_COLORS.length;
-                return color;
-            };
-
-            const midX = QUADRANT_SIZE / 2; const midY = QUADRANT_SIZE / 2;
-            let depth = 0;
-            if (sector.factionOwner === 'Klingon') depth = (midX - 1 - qx) + (midY - 1 - qy);
-            else if (sector.factionOwner === 'Romulan') depth = (qx - midX) + (midY - 1 - qy);
-            else if (sector.factionOwner === 'Federation') depth = (midX - 1 - qx) + (qy - midY);
-
-            let mainFaction: Ship['shipModel'] | null = null;
-            let pirateChance = 0.1; let factionShipChance = 0; let starbaseChance = 0;
-            switch (sector.factionOwner) {
-                case 'Federation': mainFaction = 'Federation'; starbaseChance = 0.2 + depth * 0.05; factionShipChance = 0.2; pirateChance = 0.01; break;
-                case 'Klingon': mainFaction = 'Klingon'; starbaseChance = 0.02 + depth * 0.01; factionShipChance = 0.25 + depth * 0.1; pirateChance = 0.05; break;
-                case 'Romulan': mainFaction = 'Romulan'; starbaseChance = 0.02 + depth * 0.01; factionShipChance = 0.25 + depth * 0.1; pirateChance = 0.05; break;
-                case 'None': pirateChance = 0.4; factionShipChance = 0.2; break;
+            if (chosenTemplate) {
+                 quadrantMap[qy][qx] = createSectorFromTemplate(chosenTemplate, factionOwner, availablePlanetNames, availableShipNames, colorIndex);
             }
-            if (Math.random() < starbaseChance) newEntities.push({ id: uniqueId(), name: `Starbase ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase', faction: mainFaction === 'Klingon' || mainFaction === 'Romulan' ? mainFaction : 'Federation', position: getUniquePosition(), scanned: false, hull: 500, maxHull: 500 });
-
-            for (let i = 0; i < entityCount; i++) {
-                const entityTypeRoll = Math.random(); const position = getUniquePosition();
-                if (entityTypeRoll < 0.1 && newEntities.length > 0) {
-                    const eventTypes: EventBeacon['eventType'][] = ['derelict_ship', 'distress_call', 'ancient_probe'];
-                    newEntities.push({ id: uniqueId(), name: 'Unidentified Signal', type: 'event_beacon', eventType: eventTypes[Math.floor(Math.random() * eventTypes.length)], faction: 'Unknown', position: position, scanned: false, isResolved: false });
-                } else if (entityTypeRoll < 0.4) {
-                    const planetClass = planetClasses[Math.floor(Math.random() * planetClasses.length)];
-                    const planetConfig = planetTypes[planetClass];
-                    let name: string; const nameList = availablePlanetNames[planetConfig.typeName as PlanetClass];
-                    if (nameList?.length > 0) name = nameList.splice(Math.floor(Math.random() * nameList.length), 1)[0];
-                    else name = `Uncharted Planet ${uniqueId().substr(-4)}`;
-                    newEntities.push({ id: uniqueId(), name: name, type: 'planet', faction: 'None', position, scanned: false, planetClass: planetClass, awayMissionCompleted: false });
-                } else if (entityTypeRoll < 0.55) {
-                    newEntities.push({ id: uniqueId(), name: 'Asteroid Field', type: 'asteroid_field', faction: 'None', position, scanned: true });
-                } else {
-                    let faction: Ship['shipModel'] | null = null;
-                    const shipRoll = Math.random();
-                    if (sector.factionOwner === 'None') {
-                        if (shipRoll < pirateChance) faction = 'Pirate';
-                        else if (shipRoll < pirateChance + 0.1) faction = 'Klingon';
-                        else if (shipRoll < pirateChance + 0.15) faction = 'Romulan';
-                        else if (shipRoll < pirateChance + 0.25) faction = 'Independent';
-                    } else {
-                        if (shipRoll < factionShipChance) faction = mainFaction;
-                        else if (shipRoll < factionShipChance + pirateChance) faction = 'Pirate';
-                    }
-                    if (sector.factionOwner === 'Federation' && faction === 'Federation') faction = Math.random() < 0.6 ? 'Federation' : 'Independent';
-                    if (faction) {
-                        let shipRole: ShipRole; let energyAllocation: Ship['energyAllocation'];
-                        switch (faction) {
-                            case 'Klingon': case 'Romulan': shipRole = Math.random() < 0.8 ? 'Cruiser' : 'Escort'; energyAllocation = { weapons: 50, shields: 50, engines: 0 }; break;
-                            case 'Pirate': shipRole = 'Escort'; energyAllocation = { weapons: 60, shields: 40, engines: 0 }; break;
-                            case 'Federation': shipRole = Math.random() < 0.7 ? 'Explorer' : 'Cruiser'; energyAllocation = { weapons: 33, shields: 34, engines: 33 }; break;
-                            default: shipRole = 'Freighter'; faction = 'Independent'; energyAllocation = { weapons: 0, shields: 0, engines: 100 }; break;
-                        }
-                        const stats = shipRoleStats[shipRole];
-                        newEntities.push({ id: uniqueId(), name: getUniqueShipName(faction), type: 'ship', shipModel: faction, shipRole, faction, position, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields, energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation, torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max }, subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max }, dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null, crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: getNextShipColor(), lifeSupportReserves: { current: 100, max: 100 } } as Ship);
-                    }
-                }
-            }
-            sector.entities = newEntities; sector.hasNebula = Math.random() < 0.2;
         }
     }
+
     const playerPosition = { qx: 1, qy: 6 };
     for (let qy = 0; qy < QUADRANT_SIZE; qy++) for (let qx = 0; qx < QUADRANT_SIZE; qx++) if (quadrantMap[qy][qx].factionOwner === 'Federation') { quadrantMap[qy][qx].visited = true; quadrantMap[qy][qx].isScanned = true; }
     let startSector = quadrantMap[playerPosition.qy][playerPosition.qx];
