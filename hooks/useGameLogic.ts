@@ -113,6 +113,7 @@ const createEntityFromTemplate = (
                 cloakCooldown: 0,
                 isStunned: false,
                 engineFailureTurn: null,
+                lifeSupportFailureTurn: null,
                 isDerelict: false,
                 captureInfo: null,
             } as Ship;
@@ -231,6 +232,7 @@ const createInitialGameState = (): GameState => {
     cloakCooldown: 0,
     isStunned: false,
     engineFailureTurn: null,
+    lifeSupportFailureTurn: null,
     isDerelict: false,
     captureInfo: null,
   };
@@ -350,6 +352,7 @@ export const useGameLogic = () => {
                         ship.cloakCooldown = ship.cloakCooldown || 0;
                         ship.isStunned = ship.isStunned || false;
                         if (ship.engineFailureTurn === undefined) ship.engineFailureTurn = null;
+                        if (ship.lifeSupportFailureTurn === undefined) ship.lifeSupportFailureTurn = null;
                         if (ship.isDerelict === undefined) ship.isDerelict = false;
                         if (ship.captureInfo === undefined) ship.captureInfo = null;
                     };
@@ -956,6 +959,53 @@ export const useGameLogic = () => {
                         }
                     }
                 }
+            }
+
+            // Catastrophic Life Support Failure (subsystem destroyed directly)
+            if (ship.subsystems.lifeSupport.health <= 0 && ship.engineFailureTurn === null && !ship.isDerelict && !ship.captureInfo) {
+                if (ship.lifeSupportFailureTurn === null) {
+                    ship.lifeSupportFailureTurn = next.turn;
+                    addLogForTurn({
+                        sourceId: ship.id,
+                        sourceName: ship.name,
+                        message: `CRITICAL: Life support systems have failed! Emergency reserves activated. 3 turns until total system failure.`,
+                        isPlayerSource: ship.id === 'player',
+                        color: 'border-red-600'
+                    });
+                } else {
+                    const turnsSinceFailure = next.turn - ship.lifeSupportFailureTurn;
+                    const turnsUntilFailure = 3 - turnsSinceFailure;
+
+                    if (turnsUntilFailure > 0) {
+                        addLogForTurn({
+                            sourceId: ship.id,
+                            sourceName: ship.name,
+                            message: `WARNING: Life support reserves failing. ${turnsUntilFailure} turn(s) until crew loss.`,
+                            isPlayerSource: ship.id === 'player',
+                            color: 'border-red-600'
+                        });
+                    } else { 
+                        ship.isDerelict = true;
+                        if (ship.faction === 'Federation') {
+                             triggerDesperationAnimation({ source: ship, type: 'evacuate' });
+                             addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has failed completely! The crew is abandoning ship!`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
+                        } else {
+                             addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has failed completely! The crew is lost.`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
+                        }
+                        if (ship.id === 'player') {
+                            next.gameOver = true;
+                        }
+                    }
+                }
+            } else if (ship.subsystems.lifeSupport.health > 0 && ship.lifeSupportFailureTurn !== null) {
+                ship.lifeSupportFailureTurn = null;
+                addLogForTurn({
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message: `Life support systems have been restored. Emergency reserves are recharging.`,
+                    isPlayerSource: ship.id === 'player',
+                    color: 'border-green-500'
+                });
             }
             
             // Check for ongoing capture repairs and log progress

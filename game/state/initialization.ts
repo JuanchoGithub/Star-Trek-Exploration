@@ -255,6 +255,8 @@ export const createInitialGameState = (): GameState => {
     cloakCooldown: 0,
     isStunned: false,
     engineFailureTurn: null,
+    // FIX: Added missing 'lifeSupportFailureTurn' property to conform to the Ship interface.
+    lifeSupportFailureTurn: null,
     isDerelict: false,
     captureInfo: null,
   };

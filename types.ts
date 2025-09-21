@@ -65,6 +65,7 @@ export interface Ship extends BaseEntity {
   cloakCooldown: number; // Turns until cloak is available again
   isStunned: boolean; // Skips next turn if true
   engineFailureTurn: number | null;
+  lifeSupportFailureTurn: number | null;
   isDerelict: boolean;
   captureInfo: { captorId: string; repairTurn: number; } | null;
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
