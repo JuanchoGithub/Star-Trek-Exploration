@@ -845,6 +845,33 @@
       .fed-evac-engineering-drift {
         animation: fed-evac-engineering-drift 4s ease-out forwards;
       }
+
+      /* Nebula Background */
+      @keyframes nebula-swirl {
+        0% {
+          background-position: 0% 50%;
+          opacity: 0.3;
+        }
+        50% {
+          background-position: 100% 50%;
+          opacity: 0.45;
+        }
+        100% {
+          background-position: 0% 50%;
+          opacity: 0.3;
+        }
+      }
+      .nebula-background {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 40% 60%, var(--color-accent-pink), transparent 70%),
+                    radial-gradient(ellipse at 70% 30%, var(--color-accent-sky), transparent 70%),
+                    radial-gradient(ellipse at 20% 20%, var(--color-accent-purple), transparent 70%);
+        background-size: 300% 300%;
+        animation: nebula-swirl 20s ease-in-out infinite;
+      }
     </style>
     <script>
       tailwind.config = {

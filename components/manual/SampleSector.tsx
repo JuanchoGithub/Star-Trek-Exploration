@@ -78,7 +78,7 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
 
     return (
         <div className="w-48 h-36 bg-black border border-border-dark grid grid-cols-5 grid-rows-4 relative overflow-hidden">
-            {hasNebula && <div className="absolute inset-0 bg-accent-purple opacity-30 z-0 pointer-events-none"></div>}
+            {hasNebula && <div className="nebula-background"></div>}
             {Array.from({ length: 20 }).map((_, index) => (
                 <div key={index} className="border border-border-dark border-opacity-30"></div>
             ))}

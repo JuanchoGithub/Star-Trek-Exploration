@@ -97,7 +97,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
     <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       {sector.hasNebula && (
-        <div className="absolute inset-0 bg-accent-purple opacity-30 z-0 pointer-events-none"></div>
+        <div className="nebula-background"></div>
       )}
       <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
         {gridCells.map((_, index) => (
