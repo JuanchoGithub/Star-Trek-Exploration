@@ -1,4 +1,4 @@
-import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon } from '../../types';
+import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
 import { shipClasses, type ShipClassStats } from '../../assets/ships/configs/shipClassStats';
@@ -7,7 +7,7 @@ import { planetNames } from '../../assets/planets/configs/planetNames';
 import { shipNames } from '../../assets/ships/configs/shipNames';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
-import { uniqueId } from '../utils/helpers';
+import { uniqueId, seededRandom, cyrb53 } from '../utils/helpers';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -18,9 +18,9 @@ const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['fa
     return 'None';
 };
 
-const generateNebulaField = (): Position[] => {
+const generateNebulaField = (rand: () => number): Position[] => {
     const cells = new Set<string>();
-    const percentage = 0.3 + Math.random() * 0.4; // 30% to 70%
+    const percentage = 0.3 + rand() * 0.4; // 30% to 70%
     const targetCellCount = Math.floor(SECTOR_WIDTH * SECTOR_HEIGHT * percentage);
 
     if (targetCellCount === 0) return [];
@@ -28,8 +28,8 @@ const generateNebulaField = (): Position[] => {
     const seeds: Position[] = [];
     for (let i = 0; i < 3; i++) {
         seeds.push({
-            x: Math.floor(Math.random() * SECTOR_WIDTH),
-            y: Math.floor(Math.random() * SECTOR_HEIGHT),
+            x: Math.floor(rand() * SECTOR_WIDTH),
+            y: Math.floor(rand() * SECTOR_HEIGHT),
         });
     }
 
@@ -44,7 +44,7 @@ const generateNebulaField = (): Position[] => {
             { x: current.x - 1, y: current.y },
             { x: current.x, y: current.y + 1 },
             { x: current.x, y: current.y - 1 },
-        ].sort(() => Math.random() - 0.5);
+        ].sort(() => rand() - 0.5);
 
         for (const neighbor of neighbors) {
             if (
@@ -53,7 +53,7 @@ const generateNebulaField = (): Position[] => {
                 !cells.has(`${neighbor.x},${neighbor.y}`) &&
                 cells.size < targetCellCount
             ) {
-                if (Math.random() < 0.8) {
+                if (rand() < 0.8) {
                     cells.add(`${neighbor.x},${neighbor.y}`);
                     queue.push(neighbor);
                 }
@@ -64,8 +64,8 @@ const generateNebulaField = (): Position[] => {
              let newSeed: Position;
              do {
                  newSeed = {
-                    x: Math.floor(Math.random() * SECTOR_WIDTH),
-                    y: Math.floor(Math.random() * SECTOR_HEIGHT),
+                    x: Math.floor(rand() * SECTOR_WIDTH),
+                    y: Math.floor(rand() * SECTOR_HEIGHT),
                 };
              } while (cells.has(`${newSeed.x},${newSeed.y}`));
              queue.push(newSeed);
@@ -174,33 +174,40 @@ const createEntityFromTemplate = (
 };
 
 const createSectorFromTemplate = (
-    template: any, factionOwner: FactionOwner, availablePlanetNames: Record<string, string[]>,
-    availableShipNames: Record<string, string[]>, colorIndex: { current: number }
+    template: SectorTemplate, factionOwner: FactionOwner, 
+    availablePlanetNames: Record<string, string[]>,
+    availableShipNames: Record<string, string[]>, 
+    colorIndex: { current: number },
+    seed: string
 ): SectorState => {
     const newEntities: Entity[] = [];
     const takenPositions = new Set<string>();
+    const rand = seededRandom(cyrb53(seed));
+
     const getUniquePosition = () => {
         let pos;
-        do { pos = { x: Math.floor(Math.random() * SECTOR_WIDTH), y: Math.floor(Math.random() * SECTOR_HEIGHT) };
+        do { pos = { x: Math.floor(rand() * SECTOR_WIDTH), y: Math.floor(rand() * SECTOR_HEIGHT) };
         } while (takenPositions.has(`${pos.x},${pos.y}`));
         takenPositions.add(`${pos.x},${pos.y}`);
         return pos;
     };
     
     template.entityTemplates.forEach((et: any) => {
-        const count = Math.floor(Math.random() * (et.count[1] - et.count[0] + 1)) + et.count[0];
+        const count = Math.floor(rand() * (et.count[1] - et.count[0] + 1)) + et.count[0];
         for (let i = 0; i < count; i++) {
             const newEntity = createEntityFromTemplate(et, getUniquePosition(), factionOwner, availableShipNames, availablePlanetNames, colorIndex);
             if (newEntity) newEntities.push(newEntity);
         }
     });
 
-    const hasNebula = Math.random() < (template.hasNebulaChance || 0);
+    const hasNebula = rand() < (template.hasNebulaChance || 0);
     return {
+        templateId: template.id,
+        seed,
         entities: newEntities,
         visited: false,
         hasNebula,
-        nebulaCells: hasNebula ? generateNebulaField() : [],
+        nebulaCells: hasNebula ? generateNebulaField(rand) : [],
         factionOwner,
         isScanned: false
     };
@@ -228,10 +235,11 @@ export const createInitialGameState = (): GameState => {
     { id: 'officer-3', name: 'Lt. Cmdr. Singh', role: 'Engineering', personality: 'Cautious' },
   ];
 
-  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, nebulaCells: [], factionOwner: 'None', isScanned: false })));
+  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, nebulaCells: [], factionOwner: 'None', isScanned: false, seed: '', templateId: '' })));
   const availablePlanetNames: Record<string, string[]> = JSON.parse(JSON.stringify(planetNames));
   const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
   const colorIndex = { current: 0 };
+  const galaxySeed = `galaxy_${Math.random().toString(36).substring(2, 11)}`;
 
   for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
       for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
@@ -240,7 +248,10 @@ export const createInitialGameState = (): GameState => {
           const totalWeight = validTemplates.reduce((sum, t) => sum + t.weight, 0);
           let roll = Math.random() * totalWeight;
           const chosenTemplate = validTemplates.find(t => (roll -= t.weight) <= 0) || validTemplates[0];
-          if (chosenTemplate) quadrantMap[qy][qx] = createSectorFromTemplate(chosenTemplate, factionOwner, availablePlanetNames, availableShipNames, colorIndex);
+          const sectorSeed = `${galaxySeed}_${qx}_${qy}`;
+          if (chosenTemplate) {
+            quadrantMap[qy][qx] = createSectorFromTemplate(chosenTemplate, factionOwner, availablePlanetNames, availableShipNames, colorIndex, sectorSeed);
+          }
       }
   }
 

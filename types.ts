@@ -293,6 +293,8 @@ export interface SectorState {
   nebulaCells: Position[];
   factionOwner: FactionOwner;
   isScanned: boolean;
+  seed: string;
+  templateId: string;
 }
 
 export interface GameState {

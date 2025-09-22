@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
@@ -79,8 +79,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   };
 
   const path = getPath(playerShip.position, navigationTarget);
-  
-  const nebulaCellSet = useMemo(() => new Set(sector.nebulaCells.map(p => `${p.x},${p.y}`)), [sector.nebulaCells]);
 
   const visibleEntities = allEntities.filter(entity => {
       if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
@@ -91,32 +89,50 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   return (
     <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
-      <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
-        {gridCells.map((_, index) => (
-          <div key={index} className="border border-border-dark border-opacity-50"></div>
-        ))}
+      
+      {/* Background grid for borders and click handlers */}
+      <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative z-0">
+        {gridCells.map((_, index) => {
+          const x = index % sectorSize.width;
+          const y = Math.floor(index / sectorSize.width);
+          return (
+            <div
+              key={`cell-${x}-${y}`}
+              className={`border border-border-dark border-opacity-50 ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
+              onClick={() => handleCellClick(x, y)}
+              title={isNavDisabled ? "Navigation computer is damaged" : ""}
+            />
+          );
+        })}
       </div>
 
-      <div className="absolute inset-0 grid grid-cols-12 grid-rows-10 z-10">
-          {gridCells.map((_, index) => {
-              const x = index % sectorSize.width;
-              const y = Math.floor(index / sectorSize.width);
-              const isNebula = nebulaCellSet.has(`${x},${y}`);
-              const isDeep = isDeepNebula({x,y}, sector);
+      {/* Absolutely positioned layer for nebula effects */}
+      <div className="absolute inset-0 z-10 pointer-events-none">
+        {sector.nebulaCells.map(pos => {
+          const isDeep = isDeepNebula(pos, sector);
+          const topPercent = (pos.y / sectorSize.height) * 100;
+          const leftPercent = (pos.x / sectorSize.width) * 100;
+          const widthPercent = 100 / sectorSize.width;
+          const heightPercent = 100 / sectorSize.height;
 
-              return (
-                  <div key={`cell-overlay-${x}-${y}`} className="relative w-full h-full">
-                    <div
-                        className={`w-full h-full ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
-                        onClick={() => handleCellClick(x, y)}
-                        title={isNavDisabled ? "Navigation computer is damaged" : ""}
-                    />
-                    {isNebula && <div className="nebula-cell" />}
-                    {isDeep && <div className="deep-nebula-overlay" />}
-                  </div>
-              );
-          })}
+          return (
+            <div
+              key={`nebula-${pos.x}-${pos.y}`}
+              className="absolute"
+              style={{
+                top: `${topPercent}%`,
+                left: `${leftPercent}%`,
+                width: `${widthPercent}%`,
+                height: `${heightPercent}%`,
+              }}
+            >
+              <div className="nebula-cell" />
+              {isDeep && <div className="deep-nebula-overlay" />}
+            </div>
+          );
+        })}
       </div>
+
        <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-20 overflow-visible">
           {(() => {
               if (!selectedTargetId) return null;

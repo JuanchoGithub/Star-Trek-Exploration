@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
@@ -38,7 +38,13 @@ export const useGameLogic = () => {
                     if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
                     if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
                     
-                    const migrateNebulaData = (sector: any) => {
+                    const migrateSectorData = (sector: any) => {
+                        if (!sector.seed) {
+                            sector.seed = `legacy_${Math.random().toString(36).substring(2, 11)}`;
+                        }
+                        if (!sector.templateId) {
+                            sector.templateId = 'unknown_legacy';
+                        }
                         if (sector.hasNebula && !sector.nebulaCells) {
                             const cells = new Set<string>();
                             const percentage = 0.3 + Math.random() * 0.4;
@@ -58,8 +64,8 @@ export const useGameLogic = () => {
                         }
                     };
 
-                    savedState.quadrantMap.forEach(row => row.forEach(migrateNebulaData));
-                    migrateNebulaData(savedState.currentSector);
+                    savedState.quadrantMap.forEach(row => row.forEach(migrateSectorData));
+                    migrateSectorData(savedState.currentSector);
                     
                     return savedState;
                  }
@@ -81,6 +87,7 @@ export const useGameLogic = () => {
     const [awayMissionResult, setAwayMissionResult] = useState<AwayMissionResult | null>(null);
     const [eventResult, setEventResult] = useState<string | null>(null);
     const [activeMissionPlanetId, setActiveMissionPlanetId] = useState<string | null>(null);
+    const isGameLoaded = useRef(false);
     
     const addLog = useCallback((logData: Omit<LogEntry, 'id' | 'turn'>) => {
         setGameState(prev => {
@@ -92,6 +99,19 @@ export const useGameLogic = () => {
             return { ...prev, logs: [...prev.logs, newLog] };
         });
     }, []);
+
+    useEffect(() => {
+        if (!isGameLoaded.current) {
+            isGameLoaded.current = true;
+            addLog({
+                sourceId: 'system',
+                sourceName: 'Debug',
+                message: `New Game. Sector Type: ${gameState.currentSector.templateId}, Seed: ${gameState.currentSector.seed}`,
+                isPlayerSource: false,
+                color: 'border-purple-500',
+            });
+        }
+    }, [gameState.currentSector.templateId, gameState.currentSector.seed, addLog]);
 
     useEffect(() => {
         if (!isDocked) return;
@@ -169,6 +189,14 @@ export const useGameLogic = () => {
                  if (savedState.player && savedState.turn) {
                     setGameState(savedState);
                     addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state loaded successfully.', isPlayerSource: false, color: 'border-gray-500' });
+                    addLog({
+                        sourceId: 'system',
+                        sourceName: 'Debug',
+                        message: `Loaded Sector. Type: ${savedState.currentSector.templateId}, Seed: ${savedState.currentSector.seed}`,
+                        isPlayerSource: false,
+                        color: 'border-purple-500',
+                    });
+                    isGameLoaded.current = true;
                  } else {
                     addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Invalid save data found.', isPlayerSource: false, color: 'border-red-500' });
                 }
@@ -320,6 +348,7 @@ export const useGameLogic = () => {
         
         setIsWarping(true);
         setTimeout(() => {
+          let nextState: GameState;
           setGameState(prev => {
             const next = JSON.parse(JSON.stringify(prev));
             next.quadrantMap[prev.player.position.qy][prev.player.position.qx] = next.currentSector;
@@ -330,11 +359,19 @@ export const useGameLogic = () => {
             next.player.ship.position = { x: 6, y: 8 };
             next.player.ship.dilithium.current -= 1;
             next.orbitingPlanetId = null;
+            nextState = next;
             return next;
           });
           setIsWarping(false);
           setCurrentView('sector');
           addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true, color: 'border-blue-400' });
+          addLog({
+              sourceId: 'system',
+              sourceName: 'Debug',
+              message: `Entering Sector. Type: ${nextState!.currentSector.templateId}, Seed: ${nextState!.currentSector.seed}`,
+              isPlayerSource: false,
+              color: 'border-purple-500',
+          });
         }, 2000);
     }, [gameState, addLog]);
 
