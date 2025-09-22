@@ -71,8 +71,10 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                          <SectionLink active={activeSection === 'ai'} onClick={() => setActiveSection('ai')}>Appendix: AI Doctrine</SectionLink>
                          <SectionLink active={activeSection === 'animations'} onClick={() => setActiveSection('animations')}>Animation Library</SectionLink>
                     </nav>
-                    <main className="w-4/5 flex-grow panel-style p-4 overflow-y-auto">
-                        {renderContent()}
+                    <main className="w-4/5 flex-grow panel-style p-4 flex flex-col min-h-0">
+                        <div className="h-full overflow-y-auto pr-2">
+                           {renderContent()}
+                        </div>
                     </main>
                 </div>
             </div>

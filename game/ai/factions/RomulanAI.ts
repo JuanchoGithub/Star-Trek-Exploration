@@ -1,4 +1,5 @@
 
+
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
@@ -64,7 +65,8 @@ export class RomulanAI extends FactionAI {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power distribution for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget);
+            // FIX: Added the missing 'stance' argument to the processCommonTurn call to resolve the "Expected 6 arguments, but got 5" error.
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
         } else {
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
