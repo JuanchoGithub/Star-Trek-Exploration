@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
@@ -75,7 +77,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <p className="text-text-secondary mb-4">The sector grid is your chessboard. Where you place your ship is as important as how you equip it.</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                 <li><strong>Optimal Range:</strong> Phaser damage drops off sharply with distance. Your ideal engagement range is 2-3 hexes. Conversely, if an enemy is slow but powerful (like a Klingon Negh'Var), try to stay at maximum range (5-6 hexes), a practice known as "kiting", to pepper them with long-range fire while minimizing their devastating return volleys.</li>
-                <li><strong>Using the Environment:</strong> Lure aggressive enemies through <span className="text-gray-400">Asteroid Fields</span> to inflict free damage. Unlike nebulae, which affect sensors, asteroid fields are a direct physical hazard.</li>
+                <li><strong>Using the Environment:</strong> Lure aggressive enemies into <span className="text-gray-400">Asteroid Fields</span>. The dense rock provides cover (reducing phaser accuracy against ships inside by 30%) and a direct hazard (risk of impact damage). You can also use asteroid fields as a cloak. By positioning your ship inside a field, you become undetectable beyond 4 hexes. This allows you to break sensor lock and set up ambushes. Lure an enemy to chase you, then enter a field. They will be forced to close to within 2 hexes to fire, bringing them into your optimal torpedo range.</li>
                 <li><strong>Focus Fire:</strong> In multi-ship engagements, it is always better to destroy one enemy than to damage two. Concentrate all fire on a single target until it is neutralized before moving to the next. Prioritize destroying high-damage, low-health threats (like a B'rel Bird-of-Prey) first.</li>
             </ul>
 
@@ -155,15 +157,25 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     </DetailBox>
                 </div>
 
-                <h4 className="text-lg font-bold text-accent-yellow mt-4">Environmental Factors</h4>
+                <h4 className="font-bold text-accent-yellow mt-4">Environmental Factors</h4>
                 <p className="text-sm text-text-secondary mb-2">Sector conditions can severely impact cloaking device performance, turning a tactical advantage into a critical liability.</p>
-                <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-purple-400">
-                    <h5 className="font-bold text-purple-300">Nebulae</h5>
-                    <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
-                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
-                        <li><strong>Reliability:</strong> Reduced by 25% (e.g., 92% becomes 69%).</li>
-                        <li><strong>Power Cost:</strong> Increased by 30% (e.g., 40 becomes 52 per turn).</li>
-                    </ul>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-purple-400">
+                        <h5 className="font-bold text-purple-300">Nebulae</h5>
+                        <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
+                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
+                            <li><strong>Reliability:</strong> Reduced by 25% (e.g., 92% becomes 69%).</li>
+                            <li><strong>Power Cost:</strong> Increased by 30% (e.g., 40 becomes 52 per turn).</li>
+                        </ul>
+                    </div>
+                    <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-gray-500">
+                        <h5 className="font-bold text-gray-400">Asteroid Fields</h5>
+                        <p className="text-sm text-text-secondary">The dense rock, ice, and sensor-reflective dust in an asteroid field can create minor interference with cloaking fields.</p>
+                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
+                            <li><strong>Reliability:</strong> Reduced by 10% (e.g., 92% becomes 83%).</li>
+                            <li><strong>Power Cost:</strong> Increased by 15% (e.g., 40 becomes 46 per turn).</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <h4 className="font-bold text-accent-yellow mt-4 flex items-center gap-2"><FederationScanIcon className="w-6 h-6"/>Countering Cloaks: Tachyon Scan</h4>

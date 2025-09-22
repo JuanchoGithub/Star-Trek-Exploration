@@ -1,8 +1,10 @@
+
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
+import { canTargetEntity } from '../../game/utils/combat';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
@@ -80,6 +82,9 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
 
   const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction;
 
+  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector) : { canTarget: true, reason: '' };
+  const cannotTargetReason = !targetingCheck.canTarget ? targetingCheck.reason : '';
+
   const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
   const phaserButtonText = isTargetingSubsystem
     ? `Phasers (${targeting.subsystem.charAt(0).toUpperCase()})`
@@ -107,10 +112,10 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2">
-                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked} accentColor="red">
+                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked || !targetingCheck.canTarget} accentColor="red" title={cannotTargetReason}>
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || playerTurnActions.hasLaunchedTorpedo} accentColor="sky">
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || playerTurnActions.hasLaunchedTorpedo || !targetingCheck.canTarget} accentColor="sky" title={cannotTargetReason}>
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>

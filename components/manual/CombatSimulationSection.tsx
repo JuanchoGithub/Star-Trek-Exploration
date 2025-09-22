@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -153,6 +155,89 @@ export const CombatSimulationSection: React.FC = () => (
                     { label: "Proximity Bonus (Range 4)", value: "+5%" },
                     { label: "Scanner Health Modifier", value: "x0.80" },
                     { label: "Final Detection Chance", value: "(40% + 5%) * 0.80 = 36%", isFinal: true }
+                ]}
+            />
+        </div>
+
+        <SubHeader>Simulation 5: Environmental Effects</SubHeader>
+        <p className="text-text-secondary mb-2">Understanding how to use the environment to your advantage is key to victory. These simulations demonstrate the tactical impact of nebulae and asteroid fields.</p>
+        <div className="space-y-4">
+            <SimulationBox
+                title="Scenario A: Firing into a Nebula"
+                scenario="ENDEAVOUR vs. Romulan Warbird (in Nebula)"
+                rules={[
+                    "Firing at a target inside any nebula cell incurs a 25% accuracy penalty."
+                ]}
+                calculations={[
+                    { label: "Base Hit Chance", value: "90%" },
+                    { label: "Nebula Modifier", value: "x0.75" },
+                    { label: "Final Hit Chance", value: "90% * 0.75 = 67.5%", isFinal: true }
+                ]}
+            />
+             <SimulationBox
+                title="Scenario B: Deep Nebula Concealment"
+                scenario="PLAYER in Deep Nebula vs. Enemy Sensors"
+                rules={[
+                    "Ships inside a 'Deep Nebula' (a nebula cell completely surrounded by 8 other nebula cells) are completely undetectable by enemy sensors."
+                ]}
+                calculations={[
+                    { label: "Player Position", value: "Deep Nebula" },
+                    { label: "AI Sensor Check", value: "AUTOMATIC FAILURE" },
+                    { label: "Result", value: "Player is invisible. The AI cannot target or fire upon your ship.", isFinal: true }
+                ]}
+            />
+             <SimulationBox
+                title="Scenario C: Asteroid Field Cover"
+                scenario="ENDEAVOUR vs. Pirate Raider (in Asteroid Field)"
+                rules={[
+                    "Firing phasers at a target inside an asteroid field cell incurs a 30% accuracy penalty."
+                ]}
+                calculations={[
+                    { label: "Base Hit Chance", value: "90%" },
+                    { label: "Asteroid Field Modifier", value: "x0.70" },
+                    { label: "Final Hit Chance", value: "90% * 0.70 = 63%", isFinal: true }
+                ]}
+            />
+            <SimulationBox
+                title="Scenario D: Torpedo vs. Asteroid Field"
+                scenario="ENDEAVOUR launches torpedo through an asteroid field cell"
+                rules={[
+                    "A torpedo passing through any asteroid field cell has a 40% chance of being destroyed by a collision."
+                ]}
+                calculations={[
+                    { label: "Torpedo Path Intersects Field", value: "YES" },
+                    { label: "Destruction Roll (Needs > 40)", value: "25 (FAILURE)" },
+                    { label: "Result", value: "Torpedo impacts an asteroid and is destroyed.", isFinal: true }
+                ]}
+            />
+        </div>
+        <SubHeader>Simulation 6: Asteroid Field Engagement</SubHeader>
+        <p className="text-text-secondary mb-2">Asteroid fields provide significant cover, affecting both detection and targeting.</p>
+        <div className="space-y-4">
+            <SimulationBox
+                title="Scenario A: Targeting Obscured Target"
+                scenario="ENDEAVOUR vs. Pirate Raider (in Asteroid Field) @ Range 3"
+                rules={[
+                    "Ships inside asteroid fields can only be targeted from 2 hexes or less."
+                ]}
+                calculations={[
+                    { label: "Target Distance", value: "3 hexes" },
+                    { label: "Target in Asteroid Field", value: "YES" },
+                    { label: "Targeting Range Requirement", value: "<= 2 hexes" },
+                    { label: "Result", value: "Target is untargetable. Firing solution denied.", isFinal: true }
+                ]}
+            />
+            <SimulationBox
+                title="Scenario B: Detecting Obscured Target"
+                scenario="ENDEAVOUR Sensors vs. Pirate Raider (in Asteroid Field) @ Range 4"
+                rules={[
+                    "Ships inside asteroid fields are only detectable within 4 hexes."
+                ]}
+                calculations={[
+                    { label: "Target Distance", value: "4 hexes" },
+                    { label: "Target in Asteroid Field", value: "YES" },
+                    { label: "Detection Range Requirement", value: "<= 4 hexes" },
+                    { label: "Result", value: "Target is visible on sensors, but remains untargetable.", isFinal: true }
                 ]}
             />
         </div>

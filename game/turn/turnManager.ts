@@ -1,7 +1,8 @@
+
 import type { GameState, PlayerTurnActions, Position, Entity, Ship, ShipSubsystems, TorpedoProjectile, LogEntry } from '../../types';
 import { processAITurns } from './aiProcessor';
 import { AIActions } from '../ai/FactionAI';
-import { applyPhaserDamage, consumeEnergy } from '../utils/combat';
+import { applyPhaserDamage, consumeEnergy, canTargetEntity } from '../utils/combat';
 import { moveOneStep, calculateDistance } from '../utils/ai';
 import { uniqueId } from '../utils/helpers';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
@@ -109,10 +110,15 @@ export function resolveTurn(
             if (playerTurnActions.combat?.type === 'phasers') {
                 const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId);
                 if (target) {
-                    const combatLogs = applyPhaserDamage(target as Ship, 20 * (playerShip.energyAllocation.weapons / 100), player.targeting?.subsystem || null, playerShip, next);
-                    next.combatEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
-                    combatLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-                    if (player.targeting?.subsystem) maintainedTargetLock = true;
+                    const targetingCheck = canTargetEntity(playerShip, target, next.currentSector);
+                    if (!targetingCheck.canTarget) {
+                        addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Firing solution failed: ${targetingCheck.reason}`, isPlayerSource: true });
+                    } else {
+                        const combatLogs = applyPhaserDamage(target as Ship, 20 * (playerShip.energyAllocation.weapons / 100), player.targeting?.subsystem || null, playerShip, next);
+                        next.combatEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
+                        combatLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
+                        if (player.targeting?.subsystem) maintainedTargetLock = true;
+                    }
                 }
             }
         }
@@ -161,11 +167,12 @@ export function resolveTurn(
     const projectiles = currentSector.entities.filter((e): e is TorpedoProjectile => e.type === 'torpedo_projectile');
     const allShipsForProjectiles = [...currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
     const destroyedProjectileIds = new Set<string>();
-    
-    projectiles.forEach(torpedo => {
-        if (torpedo.hull <= 0) { destroyedProjectileIds.add(torpedo.id); return; }
+    const asteroidPositions = new Set(next.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+
+    for (const torpedo of projectiles) {
+        if (torpedo.hull <= 0) { destroyedProjectileIds.add(torpedo.id); continue; }
         const targetEntity = allShipsForProjectiles.find(s => s.id === torpedo.targetId);
-        if (!targetEntity || targetEntity.hull <= 0) { destroyedProjectileIds.add(torpedo.id); return; }
+        if (!targetEntity || targetEntity.hull <= 0) { destroyedProjectileIds.add(torpedo.id); continue; }
         
         for (let i = 0; i < torpedo.speed; i++) {
             if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) break;
@@ -175,8 +182,23 @@ export function resolveTurn(
             if (isPosInNebula(nextStep, currentSector)) {
                 if (calculateDistance(torpedo.position, targetEntity.position) > 1) {
                     addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: `The ${torpedo.name} is disrupted by the nebula and fizzles out.`, isPlayerSource: torpedo.faction === 'Federation' });
-                    destroyedProjectileIds.add(torpedo.id);
-                    return;
+                    torpedo.hull = 0;
+                    break;
+                }
+            }
+            
+            const nextStepPosKey = `${nextStep.x},${nextStep.y}`;
+            if (asteroidPositions.has(nextStepPosKey)) {
+                if (Math.random() < 0.40) { // 40% chance of impact
+                    addLogForTurn({
+                        sourceId: torpedo.sourceId,
+                        sourceName: torpedo.name,
+                        message: `The ${torpedo.name} has struck an asteroid and was destroyed!`,
+                        isPlayerSource: torpedo.faction === 'Federation'
+                    });
+                    next.combatEffects.push({ type: 'torpedo_hit', position: nextStep, delay: 0, torpedoType: torpedo.torpedoType });
+                    torpedo.hull = 0;
+                    break; 
                 }
             }
 
@@ -187,16 +209,60 @@ export function resolveTurn(
                 const combatLogs = applyPhaserDamage(targetEntity, torpedo.damage, null, allShipsForProjectiles.find(s=>s.id === torpedo.sourceId)!, next); // Simulating torpedo damage via phaser logic for now
                 next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0, torpedoType: torpedo.torpedoType });
                 combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
-                destroyedProjectileIds.add(torpedo.id);
-                return;
+                torpedo.hull = 0;
+                break;
             }
         }
-    });
+        if (torpedo.hull <= 0) {
+            destroyedProjectileIds.add(torpedo.id);
+        }
+    }
 
     next.currentSector.entities = next.currentSector.entities.filter(e => !destroyedProjectileIds.has(e.id));
     
     const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
     processAITurns(next, aiActions, new Set<string>());
+
+    // =================================================================
+    // == Environmental Hazard Phase ==
+    // =================================================================
+    const allShipsForHazards = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
+    const asteroidPositionsForHazards = new Set(next.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+
+    allShipsForHazards.forEach(ship => {
+        if (ship.hull <= 0) return; // Skip destroyed ships
+        
+        const shipPosKey = `${ship.position.x},${ship.position.y}`;
+        if (asteroidPositionsForHazards.has(shipPosKey)) {
+            if (Math.random() < 0.33) { // 33% chance of taking damage
+                const damage = 5 + Math.floor(Math.random() * 11); // 5-15 damage
+                let remainingDamage = damage;
+                
+                let logMessage = `${ship.name} is struck by micrometeoroids for ${damage} damage!`;
+                
+                if (ship.shields > 0) {
+                    const absorbed = Math.min(ship.shields, remainingDamage);
+                    ship.shields -= absorbed;
+                    remainingDamage -= absorbed;
+                    logMessage += ` Shields absorbed ${Math.round(absorbed)}.`;
+                }
+                
+                if (remainingDamage > 0) {
+                    const roundedDamage = Math.round(remainingDamage);
+                    ship.hull = Math.max(0, ship.hull - roundedDamage);
+                    logMessage += ` Hull takes ${roundedDamage} damage.`;
+                }
+                
+                addLogForTurn({
+                    sourceId: 'system',
+                    sourceName: 'Hazard',
+                    message: logMessage,
+                    isPlayerSource: false,
+                    color: 'border-orange-400'
+                });
+            }
+        }
+    });
 
     // =================================================================
     // == Cloak Maintenance Phase ==

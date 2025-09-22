@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
@@ -6,7 +7,7 @@ import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { createInitialGameState } from '../game/state/initialization';
 import { resolveTurn } from '../game/turn/turnManager';
 import { seededRandom, cyrb53 } from '../game/utils/helpers';
-import { consumeEnergy } from '../game/utils/combat';
+import { consumeEnergy, canTargetEntity } from '../game/utils/combat';
 import { OfficerAdvice, ActiveAwayMissionOption, Planet } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
@@ -491,6 +492,12 @@ export const useGameLogic = () => {
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         if (!target || target.type !== 'ship') {
             addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: Invalid target.`, isPlayerSource: true, color: 'border-blue-400' });
+            return;
+        }
+
+        const targetingCheck = canTargetEntity(gameState.player.ship, target, gameState.currentSector);
+        if (!targetingCheck.canTarget) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Cannot launch torpedo: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400' });
             return;
         }
     

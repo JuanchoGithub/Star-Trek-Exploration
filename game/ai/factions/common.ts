@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, TorpedoProjectile, CombatEffect, SectorState } from '../../../types';
 import { calculateDistance, moveOneStep } from '../../utils/ai';
 import { AIActions } from '../FactionAI';
@@ -14,6 +15,14 @@ const canAISeePlayer = (aiShip: Ship, playerShip: Ship, sector: SectorState): bo
 
     if (isPosInNebula(aiShip.position, sector)) {
         return calculateDistance(aiShip.position, playerShip.position) <= 1;
+    }
+
+    const asteroidPositions = new Set(sector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+    const playerPosKey = `${playerShip.position.x},${playerShip.position.y}`;
+    if (asteroidPositions.has(playerPosKey)) {
+        if (calculateDistance(aiShip.position, playerShip.position) > 4) {
+            return false;
+        }
     }
     
     return true;
@@ -58,6 +67,10 @@ export function processCommonTurn(
         ship.lastKnownPlayerPosition = { ...playerShip.position };
 
         const distance = calculateDistance(ship.position, playerShip.position);
+        
+        const asteroidPositions = new Set(currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+        const playerPosKey = `${playerShip.position.x},${playerShip.position.y}`;
+        const canTargetInAsteroids = !(asteroidPositions.has(playerPosKey) && distance > 2);
         
         if (ship.cloakState === 'cloaked') {
             const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
@@ -104,39 +117,45 @@ export function processCommonTurn(
         if (hasFired) return;
 
         if (ship.subsystems.weapons.health > 0 && distance <= 5) {
-            const phaserCost = 10;
-            if (ship.energy.current >= phaserCost) {
-                ship.energy.current -= phaserCost;
-                const combatLogs = actions.applyPhaserDamage(playerShip, 10 * (ship.energyAllocation.weapons / 100), null, ship, gameState);
-                gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: playerShip.id, faction: ship.faction, delay: 0 });
-                combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false }));
+            if (!canTargetInAsteroids) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Cannot get a target lock, target is obscured by asteroids.", isPlayerSource: false });
+            } else {
+                const phaserCost = 10;
+                if (ship.energy.current >= phaserCost) {
+                    ship.energy.current -= phaserCost;
+                    const combatLogs = actions.applyPhaserDamage(playerShip, 10 * (ship.energyAllocation.weapons / 100), null, ship, gameState);
+                    gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: playerShip.id, faction: ship.faction, delay: 0 });
+                    combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false }));
+                }
             }
         }
         
         const canLaunchTorpedo = ship.torpedoes.current > 0 && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
 
         if (canLaunchTorpedo && distance <= 8 && Math.random() < 0.4) {
-            const torpedoCost = 15;
-            if (ship.energy.current >= torpedoCost) {
-                ship.energy.current -= torpedoCost;
-                ship.torpedoes.current--;
-                const shipStats = shipClasses[ship.shipModel][ship.shipClass];
-                if (shipStats.torpedoType === 'None') return;
-                const torpedoData = torpedoStats[shipStats.torpedoType];
+            if (canTargetInAsteroids) {
+                const torpedoCost = 15;
+                if (ship.energy.current >= torpedoCost) {
+                    ship.energy.current -= torpedoCost;
+                    ship.torpedoes.current--;
+                    const shipStats = shipClasses[ship.shipModel][ship.shipClass];
+                    if (shipStats.torpedoType === 'None') return;
+                    const torpedoData = torpedoStats[shipStats.torpedoType];
 
-                const torpedo: TorpedoProjectile = {
-                    id: uniqueId(),
-                    name: torpedoData.name, 
-                    type: 'torpedo_projectile', faction: ship.faction,
-                    position: { ...ship.position }, targetId: playerShip.id, sourceId: ship.id, stepsTraveled: 0,
-                    speed: torpedoData.speed, 
-                    path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
-                    torpedoType: shipStats.torpedoType,
-                    damage: torpedoData.damage,
-                    specialDamage: torpedoData.specialDamage,
-                };
-                currentSector.entities.push(torpedo);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Has launched a ${torpedoData.name}!`, isPlayerSource: false });
+                    const torpedo: TorpedoProjectile = {
+                        id: uniqueId(),
+                        name: torpedoData.name, 
+                        type: 'torpedo_projectile', faction: ship.faction,
+                        position: { ...ship.position }, targetId: playerShip.id, sourceId: ship.id, stepsTraveled: 0,
+                        speed: torpedoData.speed, 
+                        path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
+                        torpedoType: shipStats.torpedoType,
+                        damage: torpedoData.damage,
+                        specialDamage: torpedoData.specialDamage,
+                    };
+                    currentSector.entities.push(torpedo);
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Has launched a ${torpedoData.name}!`, isPlayerSource: false });
+                }
             }
         }
     } else {

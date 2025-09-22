@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -87,7 +88,7 @@ export const CombatSection: React.FC = () => {
             range="1-6 hexes"
             energy="Draws directly from main reactor based on 'Weapons' allocation setting."
             damage="Variable (Base 20 for player * % Power to Weapons). Modified by range and phaser subsystem health."
-            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. Accuracy is negatively affected by nebulae and evasive maneuvers."
+            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. Accuracy is negatively affected by nebulae, evasive maneuvers, and firing at targets inside an asteroid field (-30%)."
         >
             <DamageFalloffTable data={phaserFalloffData} />
         </WeaponDetail>
@@ -100,7 +101,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Travel time applies)"
             energy="None (Consumes ammunition)"
             damage="Base 50. This damage is heavily mitigated by active shields, which can absorb the entire blast if strong enough."
-            notes="Standard antimatter warhead. Targets the hull only and cannot be aimed at subsystems. Can be shot down by point-defense phaser fire."
+            notes="Standard antimatter warhead. Targets the hull only and cannot be aimed at subsystems. Can be shot down by point-defense phaser fire or destroyed by colliding with asteroids."
         />
         <WeaponDetail
             name="Quantum Torpedoes"
@@ -109,7 +110,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Faster than Photon Torpedoes)"
             energy="None (Consumes ammunition)"
             damage="Base 75. A portion of this damage will bypass shields, striking the hull directly."
-            notes="A zero-point energy warhead that is much more difficult for enemy point-defense systems to intercept. A key Starfleet technological advantage."
+            notes="A zero-point energy warhead that is much more difficult for enemy point-defense systems to intercept. Can be destroyed by colliding with asteroids."
         />
          <WeaponDetail
             name="Plasma Torpedoes"
@@ -118,7 +119,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Relatively slow travel time)"
             energy="None (Consumes ammunition)"
             damage="Base 30 + Plasma Burn (10 damage per turn for 2 turns). The burn damage bypasses shields entirely."
-            notes="A tactical weapon designed to disable and wear down targets. The initial impact is moderate, but the subsequent plasma fire can be devastating to an unshielded hull."
+            notes="A tactical weapon designed to disable and wear down targets. The initial impact is moderate, but the subsequent plasma fire can be devastating to an unshielded hull. Can be shot down by point-defense phaser fire or destroyed by colliding with asteroids."
         />
         <WeaponDetail
             name="Heavy Plasma Torpedoes"
@@ -127,7 +128,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Slow travel time)"
             energy="None (Consumes ammunition)"
             damage="Base 40 + Plasma Burn (15 damage per turn for 2 turns). The burn damage bypasses shields entirely."
-            notes="A larger, more potent version of the standard plasma torpedo. Exceptionally dangerous against vessels with compromised shields."
+            notes="A larger, more potent version of the standard plasma torpedo. Exceptionally dangerous against vessels with compromised shields. Can be shot down or destroyed by asteroids."
         />
         <WeaponDetail
             name="Heavy Photon Torpedoes"
@@ -136,7 +137,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Slow travel time)"
             energy="None (Consumes ammunition)"
             damage="Base 90. Heavily mitigated by shields."
-            notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing."
+            notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. Can be destroyed by asteroids."
         />
     </div>
     );

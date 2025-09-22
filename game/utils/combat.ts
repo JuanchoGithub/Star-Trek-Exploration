@@ -1,6 +1,5 @@
 
-
-import type { Ship, ShipSubsystems, GameState } from '../../types';
+import type { Ship, ShipSubsystems, GameState, Entity } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 
@@ -25,6 +24,21 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
     return { success: true, logs };
 };
 
+export const canTargetEntity = (source: Ship, target: Entity, sector: GameState['currentSector']): { canTarget: boolean; reason: string } => {
+    const asteroidPositions = new Set(sector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+    const targetPosKey = `${target.position.x},${target.position.y}`;
+
+    if (asteroidPositions.has(targetPosKey)) {
+        const distance = calculateDistance(source.position, target.position);
+        if (distance > 2) {
+            return { canTarget: false, reason: "Target is obscured by the asteroid field. Must be within 2 hexes to fire." };
+        }
+    }
+
+    // Other future targeting rules can be added here.
+    return { canTarget: true, reason: "" };
+};
+
 export const applyPhaserDamage = (
     target: Ship, damage: number, subsystem: keyof ShipSubsystems | null,
     sourceShip: Ship, gameState: GameState
@@ -37,6 +51,13 @@ export const applyPhaserDamage = (
     }
     if (target.evasive) hitChance *= 0.6;
     if (sourceShip.evasive) hitChance *= 0.75;
+
+    const asteroidPositions = new Set(gameState.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+    const targetPosKey = `${target.position.x},${target.position.y}`;
+    if (asteroidPositions.has(targetPosKey)) {
+        hitChance *= 0.70; // 30% reduction
+        logs.push(`Target is obscured by an asteroid field, reducing accuracy.`);
+    }
     
     if (Math.random() > hitChance) {
         logs.push(`--> Attack missed!`);

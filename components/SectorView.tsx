@@ -69,15 +69,23 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const computerHealthPercent = (playerShip.subsystems.computer.health / playerShip.subsystems.computer.maxHealth) * 100;
   const isNavDisabled = computerHealthPercent < 100;
 
-  const handleCellClick = (x: number, y: number) => {
+  const handleGridInteraction = (x: number, y: number) => {
+    // Cancel navigation if clicking the currently set target
     if (navigationTarget && navigationTarget.x === x && navigationTarget.y === y) {
-        onSetNavigationTarget(null); // Clicked the same target again, cancel it.
-    } else {
-        const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip.id);
-        if (!entityAtPos && !isNavDisabled) {
-            onSetNavigationTarget({ x, y });
-        }
+        onSetNavigationTarget(null);
+        return;
     }
+
+    const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip.id);
+
+    // If the cell is empty or contains an asteroid field, treat it as a navigation target
+    if ((!entityAtPos || entityAtPos.type === 'asteroid_field') && !isNavDisabled) {
+        onSetNavigationTarget({ x, y });
+    } else if (entityAtPos && entityAtPos.type !== 'event_beacon') {
+        // If it contains another interactable entity (ship, planet), select it for targeting/info
+        onSelectTarget(entityAtPos.id);
+    }
+    // Clicks on event beacons or occupied cells (for navigation) are ignored here.
   };
 
   const path = getPath(playerShip.position, navigationTarget);
@@ -101,7 +109,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             <div
               key={`cell-${x}-${y}`}
               className={`border border-border-dark border-opacity-50 ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
-              onClick={() => handleCellClick(x, y)}
+              onClick={() => handleGridInteraction(x, y)}
               title={isNavDisabled ? "Navigation computer is damaged" : ""}
             />
           );
@@ -314,9 +322,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                        e.stopPropagation();
                        if (isPlayer) {
                            if(navigationTarget) onSetNavigationTarget(null);
-                       } else if (entity.type !== 'asteroid_field' && entity.type !== 'event_beacon') {
-                          onSelectTarget(entity.id);
+                           return;
                        }
+                       // All entity clicks are now routed through the main handler
+                       handleGridInteraction(entity.position.x, entity.position.y);
                   }}
               >
                   <div className={`relative ${factionColor}`}>
