@@ -1,10 +1,11 @@
 
+
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
-import { canTargetEntity } from '../../game/utils/combat';
+import { canTargetEntity } from '../game/utils/combat';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Entity, Planet, Ship, ShipModel, Starbase, TorpedoProjectile } from '../../types';
+import type { Entity, Planet, Ship, ShipModel, Starbase, TorpedoProjectile } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
