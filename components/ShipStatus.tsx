@@ -116,14 +116,21 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
       setRepairListVisible(false);
   };
   
+  // FIX: Refactored to use Object.keys for improved type safety with TypeScript. This prevents errors where the compiler cannot infer the type of `value` from `Object.entries` and ensures all properties are correctly accessed.
   const systemsToRepair = [
       { key: 'hull' as const, name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
-      ...Object.entries(ship.subsystems).map(([key, value]) => ({
-          key: key as keyof ShipSubsystems,
-          name: key.charAt(0).toUpperCase() + key.slice(1),
-          ...value,
-          disabled: value.health === value.maxHealth || value.maxHealth === 0,
-      })).sort((a,b) => a.name.localeCompare(b.name))
+      ...(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>)
+        .map(key => {
+            const value = ship.subsystems[key];
+            return {
+                key: key,
+                name: key.charAt(0).toUpperCase() + key.slice(1),
+                health: value.health,
+                maxHealth: value.maxHealth,
+                disabled: value.health === value.maxHealth || value.maxHealth === 0,
+            };
+        })
+        .sort((a,b) => a.name.localeCompare(b.name))
   ];
 
   const redAlertTitle = "Raise shields for combat. Costs 15 energy to activate and drains reserve power each turn. When offline, shields are down and energy recharges.";

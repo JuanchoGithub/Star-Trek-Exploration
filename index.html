@@ -496,12 +496,18 @@
       /* Klingon UI Enhancements */
       .theme-klingon .btn {
         display: flex;
-        justify-content: flex-start; /* Left-align content */
+        justify-content: center;
         align-items: center;
-        text-align: left; /* Left-align text */
-        /* Padding adjusted for left alignment and clip-path shape */
+        text-align: center;
+        /* Symmetrical padding for clipped shape, increased to avoid clipping */
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+      }
+      .theme-klingon .tactical-grid .btn {
+        justify-content: flex-start; /* Left-align content for tactical buttons */
+        text-align: left;
         padding-left: calc(15% + 1rem);
-        padding-right: 2rem; /* Keep right padding to avoid clipping */
+        padding-right: 2rem;
       }
       .theme-klingon .klingon-quad-cell {
         position: relative;

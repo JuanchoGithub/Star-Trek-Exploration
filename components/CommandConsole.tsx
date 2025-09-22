@@ -112,7 +112,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 tactical-grid">
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked || !targetingCheck.canTarget} accentColor="red" title={cannotTargetReason}>
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
