@@ -1,6 +1,8 @@
 
+
 import type { Ship, ShipSubsystems, GameState } from '../../types';
 import { calculateDistance } from './ai';
+import { isPosInNebula } from './sector';
 
 export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, logs: string[] } => {
     const logs: string[] = [];
@@ -29,7 +31,10 @@ export const applyPhaserDamage = (
 ): string[] => {
     const logs: string[] = [];
     let hitChance = 0.9;
-    if (gameState.currentSector.hasNebula) hitChance *= 0.75;
+    if (isPosInNebula(target.position, gameState.currentSector)) {
+        hitChance *= 0.75;
+        logs.push(`Nebula interference is affecting targeting sensors.`);
+    }
     if (target.evasive) hitChance *= 0.6;
     if (sourceShip.evasive) hitChance *= 0.75;
     

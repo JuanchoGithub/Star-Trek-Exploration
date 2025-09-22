@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
@@ -12,6 +12,8 @@ import LcarsTargetingReticle from './LcarsTargetingReticle';
 import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { canPlayerSeeEntity } from '../game/utils/visibility';
+import { isDeepNebula } from '../game/utils/sector';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -69,7 +71,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
     if (navigationTarget && navigationTarget.x === x && navigationTarget.y === y) {
         onSetNavigationTarget(null); // Clicked the same target again, cancel it.
     } else {
-        // Prevent setting navigation target on top of another entity
         const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip.id);
         if (!entityAtPos && !isNavDisabled) {
             onSetNavigationTarget({ x, y });
@@ -79,26 +80,17 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const path = getPath(playerShip.position, navigationTarget);
   
-  const scannerHealthPercent = (playerShip.subsystems.scanners.health / playerShip.subsystems.scanners.maxHealth) * 100;
+  const nebulaCellSet = useMemo(() => new Set(sector.nebulaCells.map(p => `${p.x},${p.y}`)), [sector.nebulaCells]);
 
   const visibleEntities = allEntities.filter(entity => {
-      if (entity.id === playerShip.id) return true;
-      if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false; // Hide cloaked AI ships
-      if (scannerHealthPercent < 50) return false; // Below 50%, scanners are off.
-      if (scannerHealthPercent < 90) {
-          // Below 90%, can only see large objects.
-          return entity.type === 'planet' || entity.type === 'starbase';
-      }
-      return true; // Above 90%, all are visible.
+      if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
+      return canPlayerSeeEntity(entity, playerShip, sector);
   });
 
 
   return (
     <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
-      {sector.hasNebula && (
-        <div className="nebula-background"></div>
-      )}
       <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative">
         {gridCells.map((_, index) => (
           <div key={index} className="border border-border-dark border-opacity-50"></div>
@@ -109,13 +101,19 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           {gridCells.map((_, index) => {
               const x = index % sectorSize.width;
               const y = Math.floor(index / sectorSize.width);
+              const isNebula = nebulaCellSet.has(`${x},${y}`);
+              const isDeep = isDeepNebula({x,y}, sector);
+
               return (
-                  <div
-                      key={`cell-${x}-${y}`}
-                      className={`w-full h-full ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
-                      onClick={() => handleCellClick(x, y)}
-                      title={isNavDisabled ? "Navigation computer is damaged" : ""}
-                  />
+                  <div key={`cell-overlay-${x}-${y}`} className="relative w-full h-full">
+                    <div
+                        className={`w-full h-full ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
+                        onClick={() => handleCellClick(x, y)}
+                        title={isNavDisabled ? "Navigation computer is damaged" : ""}
+                    />
+                    {isNebula && <div className="nebula-cell" />}
+                    {isDeep && <div className="deep-nebula-overlay" />}
+                  </div>
               );
           })}
       </div>

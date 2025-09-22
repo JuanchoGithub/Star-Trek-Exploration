@@ -2,9 +2,10 @@ import type { GameState, PlayerTurnActions, Position, Entity, Ship, ShipSubsyste
 import { processAITurns } from './aiProcessor';
 import { AIActions } from '../ai/FactionAI';
 import { applyPhaserDamage, consumeEnergy } from '../utils/combat';
-import { moveOneStep } from '../utils/ai';
+import { moveOneStep, calculateDistance } from '../utils/ai';
 import { uniqueId } from '../utils/helpers';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
+import { isPosInNebula } from '../utils/sector';
 
 interface TurnResolutionResult {
     nextGameState: GameState;
@@ -168,10 +169,21 @@ export function resolveTurn(
         
         for (let i = 0; i < torpedo.speed; i++) {
             if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) break;
-            torpedo.position = moveOneStep(torpedo.position, targetEntity.position);
+
+            const nextStep = moveOneStep(torpedo.position, targetEntity.position);
+
+            if (isPosInNebula(nextStep, currentSector)) {
+                if (calculateDistance(torpedo.position, targetEntity.position) > 1) {
+                    addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: `The ${torpedo.name} is disrupted by the nebula and fizzles out.`, isPlayerSource: torpedo.faction === 'Federation' });
+                    destroyedProjectileIds.add(torpedo.id);
+                    return;
+                }
+            }
+
+            torpedo.position = nextStep;
+            torpedo.path.push({ ...torpedo.position });
             
             if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) {
-                // FIX: Replaced incorrect damage simulation with actual torpedo damage and added missing torpedoType to combat effect.
                 const combatLogs = applyPhaserDamage(targetEntity, torpedo.damage, null, allShipsForProjectiles.find(s=>s.id === torpedo.sourceId)!, next); // Simulating torpedo damage via phaser logic for now
                 next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0, torpedoType: torpedo.torpedoType });
                 combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
@@ -216,17 +228,15 @@ export function resolveTurn(
             
             let envModifierLog = "";
 
-            // Apply environmental modifiers
             if (next.currentSector.hasNebula) {
-                reliability *= 0.75; // 25% reliability reduction
-                powerCost *= 1.30;   // 30% power increase
+                reliability *= 0.75; 
+                powerCost *= 1.30;
                 envModifierLog = " (modified by nebula)";
             }
             
             powerCost = Math.round(powerCost);
             const wasEngaging = ship.cloakState === 'cloaking';
 
-            // Check for catastrophic failure for makeshift cloaks
             if (isMakeshiftCloak) {
                 if (Math.random() < explosionChance) {
                     ship.hull = 0;
@@ -238,7 +248,7 @@ export function resolveTurn(
                         isPlayerSource: false,
                         color: 'border-red-700'
                     });
-                    return; // Ship is destroyed, stop processing it
+                    return; 
                 }
                 if (Math.random() < subsystemDamageChance) {
                     const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'weapons', 'engines', 'shields', 'scanners', 'computer', 'lifeSupport']; // Weighted
@@ -258,7 +268,6 @@ export function resolveTurn(
                 }
             }
 
-            // Check for cloak failure
             if (Math.random() > reliability) {
                 ship.cloakState = 'visible';
                 ship.cloakCooldown = 2;
@@ -270,7 +279,6 @@ export function resolveTurn(
                     color: 'border-orange-400'
                 });
             } else {
-                // Check for power consumption
                 let hasPower = false;
                 if (ship.id === 'player') {
                     const consumptionResult = consumeEnergy(ship, powerCost);
@@ -294,7 +302,6 @@ export function resolveTurn(
                         color: 'border-orange-400'
                     });
                 } else {
-                    // Success!
                     if (wasEngaging) {
                         ship.cloakState = 'cloaked';
                         addLogForTurn({ 
@@ -304,7 +311,6 @@ export function resolveTurn(
                             isPlayerSource: ship.id === 'player'
                         });
                     }
-                    // No log for just maintaining cloak to prevent spam.
                 }
             }
         }
@@ -312,11 +318,10 @@ export function resolveTurn(
 
     const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
     allShips.forEach(ship => {
-        // --- Shield Regeneration ---
         if (ship.shields < ship.maxShields && ship.subsystems.shields.health / ship.subsystems.shields.maxHealth >= 0.25) {
             const potentialRegen = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
             if (potentialRegen > 0) {
-                const energyCost = Math.round(potentialRegen * 2); // Regeneration costs energy
+                const energyCost = Math.round(potentialRegen * 2); 
                 if (ship.id !== 'player' && ship.energy.current >= energyCost) {
                     ship.energy.current -= energyCost;
                     ship.shields = Math.min(ship.maxShields, ship.shields + potentialRegen);
@@ -326,44 +331,36 @@ export function resolveTurn(
             ship.shields = 0;
         }
 
-        // --- AI Energy Regeneration & Engine Failure ---
         if (ship.id !== 'player') {
             if (ship.subsystems.engines.health > 0) {
                 ship.energy.current = Math.min(ship.energy.max, ship.energy.current + Math.round(8 * getEnergyOutputMultiplier(ship.subsystems.engines.health / ship.subsystems.engines.maxHealth)));
                 if (ship.engineFailureTurn != null) {
-                    // FIX: Added missing isPlayerSource property to log call.
                     addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Engineering has brought impulse engines back online!`, isPlayerSource: false, color: 'border-green-400' });
                     ship.engineFailureTurn = null;
                 }
             } else {
                 if (ship.engineFailureTurn == null) {
                     ship.engineFailureTurn = next.turn;
-                    // FIX: Added missing isPlayerSource property to log call.
                     addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `CRITICAL: Impulse engines have failed! The ship is dead in the water and cannot regenerate power.`, isPlayerSource: false, color: 'border-red-600' });
                 }
             }
         }
 
-        // --- Life Support Failure ---
         if (ship.subsystems.lifeSupport.health <= 0) {
-            ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - 50); // Uses 50% of reserves per turn
+            ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - 50); 
             if (ship.lifeSupportFailureTurn == null) {
                 ship.lifeSupportFailureTurn = next.turn;
-                // FIX: Added missing isPlayerSource property to log call.
                 addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `CRITICAL: Life support has failed! Switching to emergency reserves. 2 turns remaining.`, isPlayerSource: ship.id === 'player', color: 'border-red-600' });
             } else if (ship.lifeSupportReserves.current <= 0 && ship.hull > 0 && !ship.isDerelict) {
                 ship.isDerelict = true;
                 ship.crewMorale.current = 0;
-                ship.hull = Math.max(1, ship.hull); // Don't destroy it, make it a derelict
-                // FIX: Added missing isPlayerSource property to log call.
+                ship.hull = Math.max(1, ship.hull); 
                 addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Catastrophic life support failure! All hands lost. The ship is now a derelict hulk.`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
             } else if (ship.hull > 0 && !ship.isDerelict) {
-                 // FIX: Added missing isPlayerSource property to log call.
                  addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support offline. ${Math.round(ship.lifeSupportReserves.current/50)} turn(s) of emergency reserves left.`, isPlayerSource: ship.id === 'player', color: 'border-orange-400' });
             }
         } else {
             if (ship.lifeSupportFailureTurn != null) {
-                // FIX: Added missing isPlayerSource property to log call.
                 addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has been restored.`, isPlayerSource: ship.id === 'player', color: 'border-green-400' });
                 ship.lifeSupportFailureTurn = null;
             }
@@ -392,7 +389,6 @@ export function resolveTurn(
     if (next.redAlert && hasEnemies) {
         consumeEnergy(playerShip, playerShip.evasive ? 10 : 5);
     } else if (!next.redAlert) {
-        // FIX: Replaced playerShip.current with playerShip.energy.current.
         playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + Math.round(10 * getEnergyOutputMultiplier(playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth)));
     }
     

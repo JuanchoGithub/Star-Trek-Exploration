@@ -9,8 +9,18 @@ interface StatusLineProps {
 }
 
 const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenGameMenu, children }) => {
-  const logMessage = latestLog ? latestLog.message : "Welcome to the U.S.S. Endeavour.";
+  const rawLogMessage = latestLog ? latestLog.message : "Welcome to the U.S.S. Endeavour.";
   
+  const truncateMessage = (message: string, maxLength: number) => {
+    if (message.length <= maxLength) {
+        return message;
+    }
+    // Truncate and add ellipsis
+    return message.substring(0, maxLength) + '...';
+  };
+
+  const displayedLogMessage = truncateMessage(rawLogMessage, 100);
+
   return (
     <div className="panel-style p-2 h-full flex items-center justify-between text-sm">
       <div className="flex items-center gap-4">
@@ -22,8 +32,8 @@ const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onToggleLog, onOpenG
         </button>
         {children}
       </div>
-      <p className="flex-grow text-center mx-4 italic text-text-secondary truncate" title={logMessage}>
-        {logMessage}
+      <p className="flex-grow text-center mx-4 italic text-text-secondary truncate" title={rawLogMessage}>
+        {displayedLogMessage}
       </p>
       <button 
         onClick={onToggleLog} 

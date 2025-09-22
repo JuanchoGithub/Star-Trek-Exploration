@@ -86,6 +86,7 @@ export interface Ship extends BaseEntity {
     subsystemDamageChance: number;
     explosionChance: number;
   };
+  lastKnownPlayerPosition?: Position | null;
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
@@ -289,6 +290,7 @@ export interface SectorState {
   entities: Entity[];
   visited: boolean;
   hasNebula: boolean;
+  nebulaCells: Position[];
   factionOwner: FactionOwner;
   isScanned: boolean;
 }

@@ -21,7 +21,6 @@ export const useGameLogic = () => {
         const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
         if (savedStateJSON) {
             try {
-                // Basic migration and validation logic remains here for saved games.
                 const savedState: GameState = JSON.parse(savedStateJSON);
                  if (savedState.player && savedState.turn) {
                     if ((savedState.player as any).boardingParty) delete (savedState.player as any).boardingParty;
@@ -38,6 +37,30 @@ export const useGameLogic = () => {
                     if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
                     if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
                     if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
+                    
+                    const migrateNebulaData = (sector: any) => {
+                        if (sector.hasNebula && !sector.nebulaCells) {
+                            const cells = new Set<string>();
+                            const percentage = 0.3 + Math.random() * 0.4;
+                            const targetCount = Math.floor(12 * 10 * percentage);
+                            while(cells.size < targetCount) {
+                                const x = Math.floor(Math.random() * 12);
+                                const y = Math.floor(Math.random() * 10);
+                                cells.add(`${x},${y}`);
+                            }
+                            sector.nebulaCells = Array.from(cells).map(s => {
+                                const [x, y] = s.split(',').map(Number);
+                                return { x, y };
+                            });
+                        }
+                        if (!sector.nebulaCells) {
+                            sector.nebulaCells = [];
+                        }
+                    };
+
+                    savedState.quadrantMap.forEach(row => row.forEach(migrateNebulaData));
+                    migrateNebulaData(savedState.currentSector);
+                    
                     return savedState;
                  }
             } catch (e) { console.error("Could not parse saved state, starting new game.", e); }

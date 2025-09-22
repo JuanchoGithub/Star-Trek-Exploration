@@ -75,9 +75,26 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <p className="text-text-secondary mb-4">The sector grid is your chessboard. Where you place your ship is as important as how you equip it.</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                 <li><strong>Optimal Range:</strong> Phaser damage drops off sharply with distance. Your ideal engagement range is 2-3 hexes. Conversely, if an enemy is slow but powerful (like a Klingon Negh'Var), try to stay at maximum range (5-6 hexes), a practice known as "kiting", to pepper them with long-range fire while minimizing their devastating return volleys.</li>
-                <li><strong>Using the Environment:</strong> Do not ignore the battlefield. Lure aggressive enemies through <span className="text-gray-400">Asteroid Fields</span> to inflict free damage. Fight inside a <span className="text-purple-400">Nebula</span> to reduce the accuracy of phaser-heavy opponents, giving your more reliable torpedoes a distinct advantage.</li>
+                <li><strong>Using the Environment:</strong> Lure aggressive enemies through <span className="text-gray-400">Asteroid Fields</span> to inflict free damage. Unlike nebulae, which affect sensors, asteroid fields are a direct physical hazard.</li>
                 <li><strong>Focus Fire:</strong> In multi-ship engagements, it is always better to destroy one enemy than to damage two. Concentrate all fire on a single target until it is neutralized before moving to the next. Prioritize destroying high-damage, low-health threats (like a B'rel Bird-of-Prey) first.</li>
             </ul>
+
+            <SubHeader>Nebula Warfare</SubHeader>
+            <p className="text-text-secondary mb-4">Nebulae are your greatest tactical tool for stealth, surprise, and controlling the flow of battle. Their particulate density and gravimetric distortions create unique opportunities for a cunning captain.</p>
+            <div className="space-y-3">
+                <DetailBox title="Concealment (Deep Nebula)" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-purple-400">
+                    <p>If you position your ship in a nebula cell that is <span className="text-white font-bold">completely surrounded by 8 other nebula cells</span> (including diagonals), you enter a "Deep Nebula".</p>
+                    <p>Your vessel will become <span className="text-accent-yellow">completely undetectable</span> to enemy ships and will vanish from their tactical displays. This is the ultimate ambush position, allowing you to fire on an enemy that cannot see you.</p>
+                </DetailBox>
+                <DetailBox title="Sensor Reduction" icon={<FederationScanIcon className="w-6 h-6"/>} borderColorClass="border-cyan-400">
+                    <p>While your ship is inside <span className="text-white font-bold">any</span> nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in <span className="text-accent-yellow">adjacent cells (range 1)</span>.</p>
+                    <p>Use this to break contact with a superior force, force a close-range engagement where your torpedoes excel, or sneak past enemy patrols undetected.</p>
+                </DetailBox>
+                <DetailBox title="Communication Blackout" icon={<TransporterIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
+                    <p>Allied vessels normally share sensor data, allowing them to see each other regardless of line of sight. However, this connection can be severed.</p>
+                    <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship in the center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
+                </DetailBox>
+            </div>
 
             <SubHeader>Subsystem Targeting: A Surgical Approach</SubHeader>
             <p className="text-text-secondary mb-4">A discerning captain knows that simply pounding on an enemy's hull is inefficient. Crippling key systems can neutralize a threat with less risk and greater tactical advantage. An enemy ship is only as dangerous as its functioning components.</p>

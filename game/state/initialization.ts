@@ -18,6 +18,67 @@ const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['fa
     return 'None';
 };
 
+const generateNebulaField = (): Position[] => {
+    const cells = new Set<string>();
+    const percentage = 0.3 + Math.random() * 0.4; // 30% to 70%
+    const targetCellCount = Math.floor(SECTOR_WIDTH * SECTOR_HEIGHT * percentage);
+
+    if (targetCellCount === 0) return [];
+
+    const seeds: Position[] = [];
+    for (let i = 0; i < 3; i++) {
+        seeds.push({
+            x: Math.floor(Math.random() * SECTOR_WIDTH),
+            y: Math.floor(Math.random() * SECTOR_HEIGHT),
+        });
+    }
+
+    const queue: Position[] = [...seeds];
+    seeds.forEach(p => cells.add(`${p.x},${p.y}`));
+
+    while (cells.size < targetCellCount && queue.length > 0) {
+        const current = queue.shift()!;
+        
+        const neighbors = [
+            { x: current.x + 1, y: current.y },
+            { x: current.x - 1, y: current.y },
+            { x: current.x, y: current.y + 1 },
+            { x: current.x, y: current.y - 1 },
+        ].sort(() => Math.random() - 0.5);
+
+        for (const neighbor of neighbors) {
+            if (
+                neighbor.x >= 0 && neighbor.x < SECTOR_WIDTH &&
+                neighbor.y >= 0 && neighbor.y < SECTOR_HEIGHT &&
+                !cells.has(`${neighbor.x},${neighbor.y}`) &&
+                cells.size < targetCellCount
+            ) {
+                if (Math.random() < 0.8) {
+                    cells.add(`${neighbor.x},${neighbor.y}`);
+                    queue.push(neighbor);
+                }
+            }
+        }
+        
+        if (queue.length === 0 && cells.size < targetCellCount) {
+             let newSeed: Position;
+             do {
+                 newSeed = {
+                    x: Math.floor(Math.random() * SECTOR_WIDTH),
+                    y: Math.floor(Math.random() * SECTOR_HEIGHT),
+                };
+             } while (cells.has(`${newSeed.x},${newSeed.y}`));
+             queue.push(newSeed);
+             cells.add(`${newSeed.x},${newSeed.y}`);
+        }
+    }
+
+    return Array.from(cells).map(s => {
+        const [x, y] = s.split(',').map(Number);
+        return { x, y };
+    });
+};
+
 const createEntityFromTemplate = (
     template: any, position: Position, factionOwner: FactionOwner,
     availableShipNames: Record<string, string[]>, availablePlanetNames: Record<string, string[]>, colorIndex: { current: number }
@@ -38,7 +99,6 @@ const createEntityFromTemplate = (
             const potentialRoles: ShipRole[] = Array.isArray(template.shipRole) ? template.shipRole : [template.shipRole];
             const validClasses = Object.values(factionShipClasses).filter(c => potentialRoles.includes((c as ShipClassStats).role));
             if (validClasses.length === 0) return null;
-            // FIX: Explicitly cast the selected ship stats to ShipClassStats to resolve type inference issues where `stats` was being treated as `unknown`.
             const stats = validClasses[Math.floor(Math.random() * validClasses.length)] as ShipClassStats;
             const newShip = {
                 id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction,
@@ -51,7 +111,7 @@ const createEntityFromTemplate = (
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
                 lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
-                statusEffects: [],
+                statusEffects: [], lastKnownPlayerPosition: null,
             } as Ship;
 
             if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
@@ -135,7 +195,15 @@ const createSectorFromTemplate = (
         }
     });
 
-    return { entities: newEntities, visited: false, hasNebula: Math.random() < (template.hasNebulaChance || 0), factionOwner, isScanned: false };
+    const hasNebula = Math.random() < (template.hasNebulaChance || 0);
+    return {
+        entities: newEntities,
+        visited: false,
+        hasNebula,
+        nebulaCells: hasNebula ? generateNebulaField() : [],
+        factionOwner,
+        isScanned: false
+    };
 };
 
 export const createInitialGameState = (): GameState => {
@@ -160,7 +228,7 @@ export const createInitialGameState = (): GameState => {
     { id: 'officer-3', name: 'Lt. Cmdr. Singh', role: 'Engineering', personality: 'Cautious' },
   ];
 
-  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, factionOwner: 'None', isScanned: false })));
+  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, nebulaCells: [], factionOwner: 'None', isScanned: false })));
   const availablePlanetNames: Record<string, string[]> = JSON.parse(JSON.stringify(planetNames));
   const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
   const colorIndex = { current: 0 };

@@ -22,6 +22,15 @@ export const AIBehaviorSection: React.FC = () => (
                 <strong>Weapon Usage:</strong> An AI ship will fire its phasers each turn if it has sufficient energy and the Endeavour is in range. It has a moderate (approx. 40%) chance to launch a torpedo if its tubes are operational and the target is in range. AI ships exhibit a high priority for self-preservation, using their phasers for point-defense to shoot down incoming player torpedoes before targeting the player's ship.
             </li>
             <li>
+                <strong className="text-accent-yellow">Nebula Tactics &amp; Awareness:</strong>
+                <p className="text-sm">The AI is now subject to the same nebula visibility rules as the player.</p>
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>If the player enters a "Deep Nebula" and becomes undetectable, the AI will lose its target lock. It will be unable to fire and will either hold its position or move towards your last known coordinates.</li>
+                    <li>If an AI ship is inside a nebula, its sensor range is also reduced to 1 hex. It will not be able to see or target you beyond this range.</li>
+                    <li>This makes nebulae an exceptionally powerful tool for breaking contact, forcing the AI to reposition, and setting up ambushes.</li>
+                </ul>
+            </li>
+            <li>
                 <strong className="text-accent-yellow">Dynamic Energy Management:</strong> Hostile vessels will now re-allocate power based on their factional doctrine and the current state of the battle. They will adopt one of three stances:
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Aggressive (70% Weapons / 30% Shields):</strong> Maximizes damage output at the expense of defense.</li>

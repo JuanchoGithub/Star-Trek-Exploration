@@ -27,6 +27,14 @@ export const MechanicsSection: React.FC = () => (
             <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes Reserve Power.</li>
             <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems, free of charge. You can also resupply torpedoes and dilithium here.</li>
         </ul>
+        <SubHeader>Nebulae</SubHeader>
+        <p className="text-text-secondary">
+            Nebulae are no longer just visual obstructions; they are tactical environments composed of individual cells of gas and dust. Being inside any nebula cell has immediate effects on combat and sensors.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
+            <li><strong>Phaser Inaccuracy:</strong> Firing phasers at any target <span className="text-white font-bold">inside a nebula cell</span> will reduce your accuracy. The gravimetric distortions and particle density make it difficult to maintain a coherent energy beam over distance. Torpedoes, being self-propelled projectiles, are unaffected by this accuracy penalty.</li>
+            <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in adjacent cells. Be warned: this means you can be ambushed as easily as you can set an ambush.</li>
+        </ul>
         <SubHeader>Ship Systems Breakdown</SubHeader>
         <p className="text-text-secondary">The Endeavour is a complex machine. Understanding how its key systems function and degrade under fire is essential for effective command.</p>
         <div className="space-y-4 mt-4">

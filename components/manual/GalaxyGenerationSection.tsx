@@ -219,6 +219,19 @@ export const GalaxyGenerationSection: React.FC = () => {
                 A sector template is a blueprint containing a name, a rarity "weight" (higher is more common), and a list of rules for what can appear within it. Crucially, each template is restricted to certain territories. For example, you will only find "Klingon Hunting Grounds" within the Klingon Empire, while "Pirate Ambush Points" are most common in Uncharted Space. This ensures that the galaxy feels coherent and believable.
             </p>
             
+            <SubHeader>Environmental Generation: Nebulae</SubHeader>
+            <p className="text-text-secondary mb-4">
+                Some sector templates have a <code className="bg-black p-1 rounded text-accent-yellow-dark">hasNebulaChance</code> property. If a sector is generated with a nebula, it will not be completely filled. Instead, the simulation generates a partial, organic-looking gas cloud composed of individual nebula cells.
+            </p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                <li>
+                    <strong>Density:</strong> The nebula will cover between 30% and 70% of the sector's area, creating a mix of open channels and dense clusters.
+                </li>
+                <li>
+                    <strong>Tactical Implications:</strong> This design turns nebulae from simple hazards into complex tactical environments. You can use the clearings to maneuver and the dense pockets for concealment, creating opportunities for ambushes and daring escapes.
+                </li>
+            </ul>
+
             <SubHeader>Sector Template Registry</SubHeader>
             <p className="text-text-secondary mb-4">
                 The following is a declassified list of all known sector templates used by the simulation.
