@@ -1,5 +1,5 @@
 
-import type { GameState, Ship } from '../../types';
+import type { GameState, Ship, ShipSubsystems } from '../../types';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
 export interface AIActions {
@@ -14,6 +14,9 @@ export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced';
 export abstract class FactionAI {
     // Determines the ship's combat stance for the current turn.
     abstract determineStance(ship: Ship, playerShip: Ship): AIStance;
+
+    // Determines which subsystem to target, if any.
+    abstract determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null;
 
     // Defines the standard turn logic for a ship of this faction.
     abstract processTurn(ship: Ship, gameState: GameState, actions: AIActions): void;

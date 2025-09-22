@@ -17,7 +17,7 @@ export interface ShipSubsystems {
   engines: { health: number; maxHealth: number };
   shields: { health: number; maxHealth: number };
   transporter: { health: number; maxHealth: number };
-  scanners: { health: number; maxHealth: number };
+  pointDefense: { health: number; maxHealth: number };
   computer: { health: number; maxHealth: number };
   lifeSupport: { health: number; maxHealth: number };
   shuttlecraft: { health: number; maxHealth: number };
@@ -74,6 +74,7 @@ export interface Ship extends BaseEntity {
   lifeSupportFailureTurn: number | null;
   isDerelict: boolean;
   captureInfo: { captorId: string; repairTurn: number; } | null;
+  pointDefenseEnabled: boolean;
   statusEffects: StatusEffect[];
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
@@ -163,7 +164,7 @@ export interface OfficerAdvice {
 }
 
 export type OutcomeType = 'reward' | 'damage' | 'nothing' | 'special';
-export type ResourceType = 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'security_teams' | 'scanners' | 'computer' | 'lifeSupport' | 'shuttlecraft';
+export type ResourceType = 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'security_teams' | 'pointDefense' | 'computer' | 'lifeSupport' | 'shuttlecraft';
 
 export interface AwayMissionOutcome {
     type: OutcomeType;
@@ -237,7 +238,6 @@ export interface PlayerTurnActions {
     hasLaunchedTorpedo?: boolean;
     hasUsedAwayTeam?: boolean;
     hasTakenMajorAction?: boolean;
-    hasUsedTachyonScan?: boolean;
 }
 
 export interface EventTemplateOption {
@@ -246,7 +246,7 @@ export interface EventTemplateOption {
         log: string;
         amount?: number;
         // FIX: Added subsystem types to allow for damaging engines, weapons, etc., in events.
-        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'scanners' | 'computer' | 'lifeSupport' | 'shuttlecraft';
+        resource?: 'hull' | 'shields' | 'energy' | 'dilithium' | 'torpedoes' | 'morale' | 'weapons' | 'engines' | 'transporter' | 'pointDefense' | 'computer' | 'lifeSupport' | 'shuttlecraft';
         spawn?: 'pirate_raider';
         spawnCount?: number;
         missionId?: string;
@@ -273,6 +273,12 @@ export type CombatEffect = {
     position: Position;
     delay: number;
     torpedoType: TorpedoType;
+} | {
+    type: 'point_defense';
+    sourceId: string;
+    targetId: string;
+    faction: string;
+    delay: number;
 };
 
 export interface LogEntry {

@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -28,6 +26,15 @@ export const MechanicsSection: React.FC = () => (
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes Reserve Power.</li>
             <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems, free of charge. You can also resupply torpedoes and dilithium here.</li>
+        </ul>
+        <SubHeader>Laser Point-Defense System (LPDS)</SubHeader>
+        <p className="text-text-secondary">The LPDS is a specialized, short-range defensive system designed to intercept incoming torpedoes. It can be toggled in the Ship Status panel.</p>
+         <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
+            <li><strong>Function:</strong> When active, the LPDS grid will automatically target and attempt to destroy <span className="font-bold text-white">one</span> incoming hostile torpedo per turn. It will prioritize the most dangerous torpedo type first.</li>
+            <li><strong>Effectiveness:</strong> The system's chance to successfully intercept a torpedo is equal to its current subsystem health percentage. A system at 75% health has a 75% chance to hit.</li>
+            <li><strong>Range:</strong> The system is effective only at extremely close range, targeting torpedoes in adjacent cells (<span className="font-bold text-white">1 hex</span>).</li>
+            <li><strong>Energy Cost:</strong> The LPDS drains Reserve Power each turn. It consumes <span className="font-bold text-accent-yellow">20 power</span> on standby and <span className="font-bold text-accent-orange">40 power</span> on any turn it fires. A broken system (0% health) consumes no power.</li>
+            <li><strong>Tactical Trade-off:</strong> Activating the LPDS requires a significant power diversion from your main phaser arrays. While active, your phaser damage is reduced by <span className="font-bold text-accent-red">40%</span>, and their effective range for damage falloff calculations is increased by one hex (e.g., a shot at 2 hexes is calculated as if it were 3).</li>
         </ul>
         <SubHeader>Nebulae</SubHeader>
         <p className="text-text-secondary">
@@ -61,12 +68,8 @@ export const MechanicsSection: React.FC = () => (
                 <p className="text-sm text-text-secondary">Like impulse engines, photon torpedo tubes' functionality degrades with damage, reducing the number of tubes available. At 100% repair, three tubes are functional. At 67-99%, two tubes work. At 34-66%, only one works. This effectively reduces potential torpedo damage output.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-secondary-light">Short Range Scanners</h4>
-                <p className="text-sm text-text-secondary">Short range scanners lose resolution when they are damaged. Above 90% they are fully functional, but below 90% they are unable to detect anything smaller than a star. Below 50% they do not function at all.</p>
-            </div>
-            <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-secondary-light">Long Range Scanners</h4>
-                <p className="text-sm text-text-secondary">Long range scanners also lose resolution when damaged. When less than 100% repaired they can no longer detect enemy ships on the quadrant map. Below 50% they are not functional.</p>
+                <h4 className="font-bold text-secondary-light">Laser Point-Defense System (LPDS)</h4>
+                <p className="text-sm text-text-secondary">The LPDS is your automated defense against incoming torpedoes. Its effectiveness is directly tied to its health. At 100% health, it has a 100% chance to hit an adjacent torpedo. This chance decreases linearly with damage. A broken LPDS (0% health) cannot fire and consumes no energy.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Computer</h4>

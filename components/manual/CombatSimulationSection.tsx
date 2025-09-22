@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -44,15 +43,18 @@ export const CombatSimulationSection: React.FC = () => (
                 ]}
             />
             <SimulationBox
-                title="Scenario B: Damaged Phasers"
-                scenario="ENDEAVOUR (Phasers @ 50%) vs. K-Cruiser"
+                title="Scenario B: Damaged Phasers & LPD"
+                scenario="ENDEAVOUR (Phasers @ 50%, LPD Active) vs. K-Cruiser"
                 rules={[
-                    "Damage is multiplied by the health percentage of the weapon subsystem (Phaser Efficiency)."
+                    "Damage is multiplied by weapon subsystem health (Phaser Efficiency).",
+                    "Active LPD reduces phaser damage by 40% and adds 1 to effective range."
                 ]}
                 calculations={[
-                    { label: "Calculated Damage (from Scenario A)", value: "9" },
-                    { label: "Phaser Efficiency", value: "50% (x0.50)" },
-                    { label: "Final Damage", value: "9 * 0.50 = 4.5", isFinal: true }
+                    { label: "Base Damage (from Scenario A)", value: "9" },
+                    { label: "LPD Damage Modifier", value: "x0.60" },
+                    { label: "LPD Range Penalty", value: "Range becomes 4 (40% modifier)" },
+                    { label: "Phaser Efficiency", value: "x0.50" },
+                    { label: "Final Damage", value: "20 * 0.75 * 0.40 * 0.60 * 0.50 = 1.8", isFinal: true }
                 ]}
             />
         </div>
@@ -129,32 +131,30 @@ export const CombatSimulationSection: React.FC = () => (
         <SubHeader>Simulation 4: Defensive & Special Operations</SubHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <SimulationBox
-                title="Scenario A: Point-Defense vs. Torpedo"
-                scenario="ENEMY fires phasers at incoming player torpedo"
+                title="Scenario A: LPD vs. Multiple Torpedoes"
+                scenario="ENDEAVOUR (LPD Active) vs. Quantum & Photon Torpedoes @ Range 1"
                 rules={[
-                    "AI has a high chance (75%) to prioritize shooting down torpedoes over attacking your ship.",
-                    "Point-defense phaser shots are highly accurate and will destroy a torpedo on a successful hit."
+                    "LPD range is 1 hex.",
+                    "LPD can only intercept one torpedo per turn.",
+                    "LPD prioritizes the highest threat torpedo (Quantum > Photon)."
                 ]}
                 calculations={[
-                    { label: "Incoming Torpedo Detected", value: "YES" },
-                    { label: "AI Priority Roll (Needs < 75)", value: "35 (Success)" },
-                    { label: "Action", value: "Fire Point-Defense Phasers" },
-                    { label: "Result", value: "Player torpedo is destroyed before impact.", isFinal: true }
+                    { label: "Incoming Torpedoes Detected", value: "1x Quantum, 1x Photon" },
+                    { label: "Threat Assessment", value: "Quantum is higher priority." },
+                    { label: "Action", value: "Fire LPD at Quantum Torpedo" },
+                    { label: "Result", value: "Quantum torpedo is destroyed. Photon torpedo impacts.", isFinal: true }
                 ]}
             />
             <SimulationBox
-                title="Scenario B: Tachyon Scan vs. Cloak"
-                scenario="ENDEAVOUR (Scanners @ 80%) vs. Cloaked Romulan @ Range 4"
+                title="Scenario B: LPD Interception"
+                scenario="ENDEAVOUR (LPD @ 65%) vs. Photon Torpedo @ Range 1"
                 rules={[
-                    "Base detection chance is 40% at range 5.",
-                    "Chance increases by 5% for each hex closer.",
-                    "Final chance is multiplied by scanner health percentage."
+                    "LPD hit chance is equal to its subsystem health percentage."
                 ]}
                 calculations={[
-                    { label: "Base Chance", value: "40%" },
-                    { label: "Proximity Bonus (Range 4)", value: "+5%" },
-                    { label: "Scanner Health Modifier", value: "x0.80" },
-                    { label: "Final Detection Chance", value: "(40% + 5%) * 0.80 = 36%", isFinal: true }
+                    { label: "LPD Health", value: "65%" },
+                    { label: "Interception Chance", value: "65%" },
+                    { label: "Result", value: "Roll required <= 65 for success.", isFinal: true }
                 ]}
             />
         </div>
@@ -220,24 +220,11 @@ export const CombatSimulationSection: React.FC = () => (
                 rules={[
                     "Ships inside asteroid fields can only be targeted from 2 hexes or less."
                 ]}
+                // FIX: Wrapped the calculations value in an array literal to match the expected prop type.
                 calculations={[
-                    { label: "Target Distance", value: "3 hexes" },
-                    { label: "Target in Asteroid Field", value: "YES" },
-                    { label: "Targeting Range Requirement", value: "<= 2 hexes" },
-                    { label: "Result", value: "Target is untargetable. Firing solution denied.", isFinal: true }
-                ]}
-            />
-            <SimulationBox
-                title="Scenario B: Detecting Obscured Target"
-                scenario="ENDEAVOUR Sensors vs. Pirate Raider (in Asteroid Field) @ Range 4"
-                rules={[
-                    "Ships inside asteroid fields are only detectable within 4 hexes."
-                ]}
-                calculations={[
-                    { label: "Target Distance", value: "4 hexes" },
-                    { label: "Target in Asteroid Field", value: "YES" },
-                    { label: "Detection Range Requirement", value: "<= 4 hexes" },
-                    { label: "Result", value: "Target is visible on sensors, but remains untargetable.", isFinal: true }
+                    { label: "Targeting Range", value: "3 hexes" },
+                    { label: "Is Targetable?", value: "NO (> 2 hexes)" },
+                    { label: "Result", value: "Cannot fire phasers or torpedoes at target.", isFinal: true }
                 ]}
             />
         </div>

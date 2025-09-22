@@ -38,7 +38,38 @@ export const useGameLogic = () => {
                     if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
                     if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
                     if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
+                    if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
                     
+                    const migrateSubsystems = (subsystems: any) => {
+                        if (subsystems && (subsystems as any).scanners) {
+                            (subsystems as any).pointDefense = (subsystems as any).scanners;
+                            delete (subsystems as any).scanners;
+                        }
+                    };
+                    migrateSubsystems(savedState.player.ship.subsystems);
+                    savedState.quadrantMap.forEach(row => row.forEach(sector => {
+                        sector.entities.forEach(entity => {
+                            if (entity.type === 'ship') {
+                                migrateSubsystems(entity.subsystems);
+                            }
+                        });
+                    }));
+                     if (savedState.currentSector.entities) {
+                        savedState.currentSector.entities.forEach(entity => {
+                            if (entity.type === 'ship') {
+                                migrateSubsystems(entity.subsystems);
+                            }
+                        });
+                    }
+                    // FIX: Corrected legacy save data migration logic to be compatible with TypeScript's type checking.
+                    // 'scanners' was renamed to 'pointDefense' and this ensures old saves are updated correctly.
+                    if ((savedState.player.ship.repairTarget as unknown) === 'scanners') {
+                        savedState.player.ship.repairTarget = 'pointDefense';
+                    }
+                    if ((savedState.player.targeting?.subsystem as unknown) === 'scanners') {
+                        savedState.player.targeting.subsystem = 'pointDefense';
+                    }
+
                     const migrateSectorData = (sector: any) => {
                         if (!sector.seed) {
                             sector.seed = `legacy_${Math.random().toString(36).substring(2, 11)}`;
@@ -895,23 +926,32 @@ export const useGameLogic = () => {
         });
     }, [addLog, playerTurnActions]);
 
-    const onTachyonScan = useCallback(() => {
-        if (playerTurnActions.hasTakenMajorAction || gameState.player.ship.isStunned) return;
+    const onTogglePointDefense = useCallback(() => {
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            const { ship } = next.player;
+            ship.pointDefenseEnabled = !ship.pointDefenseEnabled;
 
-        const { ship } = gameState.player;
-        if (ship.subsystems.scanners.health < ship.subsystems.scanners.maxHealth * 0.5) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: 'Cannot initiate Tachyon scan: Scanners are too damaged.', isPlayerSource: true, color: 'border-blue-400' });
-            return;
-        }
-
-        const energyCost = 25;
-        const { success, logs } = consumeEnergy(ship, energyCost);
-        logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true, color: 'border-blue-400' }));
-        if (!success) return;
-
-        addLog({ sourceId: 'player', sourceName: ship.name, message: `Initiating Tachyon density scan. Consumed ${energyCost} power.`, isPlayerSource: true, color: 'border-blue-400' });
-        setPlayerTurnActions(prev => ({ ...prev, hasUsedTachyonScan: true, hasTakenMajorAction: true }));
-    }, [addLog, gameState, playerTurnActions]);
+            if (ship.pointDefenseEnabled) {
+                addLog({ 
+                    sourceId: 'player', 
+                    sourceName: ship.name, 
+                    message: `Laser point-defense system activated. Phaser damage and range reduced.`, 
+                    isPlayerSource: true, 
+                    color: 'border-blue-400' 
+                });
+            } else {
+                addLog({ 
+                    sourceId: 'player', 
+                    sourceName: ship.name, 
+                    message: `Point-defense system deactivated. Phaser output restored to normal.`, 
+                    isPlayerSource: true, 
+                    color: 'border-blue-400' 
+                });
+            }
+            return next;
+        });
+    }, [addLog]);
 
     return {
         gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
@@ -920,6 +960,6 @@ export const useGameLogic = () => {
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, onRechargeDilithium,
         onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
-        onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTachyonScan,
+        onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense,
     };
 };

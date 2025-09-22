@@ -26,6 +26,8 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         captureInfo: null,
         // FIX: Added missing 'statusEffects' property to conform to the Ship interface.
         statusEffects: [],
+        // FIX: Added missing 'pointDefenseEnabled' property to satisfy the Ship interface.
+        pointDefenseEnabled: false,
     };
 };
 

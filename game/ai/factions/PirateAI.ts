@@ -1,5 +1,6 @@
 
-import type { GameState, Ship } from '../../../types';
+
+import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
@@ -21,6 +22,19 @@ export class PirateAI extends FactionAI {
         return 'Balanced';
     }
 
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // Pirates target transporters to prevent boarding parties, which might capture their loot.
+        if (playerShip.subsystems.transporter.health > 0) {
+            return 'transporter';
+        }
+        // Fallback to weapons if transporter is down.
+        if (playerShip.subsystems.weapons.health > 0) {
+            return 'weapons';
+        }
+        return null; // Target hull as a last resort.
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
@@ -28,6 +42,8 @@ export class PirateAI extends FactionAI {
 
         // FIX: Implemented stance-based energy allocation.
         const stance = this.determineStance(ship, gameState.player.ship);
+        // FIX: Implemented subsystem targeting.
+        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
         let stanceChanged = false;
 
         switch (stance) {
@@ -55,8 +71,8 @@ export class PirateAI extends FactionAI {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
         }
         
-        // FIX: Added missing `gameState.player.ship` argument to the function call.
-        processCommonTurn(ship, gameState.player.ship, gameState, actions);
+        // FIX: Added the missing 'subsystemTarget' argument to the function call.
+        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the self-destruct logic.

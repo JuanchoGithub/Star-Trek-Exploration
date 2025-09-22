@@ -1,7 +1,6 @@
-
-import type { GameState, Ship } from '../../../types';
-import { AIActions, FactionAI, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict } from './common';
+import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import { FactionAI, AIActions, AIStance } from '../FactionAI';
+import { processCommonTurn, tryCaptureDerelict, processPointDefenseForAI } from './common';
 import { calculateDistance } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
@@ -19,12 +18,35 @@ export class PirateAI extends FactionAI {
         return 'Balanced';
     }
 
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // Pirates target transporters to prevent boarding parties, which might capture their loot.
+        if (playerShip.subsystems.transporter.health > 0) {
+            return 'transporter';
+        }
+        // Fallback to weapons if transporter is down.
+        if (playerShip.subsystems.weapons.health > 0) {
+            return 'weapons';
+        }
+        return null; // Target hull as a last resort.
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
+        
+        const hasHostiles = gameState.player.ship.hull > 0;
+        if (hasHostiles && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Activating point-defense grid.`, isPlayerSource: false });
+        } else if (!hasHostiles && ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = false;
+        }
+        
+        processPointDefenseForAI(ship, gameState, actions);
 
         const stance = this.determineStance(ship, gameState.player.ship);
+        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
         let stanceChanged = false;
 
         switch (stance) {
@@ -51,8 +73,8 @@ export class PirateAI extends FactionAI {
         if (stanceChanged) {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
         }
-
-        processCommonTurn(ship, gameState.player.ship, gameState, actions);
+        
+        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {

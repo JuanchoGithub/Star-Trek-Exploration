@@ -1,11 +1,10 @@
 
-import type { GameState, Ship, TorpedoProjectile, CombatEffect, SectorState } from '../../../types';
+import type { GameState, Ship, TorpedoProjectile, SectorState, ShipSubsystems, TorpedoType } from '../../../types';
 import { calculateDistance, moveOneStep } from '../../utils/ai';
 import { AIActions } from '../FactionAI';
 import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
 import { isPosInNebula, isDeepNebula } from '../../utils/sector';
-// FIX: uniqueId is imported from helpers, not ai.
 import { uniqueId } from '../../utils/helpers';
 
 const canAISeePlayer = (aiShip: Ship, playerShip: Ship, sector: SectorState): boolean => {
@@ -27,6 +26,84 @@ const canAISeePlayer = (aiShip: Ship, playerShip: Ship, sector: SectorState): bo
     
     return true;
 };
+
+export function processPointDefenseForAI(ship: Ship, gameState: GameState, actions: AIActions) {
+    if (!ship.pointDefenseEnabled || ship.subsystems.pointDefense.health <= 0) return;
+
+    const incomingTorpedoes = gameState.currentSector.entities.filter((e): e is TorpedoProjectile => 
+        e.type === 'torpedo_projectile' && 
+        e.faction === 'Federation' && 
+        e.hull > 0
+    );
+
+    let pointDefenseFired = false;
+    if (incomingTorpedoes.length > 0) {
+        const POINT_DEFENSE_RANGE = 1;
+        const validTargets = incomingTorpedoes.filter(torpedo => 
+            calculateDistance(ship.position, torpedo.position) <= POINT_DEFENSE_RANGE
+        );
+
+        if (validTargets.length > 0) {
+            const threatOrder: Record<TorpedoType, number> = {
+                'Quantum': 5,
+                'HeavyPhoton': 4,
+                'Photon': 3,
+                'HeavyPlasma': 2,
+                'Plasma': 1,
+            };
+            validTargets.sort((a, b) => threatOrder[b.torpedoType] - threatOrder[a.torpedoType]);
+            
+            const torpedoToShoot = validTargets[0];
+            const activeEnergyCost = 40;
+
+            if (ship.energy.current >= activeEnergyCost) {
+                ship.energy.current -= activeEnergyCost;
+                pointDefenseFired = true;
+                
+                const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
+                if (Math.random() < hitChance) {
+                    torpedoToShoot.hull = 0;
+                    gameState.combatEffects.push({ 
+                        type: 'point_defense', 
+                        sourceId: ship.id, 
+                        targetId: torpedoToShoot.id, 
+                        faction: ship.faction, 
+                        delay: 0 
+                    });
+                    actions.addLog({
+                        sourceId: ship.id,
+                        sourceName: ship.name,
+                        message: `Point-defense grid intercepts incoming ${torpedoToShoot.name}! (Hit Chance: ${Math.round(hitChance*100)}%)`,
+                        isPlayerSource: false,
+                    });
+                } else {
+                     actions.addLog({
+                        sourceId: ship.id,
+                        sourceName: ship.name,
+                        message: `Point-defense grid fired at incoming ${torpedoToShoot.name} but missed! (Hit Chance: ${Math.round(hitChance*100)}%)`,
+                        isPlayerSource: false,
+                    });
+                }
+            }
+        }
+    }
+    
+    if (!pointDefenseFired) {
+        const passiveEnergyCost = 20;
+        if (ship.energy.current >= passiveEnergyCost) {
+            ship.energy.current -= passiveEnergyCost;
+        } else {
+            ship.pointDefenseEnabled = false;
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: `Insufficient power for upkeep. Deactivating point-defense grid.`,
+                isPlayerSource: false,
+                color: 'border-orange-500'
+            });
+        }
+    }
+}
 
 export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AIActions): boolean {
     const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
@@ -59,7 +136,8 @@ export function processCommonTurn(
     ship: Ship, 
     playerShip: Ship, 
     gameState: GameState, 
-    actions: AIActions
+    actions: AIActions,
+    subsystemTarget: keyof ShipSubsystems | null
 ) {
     const { currentSector } = gameState;
 
@@ -90,31 +168,40 @@ export function processCommonTurn(
             }
         }
         
+        // Movement
         if (distance > 2) {
+            const oldPos = { ...ship.position };
             if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Impulse engines are offline, cannot move.", isPlayerSource: false });
             } else {
                 ship.position = moveOneStep(ship.position, playerShip.position);
-            }
-        }
+                const newDist = calculateDistance(ship.position, playerShip.position);
+                
+                const wasInNebula = isPosInNebula(oldPos, gameState.currentSector);
+                const isInNebula = isPosInNebula(ship.position, gameState.currentSector);
 
-        const playerTorpedoes = currentSector.entities.filter((e): e is TorpedoProjectile => e.type === 'torpedo_projectile' && e.faction === 'Federation');
-        let hasFired = false;
-        if (playerTorpedoes.length > 0 && ship.subsystems.weapons.health > 0 && Math.random() < 0.75) {
-            const torpedoToShoot = playerTorpedoes[0];
-            if (calculateDistance(ship.position, torpedoToShoot.position) <= 5) {
-                const phaserCost = 5;
-                if (ship.energy.current >= phaserCost) {
-                    ship.energy.current -= phaserCost;
-                    gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: torpedoToShoot.id, faction: ship.faction, delay: 0 });
-                    torpedoToShoot.hull = 0;
-                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Fires point-defense at an incoming torpedo!\n--> HIT! The torpedo is destroyed!`, isPlayerSource: false });
-                    hasFired = true;
+                let moveLog = `Closing distance from ${distance} to ${newDist} hexes to improve weapon effectiveness.`;
+                if (isInNebula && !wasInNebula) {
+                    moveLog += ` The ${ship.name} enters the nebula, obscuring its position.`;
+                } else if (!isInNebula && wasInNebula) {
+                    moveLog += ` The ${ship.name} leaves the nebula.`;
                 }
-            }
-        }
 
-        if (hasFired) return;
+                actions.addLog({
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message: moveLog,
+                    isPlayerSource: false
+                });
+            }
+        } else {
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: `Maintaining optimal firing position at ${distance} hexes.`,
+                isPlayerSource: false
+            });
+        }
 
         if (ship.subsystems.weapons.health > 0 && distance <= 5) {
             if (!canTargetInAsteroids) {
@@ -123,7 +210,7 @@ export function processCommonTurn(
                 const phaserCost = 10;
                 if (ship.energy.current >= phaserCost) {
                     ship.energy.current -= phaserCost;
-                    const combatLogs = actions.applyPhaserDamage(playerShip, 10 * (ship.energyAllocation.weapons / 100), null, ship, gameState);
+                    const combatLogs = actions.applyPhaserDamage(playerShip, 10 * (ship.energyAllocation.weapons / 100), subsystemTarget, ship, gameState);
                     gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: playerShip.id, faction: ship.faction, delay: 0 });
                     combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false }));
                 }
@@ -163,8 +250,24 @@ export function processCommonTurn(
         if (ship.lastKnownPlayerPosition) {
             const distToLastKnown = calculateDistance(ship.position, ship.lastKnownPlayerPosition);
             if (distToLastKnown > 0) {
+                const oldPos = { ...ship.position };
                 ship.position = moveOneStep(ship.position, ship.lastKnownPlayerPosition);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving towards last known contact at (${ship.lastKnownPlayerPosition.x}, ${ship.lastKnownPlayerPosition.y}).`, isPlayerSource: false });
+                
+                const wasInNebula = isPosInNebula(oldPos, gameState.currentSector);
+                const isInNebula = isPosInNebula(ship.position, gameState.currentSector);
+                let moveLog = `Lost sensor lock. Moving to last known contact position at (${ship.lastKnownPlayerPosition.x}, ${ship.lastKnownPlayerPosition.y}).`;
+                if (isInNebula && !wasInNebula) {
+                    moveLog += ` The ${ship.name} enters the nebula.`;
+                } else if (!isInNebula && wasInNebula) {
+                    moveLog += ` The ${ship.name} leaves the nebula.`;
+                }
+
+                actions.addLog({
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message: moveLog,
+                    isPlayerSource: false
+                });
             } else {
                 ship.lastKnownPlayerPosition = null; // Arrived at last known position
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Contact lost. Holding position.`, isPlayerSource: false });

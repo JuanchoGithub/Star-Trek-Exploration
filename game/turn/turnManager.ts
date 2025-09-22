@@ -1,12 +1,11 @@
-
-import type { GameState, PlayerTurnActions, Position, Entity, Ship, ShipSubsystems, TorpedoProjectile, LogEntry } from '../../types';
+import type { GameState, PlayerTurnActions, Position, Entity, Ship, ShipSubsystems, TorpedoProjectile, LogEntry, TorpedoType } from '../../types';
 import { processAITurns } from './aiProcessor';
 import { AIActions } from '../ai/FactionAI';
-import { applyPhaserDamage, consumeEnergy, canTargetEntity } from '../utils/combat';
+import { applyPhaserDamage, consumeEnergy, canTargetEntity, applyTorpedoDamage } from '../utils/combat';
 import { moveOneStep, calculateDistance } from '../utils/ai';
 import { uniqueId } from '../utils/helpers';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
-import { isPosInNebula } from '../utils/sector';
+import { isPosInNebula, isDeepNebula } from '../utils/sector';
 
 interface TurnResolutionResult {
     nextGameState: GameState;
@@ -88,6 +87,9 @@ export function resolveTurn(
             playerShip.cloakCooldown = 2;
             addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Taking offensive action has disengaged the cloaking device.', isPlayerSource: true });
         }
+        
+        const wasInNebula = isPosInNebula(playerShip.position, currentSector);
+        const wasInDeepNebula = isDeepNebula(playerShip.position, currentSector);
 
         if (playerShip.retreatingTurn === null) {
             if (navigationTarget) {
@@ -122,6 +124,22 @@ export function resolveTurn(
                 }
             }
         }
+        
+        const isInNebula = isPosInNebula(playerShip.position, currentSector);
+        const isInDeepNebula = isDeepNebula(playerShip.position, currentSector);
+
+        if (isInNebula && !wasInNebula) {
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Entering nebula. Our sensor range is reduced.", isPlayerSource: true });
+        } else if (!isInNebula && wasInNebula) {
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "We have cleared the nebula. Sensors are back to full capacity.", isPlayerSource: true });
+        }
+
+        if (isInDeepNebula && !wasInDeepNebula) {
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "We've entered a deep nebula. We are hidden from enemy sensors!", isPlayerSource: true, color: 'border-green-400' });
+        } else if (!isInDeepNebula && wasInDeepNebula) {
+            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Leaving deep nebula cover. We are now visible on local sensors.", isPlayerSource: true, color: 'border-orange-400' });
+        }
+
 
         if (player.targeting) {
             if (maintainedTargetLock) player.targeting.consecutiveTurns = (player.targeting.consecutiveTurns || 1) + 1;
@@ -129,38 +147,98 @@ export function resolveTurn(
         }
     }
 
-    if (playerTurnActions.hasUsedTachyonScan) {
-        const cloakedShips = currentSector.entities.filter((e): e is Ship => e.type === 'ship' && e.cloakState === 'cloaked');
-        let detectedCount = 0;
+    // =================================================================
+    // == Point Defense Phase ==
+    // =================================================================
+    let pointDefenseFired = false;
+    if (playerShip.pointDefenseEnabled && playerShip.subsystems.pointDefense.health > 0) {
+        const incomingTorpedoes = currentSector.entities.filter((e): e is TorpedoProjectile => 
+            e.type === 'torpedo_projectile' && 
+            e.faction !== 'Federation' && 
+            e.hull > 0
+        );
 
-        if (cloakedShips.length > 0) {
-            const scannerHealthPercent = playerShip.subsystems.scanners.health / playerShip.subsystems.scanners.maxHealth;
+        if (incomingTorpedoes.length > 0) {
+            const POINT_DEFENSE_RANGE = 1;
+            const validTargets = incomingTorpedoes.filter(torpedo => 
+                calculateDistance(playerShip.position, torpedo.position) <= POINT_DEFENSE_RANGE
+            );
             
-            cloakedShips.forEach(cloakedShip => {
-                const distance = Math.max(Math.abs(playerShip.position.x - cloakedShip.position.x), Math.abs(playerShip.position.y - cloakedShip.position.y));
-                if (distance <= 5) { // 5 hex radius
-                    const baseChance = 0.40; // 40%
-                    const proximityBonus = (5 - distance) * 0.05; // Up to 20% bonus at range 1
-                    const detectionChance = (baseChance + proximityBonus) * scannerHealthPercent;
-                    
-                    if (Math.random() < detectionChance) {
-                        detectedCount++;
-                        cloakedShip.cloakState = 'visible';
-                        cloakedShip.cloakCooldown = 2; // Prevent immediate re-cloaking
+            if (validTargets.length > 0) {
+                const threatOrder: Record<TorpedoType, number> = {
+                    'Quantum': 5,
+                    'HeavyPhoton': 4,
+                    'Photon': 3,
+                    'HeavyPlasma': 2,
+                    'Plasma': 1,
+                };
+                validTargets.sort((a, b) => threatOrder[b.torpedoType] - threatOrder[a.torpedoType]);
+                
+                const torpedoToShoot = validTargets[0];
+
+                const activeEnergyCost = 40;
+                const { success, logs: energyLogs } = consumeEnergy(playerShip, activeEnergyCost);
+                energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
+
+                if (success) {
+                    pointDefenseFired = true;
+                    const hitChance = playerShip.subsystems.pointDefense.health / playerShip.subsystems.pointDefense.maxHealth;
+                    if (Math.random() < hitChance) {
+                        torpedoToShoot.hull = 0;
+                        next.combatEffects.push({ 
+                            type: 'point_defense', 
+                            sourceId: playerShip.id, 
+                            targetId: torpedoToShoot.id, 
+                            faction: playerShip.faction, 
+                            delay: 0 
+                        });
                         addLogForTurn({
                             sourceId: 'player',
-                            sourceName: playerShip.name,
-                            message: `Tachyon scan reveals the ${cloakedShip.name}! Its cloak has been disrupted!`,
+                            sourceName: 'Point-Defense System',
+                            message: `Intercepted and destroyed an incoming ${torpedoToShoot.name}! (Hit Chance: ${Math.round(hitChance * 100)}%). Consumed ${activeEnergyCost} power.`,
                             isPlayerSource: true,
-                            color: 'border-yellow-400'
+                        });
+                    } else {
+                         addLogForTurn({
+                            sourceId: 'player',
+                            sourceName: 'Point-Defense System',
+                            message: `Attempted to intercept a ${torpedoToShoot.name} but missed! (Hit Chance: ${Math.round(hitChance * 100)}%). Consumed ${activeEnergyCost} power.`,
+                            isPlayerSource: true,
                         });
                     }
+                } else {
+                    addLogForTurn({
+                        sourceId: 'player',
+                        sourceName: 'Point-Defense System',
+                        message: `Insufficient power to intercept incoming torpedo!`,
+                        isPlayerSource: true,
+                        color: 'border-red-500'
+                    });
                 }
-            });
+            }
         }
-
-        if (detectedCount === 0) {
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Tachyon scan complete. No cloaked vessels detected in range.', isPlayerSource: true });
+        
+        if (!pointDefenseFired) {
+            const passiveEnergyCost = 20;
+            const { success, logs: energyLogs } = consumeEnergy(playerShip, passiveEnergyCost);
+            energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
+            if(success) {
+                 addLogForTurn({
+                    sourceId: 'player',
+                    sourceName: 'Point-Defense System',
+                    message: `Point-defense grid maintained. Consumed ${passiveEnergyCost} power.`,
+                    isPlayerSource: true,
+                });
+            } else {
+                playerShip.pointDefenseEnabled = false;
+                 addLogForTurn({
+                    sourceId: 'player',
+                    sourceName: 'Point-Defense System',
+                    message: `Insufficient power for point-defense upkeep! System automatically deactivated.`,
+                    isPlayerSource: true,
+                    color: 'border-red-500'
+                });
+            }
         }
     }
     
@@ -206,7 +284,7 @@ export function resolveTurn(
             torpedo.path.push({ ...torpedo.position });
             
             if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) {
-                const combatLogs = applyPhaserDamage(targetEntity, torpedo.damage, null, allShipsForProjectiles.find(s=>s.id === torpedo.sourceId)!, next); // Simulating torpedo damage via phaser logic for now
+                const combatLogs = applyTorpedoDamage(targetEntity, torpedo, next);
                 next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0, torpedoType: torpedo.torpedoType });
                 combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
                 torpedo.hull = 0;
@@ -222,6 +300,41 @@ export function resolveTurn(
     
     const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
     processAITurns(next, aiActions, new Set<string>());
+
+    // =================================================================
+    // == Status Effects Phase ==
+    // =================================================================
+    const allShipsForStatus = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
+    allShipsForStatus.forEach(ship => {
+        if (ship.statusEffects.length > 0 && ship.hull > 0) {
+            const newStatusEffects = [];
+            for (const effect of ship.statusEffects) {
+                if (effect.type === 'plasma_burn') {
+                    ship.hull = Math.max(0, ship.hull - effect.damage);
+                    addLogForTurn({
+                        sourceId: 'system',
+                        sourceName: 'Damage Report',
+                        message: `${ship.name} takes ${effect.damage} damage from a plasma burn!`,
+                        color: 'border-teal-500',
+                        isPlayerSource: false,
+                    });
+                    effect.turnsRemaining--;
+                }
+                if (effect.turnsRemaining > 0) {
+                    newStatusEffects.push(effect);
+                } else {
+                    addLogForTurn({
+                        sourceId: 'system',
+                        sourceName: 'Damage Report',
+                        message: `The plasma fire on ${ship.name} has extinguished.`,
+                        color: 'border-gray-500',
+                        isPlayerSource: false,
+                    });
+                }
+            }
+            ship.statusEffects = newStatusEffects;
+        }
+    });
 
     // =================================================================
     // == Environmental Hazard Phase ==
@@ -270,6 +383,9 @@ export function resolveTurn(
     const allShipsForCloakCheck = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
 
     allShipsForCloakCheck.forEach(ship => {
+        if (ship.hull <= 0 || ship.isDerelict) {
+            return;
+        }
         if (ship.cloakState === 'cloaking' || ship.cloakState === 'cloaked') {
             
             let reliability = 1.0;
@@ -317,7 +433,7 @@ export function resolveTurn(
                     return; 
                 }
                 if (Math.random() < subsystemDamageChance) {
-                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'weapons', 'engines', 'shields', 'scanners', 'computer', 'lifeSupport']; // Weighted
+                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'weapons', 'engines', 'shields', 'pointDefense', 'computer', 'lifeSupport']; // Weighted
                     const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
                     const targetSubsystem = ship.subsystems[randomSubsystemKey];
                     if (targetSubsystem.maxHealth > 0 && targetSubsystem.health > 0) {
@@ -384,6 +500,9 @@ export function resolveTurn(
 
     const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
     allShips.forEach(ship => {
+        if (ship.hull <= 0 || ship.isDerelict) {
+            return;
+        }
         if (ship.shields < ship.maxShields && ship.subsystems.shields.health / ship.subsystems.shields.maxHealth >= 0.25) {
             const potentialRegen = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
             if (potentialRegen > 0) {
@@ -460,6 +579,5 @@ export function resolveTurn(
     
     next.turn++;
     addLogForTurn({ sourceId: 'system', sourceName: 'Log', message: `Turn ${next.turn} begins.`, isPlayerSource: false, color: 'border-gray-700' });
-    
     return { nextGameState: next, newNavigationTarget: newNavTarget, newSelectedTargetId };
 }

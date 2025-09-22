@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { AwayMissionResult, ResourceType } from '../types';
 
@@ -15,7 +16,7 @@ const formatResourceName = (resource: ResourceType): string => {
         engines: 'Engine Systems',
         transporter: 'Transporter Systems',
         security_teams: 'Security Teams',
-        scanners: 'Scanner Systems',
+        pointDefense: 'Point Defense Systems',
         computer: 'Computer Core',
         lifeSupport: 'Life Support',
         shuttlecraft: 'Shuttlebay',

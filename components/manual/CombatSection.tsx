@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -138,6 +137,17 @@ export const CombatSection: React.FC = () => {
             energy="None (Consumes ammunition)"
             damage="Base 90. Heavily mitigated by shields."
             notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. Can be destroyed by asteroids."
+        />
+
+        <SubHeader>Defensive Systems</SubHeader>
+        <WeaponDetail
+            name="Laser Point-Defense Grid"
+            borderColorClass="border-accent-yellow"
+            users="All Factions"
+            range="1 hex"
+            energy="20 Reserve Power (Standby), 40 Reserve Power (Active Fire)"
+            damage="Destroys one torpedo projectile."
+            notes="An automated defensive laser system that targets incoming torpedoes at very close range. Its chance to hit is directly proportional to its subsystem health. When active, it diverts significant power from the main phaser arrays, reducing their damage and effective range. The system's targeting computer prioritizes the most dangerous torpedoes first."
         />
     </div>
     );

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship, ShipSubsystems } from '../types';
 import CommandConsole from './CommandConsole';
@@ -16,7 +17,6 @@ interface PlayerHUDProps {
   onFirePhasers: (targetId: string) => void;
   onLaunchTorpedo: (targetId:string) => void;
   onToggleCloak: () => void;
-  onTachyonScan: () => void;
   target?: Entity;
   isDocked: boolean;
   onRechargeDilithium: () => void;
@@ -50,7 +50,7 @@ const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
     engines: 'ENG',
     shields: 'SHD',
     transporter: 'TRN',
-    scanners: 'SCN',
+    pointDefense: 'LPD',
     computer: 'CPU',
     lifeSupport: 'LFS',
     shuttlecraft: 'SHTL',
@@ -61,7 +61,7 @@ const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
     engines: 'Engines',
     shields: 'Shields',
     transporter: 'Transporter',
-    scanners: 'Scanners',
+    pointDefense: 'Point Defense',
     computer: 'Computer',
     lifeSupport: 'Life Support',
     shuttlecraft: 'Shuttlecraft',
@@ -277,7 +277,7 @@ const TargetInfo: React.FC<{
 };
 
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
-    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak, onTachyonScan,
+    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
@@ -357,7 +357,6 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         onCancelRetreat={onCancelRetreat}
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                         onToggleCloak={onToggleCloak}
-                        onTachyonScan={onTachyonScan}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
                         hasTarget={!!target}

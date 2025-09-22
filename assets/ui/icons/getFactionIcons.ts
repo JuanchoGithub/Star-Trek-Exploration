@@ -52,6 +52,7 @@ const federationIcons = {
     HailIcon: StarfleetLogoIcon,
     BoardingIcon: ShuttleIcon,
     StrikeTeamIcon: PhaserIcon,
+    PointDefenseIcon: SecurityIcon,
 };
 
 const klingonIcons = {

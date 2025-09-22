@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
@@ -131,6 +129,16 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </div>
             </div>
 
+            <SubHeader>Employing the Laser Point-Defense (LPD) System</SubHeader>
+            <p className="text-text-secondary mb-4">
+                The LPD system is a powerful but costly defensive tool. Knowing when to activate it is a critical tactical decision.
+            </p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                <li><strong>The Trade-Off:</strong> Activating the LPD significantly reduces your offensive phaser capability. It is a purely defensive measure. Do not activate it if you need maximum phaser damage to finish a target.</li>
+                <li><strong>When to Use It:</strong> The LPD is most effective when anticipating a torpedo-heavy attack, especially against factions like the Romulans or Klingons with powerful warheads. Activating it when an enemy launches a torpedo can completely negate their primary attack for that turn.</li>
+                <li><strong>Countering LPD:</strong> The system can only target one torpedo per turn. The most effective way to defeat an enemy's LPD is to overwhelm it with a multi-torpedo launch from several ships, or by launching a torpedo while simultaneously pressuring them with heavy phaser fire.</li>
+            </ul>
+
             <SubHeader>Cloaking and Anti-Cloak Operations</SubHeader>
             <p className="text-text-secondary mb-4">Stealth technology is no longer a simple fire-and-forget system. It is a dynamic state requiring constant power and subject to failure under pressure. Understanding these new, more complex mechanics is essential to survival.</p>
             <div className="space-y-3">
@@ -177,9 +185,6 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         </ul>
                     </div>
                 </div>
-
-                <h4 className="font-bold text-accent-yellow mt-4 flex items-center gap-2"><FederationScanIcon className="w-6 h-6"/>Countering Cloaks: Tachyon Scan</h4>
-                <p className="text-sm text-text-secondary">The Tachyon Scan remains your primary counter to cloaked vessels. It floods the area with particles that can reveal cloaked ships. A successful scan will force an enemy to decloak and disrupt their systems, preventing them from re-cloaking for several turns. Use this to create a window of vulnerability, especially against Romulans hiding in nebulae.</p>
             </div>
 
             <SubHeader>Countering Faction Doctrines</SubHeader>
@@ -191,7 +196,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </div>
                  <div className="p-3 bg-bg-paper-lighter rounded">
                     <h4 className="font-bold text-green-500">Countering Romulans</h4>
-                    <p className="text-sm text-text-secondary">Romulans are cautious and tactical. They will use their cloak to get into optimal position and will shift power defensively if damaged. Your first priority is the <span className="font-bold">Tachyon Scan</span>. Once a Romulan is decloaked, they are vulnerable. They will try to exploit weakness; if your shields drop, expect them to shift to an <span className="font-bold">Aggressive</span> stance. Keep your shields healthy and focus fire, as they will attempt to escape if their hull becomes critical.</p>
+                    <p className="text-sm text-text-secondary">Romulans are cautious and tactical. They will use their cloak to get into optimal position and will shift power defensively if damaged. Their primary goal is to disable your ship. Keep your shields healthy and focus fire, as they will attempt to escape if their hull becomes critical.</p>
                 </div>
                  <div className="p-3 bg-bg-paper-lighter rounded">
                     <h4 className="font-bold text-orange-500">Countering Pirates</h4>

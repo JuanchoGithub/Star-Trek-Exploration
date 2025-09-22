@@ -1,3 +1,4 @@
+
 import type { EventTemplate } from '../../../types';
 
 export const eventTemplates: Record<EventTemplate['type'], EventTemplate[]> = {
@@ -87,9 +88,10 @@ export const eventTemplates: Record<EventTemplate['type'], EventTemplate[]> = {
                     text: 'Attempt full salvage of its components.',
                     outcome: {
                         type: 'damage',
-                        resource: 'scanners',
+                        // FIX: Corrected resource type from 'scanners' to 'pointDefense'
+                        resource: 'pointDefense',
                         amount: 25,
-                        log: "The salvage operation triggers a containment breach in the ship's damaged warp core! The resulting feedback damages your sensitive scanner arrays."
+                        log: "The salvage operation triggers a containment breach in the ship's damaged warp core! The resulting feedback damages your sensitive point-defense sensors."
                     }
                 },
                 {

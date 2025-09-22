@@ -24,6 +24,15 @@ const getPhaserClass = (faction: string): string => {
     return 'phaser-beam federation'; // Default to federation red for others
 };
 
+const getPointDefenseClass = (faction: string): string => {
+    const factionClass = faction.toLowerCase();
+    const validFactions = ['federation', 'klingon', 'romulan', 'pirate'];
+    if (validFactions.includes(factionClass)) {
+        return `point-defense-beam ${factionClass}`;
+    }
+    return 'point-defense-beam federation';
+};
+
 const getExplosionColors = (torpedoType: TorpedoType): [string, string, string] => {
     switch(torpedoType) {
         case 'Quantum':
@@ -63,6 +72,40 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                                 x2={end.x} 
                                 y2={end.y} 
                                 className={phaserClass}
+                                style={{ animationDelay: `${effect.delay}ms` }}
+                            />
+                        );
+                    }
+                    if (effect.type === 'point_defense') {
+                        const source = entityMap.get(effect.sourceId);
+                        const target = entityMap.get(effect.targetId);
+                        if (!source || !target) return null;
+
+                        const start = getPercentageCoords(source.position);
+                        const end = getPercentageCoords(target.position);
+                        
+                        const width = 2; // width of the triangle base in %
+                        const sourceCoords = { x: parseFloat(start.x), y: parseFloat(start.y) };
+                        const targetCoords = { x: parseFloat(end.x), y: parseFloat(end.y) };
+
+                        const vec_x = targetCoords.x - sourceCoords.x;
+                        const vec_y = targetCoords.y - sourceCoords.y;
+                        const vec_mag = Math.sqrt(vec_x*vec_x + vec_y*vec_y) || 1;
+                        
+                        const perp_x = -vec_y / vec_mag;
+                        const perp_y = vec_x / vec_mag;
+
+                        const p1 = `${sourceCoords.x}%,${sourceCoords.y}%`;
+                        const p2 = `${targetCoords.x + perp_x * width}%,${targetCoords.y + perp_y * width}%`;
+                        const p3 = `${targetCoords.x - perp_x * width}%,${targetCoords.y - perp_y * width}%`;
+                        
+                        const pointDefenseClass = getPointDefenseClass(effect.faction);
+
+                        return (
+                            <polygon
+                                key={`pd-${effect.sourceId}-${index}`}
+                                points={`${p1} ${p2} ${p3}`}
+                                className={pointDefenseClass}
                                 style={{ animationDelay: `${effect.delay}ms` }}
                             />
                         );

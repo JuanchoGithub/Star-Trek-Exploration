@@ -1,13 +1,21 @@
 
-import type { GameState, Ship, Shuttle } from '../../../types';
-import { AIActions, FactionAI, AIStance } from '../FactionAI';
+
+
+import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
+import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { uniqueId } from '../../utils/helpers';
 
 export class FederationAI extends FactionAI {
+    // FIX: Implemented missing abstract method 'determineStance' to satisfy the FactionAI interface.
     determineStance(ship: Ship, playerShip: Ship): AIStance {
         return 'Balanced'; // Friendly ships are always balanced.
+    }
+
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy the FactionAI interface.
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        return null; // Federation AI is non-hostile
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {

@@ -1,5 +1,7 @@
 
-import type { GameState, Ship, Shuttle } from '../../../types';
+
+
+import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import.
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
@@ -12,9 +14,14 @@ export class FederationAI extends FactionAI {
         return 'Balanced'; // Friendly ships are always balanced.
     }
 
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy the FactionAI interface.
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        return null; // Federation AI is non-hostile
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         const { currentSector } = gameState;
-        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle');
+        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
 
         // Priority 1: Rescue shuttles
         if (shuttles.length > 0) {

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
@@ -121,7 +122,7 @@ const App: React.FC = () => {
     onScanQuadrant,
     onEnterOrbit,
     onToggleCloak,
-    onTachyonScan,
+    onTogglePointDefense,
   } = useGameLogic();
 
   const { theme, themeName, setTheme } = useTheme();
@@ -223,7 +224,6 @@ const App: React.FC = () => {
                     onSelectSubsystem={onSelectSubsystem}
                     onEnterOrbit={onEnterOrbit}
                     orbitingPlanetId={gameState.orbitingPlanetId}
-                    onTachyonScan={onTachyonScan}
                   />
               </div>
           </div>
@@ -237,6 +237,7 @@ const App: React.FC = () => {
                   onEvasiveManeuvers={onEvasiveManeuvers}
                   onSelectRepairTarget={onSelectRepairTarget}
                   onToggleCloak={onToggleCloak}
+                  onTogglePointDefense={onTogglePointDefense}
                   themeName={themeName}
               />
           </div>

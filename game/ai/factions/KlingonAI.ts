@@ -1,5 +1,6 @@
 
-import type { GameState, Ship } from '../../../types';
+
+import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
@@ -15,6 +16,15 @@ export class KlingonAI extends FactionAI {
         return 'Aggressive';
     }
 
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // Klingons target weapons to force a close, honorable fight.
+        if (playerShip.subsystems.weapons.health > 0) {
+            return 'weapons';
+        }
+        return null; // Target hull if weapons are already destroyed.
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
@@ -22,6 +32,8 @@ export class KlingonAI extends FactionAI {
         
         // FIX: Implemented stance-based energy allocation.
         const stance = this.determineStance(ship, gameState.player.ship);
+        // FIX: Implemented subsystem targeting.
+        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
         let stanceChanged = false;
 
         switch (stance) {
@@ -43,8 +55,8 @@ export class KlingonAI extends FactionAI {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
         }
         
-        // FIX: Added missing `gameState.player.ship` argument to the function call.
-        processCommonTurn(ship, gameState.player.ship, gameState, actions);
+        // FIX: Added the missing 'subsystemTarget' argument to the function call.
+        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the ramming logic.

@@ -1,10 +1,10 @@
-
-import type { GameState, Ship } from '../../../types';
-import { AIActions, FactionAI, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict } from './common';
+import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import { FactionAI, AIActions, AIStance } from '../FactionAI';
+import { processCommonTurn, tryCaptureDerelict, processPointDefenseForAI } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
+    // FIX: Implemented missing abstract member 'determineStance'.
     determineStance(ship: Ship, playerShip: Ship): AIStance {
         // Klingons are honorable warriors. They will fight aggressively until their ship is nearly destroyed.
         if (ship.hull / ship.maxHull < 0.25) {
@@ -13,12 +13,32 @@ export class KlingonAI extends FactionAI {
         return 'Aggressive';
     }
 
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget'.
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // Klingons target weapons to force a close, honorable fight.
+        if (playerShip.subsystems.weapons.health > 0) {
+            return 'weapons';
+        }
+        return null; // Target hull if weapons are already destroyed.
+    }
+
     processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
+        
+        const hasHostiles = gameState.player.ship.hull > 0;
+        if (hasHostiles && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Activating point-defense grid.`, isPlayerSource: false });
+        } else if (!hasHostiles && ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = false;
+        }
 
+        processPointDefenseForAI(ship, gameState, actions);
+        
         const stance = this.determineStance(ship, gameState.player.ship);
+        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
         let stanceChanged = false;
 
         switch (stance) {
@@ -39,8 +59,8 @@ export class KlingonAI extends FactionAI {
         if (stanceChanged) {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
         }
-
-        processCommonTurn(ship, gameState.player.ship, gameState, actions);
+        
+        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {

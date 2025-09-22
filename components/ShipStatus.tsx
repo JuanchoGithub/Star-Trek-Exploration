@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -35,7 +36,7 @@ const SubsystemStatus: React.FC<{
   maxShields: number;
   themeName: ThemeName;
 }> = ({ subsystems, allocation, maxShields, themeName }) => {
-    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, ScanIcon } = getFactionIcons(themeName);
+    const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, PointDefenseIcon } = getFactionIcons(themeName);
     const weaponBonus = (20 * (allocation.weapons / 100)).toFixed(1);
     const shieldBonus = ((allocation.shields / 100) * (maxShields * 0.1)).toFixed(1);
     const engineBonus = (allocation.engines / 5).toFixed(0); // Represents a fictional evasion bonus for UI feedback
@@ -44,7 +45,7 @@ const SubsystemStatus: React.FC<{
         { name: 'WPN', fullName: 'Weapons', icon: <WeaponIcon className="w-5 h-5"/>, data: subsystems.weapons, bonus: `+${weaponBonus} DMG`, bonusColor: 'text-red-400' },
         { name: 'SHD', fullName: 'Shields', icon: <ShieldIcon className="w-5 h-5"/>, data: subsystems.shields, bonus: `+${shieldBonus} REG/t`, bonusColor: 'text-cyan-400' },
         { name: 'ENG', fullName: 'Engines', icon: <EngineIcon className="w-5 h-5"/>, data: subsystems.engines, bonus: `+${engineBonus} EVA`, bonusColor: 'text-green-400' },
-        { name: 'SCN', fullName: 'Scanners', icon: <ScanIcon className="w-5 h-5"/>, data: subsystems.scanners, bonus: ``, bonusColor: '' },
+        { name: 'LPD', fullName: 'Point Defense', icon: <PointDefenseIcon className="w-5 h-5"/>, data: subsystems.pointDefense, bonus: ``, bonusColor: '' },
         { name: 'CPU', fullName: 'Computer', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>, data: subsystems.computer, bonus: ``, bonusColor: '' },
         { name: 'LFS', fullName: 'Life Support', icon: <ScienceIcon className="w-5 h-5"/>, data: subsystems.lifeSupport, bonus: ``, bonusColor: '' },
         { name: 'TRN', fullName: 'Transporter', icon: <TransporterIcon className="w-5 h-5"/>, data: subsystems.transporter, bonus: ``, bonusColor: '' },
@@ -66,6 +67,7 @@ const SubsystemStatus: React.FC<{
                             <span className="text-[11px] text-text-secondary truncate font-bold">{system.name}</span>
                             <span className={`text-[11px] font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
                         </div>
+                        {system.name === 'LPD' && <span className={`text-[10px] font-bold text-cyan-400`}>Hit: {Math.round(healthPercentage)}%</span>}
                         {system.bonus && <span className={`text-[10px] font-bold ${system.bonusColor}`}>{system.bonus}</span>}
                     </div>
                 );
@@ -100,10 +102,11 @@ interface ShipStatusProps {
   onEvasiveManeuvers: () => void;
   onSelectRepairTarget: (subsystem: 'hull' | keyof ShipSubsystems) => void;
   onToggleCloak: () => void;
+  onTogglePointDefense: () => void;
   themeName: ThemeName;
 }
 
-const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, themeName }) => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName }) => {
   const { ship } = gameState.player;
   const [isRepairListVisible, setRepairListVisible] = useState(false);
   const { TorpedoIcon, SecurityIcon } = getFactionIcons(themeName);
@@ -116,20 +119,16 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
       setRepairListVisible(false);
   };
   
-  // FIX: Refactored to use Object.keys for improved type safety with TypeScript. This prevents errors where the compiler cannot infer the type of `value` from `Object.entries` and ensures all properties are correctly accessed.
   const systemsToRepair = [
       { key: 'hull' as const, name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
-      ...(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>)
-        .map(key => {
-            const value = ship.subsystems[key];
-            return {
-                key: key,
-                name: key.charAt(0).toUpperCase() + key.slice(1),
-                health: value.health,
-                maxHealth: value.maxHealth,
-                disabled: value.health === value.maxHealth || value.maxHealth === 0,
-            };
-        })
+      ...(Object.entries(ship.subsystems) as [keyof ShipSubsystems, { health: number; maxHealth: number }][])
+        .map(([key, value]) => ({
+            key,
+            name: key.charAt(0).toUpperCase() + key.slice(1),
+            health: value.health,
+            maxHealth: value.maxHealth,
+            disabled: value.health === value.maxHealth || value.maxHealth === 0,
+        }))
         .sort((a,b) => a.name.localeCompare(b.name))
   ];
 
@@ -154,6 +153,10 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                         ship.isStunned;
 
   const cloakTitle = !ship.cloakingCapable ? "Device not installed." : isCloakDisabled ? "Cannot engage cloak." : "Toggle cloaking device.";
+  
+  const pointDefenseTitle = ship.pointDefenseEnabled
+    ? "Point-defense active. Reduces phaser power and drains energy."
+    : "Activate point-defense grid. Will automatically engage torpedoes.";
 
   return (
     <div className="panel-style p-3 h-full flex flex-col">
@@ -192,6 +195,13 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                 title={cloakTitle}
             />
            )}
+           <InteractiveStatusIndicator 
+              label="Point Defense" 
+              status={ship.pointDefenseEnabled ? 'ACTIVE' : 'INACTIVE'} 
+              colorClass={ship.pointDefenseEnabled ? 'text-accent-orange bg-orange-900 bg-opacity-50' : 'text-text-disabled'}
+              onClick={onTogglePointDefense}
+              title={pointDefenseTitle}
+          />
           <InteractiveStatusIndicator 
               label="Damage Control" 
               status={ship.repairTarget ? `REPAIRING ${ship.repairTarget.toUpperCase()}` : 'INACTIVE'} 
@@ -206,18 +216,19 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                       {systemsToRepair.map(sys => {
                           if (sys.maxHealth === 0) return null;
                           const isAssigned = ship.repairTarget === sys.key;
+                          const percentage = sys.maxHealth > 0 ? Math.round((sys.health / sys.maxHealth) * 100) : 100;
                           return (
                               <button 
                                   key={sys.key} 
                                   onClick={() => handleSelectRepair(sys.key)} 
                                   disabled={sys.disabled && !isAssigned}
-                                  className={`w-full text-left p-1 text-sm btn ${
+                                  className={`w-full text-sm btn ${
                                       isAssigned 
-                                      ? 'bg-accent-yellow-dark hover:bg-accent-yellow text-secondary-text' 
-                                      : 'bg-accent-yellow-darker hover:brightness-110 text-white'
+                                      ? 'btn-accent orange' 
+                                      : 'btn-accent yellow'
                                   }`}
                               >
-                                  {isAssigned ? 'Cancel:' : 'Assign:'} {sys.name} ({Math.round(sys.health)}/{sys.maxHealth})
+                                  {sys.name} {percentage}%
                               </button>
                           )
                       })}

@@ -270,6 +270,7 @@
         /* Show the rectangular part but in a disabled color */
         display: block !important;
         background-color: #3a3a3a !important; /* Slightly lighter gray body */
+        left: 1.75em !important; /* Close the gap for a solid look */
       }
       
       .btn-accent { color: white; }
@@ -440,6 +441,10 @@
           stroke: var(--color-plasma-green);
           filter: drop-shadow(0 0 5px var(--color-plasma-green));
       }
+      .phaser-beam.pirate {
+          stroke: var(--color-accent-orange);
+          filter: drop-shadow(0 0 4px var(--color-accent-orange));
+      }
       .torpedo-trail-dot {
           background-color: var(--color-accent-orange);
           border-radius: 50%;
@@ -462,6 +467,27 @@
         100% { transform: translate(-50%, -50%) scale(1.5); background-color: var(--color-accent-red); opacity: 0; }
       }
       
+      .point-defense-beam {
+        stroke-width: 2px;
+        animation: phaser-fire-animation 0.5s ease-out;
+      }
+      .point-defense-beam.federation {
+          stroke: #ff4141;
+          fill: rgba(255, 65, 65, 0.3);
+      }
+      .point-defense-beam.klingon {
+          stroke: #daa520;
+          fill: rgba(218, 165, 32, 0.3);
+      }
+      .point-defense-beam.romulan {
+          stroke: var(--color-plasma-green);
+          fill: rgba(101, 248, 0, 0.3);
+      }
+      .point-defense-beam.pirate {
+          stroke: var(--color-accent-orange);
+          fill: rgba(249, 115, 22, 0.3);
+      }
+
       /* LCARS Targeting Reticle */
       .bg-lcars-blue-light { background-color: var(--color-lcars-blue-light); }
       .bg-lcars-blue-dark { background-color: var(--color-lcars-blue-dark); }
