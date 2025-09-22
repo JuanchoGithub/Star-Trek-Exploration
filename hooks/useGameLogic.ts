@@ -440,14 +440,14 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setGameState(prev => {
             const next = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
-            const energyCost = 1;
+            const energyCost = 5 * ship.energyModifier;
             if(ship.energy.current < energyCost) {
                 addLog({ sourceId: 'player', sourceName: ship.name, message: 'Insufficient power for long-range scan.', isPlayerSource: true, color: 'border-blue-400' });
                 return prev;
             }
             ship.energy.current -= energyCost;
             next.quadrantMap[pos.qy][pos.qx].isScanned = true;
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Consumed ${energyCost} power.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, message: `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Consumed ${Math.round(energyCost)} power.`, isPlayerSource: true, color: 'border-blue-400' });
             return next;
         });
     }, [addLog]);
@@ -465,12 +465,12 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                 const shieldHealthPercent = ship.subsystems.shields.maxHealth > 0 ? ship.subsystems.shields.health / ship.subsystems.shields.maxHealth : 0;
                 
                 const baseEnergyCost = 15;
-                let energyCost = baseEnergyCost;
+                let energyCost = baseEnergyCost * ship.energyModifier;
                 
                 if (shieldHealthPercent > 0) {
                     const damagePercent = 1 - shieldHealthPercent;
                     const energyCostMultiplier = 1 + (damagePercent / 2);
-                    energyCost = baseEnergyCost * energyCostMultiplier;
+                    energyCost = (baseEnergyCost * ship.energyModifier) * energyCostMultiplier;
                 }
 
                 if (ship.energy.current < energyCost) {
@@ -607,7 +607,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const { ship } = next.player;
-            const energyCost = 5;
+            const energyCost = 5 * ship.energyModifier;
             const { success, logs } = consumeEnergy(ship, energyCost);
             logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true, color: 'border-blue-400' }));
             if (!success) return prev;

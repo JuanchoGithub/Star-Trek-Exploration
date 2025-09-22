@@ -13,9 +13,10 @@ import {
     AnimationsSection,
     GalaxyGenerationSection,
     AIBehaviorSection,
+    ChangelogSection,
 } from './manual';
 
-type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation' | 'ai';
+type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation' | 'ai' | 'changelog';
 
 interface PlayerManualProps {
     onClose: () => void;
@@ -29,7 +30,7 @@ const SectionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
 );
 
 const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
-    const [activeSection, setActiveSection] = useState<Section>('intro');
+    const [activeSection, setActiveSection] = useState<Section>('changelog');
 
     const renderContent = () => {
         switch(activeSection) {
@@ -45,6 +46,7 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
             case 'simulations': return <CombatSimulationSection />;
             case 'ai': return <AIBehaviorSection />;
             case 'animations': return <AnimationsSection />;
+            case 'changelog': return <ChangelogSection />;
             default: return null;
         }
     }
@@ -58,6 +60,8 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                 </div>
                 <div className="flex-grow flex gap-4 min-h-0">
                     <nav className="w-1/5 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
+                         <SectionLink active={activeSection === 'changelog'} onClick={() => setActiveSection('changelog')}>Latest Changes (v1.3.2)</SectionLink>
+                         <div className="w-full border-t border-border-dark my-2"></div>
                          <SectionLink active={activeSection === 'intro'} onClick={() => setActiveSection('intro')}>Introduction</SectionLink>
                          <SectionLink active={activeSection === 'ui'} onClick={() => setActiveSection('ui')}>Bridge Interface</SectionLink>
                          <SectionLink active={activeSection === 'registry'} onClick={() => setActiveSection('registry')}>Entity Registry</SectionLink>

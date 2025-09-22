@@ -33,6 +33,8 @@ const createShip = (shipClass: ShipClassStats, faction: Ship['shipModel'], alleg
         isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null,
         isDerelict: false, captureInfo: null, pointDefenseEnabled: false, statusEffects: [],
         allegiance, cloakingCapable: shipClass.cloakingCapable,
+        // FIX: Added missing energyModifier property.
+        energyModifier: shipClass.energyModifier,
     };
     if (allegiance === 'player' || allegiance === 'ally') {
         newShip.logColor = 'border-blue-400';

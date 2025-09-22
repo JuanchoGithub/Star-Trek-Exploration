@@ -28,6 +28,8 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         statusEffects: [],
         // FIX: Added missing 'pointDefenseEnabled' property to satisfy the Ship interface.
         pointDefenseEnabled: false,
+        // FIX: Added missing 'energyModifier' property to satisfy the Ship interface.
+        energyModifier: stats.energyModifier,
     };
 };
 

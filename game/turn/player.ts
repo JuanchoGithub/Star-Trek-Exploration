@@ -21,7 +21,7 @@ export const processPlayerTurn = (
     if (playerTurnActions.combat) {
         const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId) as Ship | undefined;
         if (target) {
-            const phaserBaseDamage = 20;
+            const phaserBaseDamage = 20 * ship.energyModifier;
             const phaserPowerModifier = ship.energyAllocation.weapons / 100;
             const pointDefenseModifier = ship.pointDefenseEnabled ? 0.6 : 1.0;
             const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;

@@ -87,7 +87,7 @@ const processEndOfTurnSystems = (state: GameState): void => {
 
         // --- Repair Target Processing ---
         if (ship.repairTarget) {
-            const repairCost = 10;
+            const repairCost = 10 * ship.energyModifier;
             if (ship.energy.current >= repairCost) {
                 ship.energy.current -= repairCost;
                 if (ship.repairTarget === 'hull') {

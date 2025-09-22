@@ -77,6 +77,7 @@ export interface Ship extends BaseEntity {
   pointDefenseEnabled: boolean;
   statusEffects: StatusEffect[];
   allegiance?: 'player' | 'ally' | 'enemy' | 'neutral';
+  energyModifier: number;
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';

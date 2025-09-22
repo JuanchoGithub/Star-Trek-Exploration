@@ -152,6 +152,8 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                         <StatRating label="Hull Integrity" value={`${hullRating} (${shipClass.maxHull})`} />
                         <StatRating label="Shield Capacity" value={`${shieldRating} (${shipClass.maxShields})`} />
                         <StatRating label="Weapon Power" value={weaponRating} />
+                        <StatRating label="Energy Reserves" value={String(shipClass.energy.max)} />
+                        <StatRating label="Dilithium Stores" value={String(shipClass.dilithium.max)} />
                         <StatRating label="Cloaking Device" value={shipClass.cloakingCapable ? 'Yes' : 'No'} />
                         <StatRating label="Torpedoes" value={`${shipClass.torpedoes.max} (${tacticalInfo.torpedoType || 'Unknown'})`} />
                         <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />

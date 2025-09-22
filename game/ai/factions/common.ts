@@ -31,7 +31,7 @@ const canAISeeTarget = (aiShip: Ship, target: Ship, sector: SectorState): boolea
 // Returns true if the ship's turn should end after this function
 const processAIStrategicDecisions = (ship: Ship, stance: AIStance, gameState: GameState, actions: AIActions, target: Ship | null): boolean => {
     // 1. Energy Management
-    const ENERGY_CRITICAL_THRESHOLD = 25;
+    const ENERGY_CRITICAL_THRESHOLD = 25 * ship.energyModifier;
     if (ship.energy.current < ENERGY_CRITICAL_THRESHOLD && ship.dilithium.current > 0) {
         const { logs } = consumeEnergy(ship, 0); // Use 0 to just trigger the recharge
         logs.forEach(log => actions.addLog({
@@ -117,7 +117,7 @@ function processPointDefenseForAI(ship: Ship, gameState: GameState, actions: AIA
             validTargets.sort((a, b) => threatOrder[b.torpedoType] - threatOrder[a.torpedoType]);
             
             const torpedoToShoot = validTargets[0];
-            const activeEnergyCost = 40;
+            const activeEnergyCost = 40 * ship.energyModifier;
 
             if (ship.energy.current >= activeEnergyCost) {
                 ship.energy.current -= activeEnergyCost;
@@ -136,7 +136,7 @@ function processPointDefenseForAI(ship: Ship, gameState: GameState, actions: AIA
     }
     
     if (!pointDefenseFired) {
-        const passiveEnergyCost = 20;
+        const passiveEnergyCost = 20 * ship.energyModifier;
         if (ship.energy.current >= passiveEnergyCost) {
             ship.energy.current -= passiveEnergyCost;
         } else {
@@ -255,10 +255,10 @@ export function processCommonTurn(
             if (!canTargetInAsteroids) {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Cannot get a target lock, target is obscured by asteroids.", isPlayerSource: false });
             } else {
-                const phaserCost = 10;
+                const phaserCost = 10 * ship.energyModifier;
                 if (ship.energy.current >= phaserCost) {
                     ship.energy.current -= phaserCost;
-                    const combatLogs = actions.applyPhaserDamage(target, 10 * (ship.energyAllocation.weapons / 100), subsystemTarget, ship, gameState);
+                    const combatLogs = actions.applyPhaserDamage(target, 10 * ship.energyModifier * (ship.energyAllocation.weapons / 100), subsystemTarget, ship, gameState);
                     gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: 0 });
                     combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false }));
                 }
@@ -269,7 +269,7 @@ export function processCommonTurn(
 
         if (canLaunchTorpedo && distance <= 8 && Math.random() < 0.4) {
             if (canTargetInAsteroids) {
-                const torpedoCost = 15;
+                const torpedoCost = 15 * ship.energyModifier;
                 if (ship.energy.current >= torpedoCost) {
                     ship.energy.current -= torpedoCost;
                     ship.torpedoes.current--;

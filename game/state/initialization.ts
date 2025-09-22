@@ -108,11 +108,11 @@ const createEntityFromTemplate = (
                 energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
                 torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
                 subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
-                dilithium: { current: 0, max: 0 }, scanned: false, evasive: false, retreatingTurn: null,
+                dilithium: { current: stats.dilithium.max, max: stats.dilithium.max }, scanned: false, evasive: false, retreatingTurn: null,
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
                 lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
-                statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false,
+                statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier
             } as Ship;
 
             if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
@@ -281,11 +281,12 @@ export const createInitialGameState = (): GameState => {
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
     energy: { current: playerStats.energy.max, max: playerStats.energy.max }, energyAllocation: { weapons: 34, shields: 33, engines: 33 },
-    torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max }, dilithium: { current: 20, max: 20 },
+    torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max }, dilithium: { current: playerStats.dilithium.max, max: playerStats.dilithium.max },
     scanned: true, evasive: false, retreatingTurn: null,
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR, lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
+    energyModifier: playerStats.energyModifier,
   };
 
   const playerCrew: BridgeOfficer[] = [
