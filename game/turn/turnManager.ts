@@ -185,7 +185,131 @@ export function resolveTurn(
     
     const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
     processAITurns(next, aiActions, new Set<string>());
-    
+
+    // =================================================================
+    // == Cloak Maintenance Phase ==
+    // =================================================================
+    const allShipsForCloakCheck = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
+
+    allShipsForCloakCheck.forEach(ship => {
+        if (ship.cloakState === 'cloaking' || ship.cloakState === 'cloaked') {
+            
+            let reliability = 1.0;
+            let powerCost = 0;
+            let isMakeshiftCloak = false;
+            let subsystemDamageChance = 0;
+            let explosionChance = 0;
+
+            if (ship.customCloakStats) { // Pirate makeshift cloak
+                isMakeshiftCloak = true;
+                reliability = ship.customCloakStats.reliability;
+                powerCost = ship.customCloakStats.powerCost;
+                subsystemDamageChance = ship.customCloakStats.subsystemDamageChance;
+                explosionChance = ship.customCloakStats.explosionChance;
+            } else { // Standard cloak
+                const shipStats = shipClasses[ship.shipModel]?.[ship.shipClass];
+                if (!shipStats || !ship.cloakingCapable) return;
+
+                reliability = 1 - shipStats.cloakFailureChance;
+                powerCost = shipStats.cloakEnergyCost.maintain;
+            }
+            
+            let envModifierLog = "";
+
+            // Apply environmental modifiers
+            if (next.currentSector.hasNebula) {
+                reliability *= 0.75; // 25% reliability reduction
+                powerCost *= 1.30;   // 30% power increase
+                envModifierLog = " (modified by nebula)";
+            }
+            
+            powerCost = Math.round(powerCost);
+            const wasEngaging = ship.cloakState === 'cloaking';
+
+            // Check for catastrophic failure for makeshift cloaks
+            if (isMakeshiftCloak) {
+                if (Math.random() < explosionChance) {
+                    ship.hull = 0;
+                    next.combatEffects.push({ type: 'torpedo_hit', position: ship.position, delay: 0, torpedoType: 'Photon' }); // Re-use explosion effect
+                    addLogForTurn({ 
+                        sourceId: ship.id, 
+                        sourceName: ship.name, 
+                        message: `CATASTROPHIC FAILURE! The makeshift cloaking device overloads and destroys the ${ship.name}!`, 
+                        isPlayerSource: false,
+                        color: 'border-red-700'
+                    });
+                    return; // Ship is destroyed, stop processing it
+                }
+                if (Math.random() < subsystemDamageChance) {
+                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'weapons', 'engines', 'shields', 'scanners', 'computer', 'lifeSupport']; // Weighted
+                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
+                    if (targetSubsystem.maxHealth > 0 && targetSubsystem.health > 0) {
+                        const damageAmount = Math.round(targetSubsystem.maxHealth * 0.30);
+                        targetSubsystem.health = Math.max(0, targetSubsystem.health - damageAmount);
+                        addLogForTurn({
+                            sourceId: ship.id, 
+                            sourceName: ship.name, 
+                            message: `The unstable cloak backfires! A power surge inflicts ${damageAmount} damage to the ${randomSubsystemKey} system!`, 
+                            isPlayerSource: false,
+                            color: 'border-orange-500'
+                        });
+                    }
+                }
+            }
+
+            // Check for cloak failure
+            if (Math.random() > reliability) {
+                ship.cloakState = 'visible';
+                ship.cloakCooldown = 2;
+                addLogForTurn({ 
+                    sourceId: ship.id, 
+                    sourceName: ship.name, 
+                    message: `Cloaking device failed${envModifierLog}! Ship is now visible.`, 
+                    isPlayerSource: ship.id === 'player',
+                    color: 'border-orange-400'
+                });
+            } else {
+                // Check for power consumption
+                let hasPower = false;
+                if (ship.id === 'player') {
+                    const consumptionResult = consumeEnergy(ship, powerCost);
+                    hasPower = consumptionResult.success;
+                    consumptionResult.logs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
+                } else {
+                    if (ship.energy.current >= powerCost) {
+                        ship.energy.current -= powerCost;
+                        hasPower = true;
+                    }
+                }
+
+                if (!hasPower) {
+                    ship.cloakState = 'visible';
+                    ship.cloakCooldown = 2;
+                    addLogForTurn({
+                        sourceId: ship.id, 
+                        sourceName: ship.name, 
+                        message: `Insufficient power to maintain cloak${envModifierLog}! Device disengaged.`, 
+                        isPlayerSource: ship.id === 'player',
+                        color: 'border-orange-400'
+                    });
+                } else {
+                    // Success!
+                    if (wasEngaging) {
+                        ship.cloakState = 'cloaked';
+                        addLogForTurn({ 
+                            sourceId: ship.id, 
+                            sourceName: ship.name, 
+                            message: `Cloak engaged successfully. Consumed ${powerCost} power${envModifierLog}.`, 
+                            isPlayerSource: ship.id === 'player'
+                        });
+                    }
+                    // No log for just maintaining cloak to prevent spam.
+                }
+            }
+        }
+    });
+
     const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
     allShips.forEach(ship => {
         // --- Shield Regeneration ---

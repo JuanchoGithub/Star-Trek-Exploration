@@ -33,7 +33,8 @@ import { RomulanEngineIcon } from './romulan/RomulanEngineIcon';
 import { RomulanTorpedoIcon } from './romulan/RomulanTorpedoIcon';
 import { RomulanSecurityIcon } from './romulan/RomulanSecurityIcon';
 import { DisruptorIcon } from './romulan/DisruptorIcon';
-import { RomulanLogoIcon } from './romulan';
+// FIX: Changed import path to be more specific and avoid module resolution issues.
+import { RomulanLogoIcon } from './romulan/RomulanLogoIcon';
 
 const federationIcons = {
     WeaponIcon,

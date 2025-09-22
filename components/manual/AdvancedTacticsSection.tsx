@@ -2,14 +2,51 @@ import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
 import { SectionHeader, SubHeader } from './shared';
+import { PirateEscortIcon } from '../../assets/ships/icons';
 
 interface AdvancedTacticsSectionProps {
     themeName: ThemeName;
 }
 
+const DetailBox: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, borderColorClass: string }> = ({ title, icon, children, borderColorClass }) => (
+    <div className={`p-3 bg-bg-paper-lighter rounded border-l-4 ${borderColorClass}`}>
+        <h4 className="font-bold text-white flex items-center gap-2">{icon}{title}</h4>
+        <div className="text-sm text-text-secondary mt-2 space-y-1">{children}</div>
+    </div>
+);
+
+const CloakingMechanicsTable: React.FC = () => (
+    <table className="w-full text-sm text-left border-collapse my-2">
+        <thead className="bg-bg-paper-lighter">
+            <tr>
+                <th className="p-2 border border-border-dark font-bold">Vessel / Faction</th>
+                <th className="p-2 border border-border-dark font-bold">Base Reliability</th>
+                <th className="p-2 border border-border-dark font-bold">Power Cost / Turn</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr className="bg-bg-paper even:bg-black/20">
+                <td className="p-2 border border-border-dark font-bold text-green-400">Romulan (All)</td>
+                <td className="p-2 border border-border-dark font-mono">99%</td>
+                <td className="p-2 border border-border-dark font-mono">40</td>
+            </tr>
+            <tr className="bg-bg-paper even:bg-black/20">
+                <td className="p-2 border border-border-dark font-bold text-red-400">Klingon (B'rel)</td>
+                <td className="p-2 border border-border-dark font-mono">92%</td>
+                <td className="p-2 border border-border-dark font-mono">45</td>
+            </tr>
+            <tr className="bg-bg-paper even:bg-black/20">
+                <td className="p-2 border border-border-dark font-bold text-blue-400">Federation (Defiant)</td>
+                <td className="p-2 border border-border-dark font-mono">90%</td>
+                <td className="p-2 border border-border-dark font-mono">50</td>
+            </tr>
+        </tbody>
+    </table>
+);
+
+
 export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ themeName }) => {
     const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, CloakIcon } = getFactionIcons(themeName);
-    // FIX: getFactionIcons is a function. To get a specific icon set, it must be called with the theme name.
     const { ScanIcon: FederationScanIcon } = getFactionIcons('federation');
     
     return (
@@ -76,12 +113,44 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             </div>
 
             <SubHeader>Cloaking and Anti-Cloak Operations</SubHeader>
-            <p className="text-text-secondary mb-4">Stealth technology is a cornerstone of Romulan strategy and a rare but powerful tool in your own arsenal.</p>
-            <div className="p-3 bg-bg-paper-lighter rounded space-y-2">
-                <h4 className="font-bold text-accent-teal flex items-center gap-2"><CloakIcon className="w-6 h-6"/>Using Your Cloak (Defiant-Class)</h4>
-                <p className="text-sm text-text-secondary">Your cloaking device is a powerful strategic tool. Use it to bypass enemy patrols to reach a critical objective, to position yourself for a devastating surprise torpedo volley, or to disengage from a losing battle. Remember the costs: you cannot fire weapons while cloaked, and decloaking will consume your major action for that turn, preventing you from firing immediately.</p>
-                <h4 className="font-bold text-accent-yellow flex items-center gap-2"><FederationScanIcon className="w-6 h-6"/>Countering Cloaks: Tachyon Scan</h4>
-                <p className="text-sm text-text-secondary">The Tachyon Scan is your primary counter to cloaked vessels. It floods the area with particles that reveal cloaked ships. A successful scan will force an enemy to decloak and disrupt their systems, preventing them from re-cloaking for several turns. Use this to create a window of vulnerability.</p>
+            <p className="text-text-secondary mb-4">Stealth technology is no longer a simple fire-and-forget system. It is a dynamic state requiring constant power and subject to failure under pressure. Understanding these new, more complex mechanics is essential to survival.</p>
+            <div className="space-y-3">
+                <DetailBox title="General Cloaking Mechanics" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
+                    <p><strong>Per-Turn Maintenance:</strong> At the end of every turn a ship's cloak is active (or in the process of engaging), it must pass a <span className="text-white">reliability check</span> AND consume a significant amount of <span className="text-white">reserve power</span>. Failure of either the check (due to random chance or environmental effects) or the power draw will cause the cloak to collapse, making the ship visible and putting the device on a 2-turn cooldown.</p>
+                    <p><strong>Action Cost:</strong> Engaging or disengaging a cloak consumes your major tactical action for the turn. You cannot move or fire other weapons in the same turn.</p>
+                    <p><strong>Combat Restrictions:</strong> A cloaked ship cannot fire weapons or be at Red Alert (shields up). Attempting to do so will automatically disengage the cloak.</p>
+                </DetailBox>
+
+                <h4 className="text-lg font-bold text-accent-yellow mt-4">Technical Specifications by Faction</h4>
+                <p className="text-sm text-text-secondary mb-2">Each faction's cloaking technology has different performance parameters. Romulan technology is superior, but all devices are susceptible to environmental interference.</p>
+                <CloakingMechanicsTable />
+                
+                <div className="mt-4">
+                    <DetailBox title="Special Case: Pirate Makeshift Cloak" icon={<PirateEscortIcon className="w-6 h-6"/>} borderColorClass="border-orange-500">
+                        <p>Intelligence has confirmed that some pirate factions have managed to jury-rig cloaking devices onto their vessels. These systems are highly volatile and should be considered as much a threat to their user as to their target.</p>
+                        <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
+                            <li>Base Reliability: <span className="text-white">60%</span></li>
+                            <li>Power Cost / Turn: <span className="text-white">70</span></li>
+                            <li>Subsystem Damage Chance: <span className="text-white">7%</span> per turn (30% damage to a random key system)</li>
+                            <li>Catastrophic Failure Chance: <span className="text-white">0.1%</span> per turn (instant self-destruction)</li>
+                        </ul>
+                        <p className="mt-2">Note: These failure chances are <span className="text-white font-bold">compounded</span> by environmental effects like nebulae. A pirate attempting to cloak in a nebula is taking an extreme gamble.</p>
+                    </DetailBox>
+                </div>
+
+                <h4 className="text-lg font-bold text-accent-yellow mt-4">Environmental Factors</h4>
+                <p className="text-sm text-text-secondary mb-2">Sector conditions can severely impact cloaking device performance, turning a tactical advantage into a critical liability.</p>
+                <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-purple-400">
+                    <h5 className="font-bold text-purple-300">Nebulae</h5>
+                    <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
+                    <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
+                        <li><strong>Reliability:</strong> Reduced by 25% (e.g., 92% becomes 69%).</li>
+                        <li><strong>Power Cost:</strong> Increased by 30% (e.g., 40 becomes 52 per turn).</li>
+                    </ul>
+                </div>
+
+                <h4 className="font-bold text-accent-yellow mt-4 flex items-center gap-2"><FederationScanIcon className="w-6 h-6"/>Countering Cloaks: Tachyon Scan</h4>
+                <p className="text-sm text-text-secondary">The Tachyon Scan remains your primary counter to cloaked vessels. It floods the area with particles that can reveal cloaked ships. A successful scan will force an enemy to decloak and disrupt their systems, preventing them from re-cloaking for several turns. Use this to create a window of vulnerability, especially against Romulans hiding in nebulae.</p>
             </div>
 
             <SubHeader>Countering Faction Doctrines</SubHeader>
@@ -89,7 +158,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <div className="space-y-3">
                 <div className="p-3 bg-bg-paper-lighter rounded">
                     <h4 className="font-bold text-red-500">Countering Klingons</h4>
-                    <p className="text-sm text-text-secondary">Klingons are honorable and aggressive. They will charge into phaser range and favor an <span className="font-bold">Aggressive</span> power stance. Weather their initial attack with a <span className="font-bold">Defensive</span> stance of your own, then cripple their <span className="font-bold">Weapon Systems</span>. Their code of honor makes them unlikely to retreat, allowing you to systematically dismantle their disabled ship.</p>
+                    <p className="text-sm text-text-secondary">Klingons are honorable and aggressive. They will charge into phaser range and favor an <span className="font-bold">Aggressive</span> power stance. Be especially wary of their B'rel-class Birds-of-Prey, which will use cloaking devices to get into close range for a surprise alpha strike. Weather their initial attack with a <span className="font-bold">Defensive</span> stance of your own, then cripple their <span className="font-bold">Weapon Systems</span>. Their code of honor makes them unlikely to retreat, allowing you to systematically dismantle their disabled ship.</p>
                 </div>
                  <div className="p-3 bg-bg-paper-lighter rounded">
                     <h4 className="font-bold text-green-500">Countering Romulans</h4>

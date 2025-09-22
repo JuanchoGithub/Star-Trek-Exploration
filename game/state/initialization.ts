@@ -40,7 +40,7 @@ const createEntityFromTemplate = (
             if (validClasses.length === 0) return null;
             // FIX: Explicitly cast the selected ship stats to ShipClassStats to resolve type inference issues where `stats` was being treated as `unknown`.
             const stats = validClasses[Math.floor(Math.random() * validClasses.length)] as ShipClassStats;
-            return {
+            const newShip = {
                 id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction,
                 shipClass: stats.name, shipRole: stats.role, cloakingCapable: stats.cloakingCapable,
                 faction: chosenFaction, position, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields,
@@ -53,6 +53,18 @@ const createEntityFromTemplate = (
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
                 statusEffects: [],
             } as Ship;
+
+            if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
+                newShip.cloakingCapable = true;
+                newShip.customCloakStats = {
+                    reliability: 0.60,
+                    powerCost: 70,
+                    subsystemDamageChance: 0.07,
+                    explosionChance: 0.001,
+                };
+            }
+
+            return newShip;
         }
         case 'planet': {
             const getPlanetClass = (): PlanetClass => {

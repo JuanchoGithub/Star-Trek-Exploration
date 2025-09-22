@@ -79,14 +79,14 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             torpedoes: { max: 6 }, torpedoType: 'Photon', securityTeams: { max: 3 }, shuttleCount: 2,
         },
         'Defiant-class': {
-            name: 'Defiant-class', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 40, maintain: 10 }, cloakFailureChance: 0.1, maxHull: 250, maxShields: 100, energy: { max: 140 },
+            name: 'Defiant-class', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 50 }, cloakFailureChance: 0.10, maxHull: 250, maxShields: 100, energy: { max: 140 },
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, engines: {health: 120, maxHealth: 120}}),
             torpedoes: { max: 8 }, torpedoType: 'Quantum', securityTeams: { max: 4 }, shuttleCount: 1,
         },
     },
     Klingon: {
         'B\'rel-class Bird-of-Prey': {
-            name: 'B\'rel-class Bird-of-Prey', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 30, maintain: 8 }, cloakFailureChance: 0.15, maxHull: 150, maxShields: 50, energy: { max: 120 },
+            name: 'B\'rel-class Bird-of-Prey', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 150, maxShields: 50, energy: { max: 120 },
             subsystems: K({ weapons: {health: 140, maxHealth: 140}, engines: {health: 120, maxHealth: 120}}),
             torpedoes: { max: 6 }, torpedoType: 'Photon', securityTeams: { max: 4 }, shuttleCount: 0,
         },
@@ -108,17 +108,17 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
     },
     Romulan: {
         'D\'deridex-class': {
-            name: 'D\'deridex-class', role: 'Warbird', cloakingCapable: true, cloakEnergyCost: { initial: 50, maintain: 15 }, cloakFailureChance: 0, maxHull: 400, maxShields: 100, energy: { max: 200 },
+            name: 'D\'deridex-class', role: 'Warbird', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 400, maxShields: 100, energy: { max: 200 },
             subsystems: R({ weapons: {health: 180, maxHealth: 180}, shields: {health: 110, maxHealth: 110}}),
             torpedoes: { max: 15 }, torpedoType: 'HeavyPlasma', securityTeams: { max: 7 }, shuttleCount: 0,
         },
         'Valdore-type': {
-            name: 'Valdore-type', role: 'Scout', cloakingCapable: true, cloakEnergyCost: { initial: 40, maintain: 10 }, cloakFailureChance: 0.05, maxHull: 200, maxShields: 80, energy: { max: 150 },
+            name: 'Valdore-type', role: 'Scout', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 200, maxShields: 80, energy: { max: 150 },
             subsystems: R({ weapons: {health: 120, maxHealth: 120}, engines: {health: 130, maxHealth: 130}}),
             torpedoes: { max: 8 }, torpedoType: 'Plasma', securityTeams: { max: 3 }, shuttleCount: 0,
         },
         'Scimitar-class': {
-            name: 'Scimitar-class', role: 'Command Ship', cloakingCapable: true, cloakEnergyCost: { initial: 60, maintain: 20 }, cloakFailureChance: 0, maxHull: 450, maxShields: 120, energy: { max: 220 },
+            name: 'Scimitar-class', role: 'Command Ship', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 450, maxShields: 120, energy: { max: 220 },
             subsystems: R({ weapons: {health: 200, maxHealth: 200}, shields: {health: 140, maxHealth: 140}}),
             torpedoes: { max: 25 }, torpedoType: 'HeavyPlasma', securityTeams: { max: 10 }, shuttleCount: 0,
         },

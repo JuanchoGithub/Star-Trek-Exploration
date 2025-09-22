@@ -87,17 +87,17 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; tor
     // Pirate
     'Orion Raider': {
         description: 'A light, fast vessel favored by Orion pirates and other raiders. It is a classic scavenger and harasser, sacrificing durability for speed and maneuverability.',
-        notes: 'Often operates in packs and will flee if outmatched.',
+        notes: 'Often operates in packs and will flee if outmatched. Intelligence reports suggest a small number have been fitted with dangerously unstable cloaking devices.',
         torpedoType: 'Photon (Stolen)',
     },
     'Ferengi Marauder': {
         description: 'While ostensibly a trade vessel, the D\'Kora-class Marauder is surprisingly well-armed. It is often used by Ferengi to "disrupt" trade rivals and defend their profitable ventures.',
-        notes: 'Favors disabling attacks on engines to capture vessels intact for "salvage".',
+        notes: 'Favors disabling attacks on engines to capture vessels intact for "salvage". May rarely be equipped with a jury-rigged cloaking system.',
         torpedoType: 'Photon',
     },
     'Nausicaan Battleship': {
         description: 'A brute-force raider built for one purpose: smashing through defenses. It is slow and lacks finesse, but its heavy armor and powerful weapons make it a serious threat in a direct confrontation.',
-        notes: 'Will press the attack relentlessly, even when heavily damaged.',
+        notes: 'Will press the attack relentlessly, even when heavily damaged. Has been sighted on rare occasions using a high-power, unstable cloaking field.',
         torpedoType: 'Heavy Photon (Modified)',
     },
     // Independent
@@ -157,7 +157,7 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                         <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
                         <div className="col-span-full">
                             <dt className="text-xs font-bold uppercase text-text-disabled">Special Notes</dt>
-                            <dd className="text-sm text-text-primary">{tacticalInfo.notes}</dd>
+                            <dd className="text-sm text-text-primary italic">{tacticalInfo.notes}</dd>
                         </div>
                     </dl>
                 </div>

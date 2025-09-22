@@ -35,7 +35,12 @@ export const AIBehaviorSection: React.FC = () => (
                 </div>
             </li>
             <li>
-                <strong>Cloaking (Romulans):</strong> Romulan vessels will remain cloaked while repositioning. They will typically decloak to attack once they are in weapon range and their hull integrity is above 40%.
+                <strong className="text-accent-yellow">Cloaking Doctrine:</strong>
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Romulans:</strong> All Romulan vessels are equipped with advanced cloaking devices. They will remain cloaked while repositioning and typically decloak to attack once in optimal range, provided their hull integrity is not compromised.</li>
+                    <li><strong>Klingons:</strong> Klingon B'rel-class Birds-of-Prey are also equipped with cloaks. They will use them to initiate surprise attacks, decloaking at close range to fire a devastating opening volley.</li>
+                    <li><strong>Pirates:</strong> Very rarely (approx. 10% chance), a pirate vessel may be equipped with a stolen, dangerously unstable cloaking device. These devices are unreliable, consume vast amounts of power, and can backfire spectacularly, damaging the pirate ship or even causing it to explode.</li>
+                </ul>
             </li>
              <li>
                 <strong>System Failures:</strong> The AI is subject to the same physical laws as the player. Destroyed impulse engines will halt their movement and power regeneration. A destroyed life support system will trigger a two-turn countdown before the ship becomes a derelict hulk.

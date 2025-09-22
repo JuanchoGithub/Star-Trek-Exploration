@@ -80,6 +80,12 @@ export interface Ship extends BaseEntity {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
     targetId?: string;
   };
+  customCloakStats?: {
+    reliability: number;
+    powerCost: number;
+    subsystemDamageChance: number;
+    explosionChance: number;
+  };
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
