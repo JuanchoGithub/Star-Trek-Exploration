@@ -7,7 +7,7 @@ import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { createInitialGameState } from '../game/state/initialization';
 import { resolveTurn } from '../game/turn/turnManager';
 import { seededRandom, cyrb53 } from '../game/utils/helpers';
-import { consumeEnergy, canTargetEntity } from '../game/utils/combat';
+import { canTargetEntity, consumeEnergy } from '../game/utils/combat';
 import { OfficerAdvice, ActiveAwayMissionOption, Planet } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
@@ -17,91 +17,101 @@ import '../game/ai/factions';
 
 const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
 
-export const useGameLogic = () => {
+export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const [gameState, setGameState] = useState<GameState>(() => {
-        const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
-        if (savedStateJSON) {
-            try {
-                const savedState: GameState = JSON.parse(savedStateJSON);
-                 if (savedState.player && savedState.turn) {
-                    if ((savedState.player as any).boardingParty) delete (savedState.player as any).boardingParty;
-                    if (!savedState.player.ship.securityTeams) savedState.player.ship.securityTeams = { current: 3, max: 3 };
-                    if (savedState.player.ship.repairTarget === undefined) savedState.player.ship.repairTarget = null;
-                    if (!savedState.player.ship.subsystems.transporter) savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
-                    if (!savedState.player.targeting) delete savedState.player.targeting;
-                    else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
-                    if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
-                    if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
-                     if(savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
-                    if (savedState.desperationMoveAnimations === undefined) savedState.desperationMoveAnimations = [];
-                    if(savedState.orbitingPlanetId === undefined) savedState.orbitingPlanetId = null;
-                    if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
-                    if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
-                    if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
-                    if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
-                    
-                    const migrateSubsystems = (subsystems: any) => {
-                        if (subsystems && (subsystems as any).scanners) {
-                            (subsystems as any).pointDefense = (subsystems as any).scanners;
-                            delete (subsystems as any).scanners;
-                        }
-                    };
-                    migrateSubsystems(savedState.player.ship.subsystems);
-                    savedState.quadrantMap.forEach(row => row.forEach(sector => {
-                        sector.entities.forEach(entity => {
-                            if (entity.type === 'ship') {
-                                migrateSubsystems(entity.subsystems);
+        if (mode === 'load') {
+            const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
+            if (savedStateJSON) {
+                try {
+                    const savedState: GameState = JSON.parse(savedStateJSON);
+                     if (savedState.player && savedState.turn) {
+                        if ((savedState.player as any).boardingParty) delete (savedState.player as any).boardingParty;
+                        if (!savedState.player.ship.securityTeams) savedState.player.ship.securityTeams = { current: 3, max: 3 };
+                        if (savedState.player.ship.repairTarget === undefined) savedState.player.ship.repairTarget = null;
+                        if (!savedState.player.ship.subsystems.transporter) savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
+                        if (!savedState.player.targeting) delete savedState.player.targeting;
+                        else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
+                        if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
+                        if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
+                         if(savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
+                        if (savedState.desperationMoveAnimations === undefined) savedState.desperationMoveAnimations = [];
+                        if(savedState.orbitingPlanetId === undefined) savedState.orbitingPlanetId = null;
+                        if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
+                        if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
+                        if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
+                        if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
+                        
+                        const migrateSubsystems = (subsystems: any) => {
+                            if (subsystems && (subsystems as any).scanners) {
+                                (subsystems as any).pointDefense = (subsystems as any).scanners;
+                                delete (subsystems as any).scanners;
                             }
-                        });
-                    }));
-                     if (savedState.currentSector.entities) {
-                        savedState.currentSector.entities.forEach(entity => {
-                            if (entity.type === 'ship') {
-                                migrateSubsystems(entity.subsystems);
-                            }
-                        });
-                    }
-                    // FIX: Corrected legacy save data migration logic to be compatible with TypeScript's type checking.
-                    // 'scanners' was renamed to 'pointDefense' and this ensures old saves are updated correctly.
-                    if ((savedState.player.ship.repairTarget as unknown) === 'scanners') {
-                        savedState.player.ship.repairTarget = 'pointDefense';
-                    }
-                    if ((savedState.player.targeting?.subsystem as unknown) === 'scanners') {
-                        savedState.player.targeting.subsystem = 'pointDefense';
-                    }
-
-                    const migrateSectorData = (sector: any) => {
-                        if (!sector.seed) {
-                            sector.seed = `legacy_${Math.random().toString(36).substring(2, 11)}`;
-                        }
-                        if (!sector.templateId) {
-                            sector.templateId = 'unknown_legacy';
-                        }
-                        if (sector.hasNebula && !sector.nebulaCells) {
-                            const cells = new Set<string>();
-                            const percentage = 0.3 + Math.random() * 0.4;
-                            const targetCount = Math.floor(12 * 10 * percentage);
-                            while(cells.size < targetCount) {
-                                const x = Math.floor(Math.random() * 12);
-                                const y = Math.floor(Math.random() * 10);
-                                cells.add(`${x},${y}`);
-                            }
-                            sector.nebulaCells = Array.from(cells).map(s => {
-                                const [x, y] = s.split(',').map(Number);
-                                return { x, y };
+                        };
+                        migrateSubsystems(savedState.player.ship.subsystems);
+                        savedState.quadrantMap.forEach(row => row.forEach(sector => {
+                            sector.entities.forEach(entity => {
+                                if (entity.type === 'ship') {
+                                    migrateSubsystems(entity.subsystems);
+                                    if (!entity.dilithium) { // Add dilithium to old saves
+                                        const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
+                                        entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
+                                    }
+                                }
+                            });
+                        }));
+                         if (savedState.currentSector.entities) {
+                            savedState.currentSector.entities.forEach(entity => {
+                                if (entity.type === 'ship') {
+                                    migrateSubsystems(entity.subsystems);
+                                     if (!entity.dilithium) {
+                                        const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
+                                        entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
+                                    }
+                                }
                             });
                         }
-                        if (!sector.nebulaCells) {
-                            sector.nebulaCells = [];
+                        // FIX: Corrected legacy save data migration logic to be compatible with TypeScript's type checking.
+                        // 'scanners' was renamed to 'pointDefense' and this ensures old saves are updated correctly.
+                        if ((savedState.player.ship.repairTarget as unknown) === 'scanners') {
+                            savedState.player.ship.repairTarget = 'pointDefense';
                         }
-                    };
+                        if ((savedState.player.targeting?.subsystem as unknown) === 'scanners') {
+                            savedState.player.targeting.subsystem = 'pointDefense';
+                        }
 
-                    savedState.quadrantMap.forEach(row => row.forEach(migrateSectorData));
-                    migrateSectorData(savedState.currentSector);
-                    
-                    return savedState;
-                 }
-            } catch (e) { console.error("Could not parse saved state, starting new game.", e); }
+                        const migrateSectorData = (sector: any) => {
+                            if (!sector.seed) {
+                                sector.seed = `legacy_${Math.random().toString(36).substring(2, 11)}`;
+                            }
+                            if (!sector.templateId) {
+                                sector.templateId = 'unknown_legacy';
+                            }
+                            if (sector.hasNebula && !sector.nebulaCells) {
+                                const cells = new Set<string>();
+                                const percentage = 0.3 + Math.random() * 0.4;
+                                const targetCount = Math.floor(12 * 10 * percentage);
+                                while(cells.size < targetCount) {
+                                    const x = Math.floor(Math.random() * 12);
+                                    const y = Math.floor(Math.random() * 10);
+                                    cells.add(`${x},${y}`);
+                                }
+                                sector.nebulaCells = Array.from(cells).map(s => {
+                                    const [x, y] = s.split(',').map(Number);
+                                    return { x, y };
+                                });
+                            }
+                            if (!sector.nebulaCells) {
+                                sector.nebulaCells = [];
+                            }
+                        };
+
+                        savedState.quadrantMap.forEach(row => row.forEach(migrateSectorData));
+                        migrateSectorData(savedState.currentSector);
+                        
+                        return savedState;
+                     }
+                } catch (e) { console.error("Could not parse saved state, starting new game.", e); }
+            }
         }
         return createInitialGameState();
     });
@@ -130,6 +140,25 @@ export const useGameLogic = () => {
             };
             return { ...prev, logs: [...prev.logs, newLog] };
         });
+    }, []);
+
+    const newGame = useCallback(() => {
+        const freshGameState = createInitialGameState();
+        setGameState(freshGameState);
+        setSelectedTargetId(null);
+        setNavigationTarget(null);
+        setCurrentView('sector');
+        setIsDocked(false);
+        setActiveAwayMission(null);
+        setActiveHail(null);
+        setPlayerTurnActions({});
+        setActiveEvent(null);
+        setIsWarping(false);
+        setIsTurnResolving(false);
+        setAwayMissionResult(null);
+        setEventResult(null);
+        setActiveMissionPlanetId(null);
+        isGameLoaded.current = false; // Reset to allow the 'New Game' log to fire
     }, []);
 
     useEffect(() => {
@@ -961,5 +990,6 @@ export const useGameLogic = () => {
         onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
         onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense,
+        newGame,
     };
 };

@@ -76,6 +76,7 @@ export interface Ship extends BaseEntity {
   captureInfo: { captorId: string; repairTurn: number; } | null;
   pointDefenseEnabled: boolean;
   statusEffects: StatusEffect[];
+  allegiance?: 'player' | 'ally' | 'enemy' | 'neutral';
   // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
@@ -333,6 +334,9 @@ export interface GameState {
   }[];
   orbitingPlanetId: string | null;
 }
+
+// FIX: Add 'setup' to ScenarioMode type.
+export type ScenarioMode = 'spectate' | 'dogfight' | 'setup';
 
 // ---- New types for the template system ----
 

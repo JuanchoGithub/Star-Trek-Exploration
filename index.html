@@ -206,6 +206,32 @@
           right: 0;
           border-radius: 0 0.375rem 0.375rem 0;
       }
+      
+      /* Compact LCARS buttons for sidebar */
+      .theme-federation .btn.btn-compact {
+          padding-left: 1.8em; /* Increased padding */
+          padding-right: 0.5em;
+          min-height: 2.5em; 
+          display: flex;
+          align-items: center;
+      }
+      .theme-federation .btn.btn-compact::before {
+          width: 1.2em;
+          border-radius: 1.2em 0 0 1.2em;
+      }
+      .theme-federation .btn.btn-compact::after {
+          left: 1.4em; /* Create a 0.2em gap */
+      }
+      .theme-klingon .btn.btn-compact {
+        /* Restore horizontal padding to prevent text clipping from clip-path */
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+      }
+
+      .theme-romulan .btn.btn-compact {
+        /* Restore horizontal padding to prevent text clipping from clip-path */
+        padding: 0.5rem 1.75rem;
+      }
 
       .btn-primary {
         background-color: var(--color-primary-main);
@@ -261,16 +287,17 @@
       /* Disabled Federation buttons maintain size but appear inactive */
       .theme-federation .btn:disabled {
           color: var(--color-text-disabled) !important;
-          /* No width, min-width, or padding overrides to maintain original size */
       }
       .theme-federation .btn:disabled::before {
         background-color: #4a4a4a !important; /* Dark gray cap */
       }
       .theme-federation .btn:disabled::after {
-        /* Show the rectangular part but in a disabled color */
         display: block !important;
         background-color: #3a3a3a !important; /* Slightly lighter gray body */
         left: 1.75em !important; /* Close the gap for a solid look */
+      }
+      .theme-federation .btn.btn-compact:disabled::after {
+        left: 1.2em !important; /* Close the gap for compact disabled buttons */
       }
       
       .btn-accent { color: white; }

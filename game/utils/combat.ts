@@ -1,6 +1,26 @@
-import type { Ship, ShipSubsystems, GameState, Entity, TorpedoProjectile } from '../../types';
+import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
+
+export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState): { canTarget: boolean, reason: string } => {
+    if (target.type === 'ship' && (target as Ship).cloakState === 'cloaked') {
+        return { canTarget: false, reason: 'Target is cloaked.' };
+    }
+
+    const distance = calculateDistance(source.position, target.position);
+    
+    const asteroidPositions = new Set(sector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+    const targetPosKey = `${target.position.x},${target.position.y}`;
+
+    if (asteroidPositions.has(targetPosKey)) {
+        if (distance > 2) {
+            return { canTarget: false, reason: 'Target is obscured by asteroids.' };
+        }
+    }
+    
+    return { canTarget: true, reason: '' };
+};
+
 
 export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, logs: string[] } => {
     const logs: string[] = [];
@@ -10,6 +30,8 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
     }
 
     const initialEnergy = ship.energy.current;
+    const remainingCost = amount - initialEnergy;
+
     if (ship.dilithium.current <= 0) {
         logs.push(`Action failed: Insufficient reserve power and no Dilithium backup.`);
         return { success: false, logs };
@@ -17,75 +39,27 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
 
     ship.energy.current = 0;
     ship.dilithium.current--;
-    ship.energy.current = ship.energy.max;
+    const rechargedEnergy = ship.energy.max;
     logs.push(`CRITICAL: Drained remaining ${initialEnergy} power. Rerouting 1 Dilithium to batteries. Power fully restored.`);
-    
-    return { success: true, logs };
+
+    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter', 'pointDefense', 'computer', 'lifeSupport'];
+    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+    const targetSubsystem = ship.subsystems[randomSubsystemKey];
+    if (targetSubsystem.maxHealth > 0) {
+        const damage = 5 + Math.floor(Math.random() * 6);
+        targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+        logs.push(`WARNING: The power surge caused ${damage} damage to the ${randomSubsystemKey} system!`);
+    }
+
+    if (rechargedEnergy >= remainingCost) {
+        ship.energy.current = rechargedEnergy - remainingCost;
+        return { success: true, logs };
+    } else {
+        ship.energy.current = rechargedEnergy;
+        logs.push(`Action failed: Power cost is too high even for a dilithium boost. Power restored, but action aborted.`);
+        return { success: false, logs };
+    }
 };
-
-export const canTargetEntity = (source: Ship, target: Entity, sector: GameState['currentSector']): { canTarget: boolean; reason: string } => {
-    const asteroidPositions = new Set(sector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
-    const targetPosKey = `${target.position.x},${target.position.y}`;
-
-    if (asteroidPositions.has(targetPosKey)) {
-        const distance = calculateDistance(source.position, target.position);
-        if (distance > 2) {
-            return { canTarget: false, reason: "Target is obscured by the asteroid field. Must be within 2 hexes to fire." };
-        }
-    }
-
-    return { canTarget: true, reason: "" };
-};
-
-export const applyTorpedoDamage = (
-    target: Ship,
-    torpedo: TorpedoProjectile,
-    gameState: GameState,
-): string[] => {
-    const logs: string[] = [];
-    logs.push(`--> ${torpedo.name} impacts ${target.name}!`);
-    let damageToProcess = torpedo.damage;
-    let bypassDamage = 0;
-
-    if (torpedo.torpedoType === 'Quantum') {
-        bypassDamage = damageToProcess * 0.25;
-        damageToProcess *= 0.75;
-        logs.push(`--> Quantum cascade bypasses shields, dealing ${Math.round(bypassDamage)} direct hull damage.`);
-    }
-
-    const absorbedByShields = Math.min(target.shields, damageToProcess);
-    if (absorbedByShields > 0) {
-        logs.push(`--> Shields absorbed ${Math.round(absorbedByShields)} damage.`);
-        target.shields -= absorbedByShields;
-        damageToProcess -= absorbedByShields;
-    }
-
-    const totalHullDamage = damageToProcess + bypassDamage;
-    if (totalHullDamage > 0) {
-        target.hull = Math.max(0, target.hull - totalHullDamage);
-        logs.push(`--> Hull takes ${Math.round(totalHullDamage)} damage.`);
-    }
-
-    if (target.hull === 0 && !target.isDerelict) {
-        target.isDerelict = true;
-        target.shields = 0;
-        target.statusEffects = []; // Clear status effects on destruction
-        logs.push(`--> ${target.name} has been destroyed!`);
-    }
-
-    if (torpedo.specialDamage?.type === 'plasma_burn' && target.hull > 0) {
-        const burn = torpedo.specialDamage;
-        target.statusEffects.push({
-            type: 'plasma_burn',
-            damage: burn.damage,
-            turnsRemaining: burn.duration,
-        });
-        logs.push(`--> The hull is burning from plasma residue!`);
-    }
-
-    return logs;
-};
-
 
 export const applyPhaserDamage = (
     target: Ship, damage: number, subsystem: keyof ShipSubsystems | null,
@@ -97,54 +71,50 @@ export const applyPhaserDamage = (
     }
 
     let hitChance = 0.9;
-    const hitChanceMods: string[] = [];
-    if (isPosInNebula(target.position, gameState.currentSector)) {
+    
+    const isTargetInNebula = isPosInNebula(target.position, gameState.currentSector);
+    if (isTargetInNebula) {
         hitChance *= 0.75;
-        hitChanceMods.push('Nebula (-25%)');
+        logs.push(`Nebula interference is affecting targeting sensors.`);
     }
-    if (target.evasive) {
-        hitChance *= 0.6;
-        hitChanceMods.push('Evasive (-40%)');
-    }
-    if (sourceShip.evasive) {
-        hitChance *= 0.75;
-        hitChanceMods.push('Firing while Evasive (-25%)');
-    }
+
     const asteroidPositions = new Set(gameState.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
     const targetPosKey = `${target.position.x},${target.position.y}`;
     if (asteroidPositions.has(targetPosKey)) {
         hitChance *= 0.70;
-        hitChanceMods.push('Asteroid Cover (-30%)');
+        logs.push(`Target is obscured by asteroids, reducing accuracy.`);
     }
+
+    if (target.evasive) hitChance *= 0.6;
+    if (sourceShip.id === 'player' && sourceShip.evasive) hitChance *= 0.75;
     
-    logs.push(`Firing phasers at ${target.name}. Base Hit: 90%. Modifiers: ${hitChanceMods.length > 0 ? hitChanceMods.join(', ') : 'None'}. Final Chance: ${Math.round(hitChance * 100)}%.`);
+    logs.push(`Fires phasers at ${target.name}. Hit chance: ${Math.round(hitChance * 100)}%.`);
 
     if (Math.random() > hitChance) {
-        logs.push(`--> Attack missed!`);
+        logs.push(`--> Attack missed! ${target.name} evaded.`);
         return logs;
     }
     
     const phaserEfficiency = sourceShip.subsystems.weapons.health / sourceShip.subsystems.weapons.maxHealth;
     const baseDamage = damage * phaserEfficiency;
-    logs.push(`--> HIT! Calculating damage...`);
-    logs.push(` > Base Damage: ${damage.toFixed(1)}`);
-    if(phaserEfficiency < 1.0) logs.push(` > Weapon Health Modifier: x${phaserEfficiency.toFixed(2)} (${Math.round(phaserEfficiency * 100)}%)`);
-    logs.push(` > Initial Damage: ${baseDamage.toFixed(1)}`);
+    if (phaserEfficiency < 1.0) {
+       logs.push(`--> Damaged phasers are operating at ${Math.round(phaserEfficiency * 100)}% efficiency.`);
+    }
+    
+    logs.push(`--> HIT! Initial damage: ${Math.round(baseDamage)}.`);
     
     let effectiveDamage = baseDamage;
     const logModifiers: string[] = [];
-    
-    let distance = calculateDistance(sourceShip.position, target.position);
 
-    if (sourceShip.id === 'player' && sourceShip.pointDefenseEnabled) {
-        effectiveDamage *= 0.60;
-        logModifiers.push('LPD Power Drain (-40%)');
-        distance += 1;
-        logModifiers.push('LPD Range Penalty (+1 hex)');
+    const distance = calculateDistance(sourceShip.position, target.position);
+    let effectiveDistance = distance;
+    if (sourceShip.pointDefenseEnabled) {
+        effectiveDistance++;
+        logModifiers.push(`LPD power diversion`);
     }
-
+    
     const MAX_PHASER_RANGE = 6;
-    const distanceModifier = Math.max(0.2, 1 - (distance - 1) / (MAX_PHASER_RANGE - 1));
+    const distanceModifier = Math.max(0.2, 1 - (effectiveDistance - 1) / (MAX_PHASER_RANGE - 1));
     if (distance > 1) {
         effectiveDamage *= distanceModifier;
         logModifiers.push(`Range x${distanceModifier.toFixed(2)}`);
@@ -157,11 +127,12 @@ export const applyPhaserDamage = (
             if (consecutiveTurns > 1) {
                 const targetingModifier = 1 + (Math.min(4, consecutiveTurns - 1) * 0.25);
                 effectiveDamage *= targetingModifier;
-                logModifiers.push(`Sustained Targeting Bonus: +${((targetingModifier - 1) * 100).toFixed(0)}%`);
+                logModifiers.push(`Focus +${((targetingModifier - 1) * 100).toFixed(0)}%`);
             }
         }
     }
-    if(effectiveDamage.toFixed(1) !== baseDamage.toFixed(1)) logs.push(` > Effective Damage: ${effectiveDamage.toFixed(1)}`);
+
+    if (logModifiers.length > 0) logs.push(`--> Modifiers: ${logModifiers.join(', ')}. Effective damage: ${Math.round(effectiveDamage)}.`);
 
     let damageToProcess = effectiveDamage;
     let damageBypassingShields = 0;
@@ -171,12 +142,12 @@ export const applyPhaserDamage = (
         const bypassMultiplier = (1 - shieldPercent) ** 2;
         damageBypassingShields = damageToProcess * bypassMultiplier;
         damageToProcess -= damageBypassingShields;
-        if (damageBypassingShields > 1) logs.push(` > Target shields at ${Math.round(shieldPercent*100)}% strength. ${damageBypassingShields.toFixed(1)} damage bypasses shields.`);
+        if (damageBypassingShields > 1) logs.push(`--> Target's weak shields allowed ${Math.round(damageBypassingShields)} damage to bypass defenses!`);
     }
 
     const absorbedByShields = Math.min(target.shields, damageToProcess);
     if (absorbedByShields > 0) {
-        logs.push(`--> Shields absorbed ${absorbedByShields.toFixed(1)} damage.`);
+        logs.push(`--> Shields absorbed ${Math.round(absorbedByShields)} damage.`);
         target.shields -= absorbedByShields;
         damageToProcess -= absorbedByShields;
     }
@@ -191,7 +162,7 @@ export const applyPhaserDamage = (
             const shieldsAreLow = shieldPercent <= 0.2;
             const subsystemDamageMultiplier = shieldsAreLow ? 0.9 : 0.7;
             
-            if (shieldsAreLow) logs.push(` > Shields are failing! Focusing fire on the ${subsystem}. (90% to Subsystem / 10% to Hull)`);
+            if (shieldsAreLow) logs.push(`--> Shields are failing! Focusing fire on the ${subsystem}.`);
             
             let subsystemPortion = totalPenetratingDamage * subsystemDamageMultiplier;
             const hullPortion = totalPenetratingDamage * (1 - subsystemDamageMultiplier);
@@ -202,7 +173,7 @@ export const applyPhaserDamage = (
                 if (targetingInfo && targetingInfo.entityId === target.id && targetingInfo.subsystem === subsystem) {
                     if (targetingInfo.consecutiveTurns >= 2) {
                         criticalHitMultiplier = 1.5;
-                        logs.push(` > CRITICAL HIT! Sustained targeting deals x${criticalHitMultiplier.toFixed(1)} damage to the ${subsystem}!`);
+                        logs.push(`--> Direct Hit Bonus! Sustained targeting deals x${criticalHitMultiplier.toFixed(1)} damage to the ${subsystem}!`);
                     }
                 }
             }
@@ -224,16 +195,57 @@ export const applyPhaserDamage = (
         if (finalSubsystemDamage > 0 && subsystem) logParts.push(`${finalSubsystemDamage} damage to ${subsystem}`);
 
         if (logParts.length > 0) logs.push(`--> ${target.name} takes ${logParts.join(' and ')}.`);
-        if (subsystem && target.subsystems[subsystem]?.health === 0) logs.push(`CRITICAL: ${target.name}'s ${subsystem} system has been disabled!`);
-
-        if (target.hull === 0 && !target.isDerelict) {
-            target.isDerelict = true;
-            target.shields = 0;
-            target.statusEffects = [];
-            logs.push(`--> ${target.name} has been destroyed!`);
+        if (subsystem && target.subsystems[subsystem]?.health === 0) logs.push(`CRITICAL HIT: ${target.name}'s ${subsystem} have been disabled!`);
+        if (target.hull <= 0) {
+            logs.push(`--> ${target.name} is destroyed!`);
         }
+
     } else {
          logs.push(`--> Shields absorbed the entire hit.`);
     }
+    return logs;
+};
+
+
+export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile): string[] => {
+    const logs: string[] = [];
+    let damageToHull = torpedo.damage;
+
+    // Quantum Torpedoes partially bypass shields
+    if (torpedo.torpedoType === 'Quantum') {
+        const bypassDamage = damageToHull * 0.25;
+        target.hull = Math.max(0, target.hull - bypassDamage);
+        logs.push(`Quantum resonance field bypasses shields, dealing ${Math.round(bypassDamage)} direct hull damage!`);
+        damageToHull *= 0.75;
+    }
+    
+    const shieldAbsorption = Math.min(target.shields, damageToHull * 4);
+    const absorbedDamageRatio = shieldAbsorption / 4;
+    damageToHull -= absorbedDamageRatio;
+
+    if (shieldAbsorption > 0) {
+        target.shields -= shieldAbsorption;
+        logs.push(`${target.name} shields absorb ${Math.round(shieldAbsorption)} energy, reducing torpedo damage by ${Math.round(absorbedDamageRatio)}.`);
+    }
+    
+    damageToHull = Math.round(damageToHull);
+    if (damageToHull > 0) {
+        target.hull = Math.max(0, target.hull - damageToHull);
+        logs.push(`${target.name} takes ${damageToHull} hull damage from the torpedo impact!`);
+    }
+
+    if (torpedo.specialDamage?.type === 'plasma_burn') {
+        target.statusEffects.push({
+            type: 'plasma_burn',
+            damage: torpedo.specialDamage.damage,
+            turnsRemaining: torpedo.specialDamage.duration,
+        });
+        logs.push(`The torpedo leaves a plasma fire on the hull, which will burn for several turns!`);
+    }
+
+    if (target.hull <= 0) {
+        logs.push(`${target.name} is destroyed by the torpedo impact!`);
+    }
+
     return logs;
 };

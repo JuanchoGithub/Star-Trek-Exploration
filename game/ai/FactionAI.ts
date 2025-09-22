@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems } from '../../types';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
@@ -19,7 +18,7 @@ export abstract class FactionAI {
     abstract determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null;
 
     // Defines the standard turn logic for a ship of this faction.
-    abstract processTurn(ship: Ship, gameState: GameState, actions: AIActions): void;
+    abstract processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void;
     
     // This method will execute the desperation move.
     abstract processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void;

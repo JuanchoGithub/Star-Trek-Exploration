@@ -7,13 +7,26 @@ export const AIBehaviorSection: React.FC = () => (
         <p className="text-red-400 font-bold tracking-widest text-sm">CLASSIFICATION: STARFLEET INTELLIGENCE - EYES ONLY</p>
         <p className="text-text-secondary my-4">This document provides a tactical overview of the current command logic ("Artificial Intelligence") governing non-player vessels in this simulation. Understanding these behavioral patterns is critical for predicting and countering enemy actions.</p>
 
-        <SubHeader>Current Hostile AI Doctrine (Revision 1.2)</SubHeader>
+        <SubHeader>Current Hostile AI Doctrine (Revision 1.3)</SubHeader>
         <p className="text-text-secondary mb-2">
-            The current AI model for hostile vessels (Klingon, Romulan, Pirate) follows a standardized set of combat protocols, now including point-defense systems and dynamic power management.
+            The current AI model for hostile vessels (Klingon, Romulan, Pirate) has been significantly upgraded with improved resource management and tactical flexibility.
         </p>
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
              <li>
-                <strong className="text-accent-yellow">Point-Defense Grid:</strong> All hostile vessels are now equipped with LPD systems. They will automatically activate them when combat begins and use them to intercept incoming player torpedoes at close range (1 hex), prioritizing the most dangerous threats first.
+                <strong className="text-accent-yellow">Intelligent Point-Defense Grid:</strong> Hostile vessels no longer keep their LPD systems active at all times. They will now toggle the system based on the immediate threat level. LPD will activate if:
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>An enemy torpedo is detected on an intercept course.</li>
+                    <li>The vessel adopts a 'Defensive' power stance.</li>
+                    <li>They are facing a known torpedo-heavy vessel like a Sovereign-class.</li>
+                 </ul>
+                 <p className="text-sm">They will deactivate the system to conserve power if no immediate threats are present and their energy reserves are below 50%.</p>
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Resource Management &amp; Retreat:</strong>
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Dilithium Reserves:</strong> Hostile ships now carry a small, finite supply of Dilithium. If their reserve power is depleted, they will perform an emergency transfer, restoring their energy but risking subsystem damage, just as a player would.</li>
+                    <li><strong>Strategic Retreat:</strong> If a ship's reserve power is critically low AND it has no dilithium left, it will attempt a strategic withdrawal. It will set a course away from threats and, after 2 turns, warp out of the sector, removing it from the battle entirely. A wise commander may choose to let a crippled but determined enemy flee rather than risk a final, desperate confrontation.</li>
+                </ul>
             </li>
             <li>
                 <strong className="text-accent-yellow">Intelligent Subsystem Targeting:</strong> The AI no longer targets the hull exclusively. It now analyzes the player's ship and targets key weaknesses based on its factional doctrine.

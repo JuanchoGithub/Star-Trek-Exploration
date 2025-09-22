@@ -1,25 +1,26 @@
-
 import type { GameState, Ship, TorpedoProjectile, SectorState, ShipSubsystems, TorpedoType } from '../../../types';
 import { calculateDistance, moveOneStep } from '../../utils/ai';
-import { AIActions } from '../FactionAI';
+import { AIActions, AIStance } from '../FactionAI';
 import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
 import { isPosInNebula, isDeepNebula } from '../../utils/sector';
 import { uniqueId } from '../../utils/helpers';
+import { findClosestTarget } from '../../utils/ai';
+import { consumeEnergy } from '../../utils/combat';
 
-const canAISeePlayer = (aiShip: Ship, playerShip: Ship, sector: SectorState): boolean => {
-    if (playerShip.cloakState === 'cloaked') return false;
+const canAISeeTarget = (aiShip: Ship, target: Ship, sector: SectorState): boolean => {
+    if (target.cloakState === 'cloaked') return false;
     
-    if (isDeepNebula(playerShip.position, sector)) return false;
+    if (isDeepNebula(target.position, sector)) return false;
 
     if (isPosInNebula(aiShip.position, sector)) {
-        return calculateDistance(aiShip.position, playerShip.position) <= 1;
+        return calculateDistance(aiShip.position, target.position) <= 1;
     }
 
     const asteroidPositions = new Set(sector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
-    const playerPosKey = `${playerShip.position.x},${playerShip.position.y}`;
-    if (asteroidPositions.has(playerPosKey)) {
-        if (calculateDistance(aiShip.position, playerShip.position) > 4) {
+    const targetPosKey = `${target.position.x},${target.position.y}`;
+    if (asteroidPositions.has(targetPosKey)) {
+        if (calculateDistance(aiShip.position, target.position) > 4) {
             return false;
         }
     }
@@ -27,13 +28,81 @@ const canAISeePlayer = (aiShip: Ship, playerShip: Ship, sector: SectorState): bo
     return true;
 };
 
-export function processPointDefenseForAI(ship: Ship, gameState: GameState, actions: AIActions) {
+// Returns true if the ship's turn should end after this function
+const processAIStrategicDecisions = (ship: Ship, stance: AIStance, gameState: GameState, actions: AIActions, target: Ship | null): boolean => {
+    // 1. Energy Management
+    const ENERGY_CRITICAL_THRESHOLD = 25;
+    if (ship.energy.current < ENERGY_CRITICAL_THRESHOLD && ship.dilithium.current > 0) {
+        const { logs } = consumeEnergy(ship, 0); // Use 0 to just trigger the recharge
+        logs.forEach(log => actions.addLog({
+            sourceId: ship.id,
+            sourceName: ship.name,
+            message: log,
+            isPlayerSource: false,
+            color: 'border-orange-500'
+        }));
+    }
+
+    // 2. Retreat Logic
+    if (ship.energy.current < ENERGY_CRITICAL_THRESHOLD && ship.dilithium.current <= 0) {
+        if (ship.retreatingTurn === null) {
+            ship.retreatingTurn = gameState.turn + 2;
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: `Power and dilithium reserves are critically low! Attempting to disengage and warp out!`,
+                isPlayerSource: false,
+                color: 'border-yellow-500'
+            });
+        }
+    }
+    
+    if (ship.retreatingTurn !== null) {
+        // Move away from target if retreating
+        if (target) {
+            const fleeVector = {
+                x: ship.position.x - target.position.x,
+                y: ship.position.y - target.position.y,
+            };
+            let fleePosition = { ...ship.position };
+            if (Math.abs(fleeVector.x) > Math.abs(fleeVector.y)) { fleePosition.x += Math.sign(fleeVector.x); } 
+            else if (fleeVector.y !== 0) { fleePosition.y += Math.sign(fleeVector.y); } 
+            else if (fleeVector.x !== 0) { fleePosition.x += Math.sign(fleeVector.x); }
+            
+            if (fleePosition.x >= 0 && fleePosition.x < 12 && fleePosition.y >= 0 && fleePosition.y < 10) {
+                ship.position = fleePosition;
+            }
+        }
+        return true; // End turn after retreating move
+    }
+
+    // 3. Point Defense Logic
+    const incomingTorpedoes = gameState.currentSector.entities.some(e => e.type === 'torpedo_projectile' && e.targetId === ship.id && e.hull > 0);
+    const isHighTorpedoThreat = target?.shipClass === 'Sovereign-class' || target?.shipClass === 'Defiant-class';
+
+    const shouldEnableLPD = incomingTorpedoes || stance === 'Defensive' || isHighTorpedoThreat;
+    
+    if (ship.pointDefenseEnabled && !shouldEnableLPD && ship.energy.current < ship.energy.max * 0.5) {
+        ship.pointDefenseEnabled = false;
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Deactivating point-defense grid to conserve power.`, isPlayerSource: false, color: 'border-gray-400' });
+    } else if (!ship.pointDefenseEnabled && shouldEnableLPD) {
+        ship.pointDefenseEnabled = true;
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Activating point-defense grid to counter threats.`, isPlayerSource: false, color: 'border-yellow-400' });
+    }
+
+    // LPD Firing and energy consumption
+    if (ship.pointDefenseEnabled) {
+        processPointDefenseForAI(ship, gameState, actions);
+    }
+    
+    return false; // Continue with the rest of the turn
+};
+
+function processPointDefenseForAI(ship: Ship, gameState: GameState, actions: AIActions) {
     if (!ship.pointDefenseEnabled || ship.subsystems.pointDefense.health <= 0) return;
 
     const incomingTorpedoes = gameState.currentSector.entities.filter((e): e is TorpedoProjectile => 
-        e.type === 'torpedo_projectile' && 
-        e.faction === 'Federation' && 
-        e.hull > 0
+        e.type === 'torpedo_projectile' && e.targetId === ship.id && e.hull > 0
     );
 
     let pointDefenseFired = false;
@@ -44,13 +113,7 @@ export function processPointDefenseForAI(ship: Ship, gameState: GameState, actio
         );
 
         if (validTargets.length > 0) {
-            const threatOrder: Record<TorpedoType, number> = {
-                'Quantum': 5,
-                'HeavyPhoton': 4,
-                'Photon': 3,
-                'HeavyPlasma': 2,
-                'Plasma': 1,
-            };
+            const threatOrder: Record<TorpedoType, number> = { 'Quantum': 5, 'HeavyPhoton': 4, 'Photon': 3, 'HeavyPlasma': 2, 'Plasma': 1 };
             validTargets.sort((a, b) => threatOrder[b.torpedoType] - threatOrder[a.torpedoType]);
             
             const torpedoToShoot = validTargets[0];
@@ -63,26 +126,10 @@ export function processPointDefenseForAI(ship: Ship, gameState: GameState, actio
                 const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
                 if (Math.random() < hitChance) {
                     torpedoToShoot.hull = 0;
-                    gameState.combatEffects.push({ 
-                        type: 'point_defense', 
-                        sourceId: ship.id, 
-                        targetId: torpedoToShoot.id, 
-                        faction: ship.faction, 
-                        delay: 0 
-                    });
-                    actions.addLog({
-                        sourceId: ship.id,
-                        sourceName: ship.name,
-                        message: `Point-defense grid intercepts incoming ${torpedoToShoot.name}! (Hit Chance: ${Math.round(hitChance*100)}%)`,
-                        isPlayerSource: false,
-                    });
+                    gameState.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetId: torpedoToShoot.id, faction: ship.faction, delay: 0 });
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Point-defense grid intercepts incoming ${torpedoToShoot.name}!`, isPlayerSource: false });
                 } else {
-                     actions.addLog({
-                        sourceId: ship.id,
-                        sourceName: ship.name,
-                        message: `Point-defense grid fired at incoming ${torpedoToShoot.name} but missed! (Hit Chance: ${Math.round(hitChance*100)}%)`,
-                        isPlayerSource: false,
-                    });
+                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Point-defense grid fired at incoming ${torpedoToShoot.name} but missed!`, isPlayerSource: false });
                 }
             }
         }
@@ -94,13 +141,7 @@ export function processPointDefenseForAI(ship: Ship, gameState: GameState, actio
             ship.energy.current -= passiveEnergyCost;
         } else {
             ship.pointDefenseEnabled = false;
-            actions.addLog({
-                sourceId: ship.id,
-                sourceName: ship.name,
-                message: `Insufficient power for upkeep. Deactivating point-defense grid.`,
-                isPlayerSource: false,
-                color: 'border-orange-500'
-            });
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Insufficient power for upkeep. Deactivating point-defense grid.`, isPlayerSource: false, color: 'border-orange-500' });
         }
     }
 }
@@ -134,21 +175,28 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
 
 export function processCommonTurn(
     ship: Ship, 
-    playerShip: Ship, 
+    potentialTargets: Ship[], 
     gameState: GameState, 
     actions: AIActions,
-    subsystemTarget: keyof ShipSubsystems | null
+    subsystemTarget: keyof ShipSubsystems | null,
+    stance: AIStance
 ) {
     const { currentSector } = gameState;
+    const visibleTargets = potentialTargets.filter(t => canAISeeTarget(ship, t, currentSector));
+    const target = findClosestTarget(ship, visibleTargets);
+    
+    if (processAIStrategicDecisions(ship, stance, gameState, actions, target)) {
+        return; // Turn is spent on strategic actions (retreating, etc.)
+    }
 
-    if (canAISeePlayer(ship, playerShip, currentSector)) {
-        ship.lastKnownPlayerPosition = { ...playerShip.position };
+    if (target) {
+        ship.lastKnownPlayerPosition = { ...target.position };
 
-        const distance = calculateDistance(ship.position, playerShip.position);
+        const distance = calculateDistance(ship.position, target.position);
         
         const asteroidPositions = new Set(currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
-        const playerPosKey = `${playerShip.position.x},${playerShip.position.y}`;
-        const canTargetInAsteroids = !(asteroidPositions.has(playerPosKey) && distance > 2);
+        const targetPosKey = `${target.position.x},${target.position.y}`;
+        const canTargetInAsteroids = !(asteroidPositions.has(targetPosKey) && distance > 2);
         
         if (ship.cloakState === 'cloaked') {
             const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
@@ -159,7 +207,7 @@ export function processCommonTurn(
                 return;
             } else {
                 if (distance > 1) {
-                    ship.position = moveOneStep(ship.position, playerShip.position);
+                    ship.position = moveOneStep(ship.position, target.position);
                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, maneuvering for a better position.`, isPlayerSource: false });
                 } else {
                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, holding position.`, isPlayerSource: false });
@@ -174,8 +222,8 @@ export function processCommonTurn(
             if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Impulse engines are offline, cannot move.", isPlayerSource: false });
             } else {
-                ship.position = moveOneStep(ship.position, playerShip.position);
-                const newDist = calculateDistance(ship.position, playerShip.position);
+                ship.position = moveOneStep(ship.position, target.position);
+                const newDist = calculateDistance(ship.position, target.position);
                 
                 const wasInNebula = isPosInNebula(oldPos, gameState.currentSector);
                 const isInNebula = isPosInNebula(ship.position, gameState.currentSector);
@@ -210,8 +258,8 @@ export function processCommonTurn(
                 const phaserCost = 10;
                 if (ship.energy.current >= phaserCost) {
                     ship.energy.current -= phaserCost;
-                    const combatLogs = actions.applyPhaserDamage(playerShip, 10 * (ship.energyAllocation.weapons / 100), subsystemTarget, ship, gameState);
-                    gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: playerShip.id, faction: ship.faction, delay: 0 });
+                    const combatLogs = actions.applyPhaserDamage(target, 10 * (ship.energyAllocation.weapons / 100), subsystemTarget, ship, gameState);
+                    gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: 0 });
                     combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false }));
                 }
             }
@@ -233,7 +281,7 @@ export function processCommonTurn(
                         id: uniqueId(),
                         name: torpedoData.name, 
                         type: 'torpedo_projectile', faction: ship.faction,
-                        position: { ...ship.position }, targetId: playerShip.id, sourceId: ship.id, stepsTraveled: 0,
+                        position: { ...ship.position }, targetId: target.id, sourceId: ship.id, stepsTraveled: 0,
                         speed: torpedoData.speed, 
                         path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
                         torpedoType: shipStats.torpedoType,
@@ -246,7 +294,7 @@ export function processCommonTurn(
             }
         }
     } else {
-        // Cannot see player
+        // Cannot see any targets
         if (ship.lastKnownPlayerPosition) {
             const distToLastKnown = calculateDistance(ship.position, ship.lastKnownPlayerPosition);
             if (distToLastKnown > 0) {
@@ -273,7 +321,7 @@ export function processCommonTurn(
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Contact lost. Holding position.`, isPlayerSource: false });
             }
         } else {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Unable to acquire a target lock on the enemy vessel.", isPlayerSource: false });
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Unable to acquire a target lock on any enemy vessel.", isPlayerSource: false });
         }
     }
 }

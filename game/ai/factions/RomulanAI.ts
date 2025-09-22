@@ -2,6 +2,7 @@
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
+import { findClosestTarget } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
     determineStance(ship: Ship, playerShip: Ship): AIStance {
@@ -26,42 +27,47 @@ export class RomulanAI extends FactionAI {
         return null; // Target hull if engines are already destroyed.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
-        const stance = this.determineStance(ship, gameState.player.ship);
-        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
-        let stanceChanged = false;
+        const target = findClosestTarget(ship, potentialTargets);
+        if (target) {
+            const stance = this.determineStance(ship, target);
+            const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            let stanceChanged = false;
 
-        switch (stance) {
-            case 'Aggressive':
-                if (ship.energyAllocation.weapons !== 70) {
-                    ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Defensive':
-                if (ship.energyAllocation.shields !== 80) {
-                    ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Balanced':
-                if (ship.energyAllocation.weapons !== 50) {
-                    ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
+            switch (stance) {
+                case 'Aggressive':
+                    if (ship.energyAllocation.weapons !== 70) {
+                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Defensive':
+                    if (ship.energyAllocation.shields !== 80) {
+                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Balanced':
+                    if (ship.energyAllocation.weapons !== 50) {
+                        ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+            }
+            
+            if (stanceChanged) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power distribution for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
+            }
+            
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget);
+        } else {
+             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
-        
-        if (stanceChanged) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power distribution for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
-        }
-        
-        // FIX: Passed the required 'subsystemTarget' argument to the 'processCommonTurn' function to fix compile error.
-        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {

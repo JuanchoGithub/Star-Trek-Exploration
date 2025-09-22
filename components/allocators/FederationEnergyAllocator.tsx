@@ -24,7 +24,7 @@ const VerticalSlider: React.FC<{
         const rect = sliderRef.current.getBoundingClientRect();
 
         const indicatorHeightRem = 2.5;
-        const trackHeightRem = 16;
+        const trackHeightRem = 10; // Corresponds to h-40
         const indicatorHeightRatio = indicatorHeightRem / trackHeightRem;
 
         const indicatorHeightPx = rect.height * indicatorHeightRatio;
@@ -83,7 +83,7 @@ const VerticalSlider: React.FC<{
     const dynamicNumberLabel = String(value).padStart(3, '0');
 
     const indicatorHeightRem = 2.5; // h-10
-    const trackHeightRem = 16; // h-64
+    const trackHeightRem = 10; // h-40
     const travelRangeRem = trackHeightRem - indicatorHeightRem;
     const topRem = (1 - value / 100) * travelRangeRem;
 
@@ -93,7 +93,7 @@ const VerticalSlider: React.FC<{
             ref={sliderRef}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className="relative w-10 h-64 bg-black rounded-full cursor-pointer border-2 border-gray-700"
+            className="relative w-10 h-40 bg-black rounded-full cursor-pointer border-2 border-gray-700"
             style={{ touchAction: 'none' }}
         >
             <div className="absolute inset-0 rounded-full overflow-hidden">
@@ -148,7 +148,7 @@ export const FederationEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allo
             />
         </div>
         
-        <div className="relative h-64 w-2 flex-shrink-0 self-end">
+        <div className="relative h-40 w-2 flex-shrink-0 self-end">
             <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-accent-yellow-darker rounded-full"></div>
             <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-1.5 h-6 bg-white rounded-sm"></div>
         </div>
@@ -163,7 +163,7 @@ export const FederationEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allo
             />
         </div>
 
-        <div className="relative h-64 w-2 flex-shrink-0 self-end">
+        <div className="relative h-40 w-2 flex-shrink-0 self-end">
             <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-accent-yellow-darker rounded-full"></div>
             <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-1.5 h-6 bg-white rounded-sm"></div>
         </div>

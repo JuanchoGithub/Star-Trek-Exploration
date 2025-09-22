@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+// FIX: Removed invalid "--- START OF FILE App.tsx ---" header.
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useGameLogic } from './hooks/useGameLogic';
 import PlayerHUD from './components/PlayerHUD';
 import LogPanel from './components/LogPanel';
@@ -19,22 +19,90 @@ import PlayerManual from './components/PlayerManual';
 import EventResultDialog from './components/EventResultDialog';
 import LcarsDecoration from './components/LcarsDecoration';
 import RomulanDecoration from './components/RomulanDecoration';
+import MainMenu from './components/MainMenu';
+import ScenarioSimulator from './components/ScenarioSimulator';
+import { SAVE_GAME_KEY } from './assets/configs/gameConstants';
+import { ScienceIcon } from './assets/ui/icons';
 
 interface GameMenuProps {
     onSaveGame: () => void;
     onLoadGame: () => void;
     onExportSave: () => void;
-    onImportSave: (jsonString: string) => void;
+    onImportSave: () => void; // Prop is now a trigger function
     onOpenManual: () => void;
     onClose: () => void;
+    onExitToMainMenu: () => void;
 }
 
-const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onOpenManual, onClose }) => {
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onOpenManual, onClose, onExitToMainMenu }) => {
+    return (
+        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+            <div className="panel-style p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold text-secondary-light mb-4 text-center">Game Menu</h3>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={onSaveGame} className="w-full btn btn-primary">Save</button>
+                        <button onClick={onLoadGame} className="w-full btn btn-primary">Load</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={onImportSave} className="w-full btn btn-accent green text-white">Import</button>
+                        <button onClick={onExportSave} className="w-full btn btn-accent green text-white">Export</button>
+                    </div>
+                    <button onClick={onOpenManual} className="w-full btn btn-secondary">Player's Manual</button>
+                    <button onClick={onExitToMainMenu} className="w-full btn btn-tertiary">Exit to Main Menu</button>
+                    <button onClick={onClose} className="w-full btn btn-tertiary">Close Menu</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
+
+const App: React.FC = () => {
+    const [view, setView] = useState<'main-menu' | 'game' | 'simulator'>('main-menu');
+    const { 
+        gameState, selectedTargetId, navigationTarget, currentView, isDocked, 
+        activeAwayMission, activeHail, targetEntity, playerTurnActions, activeEvent,
+        isWarping, isTurnResolving, awayMissionResult, eventResult, desperationMoveAnimation,
+        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, 
+        onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, 
+        onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, 
+        onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, 
+        onChooseAwayMissionOption, onHailTarget, onCloseHail, onSelectSubsystem, 
+        onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, 
+        onSendAwayTeam, onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, 
+        onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense, newGame
+    } = useGameLogic();
+
+    const [showGameMenu, setShowGameMenu] = useState(false);
+    const [showPlayerManual, setShowPlayerManual] = useState(false);
+    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [showLogModal, setShowLogModal] = useState(false);
+    const { theme, themeName, setTheme } = useTheme('federation');
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }, []);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleNewGame = useCallback(() => {
+        localStorage.removeItem(SAVE_GAME_KEY);
+        newGame();
+        setView('game');
+    }, [newGame]);
+
+    const handleLoadGame = useCallback(() => {
+        loadGame();
+        setView('game');
+    }, [loadGame]);
+
+    const handleImportSaveFromFile = useCallback((jsonString: string) => {
+        importSave(jsonString);
+        setView('game');
+        setShowGameMenu(false);
+    }, [importSave]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -44,255 +112,185 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
         reader.onload = (e) => {
             const text = e.target?.result;
             if (typeof text === 'string') {
-                onImportSave(text);
+                handleImportSaveFromFile(text);
             }
         };
         reader.readAsText(file);
         event.target.value = '';
     };
 
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleStartSimulator = useCallback(() => {
+        setView('simulator');
+    }, []);
+
+    const handleExitToMainMenu = useCallback(() => {
+        setView('main-menu');
+    }, []);
+
+    useEffect(() => {
+        document.body.className = `theme-${themeName}`;
+        return () => { document.body.className = ''; }
+    }, [themeName]);
+
+    if (view === 'main-menu') {
+        return (
+            <>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                <MainMenu
+                    onNewGame={handleNewGame}
+                    onLoadGame={handleLoadGame}
+                    onStartSimulator={handleStartSimulator}
+                    onImportSave={handleImportClick}
+                    onOpenManual={() => setShowPlayerManual(true)}
+                    hasSaveGame={!!localStorage.getItem(SAVE_GAME_KEY)}
+                    themeName={themeName}
+                    setTheme={setTheme}
+                />
+                {showPlayerManual && <PlayerManual onClose={() => setShowPlayerManual(false)} themeName={themeName} />}
+            </>
+        );
+    }
+    
+    if (view === 'simulator') {
+        return <ScenarioSimulator onExit={handleExitToMainMenu} />;
+    }
+
+    const { player, logs, currentSector: sector, redAlert, quadrantMap } = gameState;
+
+    const SidebarContent = () => (
+        <ShipStatus 
+            gameState={gameState} 
+            onEnergyChange={onEnergyChange}
+            onToggleRedAlert={onToggleRedAlert}
+            onEvasiveManeuvers={onEvasiveManeuvers}
+            onSelectRepairTarget={onSelectRepairTarget as any}
+            onToggleCloak={onToggleCloak}
+            onTogglePointDefense={onTogglePointDefense}
+            themeName={themeName}
+        />
+    );
+
     return (
-        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-            <div className="panel-style p-6 w-full max-w-sm">
-                <h3 className="text-xl font-bold text-secondary-light mb-4 text-center">Game Menu</h3>
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={onSaveGame} className="w-full btn btn-primary">Save Game</button>
-                    <button onClick={onLoadGame} className="w-full btn btn-primary">Load Game</button>
-                    <button onClick={onExportSave} className="w-full btn btn-accent green text-white">Export Save</button>
-                    <button onClick={handleImportClick} className="w-full btn btn-accent green text-white">Import Save</button>
-                    <button onClick={onOpenManual} className="w-full btn btn-secondary col-span-2">Player's Manual</button>
-                </div>
-                <div className="mt-6 text-center">
-                     <button onClick={onClose} className="btn btn-tertiary px-6">Close</button>
-                </div>
+        <div className={`h-screen w-screen bg-bg-default text-text-primary overflow-hidden relative ${theme.font} ${redAlert ? 'red-alert-pulse' : ''} theme-${themeName}`}>
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+            {themeName === 'romulan' && <RomulanDecoration />}
+            {showPlayerManual && <PlayerManual onClose={() => setShowPlayerManual(false)} themeName={themeName} />}
+            {showLogModal && <LogPanel logs={logs} onClose={() => setShowLogModal(false)} />}
+            {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} themeName={themeName} />}
+            {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
+            {activeHail && targetEntity && <HailDialog hailData={activeHail} target={targetEntity} onClose={onCloseHail} />}
+            {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
+            {eventResult && <EventResultDialog result={eventResult} onClose={onCloseEventResult} />}
+            {showGameMenu && (
+                <GameMenu
+                    onSaveGame={saveGame}
+                    onLoadGame={handleLoadGame}
+                    onExportSave={exportSave}
+                    onImportSave={handleImportClick}
+                    onOpenManual={() => { setShowPlayerManual(true); setShowGameMenu(false); }}
+                    onClose={() => setShowGameMenu(false)}
+                    onExitToMainMenu={handleExitToMainMenu}
+                />
+            )}
+
+            <div className="h-full w-full flex flex-col p-2 md:p-4 gap-2 md:gap-4 relative z-10">
+                <main className="flex-grow min-h-0">
+                    <div className="h-full grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 md:gap-4">
+                        <div className="grid grid-rows-[1fr_auto] gap-2 md:gap-4 min-h-0">
+                            <section className="flex flex-col gap-2 min-h-0">
+                                <div className="relative flex-grow flex justify-center items-center min-h-0">
+                                    {isWarping && <WarpAnimation />}
+                                    {currentView === 'sector' ? (
+                                        <>
+                                            <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} />
+                                            <SectorView 
+                                                entities={sector.entities} 
+                                                playerShip={player.ship}
+                                                selectedTargetId={selectedTargetId}
+                                                onSelectTarget={onSelectTarget}
+                                                navigationTarget={navigationTarget}
+                                                onSetNavigationTarget={onSetNavigationTarget}
+                                                sector={sector}
+                                                themeName={themeName}
+                                            />
+                                        </>
+                                    ) : (
+                                        <QuadrantView
+                                            quadrantMap={quadrantMap}
+                                            playerPosition={player.position}
+                                            onWarp={onWarp}
+                                            onScanQuadrant={onScanQuadrant}
+                                            isInCombat={redAlert}
+                                            themeName={themeName}
+                                        />
+                                    )}
+                                </div>
+                                <div className="flex-shrink-0 flex justify-center gap-2">
+                                     <button onClick={() => onSetView('sector')} className={`btn ${currentView === 'sector' ? 'btn-primary' : 'btn-secondary'}`}>Sector View</button>
+                                     <button onClick={() => onSetView('quadrant')} className={`btn ${currentView === 'quadrant' ? 'btn-primary' : 'btn-secondary'}`}>Quadrant Map</button>
+                                </div>
+                            </section>
+                             <section className="min-h-0">
+                                <PlayerHUD
+                                    gameState={gameState} onEndTurn={onEndTurn} onFirePhasers={onFirePhasers} onLaunchTorpedo={onLaunchTorpedo}
+                                    target={targetEntity} isDocked={isDocked} onDockWithStarbase={onDockWithStarbase} onRechargeDilithium={onRechargeDilithium}
+                                    onResupplyTorpedoes={onResupplyTorpedoes} onStarbaseRepairs={onStarbaseRepairs} onScanTarget={onScanTarget}
+                                    onInitiateRetreat={onInitiateRetreat} onCancelRetreat={onCancelRetreat} onStartAwayMission={onStartAwayMission}
+                                    onHailTarget={onHailTarget} playerTurnActions={playerTurnActions} navigationTarget={navigationTarget}
+                                    isTurnResolving={isTurnResolving} onSendAwayTeam={onSendAwayTeam} themeName={themeName}
+                                    desperationMoveAnimation={desperationMoveAnimation}
+                                    selectedSubsystem={player.targeting?.subsystem || null}
+                                    onSelectSubsystem={onSelectSubsystem}
+                                    onEnterOrbit={onEnterOrbit}
+                                    orbitingPlanetId={gameState.orbitingPlanetId}
+                                    onToggleCloak={onToggleCloak}
+                                />
+                            </section>
+                        </div>
+                        <aside className="hidden md:flex min-h-0">
+                           <SidebarContent />
+                        </aside>
+                    </div>
+                </main>
+                <footer className="flex-shrink-0 h-16">
+                    <StatusLine 
+                        latestLog={logs.length > 0 ? logs[logs.length-1] : null}
+                        onOpenLog={() => setShowLogModal(true)}
+                        onOpenGameMenu={() => setShowGameMenu(true)}
+                    >
+                        <ThemeSwitcher themeName={themeName} setTheme={setTheme} />
+                    </StatusLine>
+                </footer>
             </div>
+            
+            {/* Mobile Sidebar Overlay */}
+            {showMobileSidebar && (
+                 <div className="md:hidden fixed inset-0 z-30 flex justify-end" aria-modal="true" role="dialog">
+                    <div className="fixed inset-0 bg-black/60" onClick={() => setShowMobileSidebar(false)} />
+                    <aside className="relative z-40 w-full max-w-sm bg-bg-default p-4 h-full">
+                        <SidebarContent />
+                    </aside>
+                </div>
+            )}
+            
+            {/* Floating 'Systems' button for touch devices */}
+            {isTouchDevice && (
+                <div className="md:hidden fixed bottom-20 right-4 z-20">
+                    <button
+                        onClick={() => setShowMobileSidebar(true)}
+                        className="btn btn-secondary rounded-full p-4 aspect-square flex items-center justify-center shadow-lg"
+                        aria-label="Open Ship Systems"
+                    >
+                       <ScienceIcon className="w-6 h-6" />
+                    </button>
+                </div>
+            )}
         </div>
     );
-};
-
-const App: React.FC = () => {
-  const {
-    gameState,
-    selectedTargetId,
-    navigationTarget,
-    currentView,
-    isDocked,
-    activeAwayMission,
-    activeHail,
-    targetEntity,
-    playerTurnActions,
-    activeEvent,
-    isWarping,
-    isTurnResolving,
-    awayMissionResult,
-    eventResult,
-    desperationMoveAnimation,
-    onEnergyChange,
-    onEndTurn,
-    onFirePhasers,
-    onLaunchTorpedo,
-    onEvasiveManeuvers,
-    onSelectTarget,
-    onSetNavigationTarget,
-    onSetView,
-    onWarp,
-    onDockWithStarbase,
-    onRechargeDilithium,
-    onResupplyTorpedoes,
-    onStarbaseRepairs,
-    onSelectRepairTarget,
-    onScanTarget,
-    onInitiateRetreat,
-    onCancelRetreat,
-    onStartAwayMission,
-    onChooseAwayMissionOption,
-    onHailTarget,
-    onCloseHail,
-    onSelectSubsystem,
-    onChooseEventOption,
-    saveGame,
-    loadGame,
-    exportSave,
-    importSave,
-    onDistributeEvenly,
-    onSendAwayTeam,
-    onToggleRedAlert,
-    onCloseAwayMissionResult,
-    onCloseEventResult,
-    onScanQuadrant,
-    onEnterOrbit,
-    onToggleCloak,
-    onTogglePointDefense,
-  } = useGameLogic();
-
-  const { theme, themeName, setTheme } = useTheme();
-  const [showLogPanel, setShowLogPanel] = useState(false);
-  const [isGameMenuOpen, setGameMenuOpen] = useState(false);
-  const [isManualOpen, setManualOpen] = useState(false);
-
-  const target = gameState.currentSector.entities.find(e => e.id === selectedTargetId);
-  const selectedSubsystem = gameState.player.targeting?.entityId === selectedTargetId ? gameState.player.targeting.subsystem : null;
-  const latestLogEntry = gameState.logs.length > 0 ? gameState.logs[gameState.logs.length - 1] : null;
-  const isRetreating = gameState.player.ship.retreatingTurn !== null && gameState.player.ship.retreatingTurn > gameState.turn;
-  const isComputerDamaged = gameState.player.ship.subsystems.computer.health < gameState.player.ship.subsystems.computer.maxHealth;
-
-  return (
-    <main className={`bg-bg-default text-text-primary h-screen ${theme.font} ${theme.className} grid grid-rows-[1fr_auto] ${gameState.redAlert ? 'red-alert-pulse' : ''}`}>
-      <div className="relative grid grid-cols-[3fr_1fr] gap-4 min-h-0 p-4">
-          {themeName === 'federation' && (
-            <>
-                <LcarsDecoration type="label" label={`47${gameState.turn.toString().padStart(3, '0')}.2`} className="top-2 left-2" seed={6} />
-                <LcarsDecoration type="numbers" className="bottom-2 right-1/4" seed={7} />
-            </>
-          )}
-          {themeName === 'romulan' && <RomulanDecoration />}
-          {/* Left Column: Map/HUD */}
-          <div className="flex flex-col min-h-0">
-              {/* Top Section: Tabs + Map */}
-              <div className="flex flex-grow min-h-0">
-                  {/* Vertical Tabs */}
-                  <div className="flex flex-col w-10 flex-shrink-0">
-                      <button onClick={() => onSetView('sector')} className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-tl-md ${currentView === 'sector' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'}`}>
-                          <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Sector View</span>
-                      </button>
-                      <button 
-                        onClick={() => onSetView('quadrant')} 
-                        disabled={isRetreating || isComputerDamaged}
-                        title={isRetreating ? "Cannot access Quadrant Map while retreating" : isComputerDamaged ? "Cannot access Quadrant Map: Computer damaged" : "Switch to Quadrant Map"}
-                        className={`w-full flex-grow flex items-center justify-center font-bold text-sm transition-colors rounded-none rounded-bl-md ${currentView === 'quadrant' ? 'bg-secondary-main text-secondary-text' : 'bg-bg-paper-lighter text-text-secondary hover:bg-bg-paper'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-paper-lighter`}>
-                          <span className="transform -rotate-90 block whitespace-nowrap tracking-widest uppercase text-xs">Quadrant Map</span>
-                      </button>
-                  </div>
-                  {/* Map Container */}
-                  <div className="flex-grow min-h-0 relative z-10">
-                      {currentView === 'sector' ? (
-                          <SectorView
-                          sector={gameState.currentSector}
-                          entities={gameState.currentSector.entities}
-                          playerShip={gameState.player.ship}
-                          selectedTargetId={selectedTargetId}
-                          onSelectTarget={onSelectTarget}
-                          navigationTarget={navigationTarget}
-                          onSetNavigationTarget={onSetNavigationTarget}
-                          themeName={themeName}
-                          />
-                      ) : (
-                          <QuadrantView 
-                          quadrantMap={gameState.quadrantMap}
-                          playerPosition={gameState.player.position}
-                          onWarp={onWarp}
-                          onScanQuadrant={onScanQuadrant}
-                          isInCombat={gameState.redAlert}
-                          themeName={themeName}
-                          />
-                      )}
-                      {isWarping && <WarpAnimation />}
-                      {currentView === 'sector' && gameState.combatEffects.length > 0 && (
-                          <CombatFXLayer
-                              effects={gameState.combatEffects}
-                              entities={[...gameState.currentSector.entities, gameState.player.ship]}
-                          />
-                      )}
-                  </div>
-              </div>
-              {/* Bottom Section: HUD */}
-              <div className="flex-shrink-0 pt-4 relative z-20">
-                <PlayerHUD
-                    gameState={gameState}
-                    onEndTurn={onEndTurn}
-                    onFirePhasers={onFirePhasers}
-                    onLaunchTorpedo={onLaunchTorpedo}
-                    onToggleCloak={onToggleCloak}
-                    target={target}
-                    isDocked={isDocked}
-                    onDockWithStarbase={onDockWithStarbase}
-                    onRechargeDilithium={onRechargeDilithium}
-                    onResupplyTorpedoes={onResupplyTorpedoes}
-                    onStarbaseRepairs={onStarbaseRepairs}
-                    onScanTarget={onScanTarget}
-                    onInitiateRetreat={onInitiateRetreat}
-                    onCancelRetreat={onCancelRetreat}
-                    onStartAwayMission={onStartAwayMission}
-                    onHailTarget={onHailTarget}
-                    playerTurnActions={playerTurnActions}
-                    navigationTarget={navigationTarget}
-                    isTurnResolving={isTurnResolving}
-                    onSendAwayTeam={onSendAwayTeam}
-                    themeName={themeName}
-                    desperationMoveAnimation={desperationMoveAnimation}
-                    selectedSubsystem={selectedSubsystem}
-                    onSelectSubsystem={onSelectSubsystem}
-                    onEnterOrbit={onEnterOrbit}
-                    orbitingPlanetId={gameState.orbitingPlanetId}
-                  />
-              </div>
-          </div>
-          
-          {/* Right Column: Ship Status */}
-          <div className="flex flex-col min-h-0">
-              <ShipStatus 
-                  gameState={gameState} 
-                  onEnergyChange={onEnergyChange} 
-                  onToggleRedAlert={onToggleRedAlert}
-                  onEvasiveManeuvers={onEvasiveManeuvers}
-                  onSelectRepairTarget={onSelectRepairTarget}
-                  onToggleCloak={onToggleCloak}
-                  onTogglePointDefense={onTogglePointDefense}
-                  themeName={themeName}
-              />
-          </div>
-      </div>
-      
-      <div className="px-4 pb-4">
-           <StatusLine 
-            latestLog={latestLogEntry}
-            onToggleLog={() => setShowLogPanel(true)}
-            onOpenGameMenu={() => setGameMenuOpen(true)}
-          >
-            <ThemeSwitcher themeName={themeName} setTheme={setTheme} />
-          </StatusLine>
-      </div>
-
-      {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} themeName={themeName} />}
-      {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
-      {activeHail && target && <HailDialog hailData={activeHail} target={target} onClose={onCloseHail} />}
-      {activeEvent && <EventDialog event={activeEvent.template} onChoose={onChooseEventOption} />}
-      {eventResult && <EventResultDialog result={eventResult} onClose={onCloseEventResult} />}
-
-      {showLogPanel && (
-        <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-8">
-            <div className="h-3/4 w-4/5 max-w-4xl flex flex-col">
-                 <LogPanel logs={gameState.logs} />
-                 <button 
-                    onClick={() => setShowLogPanel(false)} 
-                    className="mt-4 btn btn-primary self-center flex-shrink-0"
-                >
-                    Close Log
-                </button>
-            </div>
-        </div>
-      )}
-      {isGameMenuOpen && (
-          <GameMenu 
-              onSaveGame={saveGame}
-              onLoadGame={loadGame}
-              onExportSave={exportSave}
-              onImportSave={importSave}
-              onOpenManual={() => { setGameMenuOpen(false); setManualOpen(true); }}
-              onClose={() => setGameMenuOpen(false)}
-          />
-      )}
-      {isManualOpen && (
-        <PlayerManual onClose={() => setManualOpen(false)} themeName={themeName} />
-      )}
-      {gameState.gameOver && (
-          <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-50 p-8 text-center">
-              <h2 className="text-6xl font-bold text-accent-red mb-4">GAME OVER</h2>
-              <p className="text-2xl text-text-secondary">{latestLogEntry?.message ?? ''}</p>
-          </div>
-      )}
-    </main>
-  );
 };
 
 export default App;

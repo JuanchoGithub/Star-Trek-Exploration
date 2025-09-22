@@ -1,6 +1,9 @@
+
+
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
+// FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict, processPointDefenseForAI } from './common';
+import { processCommonTurn, tryCaptureDerelict } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
@@ -13,7 +16,7 @@ export class KlingonAI extends FactionAI {
         return 'Aggressive';
     }
 
-    // FIX: Implemented missing abstract method 'determineSubsystemTarget'.
+    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Klingons target weapons to force a close, honorable fight.
         if (playerShip.subsystems.weapons.health > 0) {
@@ -22,47 +25,46 @@ export class KlingonAI extends FactionAI {
         return null; // Target hull if weapons are already destroyed.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
-        const hasHostiles = gameState.player.ship.hull > 0;
-        if (hasHostiles && !ship.pointDefenseEnabled) {
-            ship.pointDefenseEnabled = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Activating point-defense grid.`, isPlayerSource: false });
-        } else if (!hasHostiles && ship.pointDefenseEnabled) {
-            ship.pointDefenseEnabled = false;
-        }
+        const target = findClosestTarget(ship, potentialTargets);
 
-        processPointDefenseForAI(ship, gameState, actions);
-        
-        const stance = this.determineStance(ship, gameState.player.ship);
-        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
-        let stanceChanged = false;
+        if (target) {
+            const stance = this.determineStance(ship, target);
+            const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            let stanceChanged = false;
 
-        switch (stance) {
-            case 'Aggressive':
-                if (ship.energyAllocation.weapons !== 70) {
-                    ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Defensive':
-                if (ship.energyAllocation.shields !== 80) {
-                    ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-        }
+            switch (stance) {
+                case 'Aggressive':
+                    if (ship.energyAllocation.weapons !== 70) {
+                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Defensive':
+                    if (ship.energyAllocation.shields !== 80) {
+                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+            }
 
-        if (stanceChanged) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
+            if (stanceChanged) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
+            }
+            
+            // FIX: Added the missing 'stance' argument to the processCommonTurn call.
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+        } else {
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
-        
-        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
+    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the ramming logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const enemyShips = allShips.filter(s => s.faction !== ship.faction);

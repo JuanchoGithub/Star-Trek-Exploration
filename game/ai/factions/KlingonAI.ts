@@ -25,38 +25,42 @@ export class KlingonAI extends FactionAI {
         return null; // Target hull if weapons are already destroyed.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
-        // FIX: Implemented stance-based energy allocation.
-        const stance = this.determineStance(ship, gameState.player.ship);
-        // FIX: Implemented subsystem targeting.
-        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
-        let stanceChanged = false;
+        const target = findClosestTarget(ship, potentialTargets);
 
-        switch (stance) {
-            case 'Aggressive':
-                if (ship.energyAllocation.weapons !== 70) {
-                    ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Defensive':
-                if (ship.energyAllocation.shields !== 80) {
-                    ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-        }
+        if (target) {
+            const stance = this.determineStance(ship, target);
+            const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            let stanceChanged = false;
 
-        if (stanceChanged) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
+            switch (stance) {
+                case 'Aggressive':
+                    if (ship.energyAllocation.weapons !== 70) {
+                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Defensive':
+                    if (ship.energyAllocation.shields !== 80) {
+                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+            }
+
+            if (stanceChanged) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.`, isPlayerSource: false });
+            }
+            
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget);
+        } else {
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
-        
-        // FIX: Added the missing 'subsystemTarget' argument to the function call.
-        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the ramming logic.

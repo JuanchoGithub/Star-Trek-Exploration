@@ -4,7 +4,7 @@ import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
-import { calculateDistance } from '../../utils/ai';
+import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
     // FIX: Implemented missing abstract member 'determineStance'.
@@ -35,44 +35,47 @@ export class PirateAI extends FactionAI {
         return null; // Target hull as a last resort.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
 
-        // FIX: Implemented stance-based energy allocation.
-        const stance = this.determineStance(ship, gameState.player.ship);
-        // FIX: Implemented subsystem targeting.
-        const subsystemTarget = this.determineSubsystemTarget(ship, gameState.player.ship);
-        let stanceChanged = false;
+        const target = findClosestTarget(ship, potentialTargets);
+        if (target) {
+            const stance = this.determineStance(ship, target);
+            const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            let stanceChanged = false;
 
-        switch (stance) {
-            case 'Aggressive':
-                if (ship.energyAllocation.weapons !== 70) {
-                    ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Defensive':
-                if (ship.energyAllocation.shields !== 80) {
-                    ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
-            case 'Balanced':
-                if (ship.energyAllocation.weapons !== 50) {
-                    ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
-                    stanceChanged = true;
-                }
-                break;
+            switch (stance) {
+                case 'Aggressive':
+                    if (ship.energyAllocation.weapons !== 70) {
+                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Defensive':
+                    if (ship.energyAllocation.shields !== 80) {
+                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+                case 'Balanced':
+                    if (ship.energyAllocation.weapons !== 50) {
+                        ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                        stanceChanged = true;
+                    }
+                    break;
+            }
+            
+            if (stanceChanged) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
+            }
+            
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget);
+        } else {
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
-        
-        if (stanceChanged) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
-        }
-        
-        // FIX: Added the missing 'subsystemTarget' argument to the function call.
-        processCommonTurn(ship, gameState.player.ship, gameState, actions, subsystemTarget);
     }
 
     // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the self-destruct logic.

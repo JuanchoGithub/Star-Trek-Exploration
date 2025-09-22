@@ -19,8 +19,8 @@ export const KlingonEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocat
 
     const vertices = {
         weapons: { x: 50, y: 10 },
-        shields: { x: 15, y: 85 },
-        engines: { x: 85, y: 85 },
+        shields: { x: 15, y: 66 },
+        engines: { x: 85, y: 66 },
     };
 
     const allocationToCartesian = (alloc: { weapons: number; shields: number; engines: number }) => {
@@ -36,7 +36,7 @@ export const KlingonEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocat
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const svgX = (clientX - rect.left) / rect.width * 100;
-        const svgY = (clientY - rect.top) / rect.height * 100;
+        const svgY = (clientY - rect.top) / rect.height * 80; // Use viewBox height
 
         const p1 = vertices.weapons;
         const p2 = vertices.shields;
@@ -112,7 +112,7 @@ export const KlingonEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocat
             <div className="relative">
                  <svg 
                     ref={containerRef} 
-                    viewBox="0 0 100 100" 
+                    viewBox="0 0 100 80" 
                     className="klingon-allocator-svg"
                     onMouseDown={(e) => { isDragging.current = true; handleInteraction(e.clientX, e.clientY); }}
                     onTouchStart={(e) => { isDragging.current = true; handleInteraction(e.touches[0].clientX, e.touches[0].clientY); }}
@@ -124,12 +124,12 @@ export const KlingonEnergyAllocator: React.FC<EnergyAllocatorProps> = ({ allocat
                             <stop offset="100%" stopColor="var(--color-primary-dark)" />
                         </radialGradient>
                     </defs>
-                    <polygon points="50,5 5,95 95,95" className="klingon-allocator-triangle-bg" />
-                    <polygon points="50,10 15,85 85,85" className="klingon-allocator-triangle-outline" />
+                    <polygon points="50,5 5,71 95,71" className="klingon-allocator-triangle-bg" />
+                    <polygon points="50,10 15,66 85,66" className="klingon-allocator-triangle-outline" />
 
                     <text x="50" y="8" className="klingon-allocator-label">wpn</text>
-                    <text x="15" y="98" className="klingon-allocator-label">shd</text>
-                    <text x="85" y="98" className="klingon-allocator-label">eng</text>
+                    <text x="15" y="79" className="klingon-allocator-label">shd</text>
+                    <text x="85" y="79" className="klingon-allocator-label">eng</text>
                     
                     <circle cx={handlePos.x} cy={handlePos.y} r="6" className="klingon-allocator-handle" />
                 </svg>

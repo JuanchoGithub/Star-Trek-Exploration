@@ -1,3 +1,4 @@
+// FIX: Removed invalid "--- START OF FILE components/QuadrantView.tsx ---" header.
 import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
 // FIX: PlayerShipIcon is not directly exported. It's an alias for FederationExplorerIcon.
@@ -181,7 +182,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
 
 
     return (
-        <div className="panel-style p-1 h-full flex flex-col bg-black" onClick={() => setContextMenu(null)}>
+        <div className="panel-style p-1 w-full max-h-full flex flex-col bg-black aspect-square" onClick={() => setContextMenu(null)}>
             <div className="grid grid-cols-8 grid-rows-8 gap-0 flex-grow relative">
                 <QuadrantGFXBackground />
                 {quadrantMap.flat().map((sector, index) => {

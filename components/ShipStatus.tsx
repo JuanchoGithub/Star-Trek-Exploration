@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -14,6 +13,30 @@ interface StatusBarProps {
   colorClass: string;
   children?: React.ReactNode;
 }
+
+const subsystemFullNames: Record<'hull' | keyof ShipSubsystems, string> = {
+    hull: 'Hull',
+    weapons: 'Weapons',
+    engines: 'Engines',
+    shields: 'Shields',
+    transporter: 'Transporter',
+    pointDefense: 'Point Defense',
+    computer: 'Computer',
+    lifeSupport: 'Life Support',
+    shuttlecraft: 'Shuttlecraft',
+};
+
+const subsystemAbbr: Record<'hull' | keyof ShipSubsystems, string> = {
+    hull: 'HULL',
+    weapons: 'WPN',
+    engines: 'ENG',
+    shields: 'SHD',
+    transporter: 'TRN',
+    pointDefense: 'LPD',
+    computer: 'CPU',
+    lifeSupport: 'LFS',
+    shuttlecraft: 'SHTL',
+};
 
 const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, colorClass, children }) => {
   const percentage = max > 0 ? (value / max) * 100 : 0;
@@ -214,7 +237,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                   <h4 className="text-xs font-bold text-accent-yellow mb-2 text-center">Assign Repair Crew</h4>
                   <div className="space-y-1">
                       {systemsToRepair.map(sys => {
-                          if (sys.maxHealth === 0) return null;
+                          if (sys.maxHealth === 0 && sys.key !== 'hull') return null;
                           const isAssigned = ship.repairTarget === sys.key;
                           const percentage = sys.maxHealth > 0 ? Math.round((sys.health / sys.maxHealth) * 100) : 100;
                           return (
@@ -222,13 +245,17 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                                   key={sys.key} 
                                   onClick={() => handleSelectRepair(sys.key)} 
                                   disabled={sys.disabled && !isAssigned}
-                                  className={`w-full text-sm btn ${
+                                  title={`Assign repair crew to ${subsystemFullNames[sys.key as keyof typeof subsystemFullNames]}`}
+                                  className={`w-full text-sm btn btn-compact ${
                                       isAssigned 
                                       ? 'btn-accent orange' 
                                       : 'btn-accent yellow'
                                   }`}
                               >
-                                  {sys.name} {percentage}%
+                                  <div className="flex justify-between items-center w-full">
+                                    <span className="font-bold">{subsystemAbbr[sys.key as keyof typeof subsystemAbbr]}</span>
+                                    <span>{percentage}%</span>
+                                  </div>
                               </button>
                           )
                       })}

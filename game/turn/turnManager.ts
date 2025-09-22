@@ -1,583 +1,276 @@
-import type { GameState, PlayerTurnActions, Position, Entity, Ship, ShipSubsystems, TorpedoProjectile, LogEntry, TorpedoType } from '../../types';
+import type { GameState, PlayerTurnActions, QuadrantPosition, Ship, LogEntry, TorpedoProjectile, Shuttle } from '../../types';
+import { processPlayerTurn } from './player';
 import { processAITurns } from './aiProcessor';
-import { AIActions } from '../ai/FactionAI';
-import { applyPhaserDamage, consumeEnergy, canTargetEntity, applyTorpedoDamage } from '../utils/combat';
-import { moveOneStep, calculateDistance } from '../utils/ai';
 import { uniqueId } from '../utils/helpers';
-import { shipClasses } from '../../assets/ships/configs/shipClassStats';
-import { isPosInNebula, isDeepNebula } from '../utils/sector';
+import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR } from '../../assets/configs/logColors';
+import { calculateDistance } from '../utils/ai';
+import { applyTorpedoDamage } from '../utils/combat';
 
-interface TurnResolutionResult {
-    nextGameState: GameState;
-    newNavigationTarget: Position | null;
-    newSelectedTargetId: string | null;
-}
-
-const getEnergyOutputMultiplier = (engineHealthPercent: number): number => {
-    const H = engineHealthPercent;
-    if (H > 0.75) return 0.9 + (H - 0.75) * 0.4;
-    if (H > 0.25) return 0.5 + (H - 0.25) * 0.8;
-    return H * 2;
+const addLogEntry = (state: GameState, logData: Omit<LogEntry, 'id' | 'turn'>): void => {
+    state.logs.push({
+        id: uniqueId(),
+        turn: state.turn,
+        ...logData,
+    });
 };
 
-export function resolveTurn(
-    currentGameState: GameState,
-    playerTurnActions: PlayerTurnActions,
-    navigationTarget: Position | null,
-    selectedTargetId: string | null
-): TurnResolutionResult {
-    const next: GameState = JSON.parse(JSON.stringify(currentGameState));
-    if (next.gameOver) {
-        return { nextGameState: next, newNavigationTarget: navigationTarget, newSelectedTargetId: selectedTargetId };
-    }
+const processEndOfTurnSystems = (state: GameState): void => {
+    const allShips = [state.player.ship, ...state.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
     
-    let newNavTarget = navigationTarget;
-    let newSelectedTargetId = selectedTargetId;
-
-    const { player, currentSector } = next;
-    const playerShip = player.ship;
-    const initialPlayerPosition = { ...playerShip.position };
-
-    const addLogForTurn = (logData: Omit<LogEntry, 'id' | 'turn' | 'color'> & { color?: string }) => {
-        const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), next.player.ship];
-        const sourceShip = allShips.find(s => s.id === logData.sourceId);
-        next.logs.push({ 
-            id: uniqueId(), 
-            turn: next.turn, 
-            ...logData, 
-            color: logData.color || sourceShip?.logColor || 'border-gray-500' 
-        });
-    };
-    
-    const triggerDesperationAnimation = (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => {
-        next.desperationMoveAnimations.push(animation);
-    };
-
-    if (playerShip.isStunned) {
-        addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Ship systems were offline. All power restored.", isPlayerSource: true, color: 'border-orange-400' });
-        playerShip.isStunned = false;
-    } else {
-        if (playerShip.repairTarget) {
-            const energyCost = 10;
-            const { success, logs: energyLogs } = consumeEnergy(playerShip, energyCost);
-            energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-            if (success) {
-                const repairAmount = 25;
-                const targetSystem = playerShip.repairTarget;
-                let isComplete = false;
-                if (targetSystem === 'hull') {
-                    playerShip.hull = Math.min(playerShip.maxHull, playerShip.hull + repairAmount);
-                    if (playerShip.hull === playerShip.maxHull) isComplete = true;
-                } else {
-                    const subsystem = playerShip.subsystems[targetSystem as keyof ShipSubsystems];
-                    subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
-                    if (subsystem.health === subsystem.maxHealth) isComplete = true;
-                }
-                if (isComplete) {
-                    addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Repairs to ${targetSystem} are complete.`, isPlayerSource: true });
-                    playerShip.repairTarget = null;
-                }
-            }
-        }
-        
-        let maintainedTargetLock = false;
-
-        if (playerShip.cloakState === 'cloaked' && (playerTurnActions.combat || playerTurnActions.hasLaunchedTorpedo || playerTurnActions.hasUsedAwayTeam)) {
-            playerShip.cloakState = 'visible';
-            playerShip.cloakCooldown = 2;
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: 'Taking offensive action has disengaged the cloaking device.', isPlayerSource: true });
-        }
-        
-        const wasInNebula = isPosInNebula(playerShip.position, currentSector);
-        const wasInDeepNebula = isDeepNebula(playerShip.position, currentSector);
-
-        if (playerShip.retreatingTurn === null) {
-            if (navigationTarget) {
-                const movementSpeed = playerShip.cloakState === 'cloaked' ? 1 : (next.redAlert ? 1 : 3);
-                for (let i = 0; i < movementSpeed; i++) {
-                    if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) break;
-                    playerShip.position = moveOneStep(playerShip.position, navigationTarget);
-                }
-                if (playerShip.position.x === navigationTarget.x && playerShip.position.y === navigationTarget.y) {
-                    newNavTarget = null;
-                }
-                 if (next.orbitingPlanetId && (playerShip.position.x !== initialPlayerPosition.x || playerShip.position.y !== initialPlayerPosition.y)) {
-                    const planet = next.currentSector.entities.find(e => e.id === next.orbitingPlanetId);
-                    if (planet && Math.max(Math.abs(playerShip.position.x - planet.position.x), Math.abs(playerShip.position.y - planet.position.y)) > 1) {
-                        next.orbitingPlanetId = null;
-                        addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Leaving orbit of ${planet.name}.`, isPlayerSource: true });
-                    }
-                }
-            }
-            if (playerTurnActions.combat?.type === 'phasers') {
-                const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId);
-                if (target) {
-                    const targetingCheck = canTargetEntity(playerShip, target, next.currentSector);
-                    if (!targetingCheck.canTarget) {
-                        addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Firing solution failed: ${targetingCheck.reason}`, isPlayerSource: true });
-                    } else {
-                        const combatLogs = applyPhaserDamage(target as Ship, 20 * (playerShip.energyAllocation.weapons / 100), player.targeting?.subsystem || null, playerShip, next);
-                        next.combatEffects.push({ type: 'phaser', sourceId: playerShip.id, targetId: target.id, faction: playerShip.faction, delay: 0 });
-                        combatLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-                        if (player.targeting?.subsystem) maintainedTargetLock = true;
-                    }
-                }
-            }
-        }
-        
-        const isInNebula = isPosInNebula(playerShip.position, currentSector);
-        const isInDeepNebula = isDeepNebula(playerShip.position, currentSector);
-
-        if (isInNebula && !wasInNebula) {
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Entering nebula. Our sensor range is reduced.", isPlayerSource: true });
-        } else if (!isInNebula && wasInNebula) {
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "We have cleared the nebula. Sensors are back to full capacity.", isPlayerSource: true });
-        }
-
-        if (isInDeepNebula && !wasInDeepNebula) {
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "We've entered a deep nebula. We are hidden from enemy sensors!", isPlayerSource: true, color: 'border-green-400' });
-        } else if (!isInDeepNebula && wasInDeepNebula) {
-            addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: "Leaving deep nebula cover. We are now visible on local sensors.", isPlayerSource: true, color: 'border-orange-400' });
-        }
-
-
-        if (player.targeting) {
-            if (maintainedTargetLock) player.targeting.consecutiveTurns = (player.targeting.consecutiveTurns || 1) + 1;
-            else if (player.targeting.consecutiveTurns > 1) player.targeting.consecutiveTurns = 1;
-        }
-    }
-
-    // =================================================================
-    // == Point Defense Phase ==
-    // =================================================================
-    let pointDefenseFired = false;
-    if (playerShip.pointDefenseEnabled && playerShip.subsystems.pointDefense.health > 0) {
-        const incomingTorpedoes = currentSector.entities.filter((e): e is TorpedoProjectile => 
-            e.type === 'torpedo_projectile' && 
-            e.faction !== 'Federation' && 
-            e.hull > 0
-        );
-
-        if (incomingTorpedoes.length > 0) {
-            const POINT_DEFENSE_RANGE = 1;
-            const validTargets = incomingTorpedoes.filter(torpedo => 
-                calculateDistance(playerShip.position, torpedo.position) <= POINT_DEFENSE_RANGE
-            );
-            
-            if (validTargets.length > 0) {
-                const threatOrder: Record<TorpedoType, number> = {
-                    'Quantum': 5,
-                    'HeavyPhoton': 4,
-                    'Photon': 3,
-                    'HeavyPlasma': 2,
-                    'Plasma': 1,
-                };
-                validTargets.sort((a, b) => threatOrder[b.torpedoType] - threatOrder[a.torpedoType]);
-                
-                const torpedoToShoot = validTargets[0];
-
-                const activeEnergyCost = 40;
-                const { success, logs: energyLogs } = consumeEnergy(playerShip, activeEnergyCost);
-                energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-
-                if (success) {
-                    pointDefenseFired = true;
-                    const hitChance = playerShip.subsystems.pointDefense.health / playerShip.subsystems.pointDefense.maxHealth;
-                    if (Math.random() < hitChance) {
-                        torpedoToShoot.hull = 0;
-                        next.combatEffects.push({ 
-                            type: 'point_defense', 
-                            sourceId: playerShip.id, 
-                            targetId: torpedoToShoot.id, 
-                            faction: playerShip.faction, 
-                            delay: 0 
-                        });
-                        addLogForTurn({
-                            sourceId: 'player',
-                            sourceName: 'Point-Defense System',
-                            message: `Intercepted and destroyed an incoming ${torpedoToShoot.name}! (Hit Chance: ${Math.round(hitChance * 100)}%). Consumed ${activeEnergyCost} power.`,
-                            isPlayerSource: true,
-                        });
-                    } else {
-                         addLogForTurn({
-                            sourceId: 'player',
-                            sourceName: 'Point-Defense System',
-                            message: `Attempted to intercept a ${torpedoToShoot.name} but missed! (Hit Chance: ${Math.round(hitChance * 100)}%). Consumed ${activeEnergyCost} power.`,
-                            isPlayerSource: true,
-                        });
-                    }
-                } else {
-                    addLogForTurn({
-                        sourceId: 'player',
-                        sourceName: 'Point-Defense System',
-                        message: `Insufficient power to intercept incoming torpedo!`,
-                        isPlayerSource: true,
-                        color: 'border-red-500'
-                    });
-                }
-            }
-        }
-        
-        if (!pointDefenseFired) {
-            const passiveEnergyCost = 20;
-            const { success, logs: energyLogs } = consumeEnergy(playerShip, passiveEnergyCost);
-            energyLogs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-            if(success) {
-                 addLogForTurn({
-                    sourceId: 'player',
-                    sourceName: 'Point-Defense System',
-                    message: `Point-defense grid maintained. Consumed ${passiveEnergyCost} power.`,
-                    isPlayerSource: true,
-                });
-            } else {
-                playerShip.pointDefenseEnabled = false;
-                 addLogForTurn({
-                    sourceId: 'player',
-                    sourceName: 'Point-Defense System',
-                    message: `Insufficient power for point-defense upkeep! System automatically deactivated.`,
-                    isPlayerSource: true,
-                    color: 'border-red-500'
-                });
-            }
-        }
-    }
-    
-    const projectiles = currentSector.entities.filter((e): e is TorpedoProjectile => e.type === 'torpedo_projectile');
-    const allShipsForProjectiles = [...currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
-    const destroyedProjectileIds = new Set<string>();
-    const asteroidPositions = new Set(next.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
-
-    for (const torpedo of projectiles) {
-        if (torpedo.hull <= 0) { destroyedProjectileIds.add(torpedo.id); continue; }
-        const targetEntity = allShipsForProjectiles.find(s => s.id === torpedo.targetId);
-        if (!targetEntity || targetEntity.hull <= 0) { destroyedProjectileIds.add(torpedo.id); continue; }
-        
-        for (let i = 0; i < torpedo.speed; i++) {
-            if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) break;
-
-            const nextStep = moveOneStep(torpedo.position, targetEntity.position);
-
-            if (isPosInNebula(nextStep, currentSector)) {
-                if (calculateDistance(torpedo.position, targetEntity.position) > 1) {
-                    addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: `The ${torpedo.name} is disrupted by the nebula and fizzles out.`, isPlayerSource: torpedo.faction === 'Federation' });
-                    torpedo.hull = 0;
-                    break;
-                }
-            }
-            
-            const nextStepPosKey = `${nextStep.x},${nextStep.y}`;
-            if (asteroidPositions.has(nextStepPosKey)) {
-                if (Math.random() < 0.40) { // 40% chance of impact
-                    addLogForTurn({
-                        sourceId: torpedo.sourceId,
-                        sourceName: torpedo.name,
-                        message: `The ${torpedo.name} has struck an asteroid and was destroyed!`,
-                        isPlayerSource: torpedo.faction === 'Federation'
-                    });
-                    next.combatEffects.push({ type: 'torpedo_hit', position: nextStep, delay: 0, torpedoType: torpedo.torpedoType });
-                    torpedo.hull = 0;
-                    break; 
-                }
-            }
-
-            torpedo.position = nextStep;
-            torpedo.path.push({ ...torpedo.position });
-            
-            if (torpedo.position.x === targetEntity.position.x && torpedo.position.y === targetEntity.position.y) {
-                const combatLogs = applyTorpedoDamage(targetEntity, torpedo, next);
-                next.combatEffects.push({ type: 'torpedo_hit', position: targetEntity.position, delay: 0, torpedoType: torpedo.torpedoType });
-                combatLogs.forEach(msg => addLogForTurn({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message: msg, isPlayerSource: torpedo.faction === 'Federation' }));
-                torpedo.hull = 0;
-                break;
-            }
-        }
-        if (torpedo.hull <= 0) {
-            destroyedProjectileIds.add(torpedo.id);
-        }
-    }
-
-    next.currentSector.entities = next.currentSector.entities.filter(e => !destroyedProjectileIds.has(e.id));
-    
-    const aiActions: AIActions = { addLog: addLogForTurn, applyPhaserDamage, triggerDesperationAnimation };
-    processAITurns(next, aiActions, new Set<string>());
-
-    // =================================================================
-    // == Status Effects Phase ==
-    // =================================================================
-    const allShipsForStatus = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
-    allShipsForStatus.forEach(ship => {
-        if (ship.statusEffects.length > 0 && ship.hull > 0) {
-            const newStatusEffects = [];
-            for (const effect of ship.statusEffects) {
-                if (effect.type === 'plasma_burn') {
-                    ship.hull = Math.max(0, ship.hull - effect.damage);
-                    addLogForTurn({
-                        sourceId: 'system',
-                        sourceName: 'Damage Report',
-                        message: `${ship.name} takes ${effect.damage} damage from a plasma burn!`,
-                        color: 'border-teal-500',
-                        isPlayerSource: false,
-                    });
-                    effect.turnsRemaining--;
-                }
-                if (effect.turnsRemaining > 0) {
-                    newStatusEffects.push(effect);
-                } else {
-                    addLogForTurn({
-                        sourceId: 'system',
-                        sourceName: 'Damage Report',
-                        message: `The plasma fire on ${ship.name} has extinguished.`,
-                        color: 'border-gray-500',
-                        isPlayerSource: false,
-                    });
-                }
-            }
-            ship.statusEffects = newStatusEffects;
-        }
-    });
-
-    // =================================================================
-    // == Environmental Hazard Phase ==
-    // =================================================================
-    const allShipsForHazards = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
-    const asteroidPositionsForHazards = new Set(next.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
-
-    allShipsForHazards.forEach(ship => {
-        if (ship.hull <= 0) return; // Skip destroyed ships
-        
-        const shipPosKey = `${ship.position.x},${ship.position.y}`;
-        if (asteroidPositionsForHazards.has(shipPosKey)) {
-            if (Math.random() < 0.33) { // 33% chance of taking damage
-                const damage = 5 + Math.floor(Math.random() * 11); // 5-15 damage
-                let remainingDamage = damage;
-                
-                let logMessage = `${ship.name} is struck by micrometeoroids for ${damage} damage!`;
-                
-                if (ship.shields > 0) {
-                    const absorbed = Math.min(ship.shields, remainingDamage);
-                    ship.shields -= absorbed;
-                    remainingDamage -= absorbed;
-                    logMessage += ` Shields absorbed ${Math.round(absorbed)}.`;
-                }
-                
-                if (remainingDamage > 0) {
-                    const roundedDamage = Math.round(remainingDamage);
-                    ship.hull = Math.max(0, ship.hull - roundedDamage);
-                    logMessage += ` Hull takes ${roundedDamage} damage.`;
-                }
-                
-                addLogForTurn({
-                    sourceId: 'system',
-                    sourceName: 'Hazard',
-                    message: logMessage,
-                    isPlayerSource: false,
-                    color: 'border-orange-400'
-                });
-            }
-        }
-    });
-
-    // =================================================================
-    // == Cloak Maintenance Phase ==
-    // =================================================================
-    const allShipsForCloakCheck = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
-
-    allShipsForCloakCheck.forEach(ship => {
-        if (ship.hull <= 0 || ship.isDerelict) {
-            return;
-        }
-        if (ship.cloakState === 'cloaking' || ship.cloakState === 'cloaked') {
-            
-            let reliability = 1.0;
-            let powerCost = 0;
-            let isMakeshiftCloak = false;
-            let subsystemDamageChance = 0;
-            let explosionChance = 0;
-
-            if (ship.customCloakStats) { // Pirate makeshift cloak
-                isMakeshiftCloak = true;
-                reliability = ship.customCloakStats.reliability;
-                powerCost = ship.customCloakStats.powerCost;
-                subsystemDamageChance = ship.customCloakStats.subsystemDamageChance;
-                explosionChance = ship.customCloakStats.explosionChance;
-            } else { // Standard cloak
-                const shipStats = shipClasses[ship.shipModel]?.[ship.shipClass];
-                if (!shipStats || !ship.cloakingCapable) return;
-
-                reliability = 1 - shipStats.cloakFailureChance;
-                powerCost = shipStats.cloakEnergyCost.maintain;
-            }
-            
-            let envModifierLog = "";
-
-            if (next.currentSector.hasNebula) {
-                reliability *= 0.75; 
-                powerCost *= 1.30;
-                envModifierLog = " (modified by nebula)";
-            }
-            
-            powerCost = Math.round(powerCost);
-            const wasEngaging = ship.cloakState === 'cloaking';
-
-            if (isMakeshiftCloak) {
-                if (Math.random() < explosionChance) {
-                    ship.hull = 0;
-                    next.combatEffects.push({ type: 'torpedo_hit', position: ship.position, delay: 0, torpedoType: 'Photon' }); // Re-use explosion effect
-                    addLogForTurn({ 
-                        sourceId: ship.id, 
-                        sourceName: ship.name, 
-                        message: `CATASTROPHIC FAILURE! The makeshift cloaking device overloads and destroys the ${ship.name}!`, 
-                        isPlayerSource: false,
-                        color: 'border-red-700'
-                    });
-                    return; 
-                }
-                if (Math.random() < subsystemDamageChance) {
-                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'weapons', 'engines', 'shields', 'pointDefense', 'computer', 'lifeSupport']; // Weighted
-                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
-                    if (targetSubsystem.maxHealth > 0 && targetSubsystem.health > 0) {
-                        const damageAmount = Math.round(targetSubsystem.maxHealth * 0.30);
-                        targetSubsystem.health = Math.max(0, targetSubsystem.health - damageAmount);
-                        addLogForTurn({
-                            sourceId: ship.id, 
-                            sourceName: ship.name, 
-                            message: `The unstable cloak backfires! A power surge inflicts ${damageAmount} damage to the ${randomSubsystemKey} system!`, 
-                            isPlayerSource: false,
-                            color: 'border-orange-500'
-                        });
-                    }
-                }
-            }
-
-            if (Math.random() > reliability) {
-                ship.cloakState = 'visible';
-                ship.cloakCooldown = 2;
-                addLogForTurn({ 
-                    sourceId: ship.id, 
-                    sourceName: ship.name, 
-                    message: `Cloaking device failed${envModifierLog}! Ship is now visible.`, 
-                    isPlayerSource: ship.id === 'player',
-                    color: 'border-orange-400'
-                });
-            } else {
-                let hasPower = false;
-                if (ship.id === 'player') {
-                    const consumptionResult = consumeEnergy(ship, powerCost);
-                    hasPower = consumptionResult.success;
-                    consumptionResult.logs.forEach(msg => addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: msg, isPlayerSource: true }));
-                } else {
-                    if (ship.energy.current >= powerCost) {
-                        ship.energy.current -= powerCost;
-                        hasPower = true;
-                    }
-                }
-
-                if (!hasPower) {
-                    ship.cloakState = 'visible';
-                    ship.cloakCooldown = 2;
-                    addLogForTurn({
-                        sourceId: ship.id, 
-                        sourceName: ship.name, 
-                        message: `Insufficient power to maintain cloak${envModifierLog}! Device disengaged.`, 
-                        isPlayerSource: ship.id === 'player',
-                        color: 'border-orange-400'
-                    });
-                } else {
-                    if (wasEngaging) {
-                        ship.cloakState = 'cloaked';
-                        addLogForTurn({ 
-                            sourceId: ship.id, 
-                            sourceName: ship.name, 
-                            message: `Cloak engaged successfully. Consumed ${powerCost} power${envModifierLog}.`, 
-                            isPlayerSource: ship.id === 'player'
-                        });
-                    }
-                }
-            }
-        }
-    });
-
-    const allShips = [...next.currentSector.entities.filter((e): e is Ship => e.type === 'ship'), playerShip];
     allShips.forEach(ship => {
-        if (ship.hull <= 0 || ship.isDerelict) {
-            return;
-        }
-        if (ship.shields < ship.maxShields && ship.subsystems.shields.health / ship.subsystems.shields.maxHealth >= 0.25) {
-            const potentialRegen = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
-            if (potentialRegen > 0) {
-                const energyCost = Math.round(potentialRegen * 2); 
-                if (ship.id !== 'player' && ship.energy.current >= energyCost) {
-                    ship.energy.current -= energyCost;
-                    ship.shields = Math.min(ship.maxShields, ship.shields + potentialRegen);
+        // --- Captured Ship Repair Logic ---
+        if (ship.captureInfo) {
+            const turnsSinceCapture = state.turn - ship.captureInfo.repairTurn;
+            if (turnsSinceCapture > 0 && turnsSinceCapture <= 5) {
+                const hullRepair = ship.maxHull * 0.1;
+                ship.hull = Math.min(ship.maxHull, ship.hull + hullRepair);
+                const subsystems = Object.values(ship.subsystems);
+                const damagedSubsystems = subsystems.filter(s => s.health < s.maxHealth);
+                if (damagedSubsystems.length > 0) {
+                    const systemToRepair = damagedSubsystems[Math.floor(Math.random() * damagedSubsystems.length)];
+                    systemToRepair.health = Math.min(systemToRepair.maxHealth, systemToRepair.health + 20);
+                }
+                if (ship.captureInfo.captorId === 'player') {
+                     addLogEntry(state, { sourceId: 'system', sourceName: 'Engineering Report', message: `Repair teams are making progress on the captured ${ship.name}. Hull at ${Math.round((ship.hull/ship.maxHull)*100)}%.`, isPlayerSource: false, color: SYSTEM_LOG_COLOR });
+                }
+            } else if (turnsSinceCapture > 5) {
+                ship.captureInfo = null;
+                if (ship.faction === 'Federation') {
+                     addLogEntry(state, { sourceId: 'system', sourceName: 'Engineering Report', message: `The captured ${ship.name} is now fully operational and under our command!`, isPlayerSource: false, color: PLAYER_LOG_COLOR });
                 }
             }
-        } else if (ship.subsystems.shields.health / ship.subsystems.shields.maxHealth < 0.25) {
-            ship.shields = 0;
+        }
+        
+        // --- System Failure Cascade Logic ---
+        if (ship.subsystems.engines.health <= 0 && ship.engineFailureTurn === null) {
+            ship.engineFailureTurn = state.turn;
+            addLogEntry(state, { sourceId: ship.id, sourceName: ship.name, message: `${ship.name}'s engines have failed! They are dead in space.`, isPlayerSource: ship.id === 'player', color: 'border-orange-500' });
+        }
+        if (ship.engineFailureTurn !== null) {
+            // Ship with failed engines doesn't regenerate energy.
+            if (ship.energy.current <= 0 && ship.lifeSupportFailureTurn === null) {
+                ship.lifeSupportFailureTurn = state.turn;
+                 addLogEntry(state, { sourceId: ship.id, sourceName: ship.name, message: `${ship.name}'s main power has failed! Switching to emergency life support (2 turns).`, isPlayerSource: ship.id === 'player', color: 'border-orange-500' });
+            }
+        }
+        if (ship.lifeSupportFailureTurn !== null && state.turn > ship.lifeSupportFailureTurn + 2) {
+            if (!ship.isDerelict) {
+                ship.isDerelict = true;
+                 addLogEntry(state, { sourceId: ship.id, sourceName: ship.name, message: `Emergency life support on ${ship.name} has failed! The ship is now a derelict hulk.`, isPlayerSource: ship.id === 'player', color: 'border-red-600' });
+            }
         }
 
-        if (ship.id !== 'player') {
-            if (ship.subsystems.engines.health > 0) {
-                ship.energy.current = Math.min(ship.energy.max, ship.energy.current + Math.round(8 * getEnergyOutputMultiplier(ship.subsystems.engines.health / ship.subsystems.engines.maxHealth)));
-                if (ship.engineFailureTurn != null) {
-                    addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Engineering has brought impulse engines back online!`, isPlayerSource: false, color: 'border-green-400' });
-                    ship.engineFailureTurn = null;
+        // --- Status Effect Processing ---
+        ship.statusEffects = ship.statusEffects.filter(effect => {
+            if (effect.type === 'plasma_burn') {
+                ship.hull = Math.max(0, ship.hull - effect.damage);
+                 addLogEntry(state, { sourceId: ship.id, sourceName: ship.name, message: `Plasma fire on the hull deals ${effect.damage} damage!`, isPlayerSource: ship.id === 'player', color: 'border-orange-500' });
+                effect.turnsRemaining--;
+                return effect.turnsRemaining > 0;
+            }
+            return true;
+        });
+
+        // --- Shield Regeneration ---
+        if ((ship.id === 'player' && state.redAlert) || (ship.id !== 'player' && ship.shields > 0)) {
+            if (ship.subsystems.shields.health > 0) {
+                const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
+                const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
+                const effectiveRegen = regenAmount * shieldEfficiency;
+                ship.shields = Math.min(ship.maxShields, ship.shields + effectiveRegen);
+            }
+        } else if (ship.id === 'player' && !state.redAlert) {
+            // Player energy regen
+            const regenAmount = ship.energy.max * 0.1;
+            ship.energy.current = Math.min(ship.energy.max, ship.energy.current + regenAmount);
+        }
+
+        // --- Repair Target Processing ---
+        if (ship.repairTarget) {
+            const repairCost = 10;
+            if (ship.energy.current >= repairCost) {
+                ship.energy.current -= repairCost;
+                if (ship.repairTarget === 'hull') {
+                    ship.hull = Math.min(ship.maxHull, ship.hull + 5);
+                } else {
+                    const subsystem = ship.subsystems[ship.repairTarget];
+                    if (subsystem) {
+                        subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + 10);
+                    }
+                }
+            }
+        }
+
+        // --- Cloak Cooldown ---
+        if (ship.cloakCooldown > 0) {
+            ship.cloakCooldown--;
+        }
+
+        // --- Stun Recovery ---
+        ship.isStunned = false;
+    });
+};
+
+export const resolveTurn = (
+    gameState: GameState,
+    playerTurnActions: PlayerTurnActions,
+    navigationTarget: { x: number; y: number } | null,
+    selectedTargetId: string | null
+): { nextGameState: GameState; newNavigationTarget: { x: number; y: number } | null, newSelectedTargetId: string | null } => {
+    const nextState: GameState = JSON.parse(JSON.stringify(gameState));
+    const addLog = (logData: Omit<LogEntry, 'id' | 'turn'>) => addLogEntry(nextState, logData);
+    
+    // --- Combat Allegiance Assignment ---
+    const hostileShips = nextState.currentSector.entities.filter(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+    const justEnteredCombat = !gameState.redAlert && hostileShips.length > 0;
+
+    if (justEnteredCombat) {
+        nextState.redAlert = true; // Automatically go to red alert
+        addLog({ sourceId: 'system', sourceName: 'Tactical Alert', message: 'Hostile ships detected! Assigning combat allegiances.', isPlayerSource: false, color: 'border-red-500' });
+        
+        const allShips = [nextState.player.ship, ...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+        allShips.forEach(ship => {
+            if (ship.id === 'player') {
+                ship.allegiance = 'player';
+            } else if (ship.faction === 'Federation') {
+                ship.allegiance = 'ally';
+            } else if (['Klingon', 'Romulan', 'Pirate'].includes(ship.faction)) {
+                ship.allegiance = 'enemy';
+            } else if (ship.faction === 'Independent') {
+                if (nextState.currentSector.factionOwner === 'Federation') {
+                    ship.allegiance = 'ally';
+                    addLog({ sourceId: ship.id, sourceName: ship.name, message: `The civilian vessel ${ship.name} is siding with the Federation!`, isPlayerSource: false, color: 'border-blue-300' });
+                } else {
+                    ship.allegiance = 'neutral';
+                    addLog({ sourceId: ship.id, sourceName: ship.name, message: `The civilian vessel ${ship.name} is attempting to stay out of the fight.`, isPlayerSource: false, color: 'border-gray-400' });
                 }
             } else {
-                if (ship.engineFailureTurn == null) {
-                    ship.engineFailureTurn = next.turn;
-                    addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `CRITICAL: Impulse engines have failed! The ship is dead in the water and cannot regenerate power.`, isPlayerSource: false, color: 'border-red-600' });
+                ship.allegiance = 'neutral';
+            }
+        });
+    }
+
+
+    const actedShipIds = new Set<string>();
+
+    const playerResult = processPlayerTurn(nextState, playerTurnActions, navigationTarget, selectedTargetId, addLog);
+    actedShipIds.add('player');
+
+    // AI Ship Processing
+    processAITurns(nextState, {
+        addLog: addLog,
+        applyPhaserDamage: (target, damage, subsystem, source, state) => [],
+        triggerDesperationAnimation: (animation) => {
+            nextState.desperationMoveAnimations.push(animation);
+        }
+    }, actedShipIds);
+
+
+    // Torpedo Movement & Resolution
+    let newProjectiles: TorpedoProjectile[] = [];
+    nextState.currentSector.entities = nextState.currentSector.entities.filter(entity => {
+        if (entity.type !== 'torpedo_projectile') return true;
+        const torpedo = entity as TorpedoProjectile;
+        if (torpedo.hull <= 0) { // Check if torpedo was destroyed this turn
+            return false;
+        }
+
+        const allShips = [nextState.player.ship, ...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+        const target = allShips.find(s => s.id === torpedo.targetId);
+        
+        if (!target || target.hull <= 0) { // Target destroyed or gone
+             addLog({ sourceId: torpedo.sourceId, sourceName: 'Sensors', message: `A torpedo lost its target lock and self-destructed.`, isPlayerSource: false, color: SYSTEM_LOG_COLOR });
+             return false;
+        }
+
+        for (let i = 0; i < torpedo.speed; i++) {
+            if (calculateDistance(torpedo.position, target.position) <= 0) {
+                addLog({ sourceId: torpedo.sourceId, sourceName: 'Sensors', message: `${torpedo.name} impacts ${target.name}!`, isPlayerSource: false, color: SYSTEM_LOG_COLOR });
+                const combatLogs = applyTorpedoDamage(target, torpedo);
+                combatLogs.forEach(log => addLog({ sourceId: torpedo.sourceId, sourceName: 'Damage Control', message: log, isPlayerSource: torpedo.faction === 'Federation', color: SYSTEM_LOG_COLOR }));
+                nextState.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: 0, torpedoType: torpedo.torpedoType });
+                return false; // Torpedo is consumed
+            }
+            torpedo.position = calculateDistance(torpedo.position, target.position) > 0 ? {
+                x: torpedo.position.x + Math.sign(target.position.x - torpedo.position.x),
+                y: torpedo.position.y + Math.sign(target.position.y - torpedo.position.y)
+            } : torpedo.position;
+            torpedo.path.push({ ...torpedo.position });
+        }
+        
+        torpedo.stepsTraveled++;
+        if (torpedo.stepsTraveled > 15) { // Max range
+            return false;
+        }
+        
+        return true;
+    });
+    nextState.currentSector.entities.push(...newProjectiles);
+
+    // Shuttle Movement & Rescue
+    const shuttles = nextState.currentSector.entities.filter(e => e.type === 'shuttle') as Shuttle[];
+    if (shuttles.length > 0) {
+        const friendlyShips = [nextState.player.ship, ...nextState.currentSector.entities.filter(e => e.type === 'ship' && e.faction === 'Federation')] as Ship[];
+        shuttles.forEach(shuttle => {
+            const closestFriendly = friendlyShips.sort((a, b) => calculateDistance(shuttle.position, a.position) - calculateDistance(shuttle.position, b.position))[0];
+            if (closestFriendly) {
+                if (calculateDistance(shuttle.position, closestFriendly.position) <= 1) {
+                    addLog({ sourceId: 'system', sourceName: 'Transporter Control', message: `Rescued ${shuttle.crewCount} crew from a shuttle.`, isPlayerSource: false, color: 'border-green-500' });
+                    nextState.currentSector.entities = nextState.currentSector.entities.filter(e => e.id !== shuttle.id);
+                } else {
+                    shuttle.position = {
+                        x: shuttle.position.x + Math.sign(closestFriendly.position.x - shuttle.position.x),
+                        y: shuttle.position.y + Math.sign(closestFriendly.position.y - shuttle.position.y)
+                    };
                 }
             }
-        }
+        });
+    }
 
-        if (ship.subsystems.lifeSupport.health <= 0) {
-            ship.lifeSupportReserves.current = Math.max(0, ship.lifeSupportReserves.current - 50); 
-            if (ship.lifeSupportFailureTurn == null) {
-                ship.lifeSupportFailureTurn = next.turn;
-                addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `CRITICAL: Life support has failed! Switching to emergency reserves. 2 turns remaining.`, isPlayerSource: ship.id === 'player', color: 'border-red-600' });
-            } else if (ship.lifeSupportReserves.current <= 0 && ship.hull > 0 && !ship.isDerelict) {
-                ship.isDerelict = true;
-                ship.crewMorale.current = 0;
-                ship.hull = Math.max(1, ship.hull); 
-                addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Catastrophic life support failure! All hands lost. The ship is now a derelict hulk.`, isPlayerSource: ship.id === 'player', color: 'border-red-700' });
-            } else if (ship.hull > 0 && !ship.isDerelict) {
-                 addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support offline. ${Math.round(ship.lifeSupportReserves.current/50)} turn(s) of emergency reserves left.`, isPlayerSource: ship.id === 'player', color: 'border-orange-400' });
-            }
-        } else {
-            if (ship.lifeSupportFailureTurn != null) {
-                addLogForTurn({ sourceId: ship.id, sourceName: ship.name, message: `Life support has been restored.`, isPlayerSource: ship.id === 'player', color: 'border-green-400' });
-                ship.lifeSupportFailureTurn = null;
-            }
+    // Handle Retreats
+    const playerShip = nextState.player.ship;
+    if (playerShip.retreatingTurn !== null && playerShip.retreatingTurn <= nextState.turn) {
+        addLog({ sourceId: 'player', sourceName: playerShip.name, message: 'Emergency warp engaged!', isPlayerSource: true, color: 'border-blue-400' });
+        nextState.isRetreatingWarp = true;
+        playerShip.retreatingTurn = null;
+    }
+
+    const aiShipsToRetreat = (nextState.currentSector.entities.filter(e => e.type === 'ship' && e.id !== 'player' && e.retreatingTurn !== null && e.retreatingTurn <= nextState.turn) as Ship[]);
+    if (aiShipsToRetreat.length > 0) {
+        aiShipsToRetreat.forEach(ship => {
+            addLog({ sourceId: ship.id, sourceName: ship.name, message: `The ${ship.name} has successfully escaped the sector!`, isPlayerSource: false, color: 'border-yellow-500' });
+        });
+        nextState.currentSector.entities = nextState.currentSector.entities.filter(e => !aiShipsToRetreat.some(s => s.id === e.id));
+    }
+
+    processEndOfTurnSystems(nextState);
+
+    // Ship Cleanup
+    nextState.currentSector.entities = nextState.currentSector.entities.filter(e => {
+        if (e.type === 'ship' && e.hull <= 0) {
+            // Destruction already logged in combat functions
+            return false;
         }
+        return true;
     });
 
-    if (playerShip.hull <= 0 && !playerShip.isDerelict) { 
-        triggerDesperationAnimation({ source: playerShip, type: 'evacuate' });
-        playerShip.isDerelict = true;
-        playerShip.hull = 1;
-        addLogForTurn({ sourceId: 'player', sourceName: playerShip.name, message: `Hull breach critical! All hands abandon ship!`, isPlayerSource: true, color: 'border-red-700' });
-        next.gameOver = true; 
-        addLogForTurn({ sourceId: 'system', sourceName: 'FATAL', message: "CRITICAL: U.S.S. Endeavour has been lost. Game Over.", isPlayerSource: false, color: 'border-red-700' }); 
+    nextState.turn++;
+    
+    // Check win/loss conditions
+    const remainingHostiles = nextState.currentSector.entities.filter(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+    if (nextState.redAlert && remainingHostiles.length === 0) {
+        nextState.redAlert = false;
+        addLog({ sourceId: 'system', sourceName: 'Tactical Alert', message: `All hostile targets neutralized. Standing down from Red Alert.`, isPlayerSource: false, color: 'border-green-500' });
     }
     
-    const hasEnemies = next.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
-    if (next.redAlert && !hasEnemies) {
-        next.redAlert = false;
-        playerShip.shields = 0;
-        playerShip.evasive = false;
-    } else if (!next.redAlert && hasEnemies) {
-        next.redAlert = true;
-        playerShip.shields = playerShip.maxShields;
+    if (nextState.player.ship.hull <= 0) {
+        nextState.gameOver = true;
+        addLog({ sourceId: 'system', sourceName: 'FATAL ERROR', message: `The U.S.S. Endeavour has been destroyed.`, isPlayerSource: true, color: 'border-red-600' });
     }
 
-    if (next.redAlert && hasEnemies) {
-        consumeEnergy(playerShip, playerShip.evasive ? 10 : 5);
-    } else if (!next.redAlert) {
-        playerShip.energy.current = Math.min(playerShip.energy.max, playerShip.energy.current + Math.round(10 * getEnergyOutputMultiplier(playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth)));
-    }
-    
-    next.turn++;
-    addLogForTurn({ sourceId: 'system', sourceName: 'Log', message: `Turn ${next.turn} begins.`, isPlayerSource: false, color: 'border-gray-700' });
-    return { nextGameState: next, newNavigationTarget: newNavTarget, newSelectedTargetId };
-}
+    return {
+        nextGameState: nextState,
+        newNavigationTarget: playerResult.newNavigationTarget,
+        newSelectedTargetId: playerResult.newSelectedTargetId,
+    };
+};
