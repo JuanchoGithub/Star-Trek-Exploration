@@ -41,8 +41,8 @@ const templateInfo: Record<string, { description: string, intent: string }> = {
         intent: 'To provide breathing room between points of interest and act as a common, low-threat travel area.'
     },
     'common-asteroid-field': {
-        description: 'A dense field of rock and ice, making navigation hazardous.',
-        intent: 'To create a tactical obstacle. Moving adjacent to asteroids risks hull damage, and the field can provide cover for pirates.'
+        description: 'A sector dominated by 2 to 4 dense clusters of asteroid fields. Each cluster consists of 3 to 9 individual hazardous cells.',
+        intent: 'To create a significant tactical obstacle. The clusters can block movement and provide extensive cover for ambushes, while making travel through the sector dangerous.'
     },
     'common-trade-route': {
         description: 'A relatively safe corridor frequented by independent freighters.',
@@ -219,16 +219,16 @@ export const GalaxyGenerationSection: React.FC = () => {
                 A sector template is a blueprint containing a name, a rarity "weight" (higher is more common), and a list of rules for what can appear within it. Crucially, each template is restricted to certain territories. For example, you will only find "Klingon Hunting Grounds" within the Klingon Empire, while "Pirate Ambush Points" are most common in Uncharted Space. This ensures that the galaxy feels coherent and believable.
             </p>
             
-            <SubHeader>Environmental Generation: Nebulae</SubHeader>
+            <SubHeader>Environmental Generation: Nebulae &amp; Asteroid Fields</SubHeader>
             <p className="text-text-secondary mb-4">
-                Some sector templates have a <code className="bg-black p-1 rounded text-accent-yellow-dark">hasNebulaChance</code> property. If a sector is generated with a nebula, it will not be completely filled. Instead, the simulation generates a partial, organic-looking gas cloud composed of individual nebula cells.
+                Some sector templates can generate large-scale environmental features that significantly impact gameplay.
             </p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                 <li>
-                    <strong>Density:</strong> The nebula will cover between 30% and 70% of the sector's area, creating a mix of open channels and dense clusters.
+                    <strong>Nebulae:</strong> If a sector is generated with a nebula, it will not be completely filled. Instead, the simulation generates a partial, organic-looking gas cloud composed of individual nebula cells. The nebula will cover between 30% and 70% of the sector's area, creating a mix of open channels and dense clusters. This turns nebulae into complex tactical environments.
                 </li>
                 <li>
-                    <strong>Tactical Implications:</strong> This design turns nebulae from simple hazards into complex tactical environments. You can use the clearings to maneuver and the dense pockets for concealment, creating opportunities for ambushes and daring escapes.
+                    <strong>Asteroid Fields:</strong> Asteroid fields no longer appear as single entities. They now generate in large, dense clusters of 3 to 9 cells. These clusters can block movement and provide extensive cover for ambushes, making navigation through these sectors a tactical challenge.
                 </li>
             </ul>
 

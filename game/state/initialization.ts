@@ -1,4 +1,4 @@
-import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate } from '../../types';
+import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
 import { shipClasses, type ShipClassStats } from '../../assets/ships/configs/shipClassStats';
@@ -192,7 +192,65 @@ const createSectorFromTemplate = (
         return pos;
     };
     
-    template.entityTemplates.forEach((et: any) => {
+    // Special handling for asteroid fields to create clusters
+    const asteroidTemplate = template.entityTemplates.find(et => et.type === 'asteroid_field');
+    if (asteroidTemplate) {
+        const clusterCount = Math.floor(rand() * (asteroidTemplate.count[1] - asteroidTemplate.count[0] + 1)) + asteroidTemplate.count[0];
+        
+        for (let i = 0; i < clusterCount; i++) {
+            const clusterSize = Math.floor(rand() * (9 - 3 + 1)) + 3;
+            const clusterPositions: Position[] = [];
+            const queue: Position[] = [];
+            
+            let startPos: Position;
+            let attempts = 0;
+            do {
+                startPos = { x: Math.floor(rand() * SECTOR_WIDTH), y: Math.floor(rand() * SECTOR_HEIGHT) };
+                attempts++;
+            } while (takenPositions.has(`${startPos.x},${startPos.y}`) && attempts < 50);
+
+            if (attempts >= 50) continue; // Couldn't find a spot, skip this cluster
+
+            takenPositions.add(`${startPos.x},${startPos.y}`);
+            clusterPositions.push(startPos);
+            queue.push(startPos);
+
+            while (clusterPositions.length < clusterSize && queue.length > 0) {
+                const current = queue.shift()!;
+                const neighbors = [
+                    { x: current.x + 1, y: current.y }, { x: current.x - 1, y: current.y },
+                    { x: current.x, y: current.y + 1 }, { x: current.x, y: current.y - 1 },
+                ].sort(() => rand() - 0.5); // Shuffle neighbors
+
+                for (const neighbor of neighbors) {
+                    if (clusterPositions.length >= clusterSize) break;
+                    const posKey = `${neighbor.x},${neighbor.y}`;
+                    if (neighbor.x >= 0 && neighbor.x < SECTOR_WIDTH && neighbor.y >= 0 && neighbor.y < SECTOR_HEIGHT && !takenPositions.has(posKey)) {
+                        if (rand() < 0.75) { 
+                            takenPositions.add(posKey);
+                            clusterPositions.push(neighbor);
+                            queue.push(neighbor);
+                        }
+                    }
+                }
+            }
+
+            for (const pos of clusterPositions) {
+                newEntities.push({
+                    id: uniqueId(),
+                    name: 'Asteroid Field',
+                    type: 'asteroid_field',
+                    faction: 'None',
+                    position: pos,
+                    scanned: true,
+                } as AsteroidField);
+            }
+        }
+    }
+    
+    // Process all other entity templates
+    const otherTemplates = template.entityTemplates.filter(et => et.type !== 'asteroid_field');
+    otherTemplates.forEach((et: any) => {
         const count = Math.floor(rand() * (et.count[1] - et.count[0] + 1)) + et.count[0];
         for (let i = 0; i < count; i++) {
             const newEntity = createEntityFromTemplate(et, getUniquePosition(), factionOwner, availableShipNames, availablePlanetNames, colorIndex);

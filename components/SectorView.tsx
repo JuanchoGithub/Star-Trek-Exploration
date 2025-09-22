@@ -14,6 +14,8 @@ import RomulanTargetingReticle from './RomulanTargetingReticle';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 import { canPlayerSeeEntity } from '../game/utils/visibility';
 import { isDeepNebula } from '../game/utils/sector';
+import { asteroidIcons } from '../assets/asteroids/icons';
+import { cyrb53 } from '../game/utils/helpers';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -274,7 +276,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
               icon = <IconComponent className="w-12 h-12" />;
               factionColor = config.colorClass;
           } else if (entity.type === 'asteroid_field') {
-              const IconComponent = asteroidType.icon;
+              const iconIndex = cyrb53(entity.id, 1) % asteroidIcons.length;
+              const IconComponent = asteroidIcons[iconIndex];
               icon = <IconComponent className="w-12 h-12" />;
               factionColor = asteroidType.colorClass;
           } else if (entity.type === 'event_beacon') {
@@ -333,7 +336,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                       )}
                       <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                   </div>
-                  <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>
+                  {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
                   {entity.type === 'ship' && (
                       <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
                           <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>

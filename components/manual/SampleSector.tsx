@@ -7,6 +7,7 @@ import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
 // FIX: Import shipClasses to find a representative ship class for a given role.
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
+import { asteroidIcons } from '../../assets/asteroids/icons';
 
 interface SampleSectorProps {
     template: SectorTemplate;
@@ -74,7 +75,8 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
     const iconsToRender: { icon: React.ReactNode; key: string }[] = [];
     let iconIndex = 0;
 
-    template.entityTemplates.forEach((et, idx) => {
+    const otherTemplates = template.entityTemplates.filter(et => et.type !== 'asteroid_field');
+    otherTemplates.forEach((et, idx) => {
         const count = Math.max(1, et.count[0]); // Show at least one for visualization
         for (let i = 0; i < count; i++) {
             if (iconIndex < entityPositions.length) {
@@ -88,6 +90,14 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
     });
 
     const hasNebula = (template.hasNebulaChance || 0) > 0.5;
+    const hasAsteroids = template.entityTemplates.some(et => et.type === 'asteroid_field');
+    const asteroidClusterPositions = [
+        { top: '37.5%', left: '30%' },
+        { top: '37.5%', left: '50%' },
+        { top: '12.5%', left: '50%' },
+        { top: '62.5%', left: '50%' },
+        { top: '62.5%', left: '70%' },
+    ];
 
     return (
         <div className="w-48 h-36 bg-black border border-border-dark grid grid-cols-5 grid-rows-4 relative overflow-hidden">
@@ -107,6 +117,14 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
                     {icon}
                 </div>
             ))}
+            {hasAsteroids && asteroidClusterPositions.map((pos, i) => {
+                const Icon = asteroidIcons[i % asteroidIcons.length];
+                return (
+                    <div key={`asteroid-cluster-${i}`} className="absolute" style={{ ...pos, transform: 'translate(-50%, -50%)' }}>
+                        <Icon className="w-8 h-8 text-gray-400" />
+                    </div>
+                );
+            })}
         </div>
     );
 };
