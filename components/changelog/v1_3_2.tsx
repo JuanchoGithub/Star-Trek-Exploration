@@ -2,11 +2,11 @@ import React from 'react';
 import { SectionHeader, SubHeader } from '../manual/shared';
 
 export const Version1_3_2: React.FC = () => {
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const releaseDate = "September 22, 2025";
     return (
         <>
             <SectionHeader>Version 1.3.2 - Energy Rebalancing</SectionHeader>
-            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 47459.5, 09:00 ({today})</p>
+            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 49721.8, 09:00 ({releaseDate})</p>
             <p className="text-lg text-text-secondary italic mb-4">Overhaul of the ship energy economy based on operational feedback.</p>
             
             <SubHeader>Field Report & Directive</SubHeader>

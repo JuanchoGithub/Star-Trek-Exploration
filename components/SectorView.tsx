@@ -27,6 +27,7 @@ interface SectorViewProps {
   sector: SectorState;
   themeName: ThemeName;
   onCellClick?: (pos: { x: number; y: number }) => void;
+  spectatorMode?: boolean;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -58,7 +59,7 @@ const getPercentageCoords = (gridPos: { x: number; y: number }, sectorSize: {wid
     return { x: `${x}%`, y: `${y}%` };
 };
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick }) => {
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false }) => {
   const sectorSize = { width: 12, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
 
@@ -76,13 +77,24 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
         return;
     }
 
+    const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip?.id);
+
+    if (spectatorMode) {
+        if (entityAtPos) {
+            // Toggle selection: if clicking the same entity, deselect. Otherwise, select.
+            onSelectTarget(selectedTargetId === entityAtPos.id ? null : entityAtPos.id);
+        } else {
+            // Clicking empty space deselects.
+            onSelectTarget(null);
+        }
+        return;
+    }
+
     // Cancel navigation if clicking the currently set target
     if (navigationTarget && navigationTarget.x === x && navigationTarget.y === y) {
         onSetNavigationTarget(null);
         return;
     }
-
-    const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip?.id);
 
     // If the cell is empty or contains an asteroid field, treat it as a navigation target
     if ((!entityAtPos || entityAtPos.type === 'asteroid_field') && !isNavDisabled) {
@@ -91,7 +103,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
         // If it contains another interactable entity (ship, planet), select it for targeting/info
         onSelectTarget(entityAtPos.id);
     }
-    // Clicks on event beacons or occupied cells (for navigation) are ignored here.
   };
 
   const path = playerShip ? getPath(playerShip.position, navigationTarget) : [];

@@ -1,5 +1,3 @@
-
-
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, SectorState, ShipSubsystems } from '../../types';
 import { processPlayerTurn } from './player';
 import { processAITurns } from './aiProcessor';
@@ -8,6 +6,7 @@ import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep, uniqueId } from '../utils/ai';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR } from '../../assets/configs/logColors';
 import { isPosInNebula } from '../utils/sector';
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
 const processEndOfTurnSystems = (state: GameState, addLog: (logData: Omit<LogEntry, 'id' | 'turn'>) => void): void => {
     const allShips = [state.player.ship, ...state.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
@@ -15,13 +14,44 @@ const processEndOfTurnSystems = (state: GameState, addLog: (logData: Omit<LogEnt
     allShips.forEach(ship => {
         if (ship.hull <= 0) return;
 
+        const shipStats = shipClasses[ship.shipModel]?.[ship.shipClass];
+        if (!shipStats) return; // Ship class not found, skip
+
+        // --- New Energy Generation/Consumption Logic ---
+        const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
+        const engineEfficiency = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
+        const totalGenerated = shipStats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
+
+        let totalConsumption = 0;
+        for (const key in ship.subsystems) {
+            const systemKey = key as keyof ShipSubsystems;
+            if (ship.subsystems[systemKey].health > 0 && shipStats.systemConsumption[systemKey]) {
+                totalConsumption += shipStats.systemConsumption[systemKey];
+            }
+        }
+        totalConsumption += shipStats.systemConsumption.base;
+
+        const isHostile = ship.allegiance === 'enemy' || state.currentSector.entities.some(e => e.type === 'ship' && e.faction !== ship.faction);
+        const redAlertActive = (ship.id === 'player' && state.redAlert) || (ship.id !== 'player' && isHostile);
+
+        if (redAlertActive) {
+            totalConsumption += 20; // Shield upkeep cost
+            if (ship.evasive) totalConsumption += 10;
+        }
+
+        if (ship.pointDefenseEnabled) totalConsumption += 15;
+        if (ship.repairTarget) totalConsumption += 5;
+
+        const netChange = totalGenerated - totalConsumption;
+        ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
+        // --- End New Energy Logic ---
+
+
         // Repair Target
         if (ship.repairTarget) {
             let repairAmount = 5;
-            const energyCost = 5 * ship.energyModifier;
-            if (ship.energy.current >= energyCost) {
-                ship.energy.current -= energyCost;
-
+            if (ship.energy.current >= 5) {
+                // Cost is handled in consumption calc now
                 if (ship.repairTarget === 'hull') {
                     ship.hull = Math.min(ship.maxHull, ship.hull + repairAmount);
                 } else {
@@ -85,10 +115,7 @@ const processEndOfTurnSystems = (state: GameState, addLog: (logData: Omit<LogEnt
             }
         }
         
-        // Shield & Energy Regeneration/Drain
-        const isHostile = ship.allegiance === 'enemy' || state.currentSector.entities.some(e => e.type === 'ship' && e.faction !== ship.faction);
-        const redAlertActive = (ship.id === 'player' && state.redAlert) || (ship.id !== 'player' && isHostile);
-
+        // Shield Regeneration
         if (redAlertActive) {
             if (ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
                 const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
@@ -96,18 +123,6 @@ const processEndOfTurnSystems = (state: GameState, addLog: (logData: Omit<LogEnt
                 const effectiveRegen = regenAmount * shieldEfficiency;
                 ship.shields = Math.min(ship.maxShields, ship.shields + effectiveRegen);
             }
-
-            // Energy Drain for Red Alert & other systems
-            let drain = (2 * ship.energyModifier); // Base upkeep
-            if (ship.evasive) drain += (5 * ship.energyModifier);
-            if (ship.pointDefenseEnabled) drain += (10 * ship.energyModifier);
-            if (ship.repairTarget) drain += (5 * ship.energyModifier);
-
-            ship.energy.current = Math.max(0, ship.energy.current - drain);
-
-        } else {
-             // Energy Regen when not in Red Alert
-             ship.energy.current = Math.min(ship.energy.max, ship.energy.current + 10);
         }
     });
 };

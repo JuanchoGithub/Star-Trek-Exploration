@@ -1,5 +1,3 @@
-
-
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
@@ -40,14 +38,14 @@ export class KlingonAI extends FactionAI {
 
             switch (stance) {
                 case 'Aggressive':
-                    if (ship.energyAllocation.weapons !== 70) {
-                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                    if (ship.energyAllocation.weapons !== 74) {
+                        ship.energyAllocation = { weapons: 74, shields: 13, engines: 13 };
                         stanceChanged = true;
                     }
                     break;
                 case 'Defensive':
-                    if (ship.energyAllocation.shields !== 80) {
-                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                    if (ship.energyAllocation.shields !== 60) {
+                        ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
                         stanceChanged = true;
                     }
                     break;

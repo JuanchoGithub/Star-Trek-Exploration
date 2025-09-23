@@ -2,231 +2,103 @@
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
-const SimulationBox: React.FC<{ title: string, scenario: string, rules: string[], calculations: { label: string, value: string, isFinal?: boolean }[] }> = ({ title, scenario, rules, calculations }) => (
-    <div className="bg-bg-paper-lighter p-3 rounded-md">
-        <h4 className="font-bold text-white">{title}</h4>
-        <p className="text-sm text-secondary-light font-mono mb-2">{scenario}</p>
-        <div className="text-sm text-text-secondary italic mb-2">
-            {rules.map((rule, i) => <p key={i}><strong>RULE {i + 1}:</strong> {rule}</p>)}
-        </div>
-        <div className="font-mono text-xs bg-black p-2 rounded">
-            {calculations.map((calc, i) => (
-                <p key={i} className={calc.isFinal ? 'text-accent-green font-bold' : ''}>
-                    &gt; {calc.label}: <span className={!calc.isFinal ? "text-accent-yellow" : ""}>{calc.value}</span>
+export const ScenarioSimulatorSection: React.FC = () => (
+    <div>
+        <SectionHeader>Appendix A: The Scenario Simulator</SectionHeader>
+        <p className="text-text-secondary mb-4">The Scenario Simulator is a powerful wargaming tool that allows Starfleet officers to construct and observe custom tactical situations. This is an invaluable resource for testing ship capabilities, understanding AI behavior, and honing your own command skills without risking the U.S.S. Endeavour.</p>
+        
+        <SubHeader>Accessing the Simulator</SubHeader>
+        <p className="text-text-secondary mb-4">The simulator is accessible directly from the game's Main Menu.</p>
+        
+        <SubHeader>Phase 1: Setup Mode</SubHeader>
+        <p className="text-text-secondary mb-4">This is the heart of the simulator, where you become the architect of your own battle. The screen is divided into the tactical map on the left and the control panel on the right.</p>
+        <div className="space-y-3">
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-white">1. The Tactical Map & Sector Controls</h4>
+                <p className="text-sm text-text-secondary">The large map on the left is a live preview of the sector where your simulation will take place.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Sector Type:</strong> Use this button to open a full-screen modal where you can select the environmental template for your battle, from empty space to dense nebulae or asteroid fields.</li>
+                    <li><strong>Refresh:</strong> Each sector template is generated with a random "seed". Clicking Refresh generates a new layout using the same template but a different seed, allowing you to cycle through map variations.</li>
+                </ul>
                 </p>
-            ))}
+            </div>
+             <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-white">2. The Toolbox</h4>
+                <p className="text-sm text-text-secondary">The right-hand panel contains all the tools needed to place and configure your forces.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Set Allegiance:</strong> Before placing a ship, you must select its allegiance. This determines who it will fight for. 'Player' is for dogfight mode, 'Ally' will fight alongside the player, 'Enemy' will fight against the player, and 'Neutral' will not participate.</li>
+                    <li><strong>Ship Registry:</strong> This scrollable list contains every ship class in the simulation. Select a faction, then click on a ship class to arm your placement tool.</li>
+                     <li><strong>Remove Ship:</strong> Select this tool to remove a previously placed ship from the map.</li>
+                    <li><strong>Placement:</strong> With an allegiance and ship class selected, simply click on an empty cell on the tactical map to deploy that vessel.</li>
+                </ul>
+                </p>
+            </div>
+             <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-white">3. Starting the Simulation</h4>
+                <p className="text-sm text-text-secondary">Once your ships are placed, you have two options:</p>
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong className="text-accent-yellow">Start Spectate:</strong> This begins the simulation in a fully automated mode. All ships will be controlled by their respective AI doctrines. This is perfect for observing large-scale fleet engagements or testing how different ship compositions fare against each other.</li>
+                    <li><strong className="text-accent-yellow">Start Dogfight:</strong> This mode requires you to have placed exactly one ship with the 'Player' allegiance. You will take direct command of this vessel, with the full player HUD at your disposal, fighting against any ships you designated as 'Enemy'.</li>
+                </ul>
+            </div>
         </div>
+
+        <SubHeader>Phase 2: Running the Simulation</SubHeader>
+        <p className="text-text-secondary mb-4">Once the simulation begins, your interface will change based on the mode you selected.</p>
+        
+        <div className="p-3 bg-bg-paper-lighter rounded mb-3">
+            <h4 className="font-bold text-white">Spectate Mode</h4>
+            <p className="text-sm text-text-secondary">
+                 This is a read-only observation mode.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Controls:</strong> At the top of the screen, you can see the current turn and a Play/Pause button to control the automatic turn progression.</li>
+                    <li><strong>Layout:</strong> The screen is split between the tactical map on the left and a sidebar on the right.</li>
+                    <li><strong>Ship Inspection:</strong> Clicking on any ship on the map will select it. This splits the right sidebar, showing a detailed, scrollable status panel for that ship in the top half and the turn-by-turn combat log in the bottom half. Clicking an empty cell or the selected ship again will deselect it, giving the log the full sidebar height.</li>
+                </ul>
+            </p>
+        </div>
+         <div className="p-3 bg-bg-paper-lighter rounded">
+            <h4 className="font-bold text-white">Dogfight Mode</h4>
+            <p className="text-sm text-text-secondary">
+                 This mode gives you direct control over your designated 'Player' ship.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Interface:</strong> The layout mirrors the main game. The tactical map is on the left, with your full Player HUD below it. A sidebar on the right contains your Ship Status panel and, if a target is selected, its detailed information panel.</li>
+                    <li><strong>Log:</strong> The combat log is available via a "Show Log" button, which opens it in a large modal window over the screen.</li>
+                </ul>
+            </p>
+        </div>
+
     </div>
 );
 
-export const CombatSimulationSection: React.FC = () => (
+// FIX: Added the missing BattleReplayerSection component to be exported from this file.
+export const BattleReplayerSection: React.FC = () => (
     <div>
-        <SectionHeader>Appendix A: Combat Simulation Log</SectionHeader>
-        <p className="text-text-secondary mb-4">The following simulations are provided to give Starfleet officers a clearer understanding of key combat mechanics. All calculations are derived from standard tactical engagement protocols.</p>
+        <SectionHeader>The Battle Replayer</SectionHeader>
+        <p className="text-text-secondary mb-4">The Battle Replayer is a comprehensive after-action review system that allows you to analyze combat encounters. It is an invaluable tool for understanding AI behavior and refining your own tactical decisions.</p>
         
-        <SubHeader>Simulation 1: Phaser Damage Calculation</SubHeader>
-        <p className="text-text-secondary mb-2">Phaser damage is dynamic, influenced by power, range, and system integrity.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SimulationBox
-                title="Scenario A: Standard Engagement"
-                scenario="ENDEAVOUR vs. Klingon Cruiser @ Range 3"
-                rules={[
-                    "Player phaser base damage is 20.",
-                    "Damage is multiplied by the percentage of power allocated to weapons.",
-                    "Damage decreases with range (100% at Range 1, dropping by 20% per hex to a minimum of 20%)."
-                ]}
-                calculations={[
-                    { label: "Base Damage", value: "20" },
-                    { label: "Power to Weapons", value: "75% (x0.75)" },
-                    { label: "Range Modifier (3 hexes)", value: "60% (x0.60)" },
-                    { label: "Final Damage", value: "20 * 0.75 * 0.60 = 9", isFinal: true }
-                ]}
-            />
-            <SimulationBox
-                title="Scenario B: Damaged Phasers & LPD"
-                scenario="ENDEAVOUR (Phasers @ 50%, LPD Active) vs. K-Cruiser"
-                rules={[
-                    "Damage is multiplied by weapon subsystem health (Phaser Efficiency).",
-                    "Active LPD reduces phaser damage by 40% and adds 1 to effective range."
-                ]}
-                calculations={[
-                    { label: "Base Damage (from Scenario A)", value: "9" },
-                    { label: "LPD Damage Modifier", value: "x0.60" },
-                    { label: "LPD Range Penalty", value: "Range becomes 4 (40% modifier)" },
-                    { label: "Phaser Efficiency", value: "x0.50" },
-                    { label: "Final Damage", value: "20 * 0.75 * 0.40 * 0.60 * 0.50 = 1.8", isFinal: true }
-                ]}
-            />
-        </div>
-
-        <SubHeader>Simulation 2: Subsystem Targeting Analysis</SubHeader>
-        <p className="text-text-secondary mb-2">Targeting subsystems allows for surgical strikes. The effectiveness depends on the target's shield status.</p>
-        <div className="space-y-4">
-            <SimulationBox
-                title="Scenario A: Targeting with Strong Shields"
-                scenario="TARGET: Weapons (Shields @ 90%) | DAMAGE: 10"
-                rules={[
-                    "A portion of damage bypasses shields based on how weak they are. Formula: (1 - Shield %)^2.",
-                    "Damage that gets past shields is split: 70% hits the targeted subsystem, 30% hits the hull."
-                ]}
-                calculations={[
-                    { label: "Shield Bypass Multiplier", value: "(1 - 0.9)^2 = 0.01 (1%)" },
-                    { label: "Damage Bypassing Shields", value: "10 * 0.01 = 0.1" },
-                    { label: "Damage hitting Shields", value: "10 - 0.1 = 9.9" },
-                    { label: "Damage to Subsystem", value: "0.1 * 0.70 = 0.07", isFinal: true },
-                    { label: "Damage to Hull", value: "0.1 * 0.30 = 0.03", isFinal: true }
-                ]}
-            />
-             <SimulationBox
-                title="Scenario B: Targeting with Weak Shields"
-                scenario="TARGET: Weapons (Shields @ 15%) | DAMAGE: 10"
-                rules={[
-                    "With shields below 20%, the damage split shifts to 90% subsystem / 10% hull."
-                ]}
-                calculations={[
-                    { label: "Shield Bypass Multiplier", value: "(1 - 0.15)^2 = 0.72 (72%)" },
-                    { label: "Damage Bypassing Shields", value: "10 * 0.72 = 7.2" },
-                    { label: "Damage hitting Shields", value: "10 - 7.2 = 2.8" },
-                    { label: "Damage to Subsystem", value: "7.2 * 0.90 = 6.48", isFinal: true },
-                    { label: "Damage to Hull", value: "7.2 * 0.10 = 0.72", isFinal: true }
-                ]}
-            />
-        </div>
-
-        <SubHeader>Simulation 3: Advanced Torpedo Impact</SubHeader>
-        <p className="text-text-secondary mb-2">Advanced torpedoes have unique properties beyond raw damage.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SimulationBox
-                title="Scenario A: Quantum Torpedo vs. Full Shields"
-                scenario="TARGET: Warbird (Shields 100/100) | DAMAGE: 75"
-                rules={[
-                    "Quantum torpedoes have a 25% shield-bypassing component.",
-                    "The remaining 75% of the damage is treated like a standard torpedo (mitigated by shields)."
-                ]}
-                calculations={[
-                    { label: "Bypassing Damage", value: "75 * 0.25 = 18.75" },
-                    { label: "Standard Damage Portion", value: "75 * 0.75 = 56.25" },
-                    { label: "Shields Absorb", value: "min(100, 56.25 * 0.25) = 14.06" },
-                    { label: "Hull Damage Reduction", value: "14.06 / 0.25 = 56.25" },
-                    { label: "Standard Hull Damage", value: "56.25 - 56.25 = 0" },
-                    { label: "Total Hull Damage", value: "0 (Standard) + 18.75 (Bypass) = 18.75", isFinal: true }
-                ]}
-            />
-            <SimulationBox
-                title="Scenario B: Plasma Torpedo Impact"
-                scenario="TARGET: K-Cruiser | DAMAGE: 30 + Burn"
-                rules={[
-                    "The initial impact is handled like a standard torpedo.",
-                    "The Plasma Burn effect is applied, dealing direct hull damage for 2 turns, bypassing shields."
-                ]}
-                calculations={[
-                    { label: "Turn 1: Initial Impact", value: "30 damage (mitigated by shields)" },
-                    { label: "Turn 1: Plasma Burn Applied", value: "10 Damage / Turn for 2 turns" },
-                    { label: "Turn 2: Burn Damage", value: "10 Hull Damage (Bypasses Shields)", isFinal: true },
-                    { label: "Turn 3: Burn Damage", value: "10 Hull Damage (Bypasses Shields)", isFinal: true }
-                ]}
-            />
-        </div>
-
-        <SubHeader>Simulation 4: Defensive & Special Operations</SubHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <SimulationBox
-                title="Scenario A: LPD vs. Multiple Torpedoes"
-                scenario="ENDEAVOUR (LPD Active) vs. Quantum & Photon Torpedoes @ Range 1"
-                rules={[
-                    "LPD range is 1 hex.",
-                    "LPD can only intercept one torpedo per turn.",
-                    "LPD prioritizes the highest threat torpedo (Quantum > Photon)."
-                ]}
-                calculations={[
-                    { label: "Incoming Torpedoes Detected", value: "1x Quantum, 1x Photon" },
-                    { label: "Threat Assessment", value: "Quantum is higher priority." },
-                    { label: "Action", value: "Fire LPD at Quantum Torpedo" },
-                    { label: "Result", value: "Quantum torpedo is destroyed. Photon torpedo impacts.", isFinal: true }
-                ]}
-            />
-            <SimulationBox
-                title="Scenario B: LPD Interception"
-                scenario="ENDEAVOUR (LPD @ 65%) vs. Photon Torpedo @ Range 1"
-                rules={[
-                    "LPD hit chance is equal to its subsystem health percentage."
-                ]}
-                calculations={[
-                    { label: "LPD Health", value: "65%" },
-                    { label: "Interception Chance", value: "65%" },
-                    { label: "Result", value: "Roll required <= 65 for success.", isFinal: true }
-                ]}
-            />
-        </div>
-
-        <SubHeader>Simulation 5: Environmental Effects</SubHeader>
-        <p className="text-text-secondary mb-2">Understanding how to use the environment to your advantage is key to victory. These simulations demonstrate the tactical impact of nebulae and asteroid fields.</p>
-        <div className="space-y-4">
-            <SimulationBox
-                title="Scenario A: Firing into a Nebula"
-                scenario="ENDEAVOUR vs. Romulan Warbird (in Nebula)"
-                rules={[
-                    "Firing at a target inside any nebula cell incurs a 25% accuracy penalty."
-                ]}
-                calculations={[
-                    { label: "Base Hit Chance", value: "90%" },
-                    { label: "Nebula Modifier", value: "x0.75" },
-                    { label: "Final Hit Chance", value: "90% * 0.75 = 67.5%", isFinal: true }
-                ]}
-            />
-             <SimulationBox
-                title="Scenario B: Deep Nebula Concealment"
-                scenario="PLAYER in Deep Nebula vs. Enemy Sensors"
-                rules={[
-                    "Ships inside a 'Deep Nebula' (a nebula cell completely surrounded by 8 other nebula cells) are completely undetectable by enemy sensors."
-                ]}
-                calculations={[
-                    { label: "Player Position", value: "Deep Nebula" },
-                    { label: "AI Sensor Check", value: "AUTOMATIC FAILURE" },
-                    { label: "Result", value: "Player is invisible. The AI cannot target or fire upon your ship.", isFinal: true }
-                ]}
-            />
-             <SimulationBox
-                title="Scenario C: Asteroid Field Cover"
-                scenario="ENDEAVOUR vs. Pirate Raider (in Asteroid Field)"
-                rules={[
-                    "Firing phasers at a target inside an asteroid field cell incurs a 30% accuracy penalty."
-                ]}
-                calculations={[
-                    { label: "Base Hit Chance", value: "90%" },
-                    { label: "Asteroid Field Modifier", value: "x0.70" },
-                    { label: "Final Hit Chance", value: "90% * 0.70 = 63%", isFinal: true }
-                ]}
-            />
-            <SimulationBox
-                title="Scenario D: Torpedo vs. Asteroid Field"
-                scenario="ENDEAVOUR launches torpedo through an asteroid field cell"
-                rules={[
-                    "A torpedo passing through any asteroid field cell has a 40% chance of being destroyed by a collision."
-                ]}
-                calculations={[
-                    { label: "Torpedo Path Intersects Field", value: "YES" },
-                    { label: "Destruction Roll (Needs > 40)", value: "25 (FAILURE)" },
-                    { label: "Result", value: "Torpedo impacts an asteroid and is destroyed.", isFinal: true }
-                ]}
-            />
-        </div>
-        <SubHeader>Simulation 6: Asteroid Field Engagement</SubHeader>
-        <p className="text-text-secondary mb-2">Asteroid fields provide significant cover, affecting both detection and targeting.</p>
-        <div className="space-y-4">
-            <SimulationBox
-                title="Scenario A: Targeting Obscured Target"
-                scenario="ENDEAVOUR vs. Pirate Raider (in Asteroid Field) @ Range 3"
-                rules={[
-                    "Ships inside asteroid fields can only be targeted from 2 hexes or less."
-                ]}
-                // FIX: Wrapped the calculations value in an array literal to match the expected prop type.
-                calculations={[
-                    { label: "Targeting Range", value: "3 hexes" },
-                    { label: "Is Targetable?", value: "NO (> 2 hexes)" },
-                    { label: "Result", value: "Cannot fire phasers or torpedoes at target.", isFinal: true }
-                ]}
-            />
-        </div>
+        <SubHeader>Accessing the Replayer</SubHeader>
+        <p className="text-text-secondary mb-4">The "Battle Replayer" is accessible from the in-game Game Menu. It will only be available if a combat encounter has occurred in the current sector. The replayer history is automatically recorded, storing a complete snapshot of the last 100 turns of activity. This history is cleared when you warp to a new sector.</p>
+        
+        <SubHeader>Interface and Controls</SubHeader>
+        <p className="text-text-secondary mb-4">The replayer interface provides a complete reconstruction of the battle:</p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong>Playback Controls:</strong> At the bottom of the tactical map, you will find a full suite of controls, including a Play/Pause button for automatic playback, Previous/Next turn buttons, and a slider to jump to any specific turn in the recorded history.
+            </li>
+            <li>
+                <strong>Interactive Tactical View:</strong> The main viewscreen shows the state of the sector for the selected turn. You can click on any ship on the map to select it for detailed analysis. Combat effects, such as phaser fire and torpedo impacts, will be animated for the selected turn.
+            </li>
+            <li>
+                <strong>Detailed Status Panels:</strong> The right-hand sidebar is dedicated to providing an exhaustive breakdown of ship statuses.
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>The top panel shows the status of your ship, the U.S.S. Endeavour.</li>
+                    <li>The panel below it shows the detailed status of any ship you have selected on the map. This includes hull, shields, energy, all subsystem health percentages, resources, critical timers (e.g., life support failure), and any active tactical or environmental modifiers.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Turn Log:</strong> A button is available to show the full, verbose combat log for the currently selected turn, allowing for a line-by-line analysis of events.
+            </li>
+        </ul>
     </div>
 );

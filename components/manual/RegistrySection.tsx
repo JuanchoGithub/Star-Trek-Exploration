@@ -5,7 +5,7 @@ import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { asteroidType } from '../../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../../assets/beacons/configs/beaconTypes';
 import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
-import { ShipModel } from '../../types';
+import { ShipModel, ShipSubsystems } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
@@ -123,6 +123,52 @@ const getQualitativeRating = (value: number, thresholds: [number, number, number
     return 'Light';
 };
 
+const EnergyProfile: React.FC<{ stats: ShipClassStats }> = ({ stats }) => {
+    const consumptionItems: { label: string; value: number }[] = [
+        { label: 'Base Systems', value: stats.systemConsumption.base },
+        { label: 'Weapons', value: stats.systemConsumption.weapons },
+        { label: 'Shields', value: stats.systemConsumption.shields },
+        { label: 'Life Support', value: stats.systemConsumption.lifeSupport },
+        { label: 'Computer', value: stats.systemConsumption.computer },
+        { label: 'Transporter', value: stats.systemConsumption.transporter },
+        { label: 'Point Defense', value: stats.systemConsumption.pointDefense },
+        { label: 'Shuttlebay', value: stats.systemConsumption.shuttlecraft },
+    ].filter(item => item.value > 0);
+
+    const totalPassiveConsumption = consumptionItems.reduce((sum, item) => sum + item.value, 0);
+
+    return (
+        <div className="mt-3">
+            <h5 className="text-sm font-bold text-accent-yellow mb-2">Energy Profile</h5>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div>
+                    <dt className="font-bold text-text-secondary">Baseline Generation</dt>
+                    <dd className="text-green-400 font-mono">+{stats.baseEnergyGeneration.toFixed(1)} / turn (at 33% Engines)</dd>
+                </div>
+                <div>
+                    <dt className="font-bold text-text-secondary">Total Passive Consumption</dt>
+                    <dd className="text-red-400 font-mono">-{totalPassiveConsumption.toFixed(1)} / turn</dd>
+                </div>
+                <div className="col-span-2">
+                    <dt className="font-bold text-text-secondary text-xs uppercase tracking-wider mt-2">Consumption Breakdown:</dt>
+                    <dd>
+                        <ul className="list-disc list-inside text-xs">
+                            {consumptionItems.map(item => (
+                                <li key={item.label} className="flex justify-between">
+                                    <span>{item.label}</span>
+                                    <span className="font-mono text-red-400">-{item.value.toFixed(1)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </dd>
+                </div>
+                 <p className="text-xs italic text-text-disabled col-span-2 mt-2">Note: Tactical actions like raising shields (+20), evasive maneuvers (+10), and active point-defense (+15) add to the total consumption cost per turn.</p>
+            </div>
+        </div>
+    );
+};
+
+
 const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({ model, shipClass }) => {
     const visualConfig = shipVisuals[model]?.classes[shipClass.name] ?? shipVisuals.Unknown.classes['Unknown'];
     if (!visualConfig) return null;
@@ -162,6 +208,7 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                             <dd className="text-sm text-text-primary italic">{tacticalInfo.notes}</dd>
                         </div>
                     </dl>
+                    <EnergyProfile stats={shipClass} />
                 </div>
             </div>
         </div>

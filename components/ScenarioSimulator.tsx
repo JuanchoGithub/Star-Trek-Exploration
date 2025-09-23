@@ -15,6 +15,9 @@ import { createSectorFromTemplate } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { shipNames } from '../assets/ships/configs/shipNames';
+import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
+import CombatFXLayer from './CombatFXLayer';
+import DesperationMoveAnimation from './DesperationMoveAnimation';
 
 type Tool = {
     type: 'add_ship';
@@ -51,7 +54,7 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         shipClass: shipClass.name, shipRole: shipClass.role, faction: faction, position, hull: shipClass.maxHull,
         maxHull: shipClass.maxHull, shields: 0, maxShields: shipClass.maxShields,
         energy: { current: shipClass.energy.max, max: shipClass.energy.max },
-        energyAllocation: { weapons: 50, shields: 50, engines: 0 },
+        energyAllocation: { weapons: 34, shields: 33, engines: 33 },
         torpedoes: { current: shipClass.torpedoes.max, max: shipClass.torpedoes.max },
         subsystems: JSON.parse(JSON.stringify(shipClass.subsystems)),
         securityTeams: { current: shipClass.securityTeams.max, max: shipClass.securityTeams.max },
@@ -208,7 +211,13 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                              <div className="w-full h-full aspect-[12/10] relative">
                                 <SectorView
                                     sector={setupState.sector}
-                                    entities={[...setupState.ships, ...setupState.sector.entities]}
+                                    entities={[...setupState.ships, ...setupState.sector.entities].map(e => {
+                                        if(e.type === 'ship') {
+                                            const ship = e as Ship;
+                                            return {...ship, allegiance: tool?.type === 'add_ship' && ship.id.startsWith('temp') ? tool.allegiance : ship.allegiance};
+                                        }
+                                        return e;
+                                    })}
                                     playerShip={null as any}
                                     selectedTargetId={null}
                                     onSelectTarget={() => {}}
@@ -288,6 +297,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     }
 
     const playerShip = gameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+    const allEntities = gameState.currentSector.entities;
 
     return (
         <div className="h-screen w-screen bg-bg-default text-text-primary p-4 flex flex-col gap-4">
@@ -303,83 +313,97 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     <button onClick={resetToSetup} className="btn btn-tertiary">End Simulation</button>
                 </div>
             </header>
-            <main className="flex-grow grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1fr] gap-4 min-h-0">
-                <div className="flex flex-col gap-4 min-h-0">
-                    <div className="relative flex-grow flex justify-center items-center min-h-0">
-                        <div className="w-full h-full aspect-[12/10] relative">
-                             <SectorView
-                                sector={gameState.currentSector}
-                                entities={gameState.currentSector.entities.filter(e => e.id !== playerShip?.id)}
-                                playerShip={playerShip as any}
-                                selectedTargetId={selectedTargetId}
-                                onSelectTarget={onSelectTarget}
-                                navigationTarget={navigationTarget}
-                                onSetNavigationTarget={onSetNavigationTarget}
-                                themeName={themeName}
-                            />
-                        </div>
-                    </div>
-                     {mode === 'dogfight' && playerShip && (
-                        <PlayerHUD
-                            gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
-                            onEndTurn={onEndTurn}
-                            onFirePhasers={() => selectedTargetId && onFirePhasers(selectedTargetId)}
-                            onLaunchTorpedo={() => selectedTargetId && onLaunchTorpedo(selectedTargetId)}
-                            target={targetEntity}
-                            isDocked={false}
-                            onDockWithStarbase={() => {}}
-                            onRechargeDilithium={() => {}}
-                            onResupplyTorpedoes={() => {}}
-                            onStarbaseRepairs={() => {}}
-                            onScanTarget={() => {}}
-                            onInitiateRetreat={() => {}}
-                            onCancelRetreat={() => {}}
-                            onStartAwayMission={() => {}}
-                            onHailTarget={() => {}}
-                            playerTurnActions={playerTurnActions}
-                            navigationTarget={navigationTarget}
-                            isTurnResolving={isTurnResolving}
-                            onSendAwayTeam={() => {}}
-                            themeName={themeName}
-                            desperationMoveAnimation={desperationMoveAnimation}
-                            selectedSubsystem={null}
-                            onSelectSubsystem={onSelectSubsystem}
-                            onEnterOrbit={() => {}}
-                            orbitingPlanetId={null}
-                            onToggleCloak={onToggleCloak}
-                            onTogglePointDefense={onTogglePointDefense}
-                        />
-                    )}
-                </div>
-                {mode === 'dogfight' ? (
-                    <aside className="flex flex-col gap-2 min-h-0">
-                        {playerShip && (
-                             <ShipStatus
-                                gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
-                                onEnergyChange={onEnergyChange}
-                                onToggleRedAlert={onToggleRedAlert}
-                                onEvasiveManeuvers={onEvasiveManeuvers}
-                                onSelectRepairTarget={onSelectRepairTarget as any}
-                                onToggleCloak={onToggleCloak}
-                                onTogglePointDefense={onTogglePointDefense}
-                                themeName={themeName}
-                            />
-                        )}
-                         <div className="mt-auto panel-style p-2">
-                            <button onClick={() => setShowLogModal(true)} className="btn btn-primary w-full">Show Log</button>
-                        </div>
-                        {showLogModal && (
-                            <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col z-50 p-4" onClick={() => setShowLogModal(false)}>
-                                <div className="panel-style p-4 w-full max-w-4xl mx-auto flex-grow min-h-0 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                                    <LogPanel logs={gameState.logs} onClose={() => setShowLogModal(false)} />
+            <main className="flex-grow grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 min-h-0">
+                {mode === 'dogfight' && playerShip ? (
+                     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 min-h-0 md:col-span-2">
+                        <div className="flex flex-col gap-4 min-h-0">
+                             <div className="relative flex-grow flex justify-center items-center min-h-0">
+                                <div className="w-full h-full aspect-[12/10] relative">
+                                    <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
+                                    {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
+                                    <SectorView
+                                        sector={gameState.currentSector}
+                                        entities={gameState.currentSector.entities.filter(e => e.id !== playerShip.id)}
+                                        playerShip={playerShip}
+                                        selectedTargetId={selectedTargetId}
+                                        onSelectTarget={onSelectTarget}
+                                        navigationTarget={navigationTarget}
+                                        onSetNavigationTarget={onSetNavigationTarget}
+                                        themeName={themeName}
+                                    />
                                 </div>
                             </div>
-                        )}
-                    </aside>
-                ) : (
-                    <div className="flex-grow min-h-0">
-                        <LogPanel logs={gameState.logs} />
+                            <PlayerHUD
+                                gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
+                                onEndTurn={onEndTurn}
+                                onFirePhasers={() => selectedTargetId && onFirePhasers(selectedTargetId)}
+                                onLaunchTorpedo={() => selectedTargetId && onLaunchTorpedo(selectedTargetId)}
+                                target={targetEntity} isDocked={false} onDockWithStarbase={() => {}} onRechargeDilithium={() => {}} onResupplyTorpedoes={() => {}}
+                                onStarbaseRepairs={() => {}} onScanTarget={() => {}} onInitiateRetreat={() => {}} onCancelRetreat={() => {}} onStartAwayMission={() => {}} onHailTarget={() => {}}
+                                playerTurnActions={playerTurnActions} navigationTarget={navigationTarget} isTurnResolving={isTurnResolving} onSendAwayTeam={() => {}} themeName={themeName}
+                                desperationMoveAnimation={desperationMoveAnimation} selectedSubsystem={null} onSelectSubsystem={onSelectSubsystem} onEnterOrbit={() => {}}
+                                orbitingPlanetId={null} onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense}
+                            />
+                        </div>
+                        <aside className="flex flex-col gap-2 min-h-0">
+                            <div className="flex-grow min-h-0 overflow-y-auto space-y-2 pr-2">
+                                <ShipStatus
+                                    gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
+                                    onEnergyChange={onEnergyChange} onToggleRedAlert={onToggleRedAlert} onEvasiveManeuvers={onEvasiveManeuvers} onSelectRepairTarget={onSelectRepairTarget as any}
+                                    onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense} themeName={themeName}
+                                />
+                                <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
+                            </div>
+                            <div className="flex-shrink-0 panel-style p-2">
+                                <button onClick={() => setShowLogModal(true)} className="btn btn-primary w-full">Show Log</button>
+                            </div>
+                            {showLogModal && (
+                                <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col z-50 p-4" onClick={() => setShowLogModal(false)}>
+                                    <div className="panel-style p-4 w-full max-w-4xl mx-auto flex-grow min-h-0 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                                        <LogPanel logs={gameState.logs} onClose={() => setShowLogModal(false)} />
+                                    </div>
+                                </div>
+                            )}
+                        </aside>
                     </div>
+                ) : ( // Spectate mode
+                    <>
+                        <div className="flex flex-col gap-4 min-h-0">
+                             <div className="relative flex-grow flex justify-center items-center min-h-0">
+                                <div className="w-full h-full aspect-[12/10] relative">
+                                    <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
+                                    {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
+                                    <SectorView
+                                        sector={gameState.currentSector}
+                                        entities={gameState.currentSector.entities}
+                                        playerShip={null as any}
+                                        selectedTargetId={selectedTargetId}
+                                        onSelectTarget={onSelectTarget}
+                                        navigationTarget={null}
+                                        onSetNavigationTarget={() => {}}
+                                        themeName={themeName}
+                                        spectatorMode={true}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <aside className="flex flex-col gap-2 min-h-0">
+                             {targetEntity ? (
+                                <>
+                                    <div className="basis-1/2 flex-shrink min-h-0">
+                                        <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
+                                    </div>
+                                    <div className="basis-1/2 flex-shrink min-h-0">
+                                        <LogPanel logs={gameState.logs} />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex-grow min-h-0">
+                                    <LogPanel logs={gameState.logs} />
+                                </div>
+                            )}
+                        </aside>
+                    </>
                 )}
             </main>
         </div>

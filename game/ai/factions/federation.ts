@@ -36,15 +36,15 @@ export class FederationAI extends FactionAI {
 
                 switch (stance) {
                     case 'Defensive':
-                        if (ship.energyAllocation.shields !== 80) {
-                            ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                        if (ship.energyAllocation.shields !== 60) {
+                            ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
                             stanceChanged = true;
                         }
                         break;
                     case 'Balanced':
                     default:
-                        if (ship.energyAllocation.weapons !== 50) {
-                            ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                        if (ship.energyAllocation.weapons !== 34) {
+                            ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
                             stanceChanged = true;
                         }
                         break;

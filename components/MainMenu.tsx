@@ -1,7 +1,9 @@
+// FIX: Replaced invalid "--- START OF FILE App.tsx ---" header.
 import React, { useState } from 'react';
 import StarfieldBackground from './StarfieldBackground';
 import { ThemeName } from '../hooks/useTheme';
 import ThemeSwitcher from './ThemeSwitcher';
+import { BookIcon } from '../assets/ui/icons';
 
 interface MainMenuProps {
     onNewGame: () => void;
@@ -16,8 +18,6 @@ interface MainMenuProps {
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimulator, onImportSave, onOpenManual, onOpenChangelog, hasSaveGame, themeName, setTheme }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-
     return (
         <main className={`bg-bg-default text-text-primary h-screen w-screen overflow-hidden relative flex flex-col items-center justify-center p-8 theme-${themeName}`}>
             <StarfieldBackground />
@@ -33,28 +33,35 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimul
                 </h2>
 
                 <div className="w-full max-w-sm flex flex-col gap-4">
-                    {isExpanded ? (
-                         <div className="space-y-3">
-                            <button onClick={onLoadGame} disabled={!hasSaveGame} className="w-full btn btn-primary text-lg">Load Mission</button>
-                            <button onClick={onImportSave} className="w-full btn btn-accent green text-lg text-white">Import Save</button>
-                            <button onClick={onOpenChangelog} className="w-full btn btn-secondary text-lg">Latest Changes</button>
-                            <button onClick={onOpenManual} className="w-full btn btn-secondary text-lg">Player's Manual</button>
-                            <button onClick={() => setIsExpanded(false)} className="w-full btn btn-tertiary text-lg">Back</button>
-                        </div>
-                    ) : (
-                         <div className="space-y-4">
-                            <button onClick={onNewGame} className="btn btn-primary text-lg">
-                                New Mission
-                            </button>
-                             <button onClick={onStartSimulator} className="btn btn-accent green text-lg text-white">
-                                Scenario Simulator
-                            </button>
-                            <button onClick={() => setIsExpanded(true)} className="btn btn-secondary text-lg">
-                                Load / Data / Manual
-                            </button>
-                        </div>
-                    )}
+                    <button onClick={onNewGame} className="btn btn-primary text-lg">
+                        New Mission
+                    </button>
+                    <button onClick={onLoadGame} disabled={!hasSaveGame} className="btn btn-primary text-lg">
+                        Load Mission
+                    </button>
+                    <button onClick={onStartSimulator} className="btn btn-accent green text-lg text-white">
+                        Scenario Simulator
+                    </button>
+                    <button onClick={onImportSave} className="btn btn-accent green text-lg text-white">
+                        Import Save
+                    </button>
                 </div>
+            </div>
+
+            <div className="absolute bottom-6 left-6 z-10">
+                <button
+                    onClick={onOpenManual}
+                    className="btn btn-tertiary text-sm"
+                    aria-label="Open Player's Manual"
+                    title="Player's Manual"
+                >
+                   Manual
+                </button>
+            </div>
+            <div className="absolute bottom-6 right-6 z-10">
+                 <button onClick={onOpenChangelog} className="btn btn-tertiary text-sm">
+                    Changelog
+                </button>
             </div>
         </main>
     );

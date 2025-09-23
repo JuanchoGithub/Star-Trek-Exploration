@@ -14,17 +14,26 @@ export const MechanicsSection: React.FC = () => (
             <li><strong>Hazards:</strong> Ending a turn inside an asteroid field cell risks taking damage from micrometeoroid impacts. Additionally, asteroid fields provide cover, reducing the accuracy of incoming phaser fire by 30%. However, they are a danger to projectiles; any torpedo traveling through an asteroid field cell has a 40% chance of being destroyed by a collision. Furthermore, asteroid fields act as sensor cover. A ship inside a field is only detectable within 4 hexes, and can only be targeted by weapons from 2 hexes or less.</li>
         </ul>
         <SubHeader>Energy Management</SubHeader>
-        <p>Your ship has two power pools:</p>
-         <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li><strong>Main Reactor Power (Allocation):</strong> The 100% you allocate via sliders. This is your primary power for passive systems. Higher allocation to <span className="text-red-400">Weapons</span> boosts phaser damage. Higher allocation to <span className="text-cyan-400">Shields</span> increases shield regeneration per turn. Higher allocation to <span className="text-green-400">Engines</span> provides a small passive evasion bonus.</li>
-            <li><strong>Reserve Power (Battery):</strong> A separate pool used for active abilities like Red Alert upkeep, evasive maneuvers, and subsystem targeting. This power recharges slowly when Red Alert is off, but is consumed when it's active. If it runs out, you may use a <span className="text-pink-400">Dilithium</span> crystal to fully recharge it, but this can cause subsystem stress damage.</li>
+        <p className="text-text-secondary">Your ship's power is a dynamic resource. Managing the balance between power generation and consumption is the key to victory.</p>
+         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li><strong>Power Generation:</strong> Your ship generates a baseline amount of energy each turn. This generation is directly affected by your <span className="text-green-400">Engine</span> power allocation and the health of your engine subsystem.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>At <span className="font-bold">33% power</span>, engines provide <span className="font-bold">100% (1x)</span> of baseline energy generation.</li>
+                    <li>At <span className="font-bold">100% power</span>, engines are overloaded to provide <span className="font-bold">200% (2x)</span> energy generation.</li>
+                     <li>At <span className="font-bold">0% power</span>, engines provide only <span className="font-bold">50% (0.5x)</span> energy generation.</li>
+                    <li>Engine <span className="text-red-400">damage</span> reduces this output proportionally. An engine at 50% health will produce only 50% of its potential energy.</li>
+                 </ul>
+            </li>
+            <li><strong>Power Consumption:</strong> Every online system on your ship consumes power each turn. This includes weapons, shields, life support, and more. A fully operational ship at Green Alert with 33% power to engines has a <span className="font-bold">net zero</span> energy change; generation perfectly matches consumption.</li>
+            <li><strong>Reserve Power (Battery):</strong> This is your energy buffer. Any deficit between generation and consumption is drained from this pool. Activating systems like <span className="text-cyan-400">Shields</span> (Red Alert), <span className="text-orange-400">Point-Defense</span>, or <span className="text-yellow-400">Evasive Maneuvers</span> drastically increases consumption, causing a drain on your reserves. Any surplus energy will recharge this pool.</li>
+            <li><strong>Tactical Trade-offs:</strong> If a system is destroyed, its power consumption is removed from the total. This creates a tactical choice: if you are low on power, you could intentionally leave a non-critical system like the transporter offline to free up energy for shields or weapons.</li>
         </ul>
          <SubHeader>Warp & Scanning</SubHeader>
         <p>From the Quadrant Map, you can travel long distances via Warp Drive. Each warp jump consumes one Dilithium crystal. You can also perform a Long-Range Scan on an adjacent quadrant to reveal basic information about it (e.g., number of hostile contacts) at the cost of Reserve Power.</p>
          <SubHeader>Repairs & Damage Control</SubHeader>
         <p>Damage can be repaired in two ways:</p>
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes Reserve Power.</li>
+            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes a small amount of power.</li>
             <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems, free of charge. You can also resupply torpedoes and dilithium here.</li>
         </ul>
         <SubHeader>Laser Point-Defense System (LPDS)</SubHeader>
@@ -33,7 +42,7 @@ export const MechanicsSection: React.FC = () => (
             <li><strong>Function:</strong> When active, the LPDS grid will automatically target and attempt to destroy <span className="font-bold text-white">one</span> incoming hostile torpedo per turn. It will prioritize the most dangerous torpedo type first.</li>
             <li><strong>Effectiveness:</strong> The system's chance to successfully intercept a torpedo is equal to its current subsystem health percentage. A system at 75% health has a 75% chance to hit.</li>
             <li><strong>Range:</strong> The system is effective only at extremely close range, targeting torpedoes in adjacent cells (<span className="font-bold text-white">1 hex</span>).</li>
-            <li><strong>Energy Cost:</strong> The LPDS drains Reserve Power each turn. It consumes <span className="font-bold text-accent-yellow">20 power</span> on standby and <span className="font-bold text-accent-orange">40 power</span> on any turn it fires. A broken system (0% health) consumes no power.</li>
+            <li><strong>Energy Cost:</strong> The LPDS adds a significant drain to your passive power consumption each turn it is active.</li>
             <li><strong>Tactical Trade-off:</strong> Activating the LPDS requires a significant power diversion from your main phaser arrays. While active, your phaser damage is reduced by <span className="font-bold text-accent-red">40%</span>, and their effective range for damage falloff calculations is increased by one hex (e.g., a shot at 2 hexes is calculated as if it were 3).</li>
         </ul>
         <SubHeader>Nebulae</SubHeader>

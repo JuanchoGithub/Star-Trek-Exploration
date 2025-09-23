@@ -2,11 +2,11 @@ import React from 'react';
 import { SectionHeader, SubHeader } from '../manual/shared';
 
 export const Version1_4_1: React.FC = () => {
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const releaseDate = "September 22, 2025";
     return (
         <>
             <SectionHeader>Version 1.4.1 - Simulation Updates</SectionHeader>
-            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 47461.5, 18:00 ({today})</p>
+            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 49722.8, 18:00 ({releaseDate})</p>
             <p className="text-lg text-text-secondary italic mb-4">A comprehensive overhaul of the Scenario Simulator, implementing numerous user-requested features for improved functionality, consistency, and tactical clarity.</p>
             
             <SubHeader>Summary of User Directives</SubHeader>

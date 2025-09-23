@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { GameState, Ship, LogEntry, SectorState, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems } from '../types';
+import type { GameState, Ship, LogEntry, SectorState, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { uniqueId } from '../game/utils/ai';
 import { resolveTurn as resolveSimulatorTurn } from '../game/turn/simulatorTurnManager';
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorState | null, scenarioMode: ScenarioMode) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -97,8 +98,55 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
 
     const onLaunchTorpedo = useCallback((targetId: string) => {
         if (isTurnResolving || playerTurnActions.hasLaunchedTorpedo) return;
-        setPlayerTurnActions(prev => ({...prev, hasLaunchedTorpedo: true}));
-    }, [isTurnResolving, playerTurnActions]);
+    
+        setPlayerTurnActions(prev => ({ ...prev, hasLaunchedTorpedo: true }));
+    
+        setGameState(prev => {
+            if (!prev) return null;
+            const next: GameState = JSON.parse(JSON.stringify(prev));
+            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const target = next.currentSector.entities.find(e => e.id === targetId);
+    
+            if (!playerShip || !target || target.type !== 'ship') {
+                addLog({ sourceId: 'player', sourceName: 'Simulator', message: 'Cannot launch torpedo: Invalid target.', isPlayerSource: true, color: 'border-blue-400' });
+                return prev;
+            }
+    
+            const shipStats = shipClasses[playerShip.shipModel][playerShip.shipClass];
+            if (shipStats.torpedoType === 'None') return prev;
+    
+            const torpedoData = torpedoStats[shipStats.torpedoType];
+    
+            if (playerShip.torpedoes.current <= 0) {
+                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot launch ${torpedoData.name}: All tubes are empty.`, isPlayerSource: true, color: 'border-blue-400' });
+                return prev;
+            }
+    
+            playerShip.torpedoes.current--;
+            const torpedo: TorpedoProjectile = {
+                id: uniqueId(),
+                name: torpedoData.name,
+                type: 'torpedo_projectile',
+                faction: playerShip.faction,
+                position: { ...playerShip.position },
+                targetId,
+                sourceId: playerShip.id,
+                stepsTraveled: 0,
+                speed: torpedoData.speed,
+                path: [{ ...playerShip.position }],
+                scanned: true,
+                turnLaunched: next.turn,
+                hull: 1,
+                maxHull: 1,
+                torpedoType: shipStats.torpedoType,
+                damage: torpedoData.damage,
+                specialDamage: torpedoData.specialDamage,
+            };
+            next.currentSector.entities.push(torpedo);
+            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `${torpedoData.name} launched at ${target.name}.`, isPlayerSource: true, color: 'border-blue-400' });
+            return next;
+        });
+    }, [isTurnResolving, playerTurnActions, gameState, addLog]);
 
     const onSelectSubsystem = (subsystem: keyof ShipSubsystems | null) => {};
     

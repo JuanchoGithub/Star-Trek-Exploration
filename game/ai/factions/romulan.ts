@@ -1,5 +1,3 @@
-
-
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
@@ -43,19 +41,19 @@ export class RomulanAI extends FactionAI {
             switch (stance) {
                 case 'Aggressive':
                     if (ship.energyAllocation.weapons !== 70) {
-                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
+                        ship.energyAllocation = { weapons: 70, shields: 20, engines: 10 };
                         stanceChanged = true;
                     }
                     break;
                 case 'Defensive':
-                    if (ship.energyAllocation.shields !== 80) {
-                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                    if (ship.energyAllocation.shields !== 70) {
+                        ship.energyAllocation = { weapons: 10, shields: 70, engines: 20 };
                         stanceChanged = true;
                     }
                     break;
                 case 'Balanced':
-                    if (ship.energyAllocation.weapons !== 50) {
-                        ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                    if (ship.energyAllocation.weapons !== 34) {
+                        ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
                         stanceChanged = true;
                     }
                     break;

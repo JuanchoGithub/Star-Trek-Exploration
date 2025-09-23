@@ -18,6 +18,8 @@ export interface ShipClassStats {
     shuttleCount: number;
     dilithium: { max: number };
     energyModifier: number;
+    baseEnergyGeneration: number;
+    systemConsumption: Record<keyof ShipSubsystems | 'base', number>;
 }
 
 // Subsystem templates for each faction
@@ -59,18 +61,33 @@ const R = (subsystems: Partial<ShipSubsystems>): ShipSubsystems => ({
 
 const NO_CLOAK = { cloakingCapable: false, cloakEnergyCost: { initial: 0, maintain: 0 }, cloakFailureChance: 0 };
 
+const baselineConsumption: Record<keyof ShipSubsystems | 'base', number> = {
+    weapons: 5, shields: 3, engines: 0, lifeSupport: 3, computer: 2,
+    transporter: 1, pointDefense: 1, shuttlecraft: 1, base: 4,
+};
+const baselineTotalConsumption = Object.values(baselineConsumption).reduce((sum, val) => sum + val, 0);
+
+
 const calculateDerivedStats = (maxHull: number, maxShields: number) => {
     const totalDurability = maxHull + maxShields;
     const baselineDurability = 570; // Sovereign-class
     const baselineEnergy = 200;
     const baselineDilithium = 20;
 
-    const energyModifier = Number((1.0 + ((totalDurability - baselineDurability) / 10) * 0.015).toFixed(3));
+    const energyModifier = Number((1.0 + ((totalDurability - baselineDurability) / baselineDurability) * 0.5).toFixed(3));
+    
+    const baseEnergyGeneration = Math.round(baselineTotalConsumption * energyModifier);
+    const systemConsumption: Record<keyof ShipSubsystems | 'base', number> = {} as any;
+    for (const key in baselineConsumption) {
+        systemConsumption[key as keyof typeof baselineConsumption] = Number((baselineConsumption[key as keyof typeof baselineConsumption] * energyModifier).toFixed(2));
+    }
     
     return {
         energyModifier,
         energy: { max: Math.round(baselineEnergy * energyModifier) },
         dilithium: { max: Math.round(baselineDilithium * energyModifier) },
+        baseEnergyGeneration,
+        systemConsumption,
     };
 };
 

@@ -2,11 +2,11 @@ import React from 'react';
 import { SectionHeader, SubHeader } from '../manual/shared';
 
 export const Version1_4: React.FC = () => {
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const releaseDate = "September 22, 2025";
     return (
         <>
             <SectionHeader>Version 1.4 - Battle Replayer</SectionHeader>
-            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 47461.1, 14:00 ({today})</p>
+            <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 49722.3, 14:00 ({releaseDate})</p>
             <p className="text-lg text-text-secondary italic mb-4">A comprehensive after-action review system has been added to the simulation for advanced tactical analysis.</p>
             
             <SubHeader>Summary of User Directives</SubHeader>

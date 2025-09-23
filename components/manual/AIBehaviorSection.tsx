@@ -54,14 +54,14 @@ export const AIBehaviorSection: React.FC = () => (
             <li>
                 <strong className="text-accent-yellow">Dynamic Energy Management:</strong> Hostile vessels will now re-allocate power based on their factional doctrine and the current state of the battle. They will adopt one of three stances:
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Aggressive (70% Weapons / 30% Shields):</strong> Maximizes damage output at the expense of defense.</li>
-                    <li><strong>Defensive (20% Weapons / 80% Shields):</strong> Prioritizes shield regeneration to survive heavy fire.</li>
-                    <li><strong>Balanced (50% Weapons / 50% Shields):</strong> A standard combat configuration.</li>
+                    <li><strong>Aggressive:</strong> Maximizes damage output at the expense of defense and maneuverability.</li>
+                    <li><strong>Defensive:</strong> Prioritizes shield regeneration and engine power for repositioning.</li>
+                    <li><strong>Balanced:</strong> A standard combat configuration for sustained engagements.</li>
                 </ul>
                 <div className="pl-6 mt-2 text-sm">
-                    <p><strong>- Klingons:</strong> Will remain Aggressive unless hull integrity is critical (&lt;25%), at which point they will switch to Defensive.</p>
-                    <p><strong>- Romulans:</strong> Will switch to Defensive if hull drops below 50%. Will switch to Aggressive if the player's shields are down, otherwise they remain Balanced.</p>
-                    <p><strong>- Pirates:</strong> Will become Defensive if hull drops below 60%. Will become Aggressive if the player's hull is below 40%, otherwise they remain Balanced.</p>
+                    <p><strong>- Klingons:</strong> Will use an <span className="text-red-400">Aggressive</span> stance (74% WPN, 13% SHD, 13% ENG) unless critically damaged (&lt;25% hull), then switch to <span className="text-cyan-400">Defensive</span> (20% WPN, 60% SHD, 20% ENG).</p>
+                    <p><strong>- Romulans:</strong> Will use a <span className="text-yellow-400">Balanced</span> stance (34% WPN, 33% SHD, 33% ENG). They switch to <span className="text-red-400">Aggressive</span> (70% WPN, 20% SHD, 10% ENG) if the player's shields are down, and <span className="text-cyan-400">Defensive</span> (10% WPN, 70% SHD, 20% ENG) if their own hull is below 50%.</p>
+                    <p><strong>- Pirates:</strong> Will use a <span className="text-yellow-400">Balanced</span> stance (34% WPN, 33% SHD, 33% ENG). They become <span className="text-red-400">Aggressive</span> (60% WPN, 20% SHD, 20% ENG) if the player's hull is below 40%, and <span className="text-cyan-400">Defensive</span> (20% WPN, 60% SHD, 20% ENG) if their own hull is below 60%.</p>
                 </div>
             </li>
             <li>

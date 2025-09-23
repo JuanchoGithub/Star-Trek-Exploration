@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 // FIX: Corrected import path to be more explicit ('./changelog/index') to resolve a module resolution ambiguity between the 'changelog' directory and the 'Changelog.tsx' file.
-import { Version1_4_1, Version1_4, Version1_3_2 } from './changelog/index';
+import { Version1_5, Version1_4_1, Version1_4, Version1_3_2 } from './changelog/index';
 
-type Version = 'v1.4.1' | 'v1.4' | 'v1.3.2';
+type Version = 'v1.5' | 'v1.4.1' | 'v1.4' | 'v1.3.2';
 
 interface ChangelogProps {
     onClose: () => void;
@@ -15,10 +15,11 @@ const VersionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
 );
 
 const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
-    const [activeVersion, setActiveVersion] = useState<Version>('v1.4.1');
+    const [activeVersion, setActiveVersion] = useState<Version>('v1.5');
 
     const renderContent = () => {
         switch(activeVersion) {
+            case 'v1.5': return <Version1_5 />;
             case 'v1.4.1': return <Version1_4_1 />;
             case 'v1.4': return <Version1_4 />;
             case 'v1.3.2': return <Version1_3_2 />;
@@ -35,6 +36,9 @@ const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
                 </div>
                 <main className="flex-grow flex gap-4 min-h-0">
                     <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
+                        <VersionLink active={activeVersion === 'v1.5'} onClick={() => setActiveVersion('v1.5')}>
+                            Version 1.5
+                        </VersionLink>
                         <VersionLink active={activeVersion === 'v1.4.1'} onClick={() => setActiveVersion('v1.4.1')}>
                             Version 1.4.1
                         </VersionLink>

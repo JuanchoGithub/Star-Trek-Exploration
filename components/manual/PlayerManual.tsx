@@ -15,7 +15,7 @@ import {
     GalaxyGenerationSection,
     AIBehaviorSection,
     BattleReplayerSection,
-} from './manual';
+} from './';
 
 type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation' | 'ai' | 'replayer';
 
@@ -60,24 +60,22 @@ const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
                     <button onClick={onClose} className="btn btn-tertiary">Close Manual</button>
                 </div>
                 <div className="flex-grow flex gap-4 min-h-0">
-                    <div className="w-1/5 flex-shrink-0 flex flex-col panel-style p-2 min-h-0">
-                        <nav className="flex-grow overflow-y-auto pr-2 flex flex-col gap-1">
-                             <SectionLink active={activeSection === 'intro'} onClick={() => setActiveSection('intro')}>Introduction</SectionLink>
-                             <div className="w-full border-t border-border-dark my-2"></div>
-                             <SectionLink active={activeSection === 'ui'} onClick={() => setActiveSection('ui')}>Bridge Interface</SectionLink>
-                             <SectionLink active={activeSection === 'registry'} onClick={() => setActiveSection('registry')}>Entity Registry</SectionLink>
-                             <SectionLink active={activeSection === 'officers'} onClick={() => setActiveSection('officers')}>Bridge Officer Dossiers</SectionLink>
-                             <SectionLink active={activeSection === 'lore'} onClick={() => setActiveSection('lore')}>Typhon Expanse Primer</SectionLink>
-                             <SectionLink active={activeSection === 'generation'} onClick={() => setActiveSection('generation')}>Galaxy Generation</SectionLink>
-                             <SectionLink active={activeSection === 'mechanics'} onClick={() => setActiveSection('mechanics')}>Core Mechanics</SectionLink>
-                             <SectionLink active={activeSection === 'combat'} onClick={() => setActiveSection('combat')}>Advanced Combat</SectionLink>
-                             <SectionLink active={activeSection === 'advanced'} onClick={() => setActiveSection('advanced')}>Advanced Tactics</SectionLink>
-                             <SectionLink active={activeSection === 'simulations'} onClick={() => setActiveSection('simulations')}>Scenario Simulator</SectionLink>
-                             <SectionLink active={activeSection === 'replayer'} onClick={() => setActiveSection('replayer')}>Battle Replayer</SectionLink>
-                             <SectionLink active={activeSection === 'ai'} onClick={() => setActiveSection('ai')}>Appendix: AI Doctrine</SectionLink>
-                             <SectionLink active={activeSection === 'animations'} onClick={() => setActiveSection('animations')}>Animation Library</SectionLink>
-                        </nav>
-                    </div>
+                    <nav className="w-1/5 flex-shrink-0 flex flex-col gap-1 panel-style p-2 overflow-y-auto">
+                         <SectionLink active={activeSection === 'intro'} onClick={() => setActiveSection('intro')}>Introduction</SectionLink>
+                         <div className="w-full border-t border-border-dark my-2"></div>
+                         <SectionLink active={activeSection === 'ui'} onClick={() => setActiveSection('ui')}>Bridge Interface</SectionLink>
+                         <SectionLink active={activeSection === 'registry'} onClick={() => setActiveSection('registry')}>Entity Registry</SectionLink>
+                         <SectionLink active={activeSection === 'officers'} onClick={() => setActiveSection('officers')}>Bridge Officer Dossiers</SectionLink>
+                         <SectionLink active={activeSection === 'lore'} onClick={() => setActiveSection('lore')}>Typhon Expanse Primer</SectionLink>
+                         <SectionLink active={activeSection === 'generation'} onClick={() => setActiveSection('generation')}>Galaxy Generation</SectionLink>
+                         <SectionLink active={activeSection === 'mechanics'} onClick={() => setActiveSection('mechanics')}>Core Mechanics</SectionLink>
+                         <SectionLink active={activeSection === 'combat'} onClick={() => setActiveSection('combat')}>Advanced Combat</SectionLink>
+                         <SectionLink active={activeSection === 'advanced'} onClick={() => setActiveSection('advanced')}>Advanced Tactics</SectionLink>
+                         <SectionLink active={activeSection === 'simulations'} onClick={() => setActiveSection('simulations')}>Scenario Simulator</SectionLink>
+                         <SectionLink active={activeSection === 'replayer'} onClick={() => setActiveSection('replayer')}>Battle Replayer</SectionLink>
+                         <SectionLink active={activeSection === 'ai'} onClick={() => setActiveSection('ai')}>Appendix: AI Doctrine</SectionLink>
+                         <SectionLink active={activeSection === 'animations'} onClick={() => setActiveSection('animations')}>Animation Library</SectionLink>
+                    </nav>
                     <main className="w-4/5 flex-grow panel-style p-4 flex flex-col min-h-0">
                         <div className="h-full overflow-y-auto pr-2">
                            {renderContent()}

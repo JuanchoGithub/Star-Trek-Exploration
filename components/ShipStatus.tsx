@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -135,24 +137,29 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
   const { TorpedoIcon, SecurityIcon } = getFactionIcons(themeName);
 
   const canTakeEvasive = gameState.redAlert && ship.subsystems.engines.health > 0;
-  const hasDamagedSystems = ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth);
+  // FIX: Replaced Object.values with a type-safe Object.keys iteration to prevent type errors where the compiler infers the value as 'unknown'.
+  const hasDamagedSystems = ship.hull < ship.maxHull || (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).some(key => ship.subsystems[key].health < ship.subsystems[key].maxHealth);
 
   const handleSelectRepair = (subsystem: 'hull' | keyof ShipSubsystems) => {
       onSelectRepairTarget(subsystem);
       setRepairListVisible(false);
   };
   
+  // FIX: Replaced `Object.entries` with `Object.keys` to improve type safety and avoid potential 'property does not exist on type unknown' errors from the compiler.
   const systemsToRepair = [
       { key: 'hull' as const, name: 'Hull', health: ship.hull, maxHealth: ship.maxHull, disabled: ship.hull === ship.maxHull },
-      ...(Object.entries(ship.subsystems) as [keyof ShipSubsystems, { health: number; maxHealth: number }][])
-        .map(([key, value]) => ({
-            key,
-            name: key.charAt(0).toUpperCase() + key.slice(1),
-            health: value.health,
-            maxHealth: value.maxHealth,
-            disabled: value.health === value.maxHealth || value.maxHealth === 0,
-        }))
-        .sort((a,b) => a.name.localeCompare(b.name))
+      ...((Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>)
+        .map(key => {
+            const value = ship.subsystems[key];
+            return {
+                key,
+                name: key.charAt(0).toUpperCase() + key.slice(1),
+                health: value.health,
+                maxHealth: value.maxHealth,
+                disabled: value.health === value.maxHealth || value.maxHealth === 0,
+            };
+        })
+        .sort((a,b) => a.name.localeCompare(b.name)))
   ];
 
   const redAlertTitle = "Raise shields for combat. Costs 15 energy to activate and drains reserve power each turn. When offline, shields are down and energy recharges.";
@@ -243,7 +250,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({ gameState, onEnergyChange, onTo
                           return (
                               <button 
                                   key={sys.key} 
-                                  onClick={() => handleSelectRepair(sys.key)} 
+                                  onClick={() => handleSelectRepair(sys.key as any)} 
                                   disabled={sys.disabled && !isAssigned}
                                   title={`Assign repair crew to ${subsystemFullNames[sys.key as keyof typeof subsystemFullNames]}`}
                                   className={`w-full text-sm btn btn-compact ${
