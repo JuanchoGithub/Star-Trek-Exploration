@@ -13,7 +13,7 @@ import EventDialog from './components/EventDialog';
 import WarpAnimation from './components/WarpAnimation';
 import CombatFXLayer from './components/CombatFXLayer';
 import AwayMissionResultDialog from './components/AwayMissionResultDialog';
-import { useTheme } from './hooks/useTheme';
+import { useTheme, ThemeName } from './hooks/useTheme';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import PlayerManual from './components/PlayerManual';
 import EventResultDialog from './components/EventResultDialog';
@@ -25,6 +25,7 @@ import { SAVE_GAME_KEY } from './assets/configs/gameConstants';
 import { ScienceIcon } from './assets/ui/icons';
 import BattleReplayer from './components/BattleReplayer';
 import Changelog from './components/Changelog';
+import { GameState, ShipSubsystems } from './types';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -61,6 +62,33 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
         </div>
     );
 };
+
+// FIX: Moved SidebarContent outside of the App component to prevent re-mounting on every render.
+interface SidebarContentProps {
+    gameState: GameState;
+    onEnergyChange: (changedKey: 'weapons' | 'shields' | 'engines', value: number) => void;
+    onToggleRedAlert: () => void;
+    onEvasiveManeuvers: () => void;
+    onSelectRepairTarget: (subsystem: 'hull' | keyof ShipSubsystems | null) => void;
+    onToggleCloak: () => void;
+    onTogglePointDefense: () => void;
+    themeName: ThemeName;
+}
+
+const SidebarContent: React.FC<SidebarContentProps> = ({ 
+    gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName 
+}) => (
+    <ShipStatus 
+        gameState={gameState} 
+        onEnergyChange={onEnergyChange}
+        onToggleRedAlert={onToggleRedAlert}
+        onEvasiveManeuvers={onEvasiveManeuvers}
+        onSelectRepairTarget={onSelectRepairTarget as any}
+        onToggleCloak={onToggleCloak}
+        onTogglePointDefense={onTogglePointDefense}
+        themeName={themeName}
+    />
+);
 
 
 const App: React.FC = () => {
@@ -170,19 +198,6 @@ const App: React.FC = () => {
 
     const { player, logs, currentSector: sector, redAlert, quadrantMap } = gameState;
 
-    const SidebarContent = () => (
-        <ShipStatus 
-            gameState={gameState} 
-            onEnergyChange={onEnergyChange}
-            onToggleRedAlert={onToggleRedAlert}
-            onEvasiveManeuvers={onEvasiveManeuvers}
-            onSelectRepairTarget={onSelectRepairTarget as any}
-            onToggleCloak={onToggleCloak}
-            onTogglePointDefense={onTogglePointDefense}
-            themeName={themeName}
-        />
-    );
-
     return (
         <div className={`h-screen w-screen bg-bg-default text-text-primary overflow-hidden relative ${theme.font} ${redAlert ? 'red-alert-pulse' : ''} theme-${themeName}`}>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
@@ -214,10 +229,32 @@ const App: React.FC = () => {
                 <main className="flex-grow min-h-0">
                     <div className="h-full grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 md:gap-4">
                         <div className="grid grid-rows-[1fr_auto] gap-2 md:gap-4 min-h-0">
-                            <section className="flex flex-col gap-2 min-h-0">
+                            <section className="flex flex-row gap-2 min-h-0">
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        onClick={() => onSetView('sector')}
+                                        className={`flex-grow w-12 flex items-center justify-center p-1 rounded-md font-bold transition-colors ${
+                                            currentView === 'sector'
+                                                ? 'bg-primary-main text-primary-text'
+                                                : 'bg-secondary-main text-secondary-text hover:bg-secondary-light'
+                                        }`}
+                                    >
+                                        <span className="[writing-mode:vertical-rl] rotate-180 whitespace-nowrap">Sector View</span>
+                                    </button>
+                                    <button
+                                        onClick={() => onSetView('quadrant')}
+                                        className={`flex-grow w-12 flex items-center justify-center p-1 rounded-md font-bold transition-colors ${
+                                            currentView === 'quadrant'
+                                                ? 'bg-primary-main text-primary-text'
+                                                : 'bg-secondary-main text-secondary-text hover:bg-secondary-light'
+                                        }`}
+                                    >
+                                        <span className="[writing-mode:vertical-rl] rotate-180 whitespace-nowrap">Quadrant Map</span>
+                                    </button>
+                                </div>
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
                                     {isWarping && <WarpAnimation />}
-                                    <div className="w-full h-full aspect-[12/10] relative">
+                                    <div className="w-full h-full aspect-[11/10] relative">
                                         {currentView === 'sector' ? (
                                             <>
                                                 <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} />
@@ -244,10 +281,6 @@ const App: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex-shrink-0 flex justify-center gap-2">
-                                     <button onClick={() => onSetView('sector')} className={`btn ${currentView === 'sector' ? 'btn-primary' : 'btn-secondary'}`}>Sector View</button>
-                                     <button onClick={() => onSetView('quadrant')} className={`btn ${currentView === 'quadrant' ? 'btn-primary' : 'btn-secondary'}`}>Quadrant Map</button>
-                                </div>
                             </section>
                              <section className="min-h-0">
                                 <PlayerHUD
@@ -267,7 +300,16 @@ const App: React.FC = () => {
                             </section>
                         </div>
                         <aside className="hidden md:flex min-h-0">
-                           <SidebarContent />
+                           <SidebarContent 
+                                gameState={gameState}
+                                onEnergyChange={onEnergyChange}
+                                onToggleRedAlert={onToggleRedAlert}
+                                onEvasiveManeuvers={onEvasiveManeuvers}
+                                onSelectRepairTarget={onSelectRepairTarget}
+                                onToggleCloak={onToggleCloak}
+                                onTogglePointDefense={onTogglePointDefense}
+                                themeName={themeName}
+                           />
                         </aside>
                     </div>
                 </main>
@@ -287,7 +329,16 @@ const App: React.FC = () => {
                  <div className="md:hidden fixed inset-0 z-30 flex justify-end" aria-modal="true" role="dialog">
                     <div className="fixed inset-0 bg-black/60" onClick={() => setShowMobileSidebar(false)} />
                     <aside className="relative z-40 w-full max-w-sm bg-bg-default p-4 h-full">
-                        <SidebarContent />
+                        <SidebarContent 
+                            gameState={gameState}
+                            onEnergyChange={onEnergyChange}
+                            onToggleRedAlert={onToggleRedAlert}
+                            onEvasiveManeuvers={onEvasiveManeuvers}
+                            onSelectRepairTarget={onSelectRepairTarget}
+                            onToggleCloak={onToggleCloak}
+                            onTogglePointDefense={onTogglePointDefense}
+                            themeName={themeName}
+                        />
                     </aside>
                 </div>
             )}

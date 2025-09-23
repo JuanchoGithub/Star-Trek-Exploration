@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+import React, { useRef } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
@@ -30,33 +32,23 @@ const StatusBar: React.FC<{ label: string; value: number; max: number; colorClas
   );
 };
 
-const SubsystemStatus: React.FC<{ 
-    subsystems: ShipSubsystems; 
-    repairTarget: 'hull' | keyof ShipSubsystems | null; 
-    onSelect: (target: keyof ShipSubsystems) => void; 
-}> = ({ subsystems, repairTarget, onSelect }) => (
-    <div className="grid grid-cols-2 gap-1 mt-2">
-        {(Object.keys(subsystems) as Array<keyof ShipSubsystems>).map(key => {
-            const system = subsystems[key];
-            if (system.maxHealth === 0) return null;
-            const healthPercentage = (system.health / system.maxHealth) * 100;
-            let color = 'text-green-400';
-            if (healthPercentage < 60) color = 'text-yellow-400';
-            if (healthPercentage < 25) color = 'text-red-500';
-
-            return (
-                <button 
-                    key={key} 
-                    onClick={() => onSelect(key)}
-                    className={`flex justify-between items-center bg-black/30 px-2 py-0.5 rounded text-xs transition-colors hover:bg-black/60 ${repairTarget === key ? 'ring-2 ring-accent-yellow' : ''}`}
-                >
-                    <span className="font-bold uppercase">{key.substring(0,4)}</span>
-                    <span className={`font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
-                </button>
-            );
-        })}
-    </div>
+const TacticalButton: React.FC<{
+    label: string;
+    status: string;
+    colorClass: string;
+    onClick: () => void;
+    disabled?: boolean;
+}> = ({ label, status, colorClass, onClick, disabled }) => (
+    <button
+        onClick={onClick}
+        disabled={disabled}
+        className="flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded w-full transition-colors hover:bg-bg-paper disabled:bg-bg-paper-lighter disabled:cursor-not-allowed disabled:opacity-60"
+    >
+        <span className="font-bold text-text-secondary uppercase tracking-wider pl-1">{label}</span>
+        <span className={`font-bold px-2 py-0.5 rounded ${disabled ? 'text-text-disabled bg-gray-800' : colorClass}`}>{status}</span>
+    </button>
 );
+
 
 const ShipStatus: React.FC<ShipStatusProps> = ({ 
     gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName 
@@ -64,11 +56,38 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
   const { player, redAlert } = gameState;
   const { ship } = player;
   const { TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const cloakStatusText =
+    ship.cloakState === 'cloaked' ? 'ACTIVE' :
+    ship.cloakState === 'cloaking' ? 'ENGAGING' :
+    ship.cloakCooldown > 0 ? `COOLING (${ship.cloakCooldown})` : 'INACTIVE';
+
+  const cloakColor = ship.cloakState === 'cloaked' ? 'text-accent-teal bg-teal-900 bg-opacity-50' : (ship.cloakState === 'cloaking' ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled');
+
+  const hullPercentage = (ship.hull / ship.maxHull) * 100;
+  let hullColor = 'text-green-400';
+  if (hullPercentage < 60) hullColor = 'text-yellow-400';
+  if (hullPercentage < 25) hullColor = 'text-red-500';
+
+  const engineFailureIndicator = ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5 ? (
+    <span className="text-red-500 font-bold ml-2 animate-pulse">OFFLINE</span>
+  ) : null;
+  
+  const lifeSupportFailureIndicator = ship.lifeSupportFailureTurn !== null ? (
+    <span className="text-red-500 font-bold ml-2 animate-pulse">
+        FAILING ({Math.max(0, 2 - (gameState.turn - ship.lifeSupportFailureTurn))})
+    </span>
+  ) : null;
 
   return (
     <div className="panel-style p-3 flex flex-col h-full">
       <h3 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">Ship Status</h3>
-      <div className="flex-grow space-y-2 overflow-y-auto pr-2">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-grow space-y-2 overflow-y-auto pr-2"
+      >
         <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
         <StatusBar 
             label={redAlert ? "Shields" : "Shields (OFFLINE)"} 
@@ -95,28 +114,81 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
         <div className="mt-3">
             <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary">Tactical Systems</h4>
             <div className="grid grid-cols-2 gap-2 mt-1">
-                <button onClick={onToggleRedAlert} className={`btn ${redAlert ? 'btn-primary' : 'btn-secondary'}`}>Red Alert</button>
-                <button onClick={onEvasiveManeuvers} disabled={!redAlert || ship.subsystems.engines.health <= 0} className={`btn ${ship.evasive ? 'btn-primary' : 'btn-secondary'}`}>Evasive</button>
+                <TacticalButton
+                    label="Red Alert"
+                    status={redAlert ? 'ACTIVE' : 'STANDBY'}
+                    colorClass={redAlert ? 'text-accent-red bg-red-900 bg-opacity-50' : 'text-text-disabled'}
+                    onClick={onToggleRedAlert}
+                />
+                <TacticalButton
+                    label="Evasive"
+                    status={ship.evasive ? 'ENABLED' : 'DISABLED'}
+                    colorClass={ship.evasive ? 'text-accent-green bg-green-900 bg-opacity-50' : 'text-text-disabled'}
+                    onClick={onEvasiveManeuvers}
+                    disabled={!redAlert || ship.subsystems.engines.health <= 0}
+                />
                 {ship.cloakingCapable && (
-                     <button onClick={onToggleCloak} disabled={ship.cloakState === 'cloaking' || (ship.cloakState === 'visible' && ship.cloakCooldown > 0)} className={`btn ${ship.cloakState !== 'visible' ? 'btn-primary' : 'btn-secondary'}`}>
-                        {ship.cloakState === 'cloaked' ? 'Decloak' : 'Cloak'}
-                    </button>
+                     <TacticalButton
+                        label="Cloak"
+                        status={cloakStatusText}
+                        colorClass={cloakColor}
+                        onClick={onToggleCloak}
+                        disabled={ship.cloakState === 'cloaking' || (ship.cloakState === 'visible' && ship.cloakCooldown > 0)}
+                    />
                 )}
-                 <button onClick={onTogglePointDefense} className={`btn ${ship.pointDefenseEnabled ? 'btn-primary' : 'btn-secondary'}`}>Point-Defense</button>
+                 <TacticalButton
+                    label="Point-Defense"
+                    status={ship.pointDefenseEnabled ? 'ACTIVE' : 'INACTIVE'}
+                    colorClass={ship.pointDefenseEnabled ? 'text-accent-orange bg-orange-900 bg-opacity-50' : 'text-text-disabled'}
+                    onClick={onTogglePointDefense}
+                />
             </div>
         </div>
 
         <div>
             <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary mt-2">Damage Control</h4>
-            <div className="grid grid-cols-2 gap-1 mt-1">
-                 <button 
-                    onClick={() => onSelectRepairTarget('hull')}
-                    className={`btn btn-secondary text-xs ${player.ship.repairTarget === 'hull' ? 'ring-2 ring-accent-yellow' : ''}`}
-                >
-                    Repair Hull
-                </button>
+            <div className="flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded w-full mb-1">
+                <span className="font-bold text-text-secondary uppercase tracking-wider pl-1">CURRENT TARGET</span>
+                <span className={`font-bold px-2 py-0.5 rounded ${ship.repairTarget ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled'}`}>
+                    {ship.repairTarget ? ship.repairTarget.toUpperCase() : 'INACTIVE'}
+                </span>
             </div>
-            <SubsystemStatus subsystems={ship.subsystems} repairTarget={ship.repairTarget} onSelect={(key) => onSelectRepairTarget(key)} />
+
+            <div className="grid grid-cols-2 gap-1 mt-1">
+                <button 
+                    onClick={() => onSelectRepairTarget('hull')}
+                    className={`flex justify-between items-center bg-black/30 px-2 py-0.5 rounded text-xs transition-colors hover:bg-black/60 ${player.ship.repairTarget === 'hull' ? 'ring-2 ring-accent-yellow' : ''}`}
+                >
+                    <span className="font-bold uppercase">HULL</span>
+                    <span className={`font-bold ${hullColor}`}>{Math.round(hullPercentage)}%</span>
+                </button>
+                {(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
+                    const system = ship.subsystems[key];
+                    if (system.maxHealth === 0) return null;
+                    const healthPercentage = (system.health / system.maxHealth) * 100;
+                    let color = 'text-green-400';
+                    if (healthPercentage < 60) color = 'text-yellow-400';
+                    if (healthPercentage < 25) color = 'text-red-500';
+
+                    let failureIndicator = null;
+                    if (key === 'engines' && engineFailureIndicator) {
+                        failureIndicator = engineFailureIndicator;
+                    } else if (key === 'lifeSupport' && lifeSupportFailureIndicator) {
+                        failureIndicator = lifeSupportFailureIndicator;
+                    }
+
+                    return (
+                        <button 
+                            key={key} 
+                            onClick={() => onSelectRepairTarget(key)}
+                            className={`flex justify-between items-center bg-black/30 px-2 py-0.5 rounded text-xs transition-colors hover:bg-black/60 ${ship.repairTarget === key ? 'ring-2 ring-accent-yellow' : ''}`}
+                        >
+                            <span className="font-bold uppercase flex items-center">{key.substring(0,4)} {failureIndicator}</span>
+                            <span className={`font-bold ${color}`}>{Math.round(healthPercentage)}%</span>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
       </div>
       <div className="flex-shrink-0 mt-3">

@@ -1,5 +1,5 @@
 // Game world dimensions and constants
-export const SECTOR_WIDTH = 12;
+export const SECTOR_WIDTH = 11;
 export const SECTOR_HEIGHT = 10;
 export const QUADRANT_SIZE = 8;
 

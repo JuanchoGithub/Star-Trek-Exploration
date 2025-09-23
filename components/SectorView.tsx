@@ -60,7 +60,7 @@ const getPercentageCoords = (gridPos: { x: number; y: number }, sectorSize: {wid
 };
 
 const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false }) => {
-  const sectorSize = { width: 12, height: 10 };
+  const sectorSize = { width: 11, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
 
   const allEntities = [
@@ -118,7 +118,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       
       {/* Background grid for borders and click handlers */}
-      <div className="grid grid-cols-12 grid-rows-10 h-full gap-0 relative z-0">
+      <div className="grid grid-cols-11 grid-rows-10 h-full gap-0 relative z-0">
         {gridCells.map((_, index) => {
           const x = index % sectorSize.width;
           const y = Math.floor(index / sectorSize.width);

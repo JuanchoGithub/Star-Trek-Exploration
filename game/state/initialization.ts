@@ -103,10 +103,20 @@ const createEntityFromTemplate = (
             const validClasses = Object.values(factionShipClasses).filter(c => potentialRoles.includes((c as ShipClassStats).role));
             if (validClasses.length === 0) return null;
             const stats = validClasses[Math.floor(Math.random() * validClasses.length)] as ShipClassStats;
+            
+            let allegiance: Ship['allegiance'] = 'neutral';
+            if (chosenFaction === 'Klingon' || chosenFaction === 'Romulan' || chosenFaction === 'Pirate') {
+                allegiance = 'enemy';
+            } else if (chosenFaction === 'Federation') {
+                allegiance = 'ally';
+            } else if (chosenFaction === 'Independent') {
+                allegiance = 'neutral';
+            }
+
             const newShip = {
                 id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction,
                 shipClass: stats.name, shipRole: stats.role, cloakingCapable: stats.cloakingCapable,
-                faction: chosenFaction, position, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields,
+                faction: chosenFaction, position, allegiance, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields,
                 energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
                 torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
                 subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
@@ -281,6 +291,7 @@ export const createInitialGameState = (): GameState => {
     id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', 
     shipClass: playerStats.name, shipRole: playerStats.role, cloakingCapable: playerStats.cloakingCapable,
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
+    allegiance: 'player',
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
     energy: { current: playerStats.energy.max, max: playerStats.energy.max }, energyAllocation: { weapons: 34, shields: 33, engines: 33 },

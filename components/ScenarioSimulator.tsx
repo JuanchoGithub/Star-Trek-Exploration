@@ -208,7 +208,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             </button>
                         </div>
                         <div className="relative flex-grow flex justify-center items-center min-h-0">
-                             <div className="w-full h-full aspect-[12/10] relative">
+                             <div className="w-full h-full aspect-[11/10] relative">
                                 <SectorView
                                     sector={setupState.sector}
                                     entities={[...setupState.ships, ...setupState.sector.entities].map(e => {
@@ -319,7 +319,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 min-h-0 md:col-span-2">
                         <div className="flex flex-col gap-4 min-h-0">
                              <div className="relative flex-grow flex justify-center items-center min-h-0">
-                                <div className="w-full h-full aspect-[12/10] relative">
+                                <div className="w-full h-full aspect-[11/10] relative">
                                     <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
                                     {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
                                     <SectorView
@@ -375,7 +375,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     <>
                         <div className="flex flex-col gap-4 min-h-0">
                              <div className="relative flex-grow flex justify-center items-center min-h-0">
-                                <div className="w-full h-full aspect-[12/10] relative">
+                                <div className="w-full h-full aspect-[11/10] relative">
                                     <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
                                     {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
                                     <SectorView
