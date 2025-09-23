@@ -1,40 +1,77 @@
-
-
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
-// FIX: Added missing imports and corrected FactionAI import.
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-// FIX: Corrected import paths for utilities.
 import { findClosestTarget, moveOneStep, uniqueId } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
+import { processCommonTurn } from './common';
 
 export class FederationAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance' to satisfy the FactionAI interface.
     determineStance(ship: Ship, playerShip: Ship): AIStance {
-        return 'Balanced'; // Friendly ships are always balanced.
-    }
-
-    // FIX: Implemented missing abstract member 'determineSubsystemTarget' to satisfy the FactionAI interface.
-    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
-        return null; // Federation AI is non-hostile.
-    }
-
-    // FIX: Corrected method signature to match the abstract class definition.
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        const { currentSector } = gameState;
-        const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
-
-        // Priority 1: Rescue shuttles
-        if (shuttles.length > 0) {
-            // Type assertion, as findClosestTarget expects Ships
-            const closestShuttle = findClosestTarget(ship, shuttles as any);
-            if (closestShuttle) {
-                ship.position = moveOneStep(ship.position, closestShuttle.position);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
-                return;
-            }
+        // Federation ships fight with a balanced approach but will go defensive if damaged.
+        if (ship.hull / ship.maxHull < 0.4) {
+            return 'Defensive';
         }
-        // Default friendly behavior is to hold position.
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
+        return 'Balanced';
+    }
+
+    determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // A logical Federation captain would target the most significant threat.
+        if (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth > 0) {
+            return 'weapons';
+        }
+        // If weapons are down, target engines to prevent escape.
+        if (playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth > 0) {
+            return 'engines';
+        }
+        return null;
+    }
+
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+        // If allegiance is 'enemy', behave like a hostile combatant.
+        if (ship.allegiance === 'enemy') {
+            const target = findClosestTarget(ship, potentialTargets);
+            if (target) {
+                const stance = this.determineStance(ship, target);
+                const subsystemTarget = this.determineSubsystemTarget(ship, target);
+                let stanceChanged = false;
+
+                switch (stance) {
+                    case 'Defensive':
+                        if (ship.energyAllocation.shields !== 80) {
+                            ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
+                            stanceChanged = true;
+                        }
+                        break;
+                    case 'Balanced':
+                    default:
+                        if (ship.energyAllocation.weapons !== 50) {
+                            ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
+                            stanceChanged = true;
+                        }
+                        break;
+                }
+                
+                if (stanceChanged) {
+                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power levels for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
+                }
+
+                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+            } else {
+                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
+            }
+        } else { // Original non-hostile (ally/neutral) logic
+            const { currentSector } = gameState;
+            const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
+
+            if (shuttles.length > 0) {
+                const closestShuttle = findClosestTarget(ship, shuttles as any);
+                if (closestShuttle) {
+                    ship.position = moveOneStep(ship.position, closestShuttle.position);
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
+                    return;
+                }
+            }
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
+        }
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
@@ -56,8 +93,7 @@ export class FederationAI extends FactionAI {
         }
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.` });
         
-        // Instead of being destroyed, the ship becomes a derelict hulk
         ship.isDerelict = true;
-        ship.hull = 1; // Keep it on the map
+        ship.hull = 1; 
     }
 }

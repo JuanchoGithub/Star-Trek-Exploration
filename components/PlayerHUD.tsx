@@ -42,6 +42,8 @@ interface PlayerHUDProps {
   onSelectSubsystem: (subsystem: keyof ShipSubsystems | null) => void;
   onEnterOrbit: (planetId: string) => void;
   orbitingPlanetId: string | null;
+  // FIX: Added `onTogglePointDefense` to the props interface to allow the command console to toggle the system. This resolves a type error in ScenarioSimulator.
+  onTogglePointDefense: () => void;
 }
 
 const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
@@ -276,7 +278,7 @@ const TargetInfo: React.FC<{
 };
 
 const PlayerHUD: React.FC<PlayerHUDProps> = ({
-    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
+    gameState, onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak, onTogglePointDefense,
     target, isDocked, onDockWithStarbase, onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
@@ -356,6 +358,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                         onCancelRetreat={onCancelRetreat}
                         onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
                         onToggleCloak={onToggleCloak}
+                        onTogglePointDefense={onTogglePointDefense}
                         retreatingTurn={playerShip.retreatingTurn}
                         currentTurn={gameState.turn}
                         hasTarget={!!target}

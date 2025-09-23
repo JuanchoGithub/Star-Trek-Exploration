@@ -103,7 +103,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
 
   return (
-    <div className="bg-black border-2 border-border-light p-2 rounded-r-md w-full h-full relative">
+    <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       
       {/* Background grid for borders and click handlers */}
@@ -261,18 +261,23 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           if (entity.type === 'ship') {
               const shipEntity = entity as Ship;
               
-              if (!shipEntity.scanned && !isPlayer) {
-                  const config = shipVisuals.Unknown.classes['Unknown']!;
-                  const IconComponent = config.icon;
-                  icon = <IconComponent className="w-8 h-8"/>;
-                  factionColor = config.colorClass;
+              const visualConfig = shipVisuals[shipEntity.shipModel];
+              const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+              const IconComponent = classConfig.icon;
+              icon = <IconComponent className="w-8 h-8"/>;
+              
+              if (shipEntity.allegiance) {
+                switch(shipEntity.allegiance) {
+                    case 'player': factionColor = 'text-green-400'; break;
+                    case 'ally': factionColor = 'text-sky-400'; break;
+                    case 'enemy': factionColor = 'text-red-500'; break;
+                    case 'neutral': factionColor = 'text-yellow-400'; break;
+                    default: factionColor = 'text-gray-400';
+                }
+              } else if (!shipEntity.scanned && !isPlayer) {
+                  factionColor = shipVisuals.Unknown.classes['Unknown']!.colorClass;
                   entityName = 'Unknown Contact';
               } else {
-                  const visualConfig = shipVisuals[shipEntity.shipModel];
-                  const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
-                  const IconComponent = classConfig.icon;
-                  icon = <IconComponent className="w-8 h-8"/>;
-                  
                   if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
                       factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
                   } else {
@@ -327,7 +332,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                   onClick={(e) => {
                        e.stopPropagation();
                        if (isPlayer) {
-                           onSelectTarget(playerShip.id); // Allow selecting player ship
+                           if(navigationTarget) onSetNavigationTarget(null);
                            return;
                        }
                        // All entity clicks are now routed through the main handler
@@ -354,7 +359,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                   {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
                   {entity.type === 'ship' && (
                       <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
-                          <div className="h-full bg-accent-green" style={{width: `${(entity.hull / (entity as Ship).maxHull) * 100}%`}}></div>
+                          <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
                       </div>
                   )}
               </div>

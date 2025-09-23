@@ -1,4 +1,5 @@
 
+
 import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
@@ -175,7 +176,8 @@ const createEntityFromTemplate = (
     return null;
 };
 
-const createSectorFromTemplate = (
+// FIX: Export the 'createSectorFromTemplate' function to make it available for import in other modules.
+export const createSectorFromTemplate = (
     template: SectorTemplate, factionOwner: FactionOwner, 
     availablePlanetNames: Record<string, string[]>,
     availableShipNames: Record<string, string[]>, 

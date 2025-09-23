@@ -56,8 +56,11 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose }) => {
     if (onClose) {
         // Modal version
         return (
-            <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-                <div className="panel-style p-4 h-full w-full max-w-4xl flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col z-50 p-4" onClick={onClose}>
+                <div 
+                    className="panel-style p-4 w-full max-w-4xl mx-auto flex-grow min-h-0 flex flex-col gap-2"
+                    onClick={e => e.stopPropagation()}
+                >
                     <div className="flex justify-between items-center flex-shrink-0">
                         <h2 className="text-xl font-bold text-secondary-light">Captain's Log</h2>
                         <button onClick={onClose} className="btn btn-tertiary">Close</button>

@@ -10,6 +10,7 @@ interface CommandConsoleProps {
   onFirePhasers: () => void;
   onLaunchTorpedo: () => void;
   onToggleCloak: () => void;
+  onTogglePointDefense: () => void;
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
@@ -45,7 +46,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
+    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak, onTogglePointDefense,
     onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
     retreatingTurn, currentTurn, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState
@@ -67,16 +68,21 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     return "End Turn";
   }
   
-  const isTargetFriendly = target?.faction === 'Federation';
+  const targetShip = target?.type === 'ship' ? (target as Ship) : null;
+  const isTargetFriendly = targetShip?.allegiance
+      ? ['player', 'ally', 'neutral'].includes(targetShip.allegiance)
+      : target?.faction === 'Federation';
+
   const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
-  const canBoardOrStrike = target?.type === 'ship' 
+  
+  const canBoardOrStrike = targetShip
     && isAdjacentToTarget 
-    && (target as Ship).shields < 1
+    && targetShip.shields < 1
     && !isTargetFriendly 
     && playerShip.securityTeams.current > 0 
     && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5;
 
-  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
+  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon, PointDefenseIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
@@ -133,6 +139,16 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 </CommandButton>
                 <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike
+                </CommandButton>
+                {/* FIX: Added a button to toggle the Laser Point-Defense system, completing the 3x2 grid of tactical actions. */}
+                <CommandButton
+                    onClick={onTogglePointDefense}
+                    disabled={isRetreating || isTurnResolving || playerShip.isStunned || playerShip.subsystems.pointDefense.health <= 0}
+                    accentColor="yellow"
+                    title={playerShip.subsystems.pointDefense.health <= 0 ? "Point-defense system is offline" : "Toggle point-defense grid"}
+                >
+                    <PointDefenseIcon className="w-5 h-5" />
+                    {playerShip.pointDefenseEnabled ? 'LPD Active' : 'LPD Off'}
                 </CommandButton>
             </div>
         </div>
