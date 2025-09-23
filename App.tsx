@@ -263,7 +263,6 @@ const App: React.FC = () => {
                                     onEnterOrbit={onEnterOrbit}
                                     orbitingPlanetId={gameState.orbitingPlanetId}
                                     onToggleCloak={onToggleCloak}
-                                    onTogglePointDefense={onTogglePointDefense}
                                 />
                             </section>
                         </div>

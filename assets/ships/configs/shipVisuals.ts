@@ -16,7 +16,7 @@ import {
 import {
     IndependentFreighterIcon, IndependentExplorerIcon
 } from '../icons/independent';
-import { EventBeaconIcon } from '../../beacons/icons';
+import { UnknownShipIcon } from '../icons';
 
 import {
     FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe, FederationDreadnoughtWireframe,
@@ -39,7 +39,7 @@ import {
 import {
     IndependentFreighterWireframe, IndependentExplorerWireframe
 } from '../wireframes/independent';
-import { EventBeaconWireframe } from '../../beacons/wireframes';
+import { UnknownShipWireframe } from '../wireframes';
 
 
 export interface ShipVisualsConfig {
@@ -123,7 +123,7 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
     },
     Unknown: {
         classes: {
-            'Unknown': { icon: EventBeaconIcon, wireframe: EventBeaconWireframe, colorClass: 'text-yellow-400' }
+            'Unknown': { icon: UnknownShipIcon, wireframe: UnknownShipWireframe, colorClass: 'text-yellow-400' }
         }
     }
 };

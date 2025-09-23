@@ -225,6 +225,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     onSetNavigationTarget={() => {}}
                                     themeName={themeName}
                                     onCellClick={handleCellClick}
+                                    spectatorMode={true}
                                 />
                             </div>
                         </div>
@@ -342,7 +343,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 onStarbaseRepairs={() => {}} onScanTarget={() => {}} onInitiateRetreat={() => {}} onCancelRetreat={() => {}} onStartAwayMission={() => {}} onHailTarget={() => {}}
                                 playerTurnActions={playerTurnActions} navigationTarget={navigationTarget} isTurnResolving={isTurnResolving} onSendAwayTeam={() => {}} themeName={themeName}
                                 desperationMoveAnimation={desperationMoveAnimation} selectedSubsystem={null} onSelectSubsystem={onSelectSubsystem} onEnterOrbit={() => {}}
-                                orbitingPlanetId={null} onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense}
+                                orbitingPlanetId={null} onToggleCloak={onToggleCloak}
                             />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">

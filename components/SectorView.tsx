@@ -272,27 +272,32 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           if (entity.type === 'ship') {
               const shipEntity = entity as Ship;
               
-              const visualConfig = shipVisuals[shipEntity.shipModel];
-              const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
-              const IconComponent = classConfig.icon;
-              icon = <IconComponent className="w-8 h-8"/>;
-              
-              if (shipEntity.allegiance) {
-                switch(shipEntity.allegiance) {
-                    case 'player': factionColor = 'text-green-400'; break;
-                    case 'ally': factionColor = 'text-sky-400'; break;
-                    case 'enemy': factionColor = 'text-red-500'; break;
-                    case 'neutral': factionColor = 'text-yellow-400'; break;
-                    default: factionColor = 'text-gray-400';
-                }
-              } else if (!shipEntity.scanned && !isPlayer) {
-                  factionColor = shipVisuals.Unknown.classes['Unknown']!.colorClass;
+              if (!shipEntity.scanned && !isPlayer) {
+                  const config = shipVisuals.Unknown.classes['Unknown']!;
+                  const IconComponent = config.icon;
+                  icon = <IconComponent className="w-8 h-8"/>;
+                  factionColor = config.colorClass;
                   entityName = 'Unknown Contact';
               } else {
-                  if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
-                      factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
+                  const visualConfig = shipVisuals[shipEntity.shipModel];
+                  const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+                  const IconComponent = classConfig.icon;
+                  icon = <IconComponent className="w-8 h-8"/>;
+                  
+                  if (shipEntity.allegiance) {
+                    switch(shipEntity.allegiance) {
+                        case 'player': factionColor = 'text-green-400'; break;
+                        case 'ally': factionColor = 'text-sky-400'; break;
+                        case 'enemy': factionColor = 'text-red-500'; break;
+                        case 'neutral': factionColor = 'text-yellow-400'; break;
+                        default: factionColor = 'text-gray-400';
+                    }
                   } else {
-                      factionColor = classConfig.colorClass;
+                      if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
+                          factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
+                      } else {
+                          factionColor = classConfig.colorClass;
+                      }
                   }
               }
 

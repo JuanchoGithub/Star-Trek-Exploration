@@ -10,7 +10,6 @@ interface CommandConsoleProps {
   onFirePhasers: () => void;
   onLaunchTorpedo: () => void;
   onToggleCloak: () => void;
-  onTogglePointDefense: () => void;
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
@@ -46,7 +45,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak, onTogglePointDefense,
+    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
     onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
     retreatingTurn, currentTurn, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState
@@ -77,7 +76,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   
   const canBoardOrStrike = targetShip
     && isAdjacentToTarget 
-    && targetShip.shields < 1
+    && targetShip.shields <= 1
     && !isTargetFriendly 
     && playerShip.securityTeams.current > 0 
     && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5;
@@ -126,29 +125,21 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>
-                 <CommandButton 
-                    onClick={onToggleCloak} 
-                    disabled={!canCloak || isCloaking || (isCloaked && hasTakenMajorAction) || (!isCloaked && (isCloakOnCooldown || gameState.redAlert || hasTakenMajorAction))}
-                    accentColor="teal"
-                    title={cannotCloakReason}
-                 >
-                    <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : isCloaking ? 'Engaging...' : 'Cloak'}
-                </CommandButton>
+                 {playerShip.cloakingCapable && (
+                    <CommandButton 
+                        onClick={onToggleCloak} 
+                        disabled={!canCloak || isCloaking || (isCloaked && hasTakenMajorAction) || (!isCloaked && (isCloakOnCooldown || gameState.redAlert || hasTakenMajorAction))}
+                        accentColor="teal"
+                        title={cannotCloakReason}
+                    >
+                        <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : isCloaking ? 'Engaging...' : 'Cloak'}
+                    </CommandButton>
+                 )}
                 <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
                     <BoardingIcon className="w-5 h-5" /> Board
                 </CommandButton>
                 <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike
-                </CommandButton>
-                {/* FIX: Added a button to toggle the Laser Point-Defense system, completing the 3x2 grid of tactical actions. */}
-                <CommandButton
-                    onClick={onTogglePointDefense}
-                    disabled={isRetreating || isTurnResolving || playerShip.isStunned || playerShip.subsystems.pointDefense.health <= 0}
-                    accentColor="yellow"
-                    title={playerShip.subsystems.pointDefense.health <= 0 ? "Point-defense system is offline" : "Toggle point-defense grid"}
-                >
-                    <PointDefenseIcon className="w-5 h-5" />
-                    {playerShip.pointDefenseEnabled ? 'LPD Active' : 'LPD Off'}
                 </CommandButton>
             </div>
         </div>
