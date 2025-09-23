@@ -1,7 +1,7 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
         <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
@@ -10,10 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const VorchaWireframe: React.FC = () => (
     <WireframeSVG>
-        <path d="M 50 15 L 40 40 L 10 30 L 30 70 L 50 85 L 70 70 L 90 30 L 60 40 Z" />
-        <line x1="50" y1="15" x2="50" y2="85" />
-        <line x1="10" y1="30" x2="30" y2="70" />
-        <line x1="90" y1="30" x2="70" y2="70" />
-        <rect x="45" y="20" width="10" height="10" />
+        <path d="M39.0 5.0L42.0 5.0 46.0 12.0 49.0 12.0 53.0 5.0 56.0 5.0 59.0 37.0 63.0 46.0 69.0 53.0 80.0 58.0 84.0 50.0 87.0 52.0 86.0 90.0 83.0 90.0 80.0 83.0 53.0 88.0 32.0 87.0 15.0 83.0 12.0 90.0 9.0 90.0 8.0 52.0 11.0 50.0 13.0 56.0 17.0 58.0 30.0 49.0 37.0 33.0 39.0 6.0ZM47.0 53.0L43.0 56.0 38.0 67.0 37.0 80.0 41.0 82.0 44.0 73.0 48.0 70.0 55.0 83.0 58.0 80.0 58.0 71.0 52.0 56.0 48.0 53.0Z"/>
     </WireframeSVG>
 );

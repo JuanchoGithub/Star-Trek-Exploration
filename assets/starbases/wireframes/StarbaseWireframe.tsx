@@ -1,7 +1,7 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
         <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
@@ -10,17 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const StarbaseWireframe: React.FC = () => (
     <WireframeSVG>
-        {/* Central Spire */}
-        <line x1="50" y1="90" x2="50" y2="30" />
-        {/* Main Dish */}
-        <path d="M 20 30 Q 50 10 80 30" />
-        <path d="M 20 30 Q 50 45 80 30" />
-        {/* Docking Arms */}
-        <line x1="50" y1="60" x2="20" y2="45" />
-        <line x1="50" y1="60" x2="80" y2="45" />
-        <line x1="50" y1="75" x2="30" y2="70" />
-        <line x1="50" y1="75" x2="70" y2="70" />
-        {/* Lower Section */}
-        <rect x="45" y="85" width="10" height="10" />
+        <path d="M40.0 0.0L46.0 6.0 66.0 6.0 87.0 19.0 87.0 22.0 85.0 23.0 62.0 23.0 59.0 26.0 60.0 32.0 68.0 41.0 70.0 50.0 67.0 53.0 62.0 53.0 59.0 56.0 59.0 83.0 55.0 89.0 50.0 90.0 46.0 95.0 43.0 95.0 42.0 91.0 36.0 83.0 36.0 56.0 33.0 53.0 26.0 52.0 25.0 50.0 26.0 43.0 30.0 36.0 35.0 32.0 36.0 26.0 33.0 23.0 8.0 22.0 9.0 18.0 29.0 6.0 35.0 6.0 39.0 1.0ZM30.0 11.0L23.0 16.0 25.0 18.0 70.0 18.0 72.0 16.0 65.0 11.0 31.0 11.0ZM44.0 23.0L41.0 26.0 41.0 29.0 44.0 32.0 51.0 32.0 54.0 29.0 54.0 26.0 51.0 23.0 45.0 23.0ZM37.0 37.0L31.0 43.0 31.0 46.0 33.0 48.0 62.0 48.0 64.0 46.0 63.0 41.0 58.0 37.0 38.0 37.0ZM44.0 53.0L41.0 56.0 41.0 69.0 44.0 72.0 48.0 73.0 48.0 76.0 44.0 77.0 41.0 80.0 41.0 83.0 44.0 86.0 51.0 86.0 54.0 83.0 54.0 68.0 51.0 65.0 47.0 64.0 47.0 61.0 51.0 60.0 54.0 56.0 51.0 53.0 45.0 53.0Z" />
     </WireframeSVG>
 );

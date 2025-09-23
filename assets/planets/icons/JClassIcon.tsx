@@ -1,14 +1,8 @@
 import React from 'react';
-
-const Icon: React.FC<React.SVGProps<SVGSVGElement>> = ({ children, ...props }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-        {children}
-    </svg>
-);
+import { BaseIcon } from '../../ui/icons/BaseIcon';
 
 export const JClassIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <Icon {...props}>
-        <circle cx="12" cy="12" r="8" />
-        <ellipse cx="12" cy="12" rx="11" ry="4" fill="none" stroke="currentColor" strokeWidth="1.5" transform="rotate(-20 12 12)" />
-    </Icon>
+    <BaseIcon {...props} viewBox="0 0 100 100">
+        <path fill="currentColor" fillRule="evenodd" d="M47.0 14.0L62.0 17.0 87.0 16.0 99.0 25.0 99.0 36.0 84.0 56.0 77.0 72.0 64.0 82.0 48.0 85.0 37.0 82.0 16.0 84.0 7.0 81.0 0.0 74.0 1.0 61.0 14.0 44.0 22.0 27.0 33.0 18.0 46.0 15.0ZM43.0 17.0L31.0 22.0 18.0 39.0 17.0 56.0 23.0 65.0 36.0 65.0 56.0 57.0 77.0 37.0 77.0 31.0 66.0 21.0 56.0 17.0 44.0 17.0ZM76.0 17.0L71.0 21.0 79.0 26.0 80.0 35.0 65.0 54.0 47.0 64.0 24.0 68.0 15.0 63.0 14.0 53.0 11.0 51.0 3.0 64.0 4.0 74.0 13.0 81.0 33.0 81.0 54.0 74.0 75.0 61.0 86.0 51.0 96.0 35.0 96.0 27.0 90.0 20.0 77.0 17.0ZM75.0 64.0L49.0 78.0 48.0 81.0 56.0 82.0 68.0 77.0 77.0 68.0 76.0 64.0Z"/>
+    </BaseIcon>
 );

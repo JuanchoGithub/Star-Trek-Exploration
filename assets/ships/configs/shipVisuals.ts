@@ -5,7 +5,7 @@ import {
     FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon, FederationDreadnoughtIcon, IntrepidIcon, DefiantIcon, GalaxyIcon
 } from '../icons/federation';
 import { 
-    KlingonCruiserIcon, KlingonEscortIcon, VorchaIcon, NeghvarIcon
+    BirdOfPreyIcon, KtingaIcon, VorchaIcon, NeghvarIcon
 } from '../icons/klingon';
 import { 
     RomulanEscortIcon, DderidexIcon, ValdoreIcon, ScimitarIcon
@@ -28,7 +28,7 @@ import {
     IntrepidWireframe, DefiantWireframe, GalaxyWireframe,
 } from '../wireframes/federation';
 import {
-    KlingonCruiserWireframe, KlingonEscortWireframe, VorchaWireframe, NeghvarWireframe,
+    BirdOfPreyWireframe, KtingaWireframe, VorchaWireframe, NeghvarWireframe,
 } from '../wireframes/klingon';
 import {
     DderidexWireframe, ValdoreWireframe, ScimitarWireframe
@@ -96,8 +96,8 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
     },
     Klingon: {
         classes: {
-            'K\'t\'inga-class': { icon: KlingonCruiserIcon, wireframe: KlingonCruiserWireframe, colorClass: 'text-red-500' },
-            'B\'rel-class Bird-of-Prey': { icon: KlingonEscortIcon, wireframe: KlingonEscortWireframe, colorClass: 'text-red-400' },
+            'K\'t\'inga-class': { icon: KtingaIcon, wireframe: KtingaWireframe, colorClass: 'text-red-500' },
+            'B\'rel-class Bird-of-Prey': { icon: BirdOfPreyIcon, wireframe: BirdOfPreyWireframe, colorClass: 'text-red-400' },
             'Vor\'cha-class': { icon: VorchaIcon, wireframe: VorchaWireframe, colorClass: 'text-red-400' },
             'Negh\'Var-class': { icon: NeghvarIcon, wireframe: NeghvarWireframe, colorClass: 'text-red-600' },
         }

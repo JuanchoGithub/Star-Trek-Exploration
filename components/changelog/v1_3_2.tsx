@@ -1,11 +1,13 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from '../manual/shared';
 
-export const Version1_3_2: React.FC = () => {
+export const Version1_3: React.FC = () => {
     const releaseDate = "September 22, 2025";
     return (
         <>
-            <SectionHeader>Version 1.3.2 - Energy Rebalancing</SectionHeader>
+            <SectionHeader>Version 1.3 Branch</SectionHeader>
+            <SubHeader>Version 1.3.2 - Energy Rebalancing</SubHeader>
             <p className="text-sm text-text-disabled -mt-3 mb-4">Release Date: Stardate 49721.8, 09:00 ({releaseDate})</p>
             <p className="text-lg text-text-secondary italic mb-4">Overhaul of the ship energy economy based on operational feedback.</p>
             

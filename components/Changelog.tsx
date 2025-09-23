@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-// FIX: Corrected import path to be more explicit ('./changelog/index') to resolve a module resolution ambiguity between the 'changelog' directory and the 'Changelog.tsx' file.
-import { Version1_5_3, Version1_5_2, Version1_5_1, Version1_5, Version1_4_1, Version1_4, Version1_3_2 } from './changelog/index';
 
-type Version = 'v1.5.3' | 'v1.5.2' | 'v1.5.1' | 'v1.5' | 'v1.4.1' | 'v1.4' | 'v1.3.2';
+import React, { useState } from 'react';
+import { Version1_5, Version1_4, Version1_3 } from './changelog/index';
+
+type Version = 'v1.5' | 'v1.4' | 'v1.3';
 
 interface ChangelogProps {
     onClose: () => void;
@@ -15,17 +15,13 @@ const VersionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
 );
 
 const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
-    const [activeVersion, setActiveVersion] = useState<Version>('v1.5.3');
+    const [activeVersion, setActiveVersion] = useState<Version>('v1.5');
 
     const renderContent = () => {
         switch(activeVersion) {
-            case 'v1.5.3': return <Version1_5_3 />;
-            case 'v1.5.2': return <Version1_5_2 />;
-            case 'v1.5.1': return <Version1_5_1 />;
             case 'v1.5': return <Version1_5 />;
-            case 'v1.4.1': return <Version1_4_1 />;
             case 'v1.4': return <Version1_4 />;
-            case 'v1.3.2': return <Version1_3_2 />;
+            case 'v1.3': return <Version1_3 />;
             default: return null;
         }
     };
@@ -39,26 +35,14 @@ const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
                 </div>
                 <main className="flex-grow flex gap-4 min-h-0">
                     <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
-                        <VersionLink active={activeVersion === 'v1.5.3'} onClick={() => setActiveVersion('v1.5.3')}>
-                            Version 1.5.3
-                        </VersionLink>
-                         <VersionLink active={activeVersion === 'v1.5.2'} onClick={() => setActiveVersion('v1.5.2')}>
-                            Version 1.5.2
-                        </VersionLink>
-                         <VersionLink active={activeVersion === 'v1.5.1'} onClick={() => setActiveVersion('v1.5.1')}>
-                            Version 1.5.1
-                        </VersionLink>
                         <VersionLink active={activeVersion === 'v1.5'} onClick={() => setActiveVersion('v1.5')}>
-                            Version 1.5
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.4.1'} onClick={() => setActiveVersion('v1.4.1')}>
-                            Version 1.4.1
+                            Version 1.5.x
                         </VersionLink>
                         <VersionLink active={activeVersion === 'v1.4'} onClick={() => setActiveVersion('v1.4')}>
-                            Version 1.4
+                            Version 1.4.x
                         </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.3.2'} onClick={() => setActiveVersion('v1.3.2')}>
-                            Version 1.3.2
+                        <VersionLink active={activeVersion === 'v1.3'} onClick={() => setActiveVersion('v1.3')}>
+                            Version 1.3.x
                         </VersionLink>
                     </nav>
                     <div className="w-3/4 flex-grow panel-style p-4 flex flex-col min-h-0">

@@ -1,8 +1,8 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
+        <g stroke="#fde047" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
     </svg>
@@ -10,10 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const ValdoreWireframe: React.FC = () => (
     <WireframeSVG>
-        <path d="M 50 15 L 10 40 L 20 85 L 80 85 L 90 40 Z" />
-        <line x1="50" y1="15" x2="50" y2="85" />
-        <path d="M 10 40 C 30 50, 70 50, 90 40" />
-        <path d="M 20 85 L 5 70" />
-        <path d="M 80 85 L 95 70" />
+        <path d="M47.0 5.0L50.0 8.0 54.0 22.0 54.0 25.0 50.0 29.0 50.0 41.0 58.0 50.0 70.0 51.0 80.0 47.0 82.0 45.0 82.0 30.0 84.0 28.0 87.0 30.0 87.0 42.0 89.0 44.0 95.0 44.0 95.0 59.0 70.0 82.0 66.0 79.0 63.0 79.0 59.0 87.0 54.0 83.0 48.0 88.0 42.0 83.0 36.0 87.0 32.0 79.0 29.0 79.0 25.0 82.0 0.0 59.0 0.0 44.0 4.0 43.0 8.0 45.0 10.0 43.0 10.0 30.0 12.0 28.0 15.0 30.0 15.0 46.0 17.0 48.0 25.0 51.0 33.0 51.0 39.0 48.0 45.0 41.0 45.0 29.0 41.0 26.0 41.0 22.0 46.0 6.0ZM7.0 49.0L5.0 51.0 5.0 57.0 8.0 60.0 13.0 56.0 15.0 59.0 12.0 64.0 16.0 68.0 18.0 68.0 22.0 62.0 25.0 64.0 22.0 70.0 22.0 73.0 24.0 75.0 28.0 73.0 33.0 74.0 37.0 70.0 39.0 72.0 39.0 76.0 42.0 79.0 44.0 77.0 44.0 61.0 46.0 51.0 45.0 49.0 39.0 54.0 35.0 55.0 24.0 55.0 8.0 49.0ZM50.0 49.0L49.0 51.0 51.0 61.0 51.0 77.0 53.0 79.0 56.0 76.0 56.0 72.0 58.0 70.0 62.0 74.0 67.0 73.0 71.0 75.0 73.0 73.0 73.0 70.0 70.0 65.0 72.0 62.0 75.0 64.0 77.0 68.0 79.0 68.0 83.0 64.0 80.0 58.0 83.0 56.0 87.0 60.0 90.0 57.0 90.0 51.0 88.0 49.0 71.0 55.0 56.0 54.0 51.0 49.0Z"/>
     </WireframeSVG>
 );

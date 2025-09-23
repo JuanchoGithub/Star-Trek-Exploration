@@ -6,7 +6,7 @@ interface CombatFXLayerProps {
     entities: Entity[];
 }
 
-const SECTOR_WIDTH = 12;
+const SECTOR_WIDTH = 11;
 const SECTOR_HEIGHT = 10;
 
 const getPercentageCoords = (gridPos: { x: number; y: number }) => {

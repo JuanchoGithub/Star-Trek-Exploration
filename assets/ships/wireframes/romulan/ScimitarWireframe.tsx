@@ -1,8 +1,8 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
+        <g stroke="#fde047" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
     </svg>
@@ -10,10 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const ScimitarWireframe: React.FC = () => (
     <WireframeSVG>
-        <path d="M 50 10 L 10 50 L 30 90 L 70 90 L 90 50 Z" />
-        <path d="M 10 50 L 50 70 L 90 50" />
-        <line x1="50" y1="10" x2="50" y2="70" />
-        <path d="M 30 90 L 5 80 L 10 50" />
-        <path d="M 70 90 L 95 80 L 90 50" />
+        <path d="M9.0 11.0L13.0 13.0 19.0 40.0 22.0 42.0 26.0 35.0 30.0 45.0 38.0 40.0 35.0 30.0 40.0 14.0 49.0 18.0 54.0 13.0 60.0 30.0 57.0 40.0 67.0 46.0 71.0 35.0 74.0 39.0 77.0 38.0 82.0 13.0 86.0 11.0 87.0 22.0 95.0 41.0 95.0 48.0 88.0 64.0 75.0 70.0 66.0 80.0 60.0 81.0 58.0 88.0 55.0 88.0 51.0 79.0 42.0 80.0 40.0 88.0 37.0 88.0 34.0 80.0 29.0 80.0 19.0 69.0 7.0 64.0 0.0 48.0 9.0 12.0ZM45.0 23.0L40.0 29.0 41.0 54.0 44.0 55.0 48.0 49.0 53.0 55.0 55.0 29.0 52.0 24.0 46.0 23.0ZM9.0 33.0L5.0 43.0 9.0 58.0 32.0 75.0 38.0 65.0 44.0 75.0 51.0 75.0 57.0 65.0 59.0 72.0 64.0 75.0 71.0 67.0 85.0 60.0 90.0 46.0 87.0 34.0 84.0 33.0 73.0 55.0 61.0 49.0 62.0 55.0 57.0 60.0 50.0 60.0 50.0 69.0 46.0 70.0 46.0 61.0 38.0 60.0 33.0 55.0 36.0 51.0 33.0 48.0 24.0 55.0 10.0 33.0Z"/>
     </WireframeSVG>
 );

@@ -1,8 +1,8 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
+        <g stroke="#fde047" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
     </svg>
@@ -10,10 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const NausicaanBattleshipWireframe: React.FC = () => (
     <WireframeSVG>
-        <polygon points="10,50 40,20 90,40 70,80 20,90" />
-        <rect x="30" y="40" width="40" height="30" />
-        <line x1="40" y1="20" x2="70" y2="40" />
-        <line x1="20" y1="90" x2="30" y2="70" />
-        <line x1="90" y1="40" x2="70" y2="70" />
+        <path d="M46.0 5.0L50.0 7.0 57.0 28.0 57.0 46.0 60.0 49.0 63.0 49.0 76.0 62.0 78.0 60.0 79.0 39.0 85.0 38.0 89.0 43.0 95.0 62.0 95.0 79.0 92.0 91.0 88.0 94.0 81.0 93.0 75.0 84.0 60.0 86.0 53.0 94.0 42.0 94.0 35.0 86.0 24.0 84.0 20.0 84.0 13.0 94.0 7.0 94.0 3.0 91.0 0.0 79.0 0.0 62.0 7.0 41.0 10.0 38.0 16.0 39.0 17.0 59.0 19.0 61.0 31.0 49.0 36.0 49.0 38.0 47.0 38.0 28.0 46.0 6.0ZM46.0 20.0L43.0 27.0 43.0 85.0 49.0 88.0 52.0 85.0 52.0 27.0 50.0 21.0 47.0 20.0ZM9.0 49.0L5.0 64.0 6.0 85.0 9.0 88.0 12.0 85.0 12.0 50.0 10.0 49.0ZM84.0 49.0L83.0 85.0 86.0 88.0 89.0 85.0 90.0 64.0 88.0 53.0 85.0 49.0ZM60.0 53.0L57.0 56.0 57.0 79.0 60.0 82.0 75.0 80.0 78.0 77.0 77.0 70.0 61.0 54.0ZM33.0 54.0L18.0 70.0 17.0 77.0 20.0 80.0 35.0 82.0 38.0 79.0 38.0 57.0 34.0 54.0Z"/>
     </WireframeSVG>
 );
