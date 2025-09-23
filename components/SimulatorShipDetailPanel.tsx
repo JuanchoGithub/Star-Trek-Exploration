@@ -37,14 +37,14 @@ const StatusIndicator: React.FC<{ label: string; value: string; color: string }>
     </div>
 );
 
-interface SimulatorShipDetailPanelProps {
+interface ShipDetailPanelProps {
     selectedEntity: Entity | null;
     themeName: ThemeName;
     turn: number;
     gameState: GameState;
 }
 
-const SimulatorShipDetailPanel: React.FC<SimulatorShipDetailPanelProps> = ({ selectedEntity, themeName, turn, gameState }) => {
+const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, themeName, turn, gameState }) => {
     if (!selectedEntity) {
         return (
             <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
@@ -246,4 +246,4 @@ const SimulatorShipDetailPanel: React.FC<SimulatorShipDetailPanelProps> = ({ sel
     );
 };
 
-export default SimulatorShipDetailPanel;
+export default ShipDetailPanel;
