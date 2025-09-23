@@ -299,7 +299,7 @@ const App: React.FC = () => {
                                 />
                             </section>
                         </div>
-                        <aside className="hidden md:flex min-h-0">
+                        <aside className="hidden md:flex w-80 min-h-0">
                            <SidebarContent 
                                 gameState={gameState}
                                 onEnergyChange={onEnergyChange}
@@ -328,7 +328,7 @@ const App: React.FC = () => {
             {showMobileSidebar && (
                  <div className="md:hidden fixed inset-0 z-30 flex justify-end" aria-modal="true" role="dialog">
                     <div className="fixed inset-0 bg-black/60" onClick={() => setShowMobileSidebar(false)} />
-                    <aside className="relative z-40 w-full max-w-sm bg-bg-default p-4 h-full">
+                    <aside className="relative z-40 w-full max-w-xs bg-bg-default p-4 h-full">
                         <SidebarContent 
                             gameState={gameState}
                             onEnergyChange={onEnergyChange}

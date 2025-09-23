@@ -1,5 +1,4 @@
 
-
 import React, { useRef } from 'react';
 import type { GameState, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -113,7 +112,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
         
         <div className="mt-3">
             <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary">Tactical Systems</h4>
-            <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="flex flex-col gap-2 mt-1">
                 <TacticalButton
                     label="Red Alert"
                     status={redAlert ? 'ACTIVE' : 'STANDBY'}
