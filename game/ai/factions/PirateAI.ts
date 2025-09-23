@@ -1,5 +1,4 @@
 
-
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
@@ -7,11 +6,16 @@ import { processCommonTurn, tryCaptureDerelict } from './common';
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance'.
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    // FIX: Corrected method signature to match the abstract class and updated logic to use potentialTargets.
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+        const target = findClosestTarget(ship, potentialTargets);
+        if (!target) {
+            return 'Balanced';
+        }
+
         // Pirates are opportunistic cowards.
         const shipHealth = ship.hull / ship.maxHull;
-        const playerHealth = playerShip.hull / playerShip.maxHull;
+        const playerHealth = target.hull / target.maxHull;
 
         if (shipHealth < 0.6) {
             return 'Defensive'; // Prioritize self-preservation above all.
@@ -43,7 +47,7 @@ export class PirateAI extends FactionAI {
 
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
-            const stance = this.determineStance(ship, target);
+            const stance = this.determineStance(ship, potentialTargets);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 

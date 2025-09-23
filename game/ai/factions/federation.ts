@@ -1,11 +1,20 @@
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { findClosestTarget, moveOneStep, uniqueId } from '../../utils/ai';
+import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
+// FIX: Corrected import path for shipRoleStats.
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { processCommonTurn } from './common';
+import { processCommonTurn, processRecoveryTurn } from './common';
 
 export class FederationAI extends FactionAI {
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
+            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
+                return 'Recovery';
+            }
+            return 'Balanced';
+        }
+
         // Federation ships fight with a balanced approach but will go defensive if damaged.
         if (ship.hull / ship.maxHull < 0.4) {
             return 'Defensive';
@@ -28,9 +37,20 @@ export class FederationAI extends FactionAI {
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         // If allegiance is 'enemy', behave like a hostile combatant.
         if (ship.allegiance === 'enemy') {
+            const stance = this.determineStance(ship, potentialTargets);
+
+            if (stance === 'Recovery') {
+                processRecoveryTurn(ship, actions);
+                return;
+            }
+
+            if (ship.repairTarget) {
+                ship.repairTarget = null;
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Hostiles detected. Halting repairs to engage.` });
+            }
+
             const target = findClosestTarget(ship, potentialTargets);
             if (target) {
-                const stance = this.determineStance(ship, target);
                 const subsystemTarget = this.determineSubsystemTarget(ship, target);
                 let stanceChanged = false;
 
@@ -69,8 +89,11 @@ export class FederationAI extends FactionAI {
                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
                     return;
                 }
+            } else if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth)) {
+                processRecoveryTurn(ship, actions);
+            } else {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
             }
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
         }
     }
 

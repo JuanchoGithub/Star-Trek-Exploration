@@ -58,7 +58,7 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         torpedoes: { current: shipClass.torpedoes.max, max: shipClass.torpedoes.max },
         subsystems: JSON.parse(JSON.stringify(shipClass.subsystems)),
         securityTeams: { current: shipClass.securityTeams.max, max: shipClass.securityTeams.max },
-        dilithium: { current: 0, max: 0 }, scanned: true, evasive: false, retreatingTurn: null,
+        dilithium: { current: shipClass.dilithium.max, max: shipClass.dilithium.max }, scanned: true, evasive: false, retreatingTurn: null,
         crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: 'border-gray-400',
         lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
         isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null,
@@ -347,13 +347,17 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">
-                            <div className="flex-grow min-h-0 overflow-y-auto space-y-2 pr-2">
-                                <ShipStatus
-                                    gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
-                                    onEnergyChange={onEnergyChange} onToggleRedAlert={onToggleRedAlert} onEvasiveManeuvers={onEvasiveManeuvers} onSelectRepairTarget={onSelectRepairTarget as any}
-                                    onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense} themeName={themeName}
-                                />
-                                <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
+                            <div className="flex-grow min-h-0 flex flex-col gap-2">
+                                <div className="basis-1/2 flex-shrink min-h-0">
+                                    <ShipStatus
+                                        gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
+                                        onEnergyChange={onEnergyChange} onToggleRedAlert={onToggleRedAlert} onEvasiveManeuvers={onEvasiveManeuvers} onSelectRepairTarget={onSelectRepairTarget as any}
+                                        onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense} themeName={themeName}
+                                    />
+                                </div>
+                                <div className="basis-1/2 flex-shrink min-h-0">
+                                    <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
+                                </div>
                             </div>
                             <div className="flex-shrink-0 panel-style p-2">
                                 <button onClick={() => setShowLogModal(true)} className="btn btn-primary w-full">Show Log</button>

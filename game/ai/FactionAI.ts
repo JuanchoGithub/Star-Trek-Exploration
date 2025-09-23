@@ -7,12 +7,12 @@ export interface AIActions {
     triggerDesperationAnimation: (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => void;
 }
 
-export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced';
+export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced' | 'Recovery';
 
 // Abstract base class for all faction-specific AI.
 export abstract class FactionAI {
     // Determines the ship's combat stance for the current turn.
-    abstract determineStance(ship: Ship, playerShip: Ship): AIStance;
+    abstract determineStance(ship: Ship, potentialTargets: Ship[]): AIStance;
 
     // Determines which subsystem to target, if any.
     abstract determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null;

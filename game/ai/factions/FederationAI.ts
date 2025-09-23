@@ -1,17 +1,15 @@
 
-
-
-
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import.
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 // FIX: Consolidated uniqueId import into the correct path.
 import { findClosestTarget, moveOneStep, uniqueId } from '../../utils/ai';
+// FIX: Corrected import path for shipRoleStats from shipClassStats.ts to shipRoleStats.ts.
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 
 export class FederationAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance'.
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    // FIX: Corrected method signature to match the abstract class. The 'playerShip' parameter was changed to 'potentialTargets'.
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
         return 'Balanced'; // Friendly ships are always balanced.
     }
 

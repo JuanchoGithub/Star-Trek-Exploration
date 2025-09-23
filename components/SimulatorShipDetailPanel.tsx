@@ -149,7 +149,7 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     }
 
     return (
-        <div className="panel-style p-3 h-full flex flex-col overflow-y-auto">
+        <div className="panel-style p-3 h-full flex flex-col">
             <div className="grid grid-cols-[auto_1fr] gap-3 items-start mb-2 pb-2 border-b border-border-dark flex-shrink-0">
                 <div className="h-24 w-24 flex-shrink-0">
                     <WireframeDisplay target={selectedEntity} />
@@ -160,88 +160,90 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                 </div>
             </div>
             
-            {ship && (
-                <>
-                    <DetailSection title="General">
-                        <DetailItem label="Class" value={ship.shipClass} />
-                        <DetailItem label="Position" value={`(${ship.position.x}, ${ship.position.y})`} />
-                    </DetailSection>
+            <div className="flex-grow overflow-y-auto pr-2">
+                {ship && (
+                    <>
+                        <DetailSection title="General">
+                            <DetailItem label="Class" value={ship.shipClass} />
+                            <DetailItem label="Position" value={`(${ship.position.x}, ${ship.position.y})`} />
+                        </DetailSection>
 
-                    <DetailSection title="Status">
-                        {ship.isDerelict ? (
-                            <StatusIndicator label="Status" value="DERELICT" color="text-red-500" />
-                        ) : (
-                            <StatusIndicator label="Status" value="OPERATIONAL" color="text-green-500" />
-                        )}
+                        <DetailSection title="Status">
+                            {ship.isDerelict ? (
+                                <StatusIndicator label="Status" value="DERELICT" color="text-red-500" />
+                            ) : (
+                                <StatusIndicator label="Status" value="OPERATIONAL" color="text-green-500" />
+                            )}
 
-                        {engineFailureTurns !== null && <StatusIndicator label="Engines Disabled" value={`${engineFailureTurns} Turns`} color="text-red-500 animate-pulse" />}
-                        {lifeSupportCountdown !== null && <StatusIndicator label="Life Support" value={`${lifeSupportCountdown} Turns Left`} color="text-red-500 animate-pulse" />}
-                        {captureRepairTurns !== null && captureRepairTurns > 0 && <StatusIndicator label="Captured" value={`${captureRepairTurns} Turns to Repair`} color="text-yellow-500" />}
+                            {engineFailureTurns !== null && <StatusIndicator label="Engines Disabled" value={`${engineFailureTurns} Turns`} color="text-red-500 animate-pulse" />}
+                            {lifeSupportCountdown !== null && <StatusIndicator label="Life Support" value={`${lifeSupportCountdown} Turns Left`} color="text-red-500 animate-pulse" />}
+                            {captureRepairTurns !== null && captureRepairTurns > 0 && <StatusIndicator label="Captured" value={`${captureRepairTurns} Turns to Repair`} color="text-yellow-500" />}
 
-                        {ship.statusEffects.map((effect, i) => (
-                             <StatusIndicator key={i} label="Plasma Burn" value={`${effect.damage} DMG (${effect.turnsRemaining}T left)`} color="text-orange-400" />
-                        ))}
-                    </DetailSection>
-                    
-                    <DetailSection title="Tactical Modifiers">
-                         {isInNebula && <StatusIndicator label="Environment" value="IN NEBULA" color="text-purple-400" />}
-                         {isInAsteroidField && <StatusIndicator label="Environment" value="IN ASTEROIDS" color="text-gray-400" />}
-                         <StatusIndicator label="Evasive" value={ship.evasive ? 'ACTIVE' : 'INACTIVE'} color={ship.evasive ? 'text-accent-green' : 'text-text-disabled'} />
-                         <StatusIndicator label="Point Defense" value={ship.pointDefenseEnabled ? 'ACTIVE (-40% Phaser Dmg)' : 'INACTIVE'} color={ship.pointDefenseEnabled ? 'text-accent-orange' : 'text-text-disabled'} />
-                         {ship.cloakingCapable && <StatusIndicator label="Cloak" value={cloakStatus} color={cloakColor} />}
-                         {ship.isStunned && <StatusIndicator label="Status" value="STUNNED" color="text-yellow-500" />}
-                    </DetailSection>
+                            {ship.statusEffects.map((effect, i) => (
+                                 <StatusIndicator key={i} label="Plasma Burn" value={`${effect.damage} DMG (${effect.turnsRemaining}T left)`} color="text-orange-400" />
+                            ))}
+                        </DetailSection>
+                        
+                        <DetailSection title="Tactical Modifiers">
+                             {isInNebula && <StatusIndicator label="Environment" value="IN NEBULA" color="text-purple-400" />}
+                             {isInAsteroidField && <StatusIndicator label="Environment" value="IN ASTEROIDS" color="text-gray-400" />}
+                             <StatusIndicator label="Evasive" value={ship.evasive ? 'ACTIVE' : 'INACTIVE'} color={ship.evasive ? 'text-accent-green' : 'text-text-disabled'} />
+                             <StatusIndicator label="Point Defense" value={ship.pointDefenseEnabled ? 'ACTIVE (-40% Phaser Dmg)' : 'INACTIVE'} color={ship.pointDefenseEnabled ? 'text-accent-orange' : 'text-text-disabled'} />
+                             {ship.cloakingCapable && <StatusIndicator label="Cloak" value={cloakStatus} color={cloakColor} />}
+                             {ship.isStunned && <StatusIndicator label="Status" value="STUNNED" color="text-yellow-500" />}
+                        </DetailSection>
 
-                    <DetailSection title="Core Stats">
-                        <DetailItem label="Hull" value={`${Math.round(ship.hull)} / ${ship.maxHull}`} />
-                        <DetailItem label="Shields" value={`${Math.round(ship.shields)} / ${ship.maxShields}`} />
-                        <DetailItem label="Reserve Power" value={`${Math.round(ship.energy.current)} / ${ship.energy.max}`} />
-                    </DetailSection>
-                    
-                    {energyGridContent}
+                        <DetailSection title="Core Stats">
+                            <DetailItem label="Hull" value={`${Math.round(ship.hull)} / ${ship.maxHull}`} />
+                            <DetailItem label="Shields" value={`${Math.round(ship.shields)} / ${ship.maxShields}`} />
+                            <DetailItem label="Reserve Power" value={`${Math.round(ship.energy.current)} / ${ship.energy.max}`} />
+                        </DetailSection>
+                        
+                        {energyGridContent}
 
-                    <DetailSection title="Resources">
-                        <DetailItem label="Torpedoes" value={`${ship.torpedoes.current} / ${ship.torpedoes.max}`} />
-                        <DetailItem label="Dilithium" value={`${ship.dilithium.current} / ${ship.dilithium.max}`} />
-                        <DetailItem label="Security Teams" value={`${ship.securityTeams.current} / ${ship.securityTeams.max}`} />
-                        <DetailItem label="Shuttlecraft" value={`${stats ? stats.shuttleCount : 'N/A'} craft`} />
-                    </DetailSection>
+                        <DetailSection title="Resources">
+                            <DetailItem label="Torpedoes" value={`${ship.torpedoes.current} / ${ship.torpedoes.max}`} />
+                            <DetailItem label="Dilithium" value={`${ship.dilithium.current} / ${ship.dilithium.max}`} />
+                            <DetailItem label="Security Teams" value={`${ship.securityTeams.current} / ${ship.securityTeams.max}`} />
+                            <DetailItem label="Shuttlecraft" value={`${stats ? stats.shuttleCount : 'N/A'} craft`} />
+                        </DetailSection>
 
-                    <DetailSection title="Energy Allocation">
-                        <DetailItem label="Weapons" value={<span className="text-red-400">{ship.energyAllocation.weapons}%</span>} />
-                        <DetailItem label="Shields" value={<span className="text-cyan-400">{ship.energyAllocation.shields}%</span>} />
-                        <DetailItem label="Engines" value={<span className="text-green-400">{ship.energyAllocation.engines}%</span>} />
-                    </DetailSection>
+                        <DetailSection title="Energy Allocation">
+                            <DetailItem label="Weapons" value={<span className="text-red-400">{ship.energyAllocation.weapons}%</span>} />
+                            <DetailItem label="Shields" value={<span className="text-cyan-400">{ship.energyAllocation.shields}%</span>} />
+                            <DetailItem label="Engines" value={<span className="text-green-400">{ship.energyAllocation.engines}%</span>} />
+                        </DetailSection>
 
-                    <DetailSection title="Subsystems">
-                        {(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
-                            const system = ship.subsystems[key];
-                            if (system.maxHealth === 0) return null;
-                            const healthPercentage = (system.health / system.maxHealth) * 100;
-                            
-                            let colorClass = 'text-green-400';
-                            if (healthPercentage < 60) colorClass = 'text-yellow-400';
-                            if (healthPercentage < 25) colorClass = 'text-red-500';
-                            
-                            const consumption = stats ? stats.systemConsumption[key] : 0;
-                            const consumptionText = consumption > 0 ? `(-${consumption.toFixed(1)} pwr)` : '';
-                            
-                            return (
-                                <DetailItem
-                                    key={key}
-                                    label={subsystemFullNames[key]}
-                                    value={
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-text-disabled w-16 text-right">{consumptionText}</span>
-                                            <span className={`${colorClass} w-10 text-right`}>{Math.round(healthPercentage)}%</span>
-                                        </div>
-                                    }
-                                />
-                            );
-                        })}
-                    </DetailSection>
-                </>
-            )}
+                        <DetailSection title="Subsystems">
+                            {(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
+                                const system = ship.subsystems[key];
+                                if (system.maxHealth === 0) return null;
+                                const healthPercentage = (system.health / system.maxHealth) * 100;
+                                
+                                let colorClass = 'text-green-400';
+                                if (healthPercentage < 60) colorClass = 'text-yellow-400';
+                                if (healthPercentage < 25) colorClass = 'text-red-500';
+                                
+                                const consumption = stats ? stats.systemConsumption[key] : 0;
+                                const consumptionText = consumption > 0 ? `(-${consumption.toFixed(1)} pwr)` : '';
+                                
+                                return (
+                                    <DetailItem
+                                        key={key}
+                                        label={subsystemFullNames[key]}
+                                        value={
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-text-disabled w-16 text-right">{consumptionText}</span>
+                                                <span className={`${colorClass} w-10 text-right`}>{Math.round(healthPercentage)}%</span>
+                                            </div>
+                                        }
+                                    />
+                                );
+                            })}
+                        </DetailSection>
+                    </>
+                )}
+            </div>
         </div>
     );
 };

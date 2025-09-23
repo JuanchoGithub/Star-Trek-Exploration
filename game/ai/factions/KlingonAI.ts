@@ -1,5 +1,4 @@
 
-
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
@@ -7,8 +6,8 @@ import { processCommonTurn, tryCaptureDerelict } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance'.
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    // FIX: Corrected method signature to match the abstract class. The 'playerShip' parameter was changed to 'potentialTargets'.
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
         // Klingons are honorable warriors. They will fight aggressively until their ship is nearly destroyed.
         if (ship.hull / ship.maxHull < 0.25) {
             return 'Defensive'; // A tactical retreat to repair is not dishonorable.
@@ -34,7 +33,7 @@ export class KlingonAI extends FactionAI {
         const target = findClosestTarget(ship, potentialTargets);
 
         if (target) {
-            const stance = this.determineStance(ship, target);
+            const stance = this.determineStance(ship, potentialTargets);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 

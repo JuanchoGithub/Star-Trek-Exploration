@@ -1,19 +1,24 @@
 
-
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    // FIX: Corrected method signature to match the abstract class and updated logic to use potentialTargets.
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+        const target = findClosestTarget(ship, potentialTargets);
+        if (!target) {
+            return 'Balanced';
+        }
+
         // Romulans are tactical and cautious.
         const shipHealth = ship.hull / ship.maxHull;
 
         if (shipHealth < 0.5) {
             return 'Defensive'; // Preserve the ship if significantly damaged.
         }
-        if (playerShip.shields <= 0) {
+        if (target.shields <= 0) {
             return 'Aggressive'; // Exploit a critical weakness.
         }
         return 'Balanced';
@@ -36,7 +41,7 @@ export class RomulanAI extends FactionAI {
         
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
-            const stance = this.determineStance(ship, target);
+            const stance = this.determineStance(ship, potentialTargets);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 

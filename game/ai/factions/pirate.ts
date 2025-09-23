@@ -1,15 +1,23 @@
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict } from './common';
+import { processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
     // FIX: Implemented missing abstract member 'determineStance'.
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
+            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
+                return 'Recovery';
+            }
+            return 'Balanced';
+        }
+
         // Pirates are opportunistic cowards.
         const shipHealth = ship.hull / ship.maxHull;
-        const playerHealth = playerShip.hull / playerShip.maxHull;
+        const playerHealth = closestTarget.hull / closestTarget.maxHull;
 
         if (shipHealth < 0.6) {
             return 'Defensive'; // Prioritize self-preservation above all.
@@ -39,9 +47,20 @@ export class PirateAI extends FactionAI {
             return; // Turn spent capturing
         }
 
+        const stance = this.determineStance(ship, potentialTargets);
+
+        if (stance === 'Recovery') {
+            processRecoveryTurn(ship, actions);
+            return;
+        }
+
+        if (ship.repairTarget) {
+            ship.repairTarget = null;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `An easy prize! Halting repairs to attack.` });
+        }
+        
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
-            const stance = this.determineStance(ship, target);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 

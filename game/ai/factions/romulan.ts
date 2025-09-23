@@ -1,17 +1,25 @@
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict } from './common';
-import { findClosestTarget } from '../../utils/ai';
+import { processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
+import { findClosestTarget, calculateDistance } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
-    determineStance(ship: Ship, playerShip: Ship): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
+            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
+                return 'Recovery';
+            }
+            return 'Balanced';
+        }
+
         // Romulans are tactical and cautious.
         const shipHealth = ship.hull / ship.maxHull;
 
         if (shipHealth < 0.5) {
             return 'Defensive'; // Preserve the ship if significantly damaged.
         }
-        if (playerShip.shields <= 0) {
+        if (closestTarget.shields <= 0) {
             return 'Aggressive'; // Exploit a critical weakness.
         }
         return 'Balanced';
@@ -32,9 +40,20 @@ export class RomulanAI extends FactionAI {
             return; // Turn spent capturing
         }
         
+        const stance = this.determineStance(ship, potentialTargets);
+
+        if (stance === 'Recovery') {
+            processRecoveryTurn(ship, actions);
+            return;
+        }
+
+        if (ship.repairTarget) {
+            ship.repairTarget = null;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Target detected. Aborting repairs.` });
+        }
+
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
-            const stance = this.determineStance(ship, target);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 

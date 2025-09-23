@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, CombatEffect } from '../../../types';
 import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
@@ -33,6 +32,44 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
     }
     return false; // No action taken
 }
+
+export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
+    // Set energy allocation for recovery
+    if (ship.energyAllocation.engines !== 100) {
+        ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `No threats nearby. Diverting all power to engines for energy recovery.` });
+    }
+
+    // Set repair target if not already set
+    if (!ship.repairTarget) {
+        const subsystemsToRepair: (keyof ShipSubsystems)[] = [
+            'lifeSupport', 'engines', 'weapons', 'shields', 'pointDefense', 'computer', 'transporter', 'shuttlecraft'
+        ];
+        let mostDamagedSystem: keyof ShipSubsystems | null = null;
+        let maxDamagePercent = 0;
+
+        for (const key of subsystemsToRepair) {
+            const system = ship.subsystems[key];
+            if (system.maxHealth > 0) {
+                const damagePercent = 1 - (system.health / system.maxHealth);
+                if (damagePercent > maxDamagePercent) {
+                    maxDamagePercent = damagePercent;
+                    mostDamagedSystem = key;
+                }
+            }
+        }
+
+        if (mostDamagedSystem && maxDamagePercent > 0.01) { // Only repair if there's meaningful damage
+            ship.repairTarget = mostDamagedSystem;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Beginning repairs on the damaged ${mostDamagedSystem} system.` });
+        } else if (ship.hull < ship.maxHull) {
+            ship.repairTarget = 'hull';
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `All systems nominal. Beginning hull repairs.` });
+        }
+    }
+    // Ship does not move or attack in recovery mode.
+}
+
 
 export function processCommonTurn(
     ship: Ship, 

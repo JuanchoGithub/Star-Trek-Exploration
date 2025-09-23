@@ -3,6 +3,7 @@ import { processAITurns } from './aiProcessor';
 import { AIActions } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep, uniqueId } from '../utils/ai';
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
 const processSimulatorPlayerTurn = (
     nextState: GameState,
@@ -59,6 +60,7 @@ const processEndOfTurnSystemsForSim = (state: GameState, addLog: (logData: Omit<
     allShips.forEach(ship => {
         if (ship.hull <= 0) return;
 
+        // 1. Status Effects (Plasma Burn)
         ship.statusEffects = ship.statusEffects.filter(effect => {
             if (effect.type === 'plasma_burn') {
                 ship.hull = Math.max(0, ship.hull - effect.damage);
@@ -69,6 +71,87 @@ const processEndOfTurnSystemsForSim = (state: GameState, addLog: (logData: Omit<
             return false;
         });
 
+        // 2. Damage Control Repairs (for dogfight mode)
+        if (ship.repairTarget) {
+            const repairCost = 5 * ship.energyModifier;
+            if (ship.energy.current >= repairCost) {
+                ship.energy.current -= repairCost;
+                const repairAmount = 5;
+                if (ship.repairTarget === 'hull') {
+                    ship.hull = Math.min(ship.maxHull, ship.hull + repairAmount);
+                } else {
+                    const subsystem = ship.subsystems[ship.repairTarget];
+                    if (subsystem) {
+                        subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
+                        if (subsystem.health >= subsystem.maxHealth) {
+                            ship.repairTarget = null;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 3. System Failure Timers
+        if (ship.lifeSupportFailureTurn !== null) {
+            const turnsPassed = state.turn - ship.lifeSupportFailureTurn;
+            if (turnsPassed >= 2) {
+                ship.isDerelict = true;
+                ship.hull = 1;
+                addLog({ sourceId: ship.id, sourceName: 'SYSTEM', message: `Life support failure on ${ship.name}! The ship is now a derelict hulk.`, color: 'border-red-600', isPlayerSource: false });
+            }
+        }
+        if (ship.engineFailureTurn !== null) {
+            const turnsPassed = state.turn - ship.engineFailureTurn;
+            if (turnsPassed >= 3) {
+                ship.engineFailureTurn = null;
+            }
+        }
+
+        // 4. Energy Management
+        const stats = shipClasses[ship.shipModel][ship.shipClass];
+        if (stats) {
+            const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
+            const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
+            const generatedFromEngines = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
+
+            let totalConsumption = 0;
+            for (const key in ship.subsystems) {
+                const systemKey = key as keyof ShipSubsystems;
+                if (ship.subsystems[systemKey].health > 0 && stats.systemConsumption[systemKey] > 0) {
+                    totalConsumption += stats.systemConsumption[systemKey];
+                }
+            }
+            if (stats.systemConsumption.base > 0) totalConsumption += stats.systemConsumption.base;
+            
+            // In simulator, red alert is always on for combatants
+            if (ship.allegiance === 'player' || ship.allegiance === 'ally' || ship.allegiance === 'enemy') {
+                totalConsumption += 20;
+            }
+
+            if (ship.evasive) totalConsumption += 10;
+            if (ship.pointDefenseEnabled) totalConsumption += 15;
+            if (ship.repairTarget) totalConsumption += 5;
+
+            const netChange = generatedFromEngines - totalConsumption;
+            ship.energy.current += netChange;
+
+            // Dilithium backup
+            if (ship.energy.current < 0) {
+                if (ship.dilithium.current > 0) {
+                    ship.dilithium.current--;
+                    addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `Emergency power! ${ship.name} used 1 Dilithium to prevent a blackout.`, color: 'border-orange-500', isPlayerSource: ship.allegiance === 'player' });
+                    ship.energy.current = ship.energy.max + netChange; // Add max energy, then subtract the deficit.
+                } else {
+                    if (ship.subsystems.lifeSupport.health > 0 && ship.lifeSupportFailureTurn === null) {
+                        ship.subsystems.lifeSupport.health = 0;
+                        ship.lifeSupportFailureTurn = state.turn;
+                        addLog({ sourceId: ship.id, sourceName: 'SYSTEM', message: `Power failure on ${ship.name}! Life support is failing!`, color: 'border-red-600', isPlayerSource: false });
+                    }
+                }
+            }
+        }
+
+        // 5. Shield Regeneration
         if (ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
             const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
             const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
@@ -76,8 +159,24 @@ const processEndOfTurnSystemsForSim = (state: GameState, addLog: (logData: Omit<
             ship.shields = Math.min(ship.maxShields, ship.shields + effectiveRegen);
         }
 
-        let drain = (2 * ship.energyModifier); 
-        ship.energy.current = Math.max(0, ship.energy.current - drain);
+        // 6. Cloaking
+        if (ship.cloakState === 'cloaked') {
+            const reliability = ship.customCloakStats?.reliability ?? 0.90;
+            const powerCost = ship.customCloakStats?.powerCost ?? 40;
+            if (ship.energy.current < powerCost || Math.random() > reliability) {
+                ship.cloakState = 'visible';
+                ship.cloakCooldown = 2;
+            } else {
+                ship.energy.current -= powerCost;
+            }
+        }
+        if (ship.cloakCooldown > 0) ship.cloakCooldown--;
+
+        // 7. Stun recovery
+        if (ship.isStunned) ship.isStunned = false;
+        
+        // Final energy clamp
+        ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current));
     });
 };
 
