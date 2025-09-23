@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
 import { ThemeName } from '../hooks/useTheme';
@@ -11,10 +9,10 @@ interface CommandConsoleProps {
   onEndTurn: () => void;
   onFirePhasers: () => void;
   onLaunchTorpedo: () => void;
+  onToggleCloak: () => void;
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
   onSendAwayTeam: (type: 'boarding' | 'strike') => void;
-  onToggleCloak: () => void;
   retreatingTurn: number | null;
   currentTurn: number;
   hasTarget: boolean;
@@ -71,7 +69,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   
   const isTargetFriendly = target?.faction === 'Federation';
   const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
-  const canBoardOrStrike = target?.type === 'ship' && isAdjacentToTarget && (target.shields / target.maxHull) <= 0.2 && !isTargetFriendly && playerShip.securityTeams.current > 0 && playerShip.subsystems.transporter.health >= playerShip.subsystems.transporter.maxHealth;
+  const canBoardOrStrike = target?.type === 'ship' 
+    && isAdjacentToTarget 
+    && (target as Ship).shields < 1
+    && !isTargetFriendly 
+    && playerShip.securityTeams.current > 0 
+    && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5;
+
   const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
@@ -105,7 +109,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
       "";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2 tactical-grid">

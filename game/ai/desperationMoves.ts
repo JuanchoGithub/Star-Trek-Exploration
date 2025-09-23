@@ -1,8 +1,8 @@
+
 import type { GameState, Ship, Shuttle } from '../../types';
 import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
 // FIX: `uniqueId` is not in `ai`, it's in `helpers`.
-import { calculateDistance, findClosestTarget } from '../utils/ai';
-import { uniqueId } from '../utils/helpers';
+import { calculateDistance, findClosestTarget, uniqueId } from '../utils/ai';
 
 export function executeDesperationMove(ship: Ship, gameState: GameState, addLog: (log: any) => void) {
     if (!ship.desperationMove) return;

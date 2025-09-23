@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
@@ -40,6 +39,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                         if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
                         if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
                         if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
+                        if (savedState.replayHistory === undefined) savedState.replayHistory = [];
                         
                         const migrateSubsystems = (subsystems: any) => {
                             if (subsystems && (subsystems as any).scanners) {
@@ -315,6 +315,22 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             selectedTargetId
         );
         
+        // Create a snapshot of the current state *without* the history to avoid exponential growth.
+        const stateSnapshot = { ...nextGameState };
+        delete stateSnapshot.replayHistory;
+
+        // Get the current history, or start a new one, and push a deep copy of the snapshot.
+        const history = [...(nextGameState.replayHistory || [])];
+        history.push(JSON.parse(JSON.stringify(stateSnapshot))); 
+
+        // Trim the history if it's too long.
+        if (history.length > 100) {
+            history.shift(); 
+        }
+        
+        // Assign the new, clean history back to the main game state.
+        nextGameState.replayHistory = history;
+
         setGameState(nextGameState);
         setNavigationTarget(newNavigationTarget);
         setSelectedTargetId(newSelectedTargetId);
@@ -420,6 +436,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             next.player.ship.position = { x: 6, y: 8 };
             next.player.ship.dilithium.current -= 1;
             next.orbitingPlanetId = null;
+            next.replayHistory = []; // Clear history on warp
             nextState = next;
             return next;
           });

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { GameState, Entity, PlayerTurnActions, Position, Planet, Ship, ShipSubsystems } from '../types';
 import CommandConsole from './CommandConsole';
@@ -117,12 +116,12 @@ const TargetInfo: React.FC<{
         if (hasEnemy) return { disabled: true, text: 'Cannot Begin Mission: Hostiles Present' };
         
         if (target.planetClass === 'J') {
-             if (playerShip.subsystems.shuttlecraft.health < playerShip.subsystems.shuttlecraft.maxHealth) {
+             if ((playerShip.subsystems.shuttlecraft.health / playerShip.subsystems.shuttlecraft.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
             }
         } else {
-            if (playerShip.subsystems.transporter.health < playerShip.subsystems.transporter.maxHealth) {
-                return { disabled: true, text: 'Cannot Begin Mission: Transporter Offline' };
+            if ((playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) < 0.5) {
+                return { disabled: true, text: 'Cannot Begin Mission: Transporter Damaged' };
             }
         }
         if (target.awayMissionCompleted) return { disabled: true, text: 'Planet Surveyed' };
@@ -144,7 +143,7 @@ const TargetInfo: React.FC<{
     }
 
     return (
-        <div className="panel-style p-3 h-full flex flex-col">
+        <div className="panel-style p-3 flex flex-col">
             <div className="grid grid-cols-[auto_1fr] gap-3 items-start mb-2 pb-2 border-b border-border-dark flex-shrink-0">
                 <div className="h-24 w-24 flex-shrink-0">
                      <WireframeDisplay target={target} />
@@ -316,7 +315,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                             onEnterOrbit={onEnterOrbit}
                         />
                     ) : (
-                         <div className="panel-style p-3 h-full flex flex-col justify-center text-center">
+                         <div className="panel-style p-3 flex flex-col justify-center text-center">
                             <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
                             <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
                         </div>
@@ -347,7 +346,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 </div>
 
                 {/* Column 2: Command & Control */}
-                <div className="flex flex-col h-full">
+                <div className="flex flex-col">
                     <CommandConsole 
                         gameState={gameState}
                         onEndTurn={onEndTurn}

@@ -334,6 +334,7 @@ export interface GameState {
       outcome?: 'success' | 'failure';
   }[];
   orbitingPlanetId: string | null;
+  replayHistory?: GameState[];
 }
 
 // FIX: Add 'setup' to ScenarioMode type.

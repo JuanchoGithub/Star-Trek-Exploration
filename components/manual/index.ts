@@ -10,4 +10,3 @@ export * from './CombatSimulationSection';
 export * from './AnimationsSection';
 export * from './GalaxyGenerationSection';
 export * from './AIBehaviorSection';
-export * from './ChangelogSection';

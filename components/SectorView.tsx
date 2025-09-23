@@ -1,4 +1,3 @@
-// FIX: Removed invalid "--- START OF FILE components/SectorView.tsx ---" header.
 import React from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
@@ -104,7 +103,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
 
   return (
-    <div className="bg-black border-2 border-border-light p-2 rounded-r-md w-full max-h-full relative aspect-[12/10]">
+    <div className="bg-black border-2 border-border-light p-2 rounded-r-md w-full h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       
       {/* Background grid for borders and click handlers */}
@@ -328,7 +327,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                   onClick={(e) => {
                        e.stopPropagation();
                        if (isPlayer) {
-                           if(navigationTarget) onSetNavigationTarget(null);
+                           onSelectTarget(playerShip.id); // Allow selecting player ship
                            return;
                        }
                        // All entity clicks are now routed through the main handler
@@ -355,7 +354,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                   {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
                   {entity.type === 'ship' && (
                       <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
-                          <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
+                          <div className="h-full bg-accent-green" style={{width: `${(entity.hull / (entity as Ship).maxHull) * 100}%`}}></div>
                       </div>
                   )}
               </div>

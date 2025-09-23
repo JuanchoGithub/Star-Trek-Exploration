@@ -1,12 +1,13 @@
 
 
 
+
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import.
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { findClosestTarget, moveOneStep } from '../../utils/ai';
+// FIX: Consolidated uniqueId import into the correct path.
+import { findClosestTarget, moveOneStep, uniqueId } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { uniqueId } from '../../utils/helpers';
 
 export class FederationAI extends FactionAI {
     // FIX: Implemented missing abstract member 'determineStance'.
@@ -19,7 +20,8 @@ export class FederationAI extends FactionAI {
         return null; // Federation AI is non-hostile
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions): void {
+    // FIX: Corrected method signature to match the abstract class.
+    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         const { currentSector } = gameState;
         const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
 

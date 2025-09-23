@@ -9,12 +9,13 @@ interface MainMenuProps {
     onStartSimulator: () => void;
     onImportSave: () => void;
     onOpenManual: () => void;
+    onOpenChangelog: () => void;
     hasSaveGame: boolean;
     themeName: ThemeName;
     setTheme: (name: ThemeName) => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimulator, onImportSave, onOpenManual, hasSaveGame, themeName, setTheme }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimulator, onImportSave, onOpenManual, onOpenChangelog, hasSaveGame, themeName, setTheme }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
@@ -36,6 +37,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimul
                          <div className="space-y-3">
                             <button onClick={onLoadGame} disabled={!hasSaveGame} className="w-full btn btn-primary text-lg">Load Mission</button>
                             <button onClick={onImportSave} className="w-full btn btn-accent green text-lg text-white">Import Save</button>
+                            <button onClick={onOpenChangelog} className="w-full btn btn-secondary text-lg">Latest Changes</button>
                             <button onClick={onOpenManual} className="w-full btn btn-secondary text-lg">Player's Manual</button>
                             <button onClick={() => setIsExpanded(false)} className="w-full btn btn-tertiary text-lg">Back</button>
                         </div>

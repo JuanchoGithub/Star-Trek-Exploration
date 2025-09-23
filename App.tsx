@@ -23,6 +23,8 @@ import MainMenu from './components/MainMenu';
 import ScenarioSimulator from './components/ScenarioSimulator';
 import { SAVE_GAME_KEY } from './assets/configs/gameConstants';
 import { ScienceIcon } from './assets/ui/icons';
+import BattleReplayer from './components/BattleReplayer';
+import Changelog from './components/Changelog';
 
 interface GameMenuProps {
     onSaveGame: () => void;
@@ -32,9 +34,11 @@ interface GameMenuProps {
     onOpenManual: () => void;
     onClose: () => void;
     onExitToMainMenu: () => void;
+    onOpenReplayer: () => void;
+    hasReplay: boolean;
 }
 
-const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onOpenManual, onClose, onExitToMainMenu }) => {
+const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSave, onImportSave, onOpenManual, onClose, onExitToMainMenu, onOpenReplayer, hasReplay }) => {
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
             <div className="panel-style p-6 w-full max-w-sm">
@@ -49,6 +53,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
                         <button onClick={onExportSave} className="w-full btn btn-accent green text-white">Export</button>
                     </div>
                     <button onClick={onOpenManual} className="w-full btn btn-secondary">Player's Manual</button>
+                    <button onClick={onOpenReplayer} disabled={!hasReplay} className="w-full btn btn-secondary">Battle Replayer</button>
                     <button onClick={onExitToMainMenu} className="w-full btn btn-tertiary">Exit to Main Menu</button>
                     <button onClick={onClose} className="w-full btn btn-tertiary">Close Menu</button>
                 </div>
@@ -78,6 +83,8 @@ const App: React.FC = () => {
     const [showPlayerManual, setShowPlayerManual] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
+    const [showReplayer, setShowReplayer] = useState(false);
+    const [showChangelog, setShowChangelog] = useState(false);
     const { theme, themeName, setTheme } = useTheme('federation');
     const [isTouchDevice, setIsTouchDevice] = useState(false);
 
@@ -146,11 +153,13 @@ const App: React.FC = () => {
                     onStartSimulator={handleStartSimulator}
                     onImportSave={handleImportClick}
                     onOpenManual={() => setShowPlayerManual(true)}
+                    onOpenChangelog={() => setShowChangelog(true)}
                     hasSaveGame={!!localStorage.getItem(SAVE_GAME_KEY)}
                     themeName={themeName}
                     setTheme={setTheme}
                 />
                 {showPlayerManual && <PlayerManual onClose={() => setShowPlayerManual(false)} themeName={themeName} />}
+                {showChangelog && <Changelog onClose={() => setShowChangelog(false)} />}
             </>
         );
     }
@@ -179,6 +188,8 @@ const App: React.FC = () => {
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
             {themeName === 'romulan' && <RomulanDecoration />}
             {showPlayerManual && <PlayerManual onClose={() => setShowPlayerManual(false)} themeName={themeName} />}
+            {showChangelog && <Changelog onClose={() => setShowChangelog(false)} />}
+            {showReplayer && <BattleReplayer history={gameState.replayHistory || []} onClose={() => setShowReplayer(false)} themeName={themeName} />}
             {showLogModal && <LogPanel logs={logs} onClose={() => setShowLogModal(false)} />}
             {activeAwayMission && <AwayMissionDialog mission={activeAwayMission} onChoose={onChooseAwayMissionOption} themeName={themeName} />}
             {awayMissionResult && <AwayMissionResultDialog result={awayMissionResult} onClose={onCloseAwayMissionResult} />}
@@ -194,6 +205,8 @@ const App: React.FC = () => {
                     onOpenManual={() => { setShowPlayerManual(true); setShowGameMenu(false); }}
                     onClose={() => setShowGameMenu(false)}
                     onExitToMainMenu={handleExitToMainMenu}
+                    onOpenReplayer={() => { setShowReplayer(true); setShowGameMenu(false); }}
+                    hasReplay={!!gameState.replayHistory && gameState.replayHistory.length > 0}
                 />
             )}
 
@@ -204,30 +217,32 @@ const App: React.FC = () => {
                             <section className="flex flex-col gap-2 min-h-0">
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
                                     {isWarping && <WarpAnimation />}
-                                    {currentView === 'sector' ? (
-                                        <>
-                                            <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} />
-                                            <SectorView 
-                                                entities={sector.entities} 
-                                                playerShip={player.ship}
-                                                selectedTargetId={selectedTargetId}
-                                                onSelectTarget={onSelectTarget}
-                                                navigationTarget={navigationTarget}
-                                                onSetNavigationTarget={onSetNavigationTarget}
-                                                sector={sector}
+                                    <div className="w-full h-full aspect-[12/10] relative">
+                                        {currentView === 'sector' ? (
+                                            <>
+                                                <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} />
+                                                <SectorView 
+                                                    entities={sector.entities} 
+                                                    playerShip={player.ship}
+                                                    selectedTargetId={selectedTargetId}
+                                                    onSelectTarget={onSelectTarget}
+                                                    navigationTarget={navigationTarget}
+                                                    onSetNavigationTarget={onSetNavigationTarget}
+                                                    sector={sector}
+                                                    themeName={themeName}
+                                                />
+                                            </>
+                                        ) : (
+                                            <QuadrantView
+                                                quadrantMap={quadrantMap}
+                                                playerPosition={player.position}
+                                                onWarp={onWarp}
+                                                onScanQuadrant={onScanQuadrant}
+                                                isInCombat={redAlert}
                                                 themeName={themeName}
                                             />
-                                        </>
-                                    ) : (
-                                        <QuadrantView
-                                            quadrantMap={quadrantMap}
-                                            playerPosition={player.position}
-                                            onWarp={onWarp}
-                                            onScanQuadrant={onScanQuadrant}
-                                            isInCombat={redAlert}
-                                            themeName={themeName}
-                                        />
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex-shrink-0 flex justify-center gap-2">
                                      <button onClick={() => onSetView('sector')} className={`btn ${currentView === 'sector' ? 'btn-primary' : 'btn-secondary'}`}>Sector View</button>

@@ -1,8 +1,10 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { GameState, Ship, LogEntry, SectorState, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems } from '../types';
 import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { uniqueId, seededRandom, cyrb53 } from '../game/utils/helpers';
+import { uniqueId } from '../game/utils/ai';
+import { seededRandom, cyrb53 } from '../game/utils/helpers';
 import { resolveTurn as resolveSimulatorTurn } from '../game/turn/simulatorTurnManager';
 import { useTheme } from './useTheme';
 

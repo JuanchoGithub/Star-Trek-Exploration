@@ -8,7 +8,8 @@ import { planetNames } from '../../assets/planets/configs/planetNames';
 import { shipNames } from '../../assets/ships/configs/shipNames';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
-import { uniqueId, seededRandom, cyrb53 } from '../utils/helpers';
+import { uniqueId } from '../utils/ai';
+import { seededRandom, cyrb53 } from '../utils/helpers';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -331,5 +332,6 @@ export const createInitialGameState = (): GameState => {
     quadrantMap, currentSector: startSector, turn: 1, logs: [initialLog],
     gameOver: false, gameWon: false, redAlert: false, combatEffects: [], isRetreatingWarp: false,
     usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [], desperationMoveAnimations: [], orbitingPlanetId: null,
+    replayHistory: [],
   };
 };

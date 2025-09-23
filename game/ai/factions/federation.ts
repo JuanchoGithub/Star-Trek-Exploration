@@ -1,54 +1,40 @@
+
+
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
+// FIX: Added missing imports and corrected FactionAI import.
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { findClosestTarget, moveOneStep } from '../../utils/ai';
+// FIX: Corrected import paths for utilities.
+import { findClosestTarget, moveOneStep, uniqueId } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { uniqueId } from '../../utils/helpers';
-import { processCommonTurn } from './common';
 
 export class FederationAI extends FactionAI {
+    // FIX: Implemented missing abstract member 'determineStance' to satisfy the FactionAI interface.
     determineStance(ship: Ship, playerShip: Ship): AIStance {
-         if (ship.hull / ship.maxHull < 0.4) {
-            return 'Defensive';
-        }
-        return 'Balanced';
+        return 'Balanced'; // Friendly ships are always balanced.
     }
 
+    // FIX: Implemented missing abstract member 'determineSubsystemTarget' to satisfy the FactionAI interface.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
-        if (playerShip.shields / playerShip.maxShields > 0.5 && playerShip.subsystems.shields.health > 0) {
-            return 'shields';
-        }
-        if (playerShip.subsystems.weapons.health > 0) {
-            return 'weapons';
-        }
-        return null;
+        return null; // Federation AI is non-hostile.
     }
 
+    // FIX: Corrected method signature to match the abstract class definition.
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        // If there are enemies, engage in combat
-        if (potentialTargets.length > 0) {
-            const target = findClosestTarget(ship, potentialTargets);
-            if (target) {
-                const stance = this.determineStance(ship, target);
-                const subsystemTarget = this.determineSubsystemTarget(ship, target);
-                // FIX: Added the missing 'stance' argument to the processCommonTurn call.
-                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
-                return;
-            }
-        }
-
-        // Default non-combat behavior
         const { currentSector } = gameState;
         const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
 
+        // Priority 1: Rescue shuttles
         if (shuttles.length > 0) {
+            // Type assertion, as findClosestTarget expects Ships
             const closestShuttle = findClosestTarget(ship, shuttles as any);
             if (closestShuttle) {
                 ship.position = moveOneStep(ship.position, closestShuttle.position);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, color: 'border-blue-300' });
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
                 return;
             }
         }
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false, color: 'border-gray-400' });
+        // Default friendly behavior is to hold position.
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
@@ -68,9 +54,10 @@ export class FederationAI extends FactionAI {
             };
             gameState.currentSector.entities.push(shuttle);
         }
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.`, isPlayerSource: false, color: 'border-yellow-400' });
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.` });
         
+        // Instead of being destroyed, the ship becomes a derelict hulk
         ship.isDerelict = true;
-        ship.hull = 1; 
+        ship.hull = 1; // Keep it on the map
     }
 }
