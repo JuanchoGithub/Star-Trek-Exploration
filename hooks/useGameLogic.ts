@@ -119,7 +119,6 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
     const [navigationTarget, setNavigationTarget] = useState<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState<'sector' | 'quadrant'>('sector');
-    const [isDocked, setIsDocked] = useState(false);
     const [activeAwayMission, setActiveAwayMission] = useState<ActiveAwayMission | null>(null);
     const [activeHail, setActiveHail] = useState<ActiveHail | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
@@ -148,7 +147,6 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setSelectedTargetId(null);
         setNavigationTarget(null);
         setCurrentView('sector');
-        setIsDocked(false);
         setActiveAwayMission(null);
         setActiveHail(null);
         setPlayerTurnActions({});
@@ -175,15 +173,18 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [gameState.currentSector.templateId, gameState.currentSector.seed, addLog]);
 
     useEffect(() => {
-        if (!isDocked) return;
+        if (gameState.isDocked) return;
         const starbase = gameState.currentSector.entities.find(e => e.type === 'starbase');
-        if (!starbase) { setIsDocked(false); return; }
+        if (!starbase) {
+            setGameState(prev => ({...prev, isDocked: false}));
+            return;
+        }
         const distance = Math.max(Math.abs(gameState.player.ship.position.x - starbase.position.x), Math.abs(gameState.player.ship.position.y - starbase.position.y));
         if (distance > 1) {
-            setIsDocked(false);
+            setGameState(prev => ({...prev, isDocked: false}));
             addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: "Undocked: Moved out of range of the starbase.", isPlayerSource: false, color: 'border-gray-500' });
         }
-    }, [gameState.turn, gameState.currentSector.entities, isDocked, addLog, gameState.player.ship.position]);
+    }, [gameState.turn, gameState.currentSector.entities, gameState.isDocked, addLog, gameState.player.ship.position]);
 
     useEffect(() => {
         if (activeEvent) return;
@@ -304,13 +305,13 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         }
     }, [addLog]);
 
-    const onEndTurn = useCallback(async () => {
+    const onEndTurn = useCallback(async (actionsOverride?: PlayerTurnActions) => {
         if (isTurnResolving || !gameState) return;
         setIsTurnResolving(true);
     
         const turnConfig = {
             mode: 'game' as const,
-            playerTurnActions,
+            playerTurnActions: actionsOverride || playerTurnActions,
             navigationTarget,
             selectedTargetId
         };
@@ -628,39 +629,20 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [addLog]);
     
     const onDockWithStarbase = useCallback(() => {
-        setIsDocked(true);
+        setGameState(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            next.isDocked = true;
+            return next;
+        });
+        setNavigationTarget(null);
         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Docking procedures initiated. Welcome to Starbase.', isPlayerSource: true, color: 'border-blue-400' });
     }, [addLog, gameState.player.ship.name]);
 
-    const onStarbaseRepairs = useCallback(() => {
-        setGameState(prev => {
-            const next: GameState = JSON.parse(JSON.stringify(prev));
-            const { ship } = next.player;
-            ship.hull = ship.maxHull;
-            Object.values(ship.subsystems).forEach(s => s.health = s.maxHealth);
-            ship.energy.current = ship.energy.max;
-            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Full repairs complete. All systems at 100%.', isPlayerSource: false, color: 'border-gray-500' });
-            return next;
-        });
-    }, [addLog]);
+    const onUndock = useCallback(() => {
+        if(isTurnResolving) return;
+        onEndTurn({ isUndocking: true });
+    }, [isTurnResolving, onEndTurn]);
 
-    const onRechargeDilithium = useCallback(() => {
-        setGameState(prev => {
-            const next: GameState = JSON.parse(JSON.stringify(prev));
-            next.player.ship.dilithium.current = next.player.ship.dilithium.max;
-            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Dilithium reserves replenished.', isPlayerSource: false, color: 'border-gray-500' });
-            return next;
-        });
-    }, [addLog]);
-
-    const onResupplyTorpedoes = useCallback(() => {
-        setGameState(prev => {
-            const next: GameState = JSON.parse(JSON.stringify(prev));
-            next.player.ship.torpedoes.current = next.player.ship.torpedoes.max;
-            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Photon torpedo casings restocked.', isPlayerSource: false, color: 'border-gray-500' });
-            return next;
-        });
-    }, [addLog]);
 
     const onStartAwayMission = useCallback((planetId: string) => {
         if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
@@ -970,13 +952,13 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [addLog]);
 
     return {
-        gameState, selectedTargetId, navigationTarget, currentView, isDocked, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
+        gameState, selectedTargetId, navigationTarget, currentView, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
         playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
         desperationMoveAnimation: gameState.desperationMoveAnimations.length > 0 ? gameState.desperationMoveAnimations[0] : null,
-        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, onRechargeDilithium,
-        onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
+        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase,
+        onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
         onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense,
-        newGame,
+        newGame, onUndock
     };
 };

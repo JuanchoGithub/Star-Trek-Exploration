@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Entity, GameState, Ship, ShipSubsystems } from '../types';
 import WireframeDisplay from './WireframeDisplay';
@@ -71,7 +72,8 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
             potentialTargets = allShipsInSector.filter(s => s.allegiance === 'enemy' && s.hull > 0);
         }
 
-        aiStance = factionAI.determineStance(ship, potentialTargets);
+        // FIX: The determineStance method returns an object {stance, reason}. We only need the stance string here.
+        aiStance = factionAI.determineStance(ship, potentialTargets).stance;
     }
 
     const name = !isShip || (ship && !ship.scanned) ? 'Unknown Ship' : selectedEntity.name;

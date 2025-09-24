@@ -6,41 +6,34 @@ import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
 import { isPosInNebula } from '../../utils/sector';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../../assets/configs/gameConstants';
 
-export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
     const closestTarget = findClosestTarget(ship, potentialTargets);
     if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
         if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
-            return 'Recovery';
+             return { stance: 'Recovery', reason: `No threats nearby. Ship hull is at ${Math.round(ship.hull / ship.maxHull * 100)}% and energy is at ${Math.round(ship.energy.current / ship.energy.max * 100)}%. Entering recovery mode.` };
         }
-        return 'Balanced';
+        return { stance: 'Balanced', reason: `No threats nearby and ship at full capacity. Holding balanced stance.` };
     }
 
     const shipHealth = ship.hull / ship.maxHull;
     const shipShields = ship.maxShields > 0 ? ship.shields / ship.maxShields : 0;
     const targetShields = closestTarget.maxShields > 0 ? closestTarget.shields / closestTarget.maxShields : 0;
+    const targetHealth = closestTarget.hull / closestTarget.maxHull;
 
-    // 1. Emergency Defensive - Hull critical
     if (shipHealth < 0.25) {
-        return 'Defensive';
+        return { stance: 'Defensive', reason: `Hull critical at ${Math.round(shipHealth * 100)}% (<25%).` };
     }
-
-    // 2. Shield Emergency - Shields very low (80% chance)
     if (shipShields < 0.15 && Math.random() < 0.8) {
-        return 'Defensive';
+        return { stance: 'Defensive', reason: `Shields critical at ${Math.round(shipShields * 100)}% (<15%).` };
     }
-
-    // 3. Stalemate Breaker - Both have high shields (80% chance)
     if (shipShields > 0.8 && targetShields > 0.8 && Math.random() < 0.8) {
-        return 'Aggressive';
+        return { stance: 'Aggressive', reason: `Stalemate detected (Own Shields: ${Math.round(shipShields * 100)}% > 80%, Target Shields: ${Math.round(targetShields * 100)}% > 80%). Pressing the attack.` };
+    }
+    if (targetShields <= 0.05 && targetHealth < 0.7) {
+        return { stance: 'Aggressive', reason: `Target is vulnerable (Shields: ${Math.round(targetShields * 100)}% <= 5%, Hull: ${Math.round(targetHealth * 100)}% < 70%).` };
     }
 
-    // 4. Press Advantage - Target is weak
-    if (targetShields <= 0.05 && (closestTarget.hull / closestTarget.maxHull) < 0.7) {
-        return 'Aggressive';
-    }
-
-    // 5. Default to faction-specific logic if none of the above apply
-    return 'Balanced';
+    return { stance: 'Balanced', reason: 'No special conditions met.' };
 }
 
 export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AIActions): boolean {
@@ -105,7 +98,6 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
         }
     }
     // Ship does not move or attack in recovery mode.
-    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `No threats nearby. Diverting all power to engines for energy recovery.` });
 }
 
 
@@ -129,7 +121,7 @@ export function processCommonTurn(
     
     // --- AI DECISION MAKING & LOGGING ---
     let moveTarget: Position | null = null;
-    let aiDecisionLog = `Adopting '${stance}' stance against ${target.name} (Dist: ${distance}).`;
+    let aiDecisionLog = `Targeting ${target.name} (Dist: ${distance}).`;
 
     // Movement decision
     if (stance === 'Aggressive' && distance > 2) {

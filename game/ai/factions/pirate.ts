@@ -3,29 +3,34 @@
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict } from './common';
+import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn } from './common';
 // FIX: Imported 'calculateDistance' to resolve a reference error.
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
     // FIX: Corrected method signature to match the abstract class and updated logic to use potentialTargets.
-    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
+        const generalStance = determineGeneralStance(ship, potentialTargets);
+        if (generalStance.stance !== 'Balanced') {
+            return generalStance;
+        }
+
         const target = findClosestTarget(ship, potentialTargets);
         if (!target) {
-            return 'Balanced';
+            return { stance: 'Balanced', reason: 'No targets detected.' };
         }
 
-        // Pirates are opportunistic cowards.
         const shipHealth = ship.hull / ship.maxHull;
-        const playerHealth = target.hull / target.maxHull;
+        const targetHealth = target.hull / target.maxHull;
 
         if (shipHealth < 0.6) {
-            return 'Defensive'; // Prioritize self-preservation above all.
+            return { stance: 'Defensive', reason: `Own hull is below 60% (${Math.round(shipHealth * 100)}%).` };
         }
-        if (playerHealth < 0.4) {
-            return 'Aggressive'; // Press the advantage against a weakened foe.
+        if (targetHealth < 0.4) {
+            return { stance: 'Aggressive', reason: `Target hull is weak (${Math.round(targetHealth * 100)}% < 40%). Pressing the attack!` };
         }
-        return 'Balanced';
+
+        return { stance: 'Balanced', reason: generalStance.reason + ' Maintaining balanced attack pattern.' };
     }
 
     // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
@@ -46,36 +51,35 @@ export class PirateAI extends FactionAI {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
+        
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
+
+        if (stance === 'Recovery') {
+            processRecoveryTurn(ship, actions);
+            return;
+        }
 
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
-            const stance = this.determineStance(ship, potentialTargets);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
-            let stanceChanged = false;
 
             switch (stance) {
                 case 'Aggressive':
                     if (ship.energyAllocation.weapons !== 70) {
                         ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
-                        stanceChanged = true;
                     }
                     break;
                 case 'Defensive':
                     if (ship.energyAllocation.shields !== 80) {
                         ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
-                        stanceChanged = true;
                     }
                     break;
                 case 'Balanced':
                     if (ship.energyAllocation.weapons !== 50) {
                         ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
-                        stanceChanged = true;
                     }
                     break;
-            }
-            
-            if (stanceChanged) {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
             }
             
             // FIX: Added the missing 'stance' argument to the processCommonTurn call to resolve the "Expected 6 arguments, but got 5" error.

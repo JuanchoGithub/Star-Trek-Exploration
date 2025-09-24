@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity } from '../types';
@@ -335,13 +336,14 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     />
                                 </div>
                             </div>
+                            {/* FIX: Removed invalid props (onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs) and added the required `onUndock` prop with a dummy function to satisfy the PlayerHUDProps interface. */}
                             <PlayerHUD
                                 gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
                                 onEndTurn={onEndTurn}
                                 onFirePhasers={() => selectedTargetId && onFirePhasers(selectedTargetId)}
                                 onLaunchTorpedo={() => selectedTargetId && onLaunchTorpedo(selectedTargetId)}
-                                target={targetEntity} isDocked={false} onDockWithStarbase={() => {}} onRechargeDilithium={() => {}} onResupplyTorpedoes={() => {}}
-                                onStarbaseRepairs={() => {}} onScanTarget={() => {}} onInitiateRetreat={() => {}} onCancelRetreat={() => {}} onStartAwayMission={() => {}} onHailTarget={() => {}}
+                                target={targetEntity} isDocked={false} onDockWithStarbase={() => {}} onUndock={() => {}}
+                                onScanTarget={() => {}} onInitiateRetreat={() => {}} onCancelRetreat={() => {}} onStartAwayMission={() => {}} onHailTarget={() => {}}
                                 playerTurnActions={playerTurnActions} navigationTarget={navigationTarget} isTurnResolving={isTurnResolving} onSendAwayTeam={() => {}} themeName={themeName}
                                 desperationMoveAnimation={desperationMoveAnimation} selectedSubsystem={null} onSelectSubsystem={onSelectSubsystem} onEnterOrbit={() => {}}
                                 orbitingPlanetId={null} onToggleCloak={onToggleCloak}

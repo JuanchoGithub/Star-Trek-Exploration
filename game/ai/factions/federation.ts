@@ -5,17 +5,17 @@ import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { determineGeneralStance, processCommonTurn, processRecoveryTurn } from './common';
 
 export class FederationAI extends FactionAI {
-    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const generalStance = determineGeneralStance(ship, potentialTargets);
-        if (generalStance !== 'Balanced') {
+        if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
 
-        // Federation ships fight with a balanced approach but will go defensive if damaged.
-        if (ship.hull / ship.maxHull < 0.5) {
-            return 'Defensive';
+        const shipHealth = ship.hull / ship.maxHull;
+        if (shipHealth < 0.5) {
+            return { stance: 'Defensive', reason: `Hull below 50% (${Math.round(shipHealth * 100)}%).` };
         }
-        return 'Balanced';
+        return { stance: 'Balanced', reason: generalStance.reason + ` Adopting standard Federation balanced doctrine.` };
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
@@ -31,7 +31,9 @@ export class FederationAI extends FactionAI {
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        const stance = this.determineStance(ship, potentialTargets);
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
+
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions);
             return;

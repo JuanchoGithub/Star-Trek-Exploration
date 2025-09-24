@@ -26,6 +26,8 @@ interface CommandConsoleProps {
   targeting?: GameState['player']['targeting'];
   themeName: ThemeName;
   gameState: GameState;
+  isDocked: boolean;
+  onUndock: () => void;
 }
 
 const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, accentColor: string, title?: string}> = ({ onClick, disabled, children, accentColor, title }) => (
@@ -48,7 +50,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
     onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
     retreatingTurn, currentTurn, hasTarget, hasEnemy, 
-    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState
+    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState,
+    isDocked, onUndock
 }) => {
   const isRetreating = retreatingTurn !== null && retreatingTurn >= currentTurn;
   const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
@@ -59,7 +62,6 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     if (isRetreating && turnsToRetreat === 0) return "Engage Emergency Warp";
     
     const isMoving = navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y);
-    // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Changed to check for phaser or torpedo targets.
     const isFiring = !!playerTurnActions.phaserTargetId || !!playerTurnActions.torpedoTargetId;
 
     if (isMoving && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
@@ -73,6 +75,21 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     return "End Turn";
   }
   
+  if (isDocked) {
+      return (
+          <div className="flex flex-col h-full justify-center">
+              <p className="text-center text-text-secondary mb-4">Ship is docked. All tactical systems are offline.</p>
+              <button
+                  onClick={onUndock}
+                  disabled={isTurnResolving}
+                  className="w-full btn btn-primary text-lg"
+              >
+                  {isTurnResolving ? "Undocking..." : "Undock (Ends Turn)"}
+              </button>
+          </div>
+      );
+  }
+
   const targetShip = target?.type === 'ship' ? (target as Ship) : null;
   const isTargetFriendly = targetShip?.allegiance
       ? ['player', 'ally', 'neutral'].includes(targetShip.allegiance)
@@ -88,7 +105,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5
     && targetShip.hull > 0;
 
-  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon, PointDefenseIcon } = getFactionIcons(themeName);
+  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
 
   const canFireOnShip = hasTarget && targetShip && !isTargetFriendly && targetShip.hull > 0;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
@@ -121,14 +138,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
       "";
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2 tactical-grid">
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked || !targetingCheck.canTarget} accentColor="red" title={cannotTargetReason}>
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                {/* FIX: Property 'hasLaunchedTorpedo' does not exist on type 'PlayerTurnActions'. Replaced with a check for 'torpedoTargetId'. */}
                 <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || !!playerTurnActions.torpedoTargetId || !targetingCheck.canTarget} accentColor="sky" title={cannotTargetReason}>
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
@@ -149,32 +165,32 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike
                 </CommandButton>
+                 {isRetreating ? (
+                    <CommandButton
+                        onClick={onCancelRetreat}
+                        disabled={isTurnResolving || turnsToRetreat === 0}
+                        accentColor="yellow"
+                    >
+                        <RetreatIcon className="w-5 h-5" />
+                        {turnsToRetreat > 0 ? `Cancel (${turnsToRetreat})` : 'Warp Ready'}
+                    </CommandButton>
+                ) : (
+                    <CommandButton
+                        onClick={onInitiateRetreat}
+                        disabled={!hasEnemy || isTurnResolving || hasTakenMajorAction || isCloaked}
+                        accentColor="indigo"
+                    >
+                        <RetreatIcon className="w-5 h-5" />
+                        Retreat
+                    </CommandButton>
+                )}
             </div>
         </div>
-      <div className="flex items-center gap-2 mt-2 flex-shrink-0">
-        {isRetreating ? (
-            <button
-                onClick={onCancelRetreat}
-                disabled={isTurnResolving || turnsToRetreat === 0}
-                className="font-bold transition-all flex items-center gap-3 btn btn-accent yellow flex-shrink-0"
-            >
-                <RetreatIcon className="w-5 h-5" />
-                {turnsToRetreat > 0 ? `Cancel Retreat (${turnsToRetreat})` : 'Warp Ready'}
-            </button>
-        ) : (
-            <button
-                onClick={onInitiateRetreat}
-                disabled={!hasEnemy || isTurnResolving || hasTakenMajorAction || isCloaked}
-                className="font-bold transition-all flex items-center gap-3 btn btn-accent indigo flex-shrink-0"
-            >
-                <RetreatIcon className="w-5 h-5" />
-                Retreat
-            </button>
-        )}
+      <div className="flex items-center gap-2 mt-auto flex-shrink-0 pt-2">
         <button
             onClick={() => onEndTurn()}
             disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
-            className="flex-grow btn btn-primary"
+            className="flex-grow btn btn-primary w-full"
         >
             {getEndTurnButtonText()}
         </button>

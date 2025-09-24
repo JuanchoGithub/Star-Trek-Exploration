@@ -94,17 +94,16 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 const App: React.FC = () => {
     const [view, setView] = useState<'main-menu' | 'game' | 'simulator'>('main-menu');
     const { 
-        gameState, selectedTargetId, navigationTarget, currentView, isDocked, 
+        gameState, selectedTargetId, navigationTarget, currentView,
         activeAwayMission, activeHail, targetEntity, playerTurnActions, activeEvent,
         isWarping, isTurnResolving, awayMissionResult, eventResult, desperationMoveAnimation,
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, 
         onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, 
-        onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs, onSelectRepairTarget, 
-        onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, 
+        onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, 
         onChooseAwayMissionOption, onHailTarget, onCloseHail, onSelectSubsystem, 
         onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, 
         onSendAwayTeam, onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, 
-        onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense, newGame
+        onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense, newGame, onUndock
     } = useGameLogic();
 
     const [showGameMenu, setShowGameMenu] = useState(false);
@@ -196,7 +195,7 @@ const App: React.FC = () => {
         return <ScenarioSimulator onExit={handleExitToMainMenu} />;
     }
 
-    const { player, logs, currentSector: sector, redAlert, quadrantMap } = gameState;
+    const { player, logs, currentSector: sector, redAlert, quadrantMap, isDocked } = gameState;
 
     return (
         <div className={`h-screen w-screen bg-bg-default text-text-primary overflow-hidden relative ${theme.font} ${redAlert ? 'red-alert-pulse' : ''} theme-${themeName}`}>
@@ -285,8 +284,8 @@ const App: React.FC = () => {
                              <section className="min-h-0">
                                 <PlayerHUD
                                     gameState={gameState} onEndTurn={onEndTurn} onFirePhasers={onFirePhasers} onLaunchTorpedo={onLaunchTorpedo}
-                                    target={targetEntity} isDocked={isDocked} onDockWithStarbase={onDockWithStarbase} onRechargeDilithium={onRechargeDilithium}
-                                    onResupplyTorpedoes={onResupplyTorpedoes} onStarbaseRepairs={onStarbaseRepairs} onScanTarget={onScanTarget}
+                                    target={targetEntity} isDocked={isDocked} onDockWithStarbase={onDockWithStarbase} onUndock={onUndock}
+                                    onScanTarget={onScanTarget}
                                     onInitiateRetreat={onInitiateRetreat} onCancelRetreat={onCancelRetreat} onStartAwayMission={onStartAwayMission}
                                     onHailTarget={onHailTarget} playerTurnActions={playerTurnActions} navigationTarget={navigationTarget}
                                     isTurnResolving={isTurnResolving} onSendAwayTeam={onSendAwayTeam} themeName={themeName}

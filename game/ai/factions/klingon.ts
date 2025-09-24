@@ -4,13 +4,13 @@ import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processR
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
-    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const generalStance = determineGeneralStance(ship, potentialTargets);
-        if (generalStance !== 'Balanced') {
+        if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
-        // Klingons default to aggression if no other conditions are met.
-        return 'Aggressive';
+        
+        return { stance: 'Aggressive', reason: generalStance.reason + ` Defaulting to honorable aggression.` };
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
@@ -26,7 +26,9 @@ export class KlingonAI extends FactionAI {
             return; // Turn spent capturing
         }
         
-        const stance = this.determineStance(ship, potentialTargets);
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
+
 
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions);

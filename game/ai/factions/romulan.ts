@@ -4,20 +4,20 @@ import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processR
 import { findClosestTarget } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
-    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const generalStance = determineGeneralStance(ship, potentialTargets);
-        if (generalStance !== 'Balanced') {
+        if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
 
         const closestTarget = findClosestTarget(ship, potentialTargets);
-        if (!closestTarget) return 'Balanced';
+        if (!closestTarget) return { stance: 'Balanced', reason: 'No targets detected.' };
 
         // Romulans are tactical and cautious.
         if (closestTarget.shields <= 0) {
-            return 'Aggressive'; // Exploit a critical weakness.
+            return { stance: 'Aggressive', reason: `Target shields are down. Exploiting weakness.` };
         }
-        return 'Balanced';
+        return { stance: 'Balanced', reason: generalStance.reason + ' Adopting standard Romulan balanced doctrine.' };
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
@@ -33,7 +33,9 @@ export class RomulanAI extends FactionAI {
             return; // Turn spent capturing
         }
         
-        const stance = this.determineStance(ship, potentialTargets);
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
+
 
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions);

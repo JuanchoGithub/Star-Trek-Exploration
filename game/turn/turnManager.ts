@@ -8,6 +8,7 @@ import { AIDirector } from '../ai/AIDirector';
 import { processRecoveryTurn } from '../ai/factions/common';
 import { applyResourceChange } from '../utils/state';
 import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
+import { processPlayerTurn } from './player';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -83,131 +84,34 @@ export const generatePhasedTurn = (
     const allShipsInSector = () => (config.mode === 'game')
         ? [currentState.player.ship, ...currentState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
         : currentState.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
+    
+    // --- PLAYER TURN ---
+    if (config.mode === 'game') {
+        const playerResult = processPlayerTurn(currentState, config.playerTurnActions, currentNavTarget, currentSelectedId, addLog);
+        currentNavTarget = playerResult.newNavigationTarget;
+        currentSelectedId = playerResult.newSelectedTargetId;
+    }
+    addStep(0); // Add step after player actions resolve
 
+    // --- AI TURNS ---
     for (const ship of shipsInOrder) {
+        if (ship.id === 'player') continue; // Player already acted
+
         let shipInState = allShipsInSector().find(s => s.id === ship.id);
         if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict) continue;
-
-        const isPlayer = ship.id === 'player' && (config.mode === 'game' || config.mode === 'dogfight');
-
-        // --- AI/Player PRE-CALCULATION & DECISION MAKING ---
-        let stance: AIStance | 'player_actions' = 'Balanced';
-        let subsystemTarget: keyof ShipSubsystems | null = null;
-        let moveTarget: Position | null = null;
-        let phaserTargetId: string | null = null;
-        let torpedoTargetId: string | null = null;
-        let didAction = false;
-
-        if (isPlayer) {
-            stance = 'player_actions';
-            moveTarget = currentNavTarget;
-            phaserTargetId = config.playerTurnActions.phaserTargetId || null;
-            torpedoTargetId = config.playerTurnActions.torpedoTargetId || null;
-        } else {
-            const factionAI = AIDirector.getAIForFaction(shipInState.faction);
-            const potentialTargets = allShipsInSector().filter(s => {
-                if (s.id === shipInState!.id || s.hull <= 0 || s.isDerelict) return false;
-                if (shipInState!.allegiance === 'enemy') return s.allegiance === 'player' || s.allegiance === 'ally';
-                if (shipInState!.allegiance === 'ally' || shipInState!.allegiance === 'player') return s.allegiance === 'enemy';
-                return false;
-            });
-            
-            stance = factionAI.determineStance(shipInState, potentialTargets);
-            const closestTarget = findClosestTarget(shipInState, potentialTargets);
-            
-            if (stance === 'Recovery') {
-                processRecoveryTurn(shipInState, actions);
-            } else if (closestTarget) {
-                if (shipInState.repairTarget) {
-                    shipInState.repairTarget = null;
-                    // FIX: Added missing 'isPlayerSource' property to addLog call.
-                    addLog({ sourceId: ship.id, sourceName: ship.name, message: `Hostiles detected. Halting repairs to engage.`, color: ship.logColor, isPlayerSource: false });
-                }
-                subsystemTarget = factionAI.determineSubsystemTarget(shipInState, closestTarget);
-                const distance = calculateDistance(shipInState.position, closestTarget.position);
-
-                // Movement decision based on stance
-                if (stance === 'Aggressive' && distance > 2) moveTarget = closestTarget.position;
-                if (stance === 'Defensive' && distance < 6) {
-                    let bestFleePosition: Position | null = null;
-                    let maxDist = distance;
-                    
-                    // Check all 8 directions
-                    for (let dx = -1; dx <= 1; dx++) {
-                        for (let dy = -1; dy <= 1; dy++) {
-                            if (dx === 0 && dy === 0) continue;
-
-                            const potentialPos = { x: shipInState.position.x + dx, y: shipInState.position.y + dy };
-
-                            // Check boundaries
-                            if (potentialPos.x < 0 || potentialPos.x >= SECTOR_WIDTH || potentialPos.y < 0 || potentialPos.y >= SECTOR_HEIGHT) {
-                                continue;
-                            }
-                            
-                            // Check if blocked by another ship
-                            const isBlocked = allShipsInSector().some(s => s.id !== shipInState!.id && s.position.x === potentialPos.x && s.position.y === potentialPos.y);
-                            if (isBlocked) {
-                                continue;
-                            }
-
-                            // Check distance from target
-                            const newDist = calculateDistance(potentialPos, closestTarget.position);
-                            if (newDist > maxDist) {
-                                maxDist = newDist;
-                                bestFleePosition = potentialPos;
-                            }
-                        }
-                    }
-                    
-                    if (bestFleePosition) {
-                        moveTarget = bestFleePosition;
-                    }
-                }
-                if (stance === 'Balanced' && distance > 4) moveTarget = closestTarget.position;
-
-                // Firing decision based on stance
-                if (distance <= 5 && stance !== 'Defensive') phaserTargetId = closestTarget.id;
-                if (distance <= 8 && stance === 'Aggressive' && Math.random() < 0.5) torpedoTargetId = closestTarget.id;
-            }
-        }
         
-        // --- PHASE 1: POINT DEFENSE ---
-        _handlePointDefense(shipInState, currentState, addLog);
-        if (currentState.combatEffects.length > 0) { addStep(750); didAction = true; }
+        const factionAI = AIDirector.getAIForFaction(shipInState.faction);
+        const potentialTargets = allShipsInSector().filter(s => {
+            if (s.id === shipInState!.id || s.hull <= 0 || s.isDerelict) return false;
+            if (shipInState!.allegiance === 'enemy') return s.allegiance === 'player' || s.allegiance === 'ally';
+            if (shipInState!.allegiance === 'ally' || shipInState!.allegiance === 'player') return s.allegiance === 'enemy';
+            return false;
+        });
 
-        // --- PHASE 2: ENERGY/REPAIR ---
-        _handleEnergyAndRepair(shipInState, isPlayer, stance, actions);
-        addStep(0); // non-visual change
-
-        // --- PHASE 3: MOVEMENT & CLOAK ---
-        const moved = _handleMovement(shipInState, moveTarget, allShipsInSector(), addLog);
-        if (moved) {
-            addStep(750);
-            didAction = true;
-            if (isPlayer) { // Update nav target if reached
-                if (shipInState.position.x === moveTarget?.x && shipInState.position.y === moveTarget.y) {
-                    currentNavTarget = null;
-                }
-            }
-        }
-
-        // --- PHASE 4: TORPEDO ---
-        if (_handleTorpedo(shipInState, torpedoTargetId, currentState, addLog)) {
-            addStep(0); // Torpedo appears instantly
-            didAction = true;
-        }
-
-        // --- PHASE 5: PHASER ---
-        if (_handlePhaser(shipInState, phaserTargetId, subsystemTarget, currentState, actions, addLog)) {
-            addStep(750);
-            didAction = true;
-        }
-        
-        if (!didAction && !isPlayer && stance !== 'Recovery') {
-            // FIX: Added missing 'isPlayerSource' property to addLog call.
-            addLog({ sourceId: ship.id, sourceName: ship.name, message: 'Holding position.', color: ship.logColor, isPlayerSource: false });
-        }
+        factionAI.processTurn(shipInState, currentState, actions, potentialTargets);
+        addStep(0);
     }
+    
 
     // --- PROJECTILE MOVEMENT PHASE ---
     _handleProjectileMovement(currentState, allShipsInSector(), addLog);
@@ -237,81 +141,6 @@ function _handlePointDefense(ship: Ship, state: GameState, addLog: Function) {
         addLog({ sourceId: ship.id, sourceName: ship.name, message: logMsg, color: ship.logColor, isPlayerSource: false });
         state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: torpedoToTarget.position, faction: ship.faction, delay: 0 });
     }
-}
-
-function _handleEnergyAndRepair(ship: Ship, isPlayer: boolean, stance: AIStance | 'player_actions', actions: AIActions) {
-    if (!isPlayer && stance !== 'player_actions') {
-        const energySettings: Record<AIStance, { w: number, s: number, e: number }> = {
-            'Aggressive': { w: 74, s: 13, e: 13 },
-            'Defensive': { w: 20, s: 60, e: 20 },
-            'Balanced': { w: 34, s: 33, e: 33 },
-            'Recovery': { w: 0, s: 0, e: 100 },
-        };
-        const targetAlloc = energySettings[stance];
-        if (ship.energyAllocation.weapons !== targetAlloc.w) {
-            ship.energyAllocation = { weapons: targetAlloc.w, shields: targetAlloc.s, engines: targetAlloc.e };
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adopting ${stance.toLowerCase()} stance.`, color: ship.logColor });
-        }
-    }
-}
-
-function _handleMovement(ship: Ship, moveTarget: Position | null, allShips: Ship[], addLog: Function): boolean {
-    const originalPosition = { ...ship.position };
-    if (moveTarget) {
-        const nextStep = moveOneStep(ship.position, moveTarget);
-        const isBlocked = allShips.some(s => s.id !== ship.id && s.position.x === nextStep.x && s.position.y === nextStep.y);
-        const isValidPosition = nextStep.x >= 0 && nextStep.x < SECTOR_WIDTH && nextStep.y >= 0 && nextStep.y < SECTOR_HEIGHT;
-
-        if (isBlocked) {
-            if (ship.allegiance !== 'player') addLog({ sourceId: ship.id, sourceName: ship.name, message: `Movement blocked.`, isPlayerSource: false, color: ship.logColor });
-        } else if (!isValidPosition) {
-             if (ship.allegiance !== 'player') addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cannot move further.`, isPlayerSource: false, color: ship.logColor });
-        } else {
-            ship.position = nextStep;
-        }
-    }
-    return ship.position.x !== originalPosition.x || ship.position.y !== originalPosition.y;
-}
-
-function _handleTorpedo(ship: Ship, targetId: string | null, state: GameState, addLog: Function): boolean {
-    if (!targetId || ship.torpedoes.current <= 0) return false;
-    
-    const shipStats = shipClasses[ship.shipModel][ship.shipClass];
-    if (shipStats.torpedoType === 'None') return false;
-
-    const torpedoData = torpedoStats[shipStats.torpedoType];
-    const target = state.currentSector.entities.find(e => e.id === targetId);
-    if (!target) return false;
-
-    ship.torpedoes.current--;
-    const torpedo: TorpedoProjectile = {
-        id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
-        position: { ...ship.position }, targetId, sourceId: ship.id, stepsTraveled: 0,
-        speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: state.turn, hull: 1, maxHull: 1,
-        torpedoType: shipStats.torpedoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
-    };
-    state.currentSector.entities.push(torpedo);
-    const isPlayerSource = ship.id === 'player';
-    addLog({ sourceId: ship.id, sourceName: ship.name, message: `${torpedoData.name} launched at ${target.name}.`, isPlayerSource, color: ship.logColor });
-    return true;
-}
-
-function _handlePhaser(ship: Ship, targetId: string | null, subsystem: keyof ShipSubsystems | null, state: GameState, actions: AIActions, addLog: Function): boolean {
-    if (!targetId || ship.subsystems.weapons.health <= 0) return false;
-    const target = state.currentSector.entities.find(e => e.id === targetId) as Ship | undefined;
-    if (!target) return false;
-
-    const phaserBaseDamage = 20 * ship.energyModifier;
-    const phaserPowerModifier = ship.energyAllocation.weapons / 100;
-    const pointDefenseModifier = ship.pointDefenseEnabled ? 0.6 : 1.0;
-    const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;
-
-    const combatLogs = actions.applyPhaserDamage(target, finalDamage, subsystem, ship, state);
-    state.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: 0 });
-    
-    const isPlayerSource = ship.id === 'player';
-    combatLogs.forEach(message => addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource, color: ship.logColor }));
-    return true;
 }
 
 function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function) {
@@ -347,6 +176,26 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
 function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void) {
     allShips.forEach(ship => {
         if (ship.hull <= 0 || ship.isDerelict) return;
+
+        // Docking Repairs & Resupply
+        if (ship.id === 'player' && state.isDocked) {
+            const hullRepair = ship.maxHull * 0.2;
+            const dilithiumResupply = ship.dilithium.max * 0.2;
+            const torpedoResupply = ship.torpedoes.max * 0.5;
+
+            applyResourceChange(ship, 'hull', hullRepair);
+            applyResourceChange(ship, 'dilithium', dilithiumResupply);
+            applyResourceChange(ship, 'torpedoes', torpedoResupply);
+
+            (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).forEach(key => {
+                const subsystem = ship.subsystems[key];
+                const subRepair = subsystem.maxHealth * 0.2;
+                applyResourceChange(ship, key, subRepair);
+            });
+            
+            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Repairs and resupply in progress.', isPlayerSource: false, color: 'border-gray-500' });
+            return; // No other end-of-turn actions while docked
+        }
 
         // Repair
         if (ship.repairTarget) {

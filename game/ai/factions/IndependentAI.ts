@@ -5,12 +5,12 @@ import { calculateDistance } from '../../utils/ai';
 import { processRecoveryTurn } from './common';
 
 export class IndependentAI extends FactionAI {
-    determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const closestTarget = findClosestTarget(ship, potentialTargets);
         if (!closestTarget) {
-            return 'Recovery';
+            return { stance: 'Recovery', reason: `No threats nearby. Resuming normal operations.` };
         }
-        return 'Defensive'; // Always defensive/fleeing when threatened
+        return { stance: 'Defensive', reason: `Threat detected (${closestTarget.name}). Attempting to flee.` };
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
@@ -18,7 +18,8 @@ export class IndependentAI extends FactionAI {
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        const stance = this.determineStance(ship, potentialTargets);
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
         
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions);

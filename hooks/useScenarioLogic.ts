@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 // FIX: Added 'SectorState' to the import to resolve 'Cannot find name' errors.
 import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState } from '../types';
@@ -51,6 +52,10 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             usedAwayMissionSeeds: [],
             desperationMoveAnimations: [],
             orbitingPlanetId: null,
+            // FIX: Add missing 'isDocked' property to satisfy the GameState type.
+            isDocked: false,
+            replayHistory: [],
+            usedAwayMissionTemplateIds: [],
         };
         setGameState(initialState);
     }, [scenarioMode, initialShips, initialSector, gameState]);

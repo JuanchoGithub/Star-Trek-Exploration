@@ -1,4 +1,3 @@
-
 import type { GameState, PlayerTurnActions, Ship, ShipSubsystems, Position } from '../../types';
 import { applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep } from '../utils/ai';
@@ -18,6 +17,18 @@ export const processPlayerTurn = (
         addLog({ sourceId: 'player', sourceName: ship.name, message: 'Systems are offline! Cannot perform actions.', isPlayerSource: true, color: 'border-orange-500' });
         return { newNavigationTarget: navigationTarget, newSelectedTargetId: selectedTargetId };
     }
+
+    if (playerTurnActions.isUndocking) {
+        nextState.isDocked = false;
+        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Undocking procedures complete. Ship has cleared the starbase.', isPlayerSource: true, color: 'border-blue-400' });
+        return { newNavigationTarget: null, newSelectedTargetId: selectedTargetId };
+    }
+
+    if (nextState.isDocked) {
+        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Holding position at starbase. Awaiting orders.', isPlayerSource: true, color: 'border-blue-400' });
+        return { newNavigationTarget: null, newSelectedTargetId: selectedTargetId };
+    }
+
 
     // Movement
     let newNavigationTarget = navigationTarget;

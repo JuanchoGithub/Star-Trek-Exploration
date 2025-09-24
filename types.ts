@@ -237,6 +237,7 @@ export interface PlayerTurnActions {
     torpedoTargetId?: string;
     hasUsedAwayTeam?: boolean;
     hasTakenMajorAction?: boolean;
+    isUndocking?: boolean;
 }
 
 export interface EventTemplateOption {
@@ -337,6 +338,7 @@ export interface GameState {
   }[];
   orbitingPlanetId: string | null;
   replayHistory?: GameState[];
+  isDocked: boolean;
 }
 
 // FIX: Add 'setup' to ScenarioMode type.

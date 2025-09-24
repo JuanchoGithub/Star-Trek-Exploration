@@ -346,5 +346,6 @@ export const createInitialGameState = (): GameState => {
     gameOver: false, gameWon: false, redAlert: false, combatEffects: [], isRetreatingWarp: false,
     usedAwayMissionSeeds: [], usedAwayMissionTemplateIds: [], desperationMoveAnimations: [], orbitingPlanetId: null,
     replayHistory: [],
+    isDocked: false,
   };
 };
