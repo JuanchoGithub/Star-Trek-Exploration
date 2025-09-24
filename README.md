@@ -86,7 +86,7 @@ This column gives you a detailed, real-time overview of the U.S.S. Endeavour's s
 **2. Tactical Toggles**
 *   **Red Alert:** Raises shields for combat. Drains reserve power each turn.
 *   **Evasive:** Increases chance to evade attacks but costs more power. Requires Red Alert.
-*   **Damage Control:** Assign your engineering crew to slowly repair the Hull or a damaged subsystem. This consumes power each turn.
+*   **Damage Control:** Assign your engineering crew to slowly repair the Hull or a specific subsystem. This consumes power each turn.
 
 **3. Energy Allocation**
 Perhaps the most critical system. Distribute 100% of your main reactor's power between Weapons, Shields, and Engines. This directly impacts phaser damage, shield regeneration rate, and a passive evasion bonus.
@@ -603,6 +603,20 @@ The replayer interface provides a complete reconstruction of the battle:
 
 ---
 # Simulation Changelog
+
+## Version 1.6.1 - Tactical Clarity Update
+*Release Date: Stardate 49733.1, 10:00 (September 24, 2025)*
+
+A quality-of-life patch addressing two critical pieces of user feedback regarding shield mechanics and the tactical display of defeated vessels.
+
+### Summary of User Directives & Field Reports
+> Engineering reports a persistent malfunction in shield regeneration protocols; depleted shields were failing to recharge from zero, a critical flaw in defensive systems. Additionally, the bridge crew reported tactical confusion due to destroyed vessels not being visually distinct from active combatants. Immediate rectification was ordered to ensure system reliability and combat effectiveness.
+
+### Summary of Implemented Changes
+*   **Bug Fix - Shield Regeneration:** Corrected a logical flaw in the end-of-turn processing. A faulty condition was preventing shield regeneration from initiating if a ship's shields were at 0. This has been fixed, and shields will now correctly begin recharging from a fully depleted state, provided the ship is at Red Alert with a functional shield generator.
+*   **New Feature - Visual State for Destroyed Ships:**
+    *   **Tactical View:** Ships with a hull value of 0 or less are now visually marked as destroyed. They will appear grayed-out and semi-transparent on the `SectorView`, and their health bar will be hidden to provide clear, immediate feedback on their status.
+    *   **Command Console:** All offensive action buttons (Fire Phasers, Launch Torpedo, etc.) in the `CommandConsole` are now disabled when a destroyed ship is targeted. This prevents wasted actions and streamlines target selection during combat.
 
 ## Version 1.6 - The Phased Combat & AI Overhaul
 *Release Date: Stardate 49732.5, 15:00 (September 24, 2025)*

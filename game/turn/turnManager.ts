@@ -1,4 +1,3 @@
-
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage, consumeEnergy } from '../utils/combat';
@@ -8,6 +7,7 @@ import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 import { AIDirector } from '../ai/AIDirector';
 import { processRecoveryTurn } from '../ai/factions/common';
 import { applyResourceChange } from '../utils/state';
+import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -129,10 +129,39 @@ export const generatePhasedTurn = (
                 // Movement decision based on stance
                 if (stance === 'Aggressive' && distance > 2) moveTarget = closestTarget.position;
                 if (stance === 'Defensive' && distance < 6) {
-                    moveTarget = { 
-                        x: shipInState.position.x + (shipInState.position.x - closestTarget.position.x),
-                        y: shipInState.position.y + (shipInState.position.y - closestTarget.position.y)
-                    };
+                    let bestFleePosition: Position | null = null;
+                    let maxDist = distance;
+                    
+                    // Check all 8 directions
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue;
+
+                            const potentialPos = { x: shipInState.position.x + dx, y: shipInState.position.y + dy };
+
+                            // Check boundaries
+                            if (potentialPos.x < 0 || potentialPos.x >= SECTOR_WIDTH || potentialPos.y < 0 || potentialPos.y >= SECTOR_HEIGHT) {
+                                continue;
+                            }
+                            
+                            // Check if blocked by another ship
+                            const isBlocked = allShipsInSector().some(s => s.id !== shipInState!.id && s.position.x === potentialPos.x && s.position.y === potentialPos.y);
+                            if (isBlocked) {
+                                continue;
+                            }
+
+                            // Check distance from target
+                            const newDist = calculateDistance(potentialPos, closestTarget.position);
+                            if (newDist > maxDist) {
+                                maxDist = newDist;
+                                bestFleePosition = potentialPos;
+                            }
+                        }
+                    }
+                    
+                    if (bestFleePosition) {
+                        moveTarget = bestFleePosition;
+                    }
                 }
                 if (stance === 'Balanced' && distance > 4) moveTarget = closestTarget.position;
 
@@ -185,7 +214,7 @@ export const generatePhasedTurn = (
     addStep(750);
 
     // --- END OF TURN PHASE ---
-    _handleEndOfTurn(currentState, allShipsInSector());
+    _handleEndOfTurn(currentState, allShipsInSector(), addLog);
     addStep(0);
     
     return steps;
@@ -221,7 +250,7 @@ function _handleEnergyAndRepair(ship: Ship, isPlayer: boolean, stance: AIStance 
         const targetAlloc = energySettings[stance];
         if (ship.energyAllocation.weapons !== targetAlloc.w) {
             ship.energyAllocation = { weapons: targetAlloc.w, shields: targetAlloc.s, engines: targetAlloc.e };
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power for a ${stance.toLowerCase()} footing.`, color: ship.logColor });
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adopting ${stance.toLowerCase()} stance.`, color: ship.logColor });
         }
     }
 }
@@ -231,7 +260,13 @@ function _handleMovement(ship: Ship, moveTarget: Position | null, allShips: Ship
     if (moveTarget) {
         const nextStep = moveOneStep(ship.position, moveTarget);
         const isBlocked = allShips.some(s => s.id !== ship.id && s.position.x === nextStep.x && s.position.y === nextStep.y);
-        if (!isBlocked) {
+        const isValidPosition = nextStep.x >= 0 && nextStep.x < SECTOR_WIDTH && nextStep.y >= 0 && nextStep.y < SECTOR_HEIGHT;
+
+        if (isBlocked) {
+            if (ship.allegiance !== 'player') addLog({ sourceId: ship.id, sourceName: ship.name, message: `Movement blocked.`, isPlayerSource: false, color: ship.logColor });
+        } else if (!isValidPosition) {
+             if (ship.allegiance !== 'player') addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cannot move further.`, isPlayerSource: false, color: ship.logColor });
+        } else {
             ship.position = nextStep;
         }
     }
@@ -309,9 +344,9 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
     state.currentSector.entities = [...entitiesToKeep, ...newTorpedoes];
 }
 
-function _handleEndOfTurn(state: GameState, allShips: Ship[]) {
+function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void) {
     allShips.forEach(ship => {
-        if (ship.hull <= 0) return;
+        if (ship.hull <= 0 || ship.isDerelict) return;
 
         // Repair
         if (ship.repairTarget) {
@@ -320,6 +355,20 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[]) {
                 applyResourceChange(ship, 'hull', repairAmount);
             } else {
                 applyResourceChange(ship, ship.repairTarget, repairAmount);
+            }
+        }
+
+        // Shield Regeneration
+        if (state.redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
+            const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
+            // Power modifier is proportional: 33% power = 1x regen, 66% = 2x, 100% = ~3x
+            const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
+            const baseRegen = ship.maxShields * 0.10; // Base regen is 10% of max shields at 33% power
+            
+            const regenerationAmount = baseRegen * powerToShieldsModifier * shieldEfficiency;
+            
+            if (regenerationAmount > 0) {
+                ship.shields = Math.min(ship.maxShields, ship.shields + regenerationAmount);
             }
         }
         
@@ -335,22 +384,80 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[]) {
                 const systemKey = key as keyof ShipSubsystems;
                 if (ship.subsystems[systemKey].health > 0) consumption += stats.systemConsumption[systemKey];
             }
-            if(ship.shields > 0) consumption += 20;
-            if(ship.evasive) consumption += 10;
-            if(ship.pointDefenseEnabled) consumption += 15;
-            if(ship.repairTarget) consumption += 5;
+            if(ship.shields > 0) consumption += 20 * stats.energyModifier;
+            if(ship.evasive) consumption += 10 * stats.energyModifier;
+            if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
+            if(ship.repairTarget) consumption += 5 * stats.energyModifier;
 
             const netChange = generated - consumption;
             ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
+        }
+        
+        const isPlayerSource = ship.id === 'player';
+        const logColor = isPlayerSource ? 'border-blue-400' : ship.logColor;
+
+        // Dilithium/Life Support Failure Logic
+        if (ship.energy.current <= 0) {
+            if (ship.dilithium.current > 0) {
+                ship.dilithium.current--;
+                ship.energy.current = ship.energy.max;
+                addLog({
+                    sourceId: ship.id, sourceName: ship.name,
+                    message: `Reserve power depleted! Consuming one dilithium crystal to restore energy reserves.`,
+                    isPlayerSource, color: logColor
+                });
+
+                if (Math.random() < 0.25) { // 25% chance of damage
+                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter', 'pointDefense', 'computer', 'lifeSupport'];
+                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
+                    if (targetSubsystem.maxHealth > 0) {
+                        const damage = 5 + Math.floor(Math.random() * 6);
+                        targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+                        addLog({
+                            sourceId: ship.id, sourceName: ship.name,
+                            message: `WARNING: The emergency power transfer caused ${damage} damage to the ${randomSubsystemKey} system!`,
+                            isPlayerSource, color: 'border-orange-500'
+                        });
+                    }
+                }
+            } else {
+                if (ship.lifeSupportFailureTurn === null) {
+                    ship.lifeSupportFailureTurn = state.turn;
+                    addLog({
+                        sourceId: ship.id, sourceName: ship.name,
+                        message: `CRITICAL: All power and dilithium reserves exhausted! Life support is running on emergency batteries. Failure in 2 turns!`,
+                        isPlayerSource, color: 'border-red-600'
+                    });
+                }
+            }
+        }
+
+        // Check for life support failure resolution
+        if (ship.lifeSupportFailureTurn !== null) {
+            if (state.turn - ship.lifeSupportFailureTurn >= 2) {
+                ship.isDerelict = true;
+                ship.hull = Math.min(ship.hull, ship.maxHull * 0.1);
+                ship.shields = 0;
+                ship.energy.current = 0;
+                addLog({
+                    sourceId: ship.id, sourceName: ship.name,
+                    message: `Life support has failed! The ship is now a derelict hulk.`,
+                    isPlayerSource, color: 'border-red-600'
+                });
+            }
         }
 
         // Status Effects
         ship.statusEffects = ship.statusEffects.filter(effect => {
             if (effect.type === 'plasma_burn') {
-                ship.hull = Math.max(0, ship.hull - effect.damage);
+                const damage = Math.round(effect.damage * (stats ? stats.energyModifier : 1));
+                ship.hull = Math.max(0, ship.hull - damage);
+                addLog({ sourceId: ship.id, sourceName: ship.name, message: `Plasma fire burns the hull for ${damage} damage!`, isPlayerSource, color: 'border-orange-400' });
                 effect.turnsRemaining--;
             }
             return effect.turnsRemaining > 0;
         });
+
     });
 }

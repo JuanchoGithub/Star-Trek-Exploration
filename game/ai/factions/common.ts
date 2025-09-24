@@ -1,10 +1,47 @@
-
 import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect } from '../../../types';
 import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
 import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
 import { isPosInNebula } from '../../utils/sector';
+import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../../assets/configs/gameConstants';
+
+export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): AIStance {
+    const closestTarget = findClosestTarget(ship, potentialTargets);
+    if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
+        if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
+            return 'Recovery';
+        }
+        return 'Balanced';
+    }
+
+    const shipHealth = ship.hull / ship.maxHull;
+    const shipShields = ship.maxShields > 0 ? ship.shields / ship.maxShields : 0;
+    const targetShields = closestTarget.maxShields > 0 ? closestTarget.shields / closestTarget.maxShields : 0;
+
+    // 1. Emergency Defensive - Hull critical
+    if (shipHealth < 0.25) {
+        return 'Defensive';
+    }
+
+    // 2. Shield Emergency - Shields very low (80% chance)
+    if (shipShields < 0.15 && Math.random() < 0.8) {
+        return 'Defensive';
+    }
+
+    // 3. Stalemate Breaker - Both have high shields (80% chance)
+    if (shipShields > 0.8 && targetShields > 0.8 && Math.random() < 0.8) {
+        return 'Aggressive';
+    }
+
+    // 4. Press Advantage - Target is weak
+    if (targetShields <= 0.05 && (closestTarget.hull / closestTarget.maxHull) < 0.7) {
+        return 'Aggressive';
+    }
+
+    // 5. Default to faction-specific logic if none of the above apply
+    return 'Balanced';
+}
 
 export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AIActions): boolean {
     const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
@@ -38,7 +75,6 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
     // Set energy allocation for recovery
     if (ship.energyAllocation.engines !== 100) {
         ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `No threats nearby. Diverting all power to engines for energy recovery.` });
     }
 
     // Set repair target if not already set
@@ -69,6 +105,7 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
         }
     }
     // Ship does not move or attack in recovery mode.
+    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `No threats nearby. Diverting all power to engines for energy recovery.` });
 }
 
 
@@ -121,6 +158,19 @@ export function processCommonTurn(
 
     // --- ACTION EXECUTION ---
     
+    // Evasive Maneuvers Logic
+    if (stance === 'Defensive' && (ship.hull / ship.maxHull) < 0.5) {
+        if (!ship.evasive) {
+            ship.evasive = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Taking evasive maneuvers!`, isPlayerSource: false, color: ship.logColor });
+        }
+    } else {
+        if (ship.evasive) {
+            ship.evasive = false;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Ceasing evasive maneuvers.`, isPlayerSource: false, color: ship.logColor });
+        }
+    }
+
     // Cloak Handling
     if (ship.cloakState === 'cloaked') {
         const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
@@ -148,9 +198,12 @@ export function processCommonTurn(
             const nextStep = moveOneStep(ship.position, moveTarget);
             const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
             const isBlocked = allShipsInSector.some(s => s.id !== ship.id && s.position.x === nextStep.x && s.position.y === nextStep.y);
+            const isValidPosition = nextStep.x >= 0 && nextStep.x < SECTOR_WIDTH && nextStep.y >= 0 && nextStep.y < SECTOR_HEIGHT;
 
             if (isBlocked) {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Movement blocked by another vessel.`, isPlayerSource: false, color: ship.logColor });
+            } else if (!isValidPosition) {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holds position at the edge of the sector, cannot move further.`, isPlayerSource: false, color: ship.logColor });
             } else {
                 ship.position = nextStep;
             }
@@ -172,8 +225,16 @@ export function processCommonTurn(
     }
     
     const canLaunchTorpedo = ship.torpedoes.current > 0 && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
+    const targetShields = target.maxShields > 0 ? target.shields / target.maxShields : 0;
+    
+    let torpedoLaunchChance = 0;
+    if (stance === 'Aggressive') {
+        torpedoLaunchChance = targetShields > 0.3 ? 0.75 : 0.4; // High chance if shields are up
+    } else if (stance === 'Balanced') {
+        torpedoLaunchChance = 0.3;
+    }
 
-    if (canLaunchTorpedo && distance <= 8 && Math.random() < 0.4) {
+    if (canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance) {
         const shipStats = shipClasses[ship.shipModel][ship.shipClass];
         if (shipStats.torpedoType === 'None') return;
         const torpedoData = torpedoStats[shipStats.torpedoType];

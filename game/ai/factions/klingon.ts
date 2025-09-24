@@ -1,28 +1,18 @@
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
-// FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
-import { findClosestTarget, calculateDistance } from '../../utils/ai';
+import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
+import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance'.
     determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
-        const closestTarget = findClosestTarget(ship, potentialTargets);
-        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
-            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
-                return 'Recovery';
-            }
-            return 'Balanced';
+        const generalStance = determineGeneralStance(ship, potentialTargets);
+        if (generalStance !== 'Balanced') {
+            return generalStance;
         }
-
-        // Klingons are honorable warriors. They will fight aggressively until their ship is nearly destroyed.
-        if (ship.hull / ship.maxHull < 0.25) {
-            return 'Defensive'; // A tactical retreat to repair is not dishonorable.
-        }
+        // Klingons default to aggression if no other conditions are met.
         return 'Aggressive';
     }
 
-    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Klingons target weapons to force a close, honorable fight.
         if (playerShip.subsystems.weapons.health > 0) {
@@ -31,7 +21,6 @@ export class KlingonAI extends FactionAI {
         return null; // Target hull if weapons are already destroyed.
     }
 
-    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
@@ -46,48 +35,37 @@ export class KlingonAI extends FactionAI {
 
         if (ship.repairTarget) {
             ship.repairTarget = null;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Hostiles detected. Halting repairs to engage.` });
         }
 
         const target = findClosestTarget(ship, potentialTargets);
 
         if (target) {
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
-            let stanceChanged = false;
 
             switch (stance) {
                 case 'Aggressive':
                     if (ship.energyAllocation.weapons !== 74) {
                         ship.energyAllocation = { weapons: 74, shields: 13, engines: 13 };
-                        stanceChanged = true;
                     }
                     break;
                 case 'Defensive':
                     if (ship.energyAllocation.shields !== 60) {
                         ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
-                        stanceChanged = true;
                     }
                     break;
                 case 'Balanced':
                     if (ship.energyAllocation.weapons !== 34) {
                         ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
-                        stanceChanged = true;
                     }
                     break;
             }
-
-            if (stanceChanged) {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power to a more ${stance.toLowerCase()} footing.` });
-            }
             
-            // FIX: Added the missing 'stance' argument to the processCommonTurn call.
             processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
         } else {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
     }
 
-    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the ramming logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const enemyShips = allShips.filter(s => s.faction !== ship.faction);

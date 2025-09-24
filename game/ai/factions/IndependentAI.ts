@@ -5,9 +5,12 @@ import { calculateDistance } from '../../utils/ai';
 import { processRecoveryTurn } from './common';
 
 export class IndependentAI extends FactionAI {
-    // FIX: Corrected method signature to match abstract class.
     determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
-        return 'Defensive'; // Always defensive
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (!closestTarget) {
+            return 'Recovery';
+        }
+        return 'Defensive'; // Always defensive/fleeing when threatened
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
@@ -15,15 +18,16 @@ export class IndependentAI extends FactionAI {
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        const target = findClosestTarget(ship, potentialTargets);
+        const stance = this.determineStance(ship, potentialTargets);
         
-        if (!target || calculateDistance(ship.position, target.position) > 10) {
-            // No threats nearby, enter recovery mode if needed.
-            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max) {
-                 processRecoveryTurn(ship, actions);
-            } else {
-                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, broadcasting distress signals.`, isPlayerSource: false, color: 'border-gray-400' });
-            }
+        if (stance === 'Recovery') {
+            processRecoveryTurn(ship, actions);
+            return;
+        }
+
+        const target = findClosestTarget(ship, potentialTargets);
+        if (!target) {
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, broadcasting distress signals.`, isPlayerSource: false, color: 'border-gray-400' });
             return;
         }
 

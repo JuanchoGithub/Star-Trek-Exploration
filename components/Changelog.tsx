@@ -1,9 +1,9 @@
 
 
 import React, { useState } from 'react';
-import { Version1_6, Version1_5, Version1_4, Version1_3 } from './changelog/index';
+import { Version1_6_1, Version1_6, Version1_5, Version1_4, Version1_3 } from './changelog/index';
 
-type Version = 'v1.6' | 'v1.5' | 'v1.4' | 'v1.3';
+type Version = 'v1.6.1' | 'v1.6' | 'v1.5' | 'v1.4' | 'v1.3';
 
 interface ChangelogProps {
     onClose: () => void;
@@ -16,10 +16,11 @@ const VersionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
 );
 
 const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
-    const [activeVersion, setActiveVersion] = useState<Version>('v1.6');
+    const [activeVersion, setActiveVersion] = useState<Version>('v1.6.1');
 
     const renderContent = () => {
         switch(activeVersion) {
+            case 'v1.6.1': return <Version1_6_1 />;
             case 'v1.6': return <Version1_6 />;
             case 'v1.5': return <Version1_5 />;
             case 'v1.4': return <Version1_4 />;
@@ -37,6 +38,9 @@ const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
                 </div>
                 <main className="flex-grow flex gap-4 min-h-0">
                     <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
+                        <VersionLink active={activeVersion === 'v1.6.1'} onClick={() => setActiveVersion('v1.6.1')}>
+                            Version 1.6.1
+                        </VersionLink>
                         <VersionLink active={activeVersion === 'v1.6'} onClick={() => setActiveVersion('v1.6')}>
                             Version 1.6.x
                         </VersionLink>

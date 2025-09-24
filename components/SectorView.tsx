@@ -252,16 +252,25 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                 let icon: React.ReactNode;
                 let factionColor = 'text-gray-400';
                 let entityName = entity.name;
+                let isDestroyed = false;
                 
                 if (entity.type === 'ship') {
                     const ship = entity as Ship;
-                    if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
-                        style.opacity = 0.5;
-                    }
-                    if (ship.isDerelict) {
-                        style.opacity = 0.6;
-                        style.filter = 'grayscale(1)';
-                        entityName = `${entity.name} (Derelict)`;
+                    isDestroyed = ship.hull <= 0;
+
+                    if (isDestroyed) {
+                        style.opacity = 0.4;
+                        style.filter = 'grayscale(1) brightness(0.5)';
+                        entityName = `${entity.name} (Destroyed)`;
+                    } else {
+                        if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+                            style.opacity = 0.5;
+                        }
+                        if (ship.isDerelict) {
+                            style.opacity = 0.6;
+                            style.filter = 'grayscale(1)';
+                            entityName = `${entity.name} (Derelict)`;
+                        }
                     }
                 }
                 
@@ -369,6 +378,10 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     }
                 }
                 
+                if (isDestroyed) {
+                    factionColor = 'text-gray-600';
+                }
+
                 return (
                     <div
                         key={entity.id}
@@ -385,7 +398,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     >
                         <div className={`relative ${factionColor}`}>
                             {icon}
-                            {isSelected && (
+                            {isSelected && !isDestroyed && (
                                 <>
                                     {themeName === 'federation' ? (
                                         <LcarsTargetingReticle />
@@ -401,7 +414,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                             <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                         </div>
                         {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
-                        {entity.type === 'ship' && (
+                        {entity.type === 'ship' && !isDestroyed && (
                             <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
                                 <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
                             </div>

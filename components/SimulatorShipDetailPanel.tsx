@@ -4,6 +4,8 @@ import WireframeDisplay from './WireframeDisplay';
 import { ThemeName } from '../hooks/useTheme';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { isPosInNebula } from '../game/utils/sector';
+import { AIDirector } from '../game/ai/AIDirector';
+import { findClosestTarget } from '../game/utils/ai';
 
 const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
     weapons: 'Weapons',
@@ -57,6 +59,21 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     const isShip = selectedEntity.type === 'ship';
     const ship = isShip ? selectedEntity as Ship : null;
 
+    let aiStance: string | null = null;
+    if (ship && gameState && !ship.isDerelict) {
+        const factionAI = AIDirector.getAIForFaction(ship.faction);
+        const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+        
+        let potentialTargets: Ship[] = [];
+        if (ship.allegiance === 'enemy') {
+            potentialTargets = allShipsInSector.filter(s => (s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
+        } else if (ship.allegiance === 'ally' || ship.allegiance === 'player') {
+            potentialTargets = allShipsInSector.filter(s => s.allegiance === 'enemy' && s.hull > 0);
+        }
+
+        aiStance = factionAI.determineStance(ship, potentialTargets);
+    }
+
     const name = !isShip || (ship && !ship.scanned) ? 'Unknown Ship' : selectedEntity.name;
     
     const stats = ship ? shipClasses[ship.shipModel]?.[ship.shipClass] : null;
@@ -64,89 +81,139 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     const cloakStatus = ship?.cloakState === 'cloaked' ? 'ACTIVE' : ship?.cloakState === 'cloaking' ? 'ENGAGING' : 'INACTIVE';
     const cloakColor = ship?.cloakState === 'cloaked' ? 'text-accent-teal' : ship?.cloakState === 'cloaking' ? 'text-accent-yellow' : 'text-text-disabled';
     
-    const engineFailureTurns = ship?.engineFailureTurn ? turn - ship.engineFailureTurn : null;
     const lifeSupportCountdown = ship?.lifeSupportFailureTurn ? Math.max(0, 2 - (turn - ship.lifeSupportFailureTurn)) : null;
     const captureRepairTurns = ship?.captureInfo ? 5 - (turn - ship.captureInfo.repairTurn) : null;
     
     const isInNebula = ship ? isPosInNebula(ship.position, gameState.currentSector) : false;
     const isInAsteroidField = ship ? gameState.currentSector.entities.some(e => e.type === 'asteroid_field' && e.position.x === ship.position.x && e.position.y === ship.position.y) : false;
 
-    let energyGridContent: React.ReactNode = null;
+    let systemsGridContent: React.ReactNode = null;
     if (ship && stats) {
         const isRedAlert = ship.allegiance === 'enemy' || ship.allegiance === 'player' || ship.allegiance === 'ally';
+
         const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
         const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
         const generatedFromEngines = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
+        
+        const systemData = (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
+            const system = ship.subsystems[key];
+            if (system.maxHealth === 0) return null;
 
-        let totalConsumption = 0;
-        const consumptionBreakdown: { label: string, value: number }[] = [];
-
-        if (stats.systemConsumption.base > 0) {
-            totalConsumption += stats.systemConsumption.base;
-            consumptionBreakdown.push({ label: 'Core Systems', value: stats.systemConsumption.base });
-        }
-
-        for (const key in ship.subsystems) {
-            const systemKey = key as keyof ShipSubsystems;
-            if (ship.subsystems[systemKey].health > 0 && stats.systemConsumption[systemKey] > 0) {
-                const consumption = stats.systemConsumption[systemKey];
-                totalConsumption += consumption;
-                consumptionBreakdown.push({ label: `${subsystemFullNames[systemKey]}`, value: consumption });
+            const healthPercentage = (system.health / system.maxHealth) * 100;
+            
+            let powerDelta = 0;
+            if (key === 'engines') {
+                powerDelta = generatedFromEngines;
+            } else if (system.health > 0 && stats.systemConsumption[key] > 0) {
+                powerDelta = -stats.systemConsumption[key];
             }
-        }
 
+            return {
+                key,
+                name: subsystemFullNames[key],
+                health: healthPercentage,
+                powerDelta
+            };
+        }).filter(Boolean) as { key: keyof ShipSubsystems; name: string; health: number; powerDelta: number }[];
+
+        const activeConsumption: { label: string, value: number }[] = [];
+        if (stats.systemConsumption.base > 0) {
+            activeConsumption.push({ label: 'Core Systems', value: -stats.systemConsumption.base });
+        }
         if (isRedAlert && ship.shields > 0) {
-            totalConsumption += 20;
-            consumptionBreakdown.push({ label: 'Shields Up', value: 20 });
+            activeConsumption.push({ label: 'Shields Up', value: -20 * stats.energyModifier });
         }
         if (ship.evasive) {
-            totalConsumption += 10;
-            consumptionBreakdown.push({ label: 'Evasive Maneuvers', value: 10 });
+            activeConsumption.push({ label: 'Evasive Maneuvers', value: -10 * stats.energyModifier });
         }
         if (ship.pointDefenseEnabled) {
-            totalConsumption += 15;
-            consumptionBreakdown.push({ label: 'Point-Defense Grid', value: 15 });
+            activeConsumption.push({ label: 'Point-Defense Grid', value: -15 * stats.energyModifier });
         }
         if (ship.repairTarget) {
-            totalConsumption += 5;
-            consumptionBreakdown.push({ label: 'Damage Control', value: 5 });
+            activeConsumption.push({ label: 'Damage Control', value: -5 * stats.energyModifier });
         }
+         if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+            activeConsumption.push({ label: 'Cloak Engaged', value: -(ship.customCloakStats?.powerCost || 45) * stats.energyModifier });
+        }
+        
+        const totalConsumption = systemData.reduce((sum, sys) => sum + (sys.powerDelta < 0 ? sys.powerDelta : 0), 0) 
+                               + activeConsumption.reduce((sum, item) => sum + item.value, 0);
 
-        const netChange = generatedFromEngines - totalConsumption;
+        const netChange = generatedFromEngines + totalConsumption;
 
-        energyGridContent = (
-            <DetailSection title="Energy Grid">
-                <DetailItem
-                    label="Generation"
-                    value={<span className="text-green-400">+{generatedFromEngines.toFixed(1)} / turn</span>}
-                />
-                <div className="pl-4 text-xs">
-                    <DetailItem label="Base Output" value={stats.baseEnergyGeneration.toFixed(1)} />
-                    <DetailItem label="Engine Allocation" value={`x${engineOutputMultiplier.toFixed(2)}`} />
-                    <DetailItem label="Engine Efficiency" value={`${(engineEfficiency * 100).toFixed(0)}%`} />
+        systemsGridContent = (
+            <DetailSection title="Systems Status & Energy Grid">
+                <div className="text-xs -mt-1 grid grid-cols-[2fr,1fr,1fr] gap-x-2 items-center font-bold text-text-secondary border-b border-border-dark pb-1">
+                    <span>System</span>
+                    <span className="text-center">Status</span>
+                    <span className="text-right">Power Δ/turn</span>
+                </div>
+                <div className="text-sm space-y-1">
+                    {systemData.map(sys => {
+                        let healthColor = 'text-green-400';
+                        if (sys.health < 60) healthColor = 'text-yellow-400';
+                        if (sys.health < 25) healthColor = 'text-red-500';
+
+                        const powerColor = sys.powerDelta > 0 ? 'text-green-400' : (sys.powerDelta < 0 ? 'text-red-400' : 'text-text-disabled');
+                        const isRepairing = ship.repairTarget === sys.key;
+
+                        return (
+                            <div key={sys.key} className="grid grid-cols-[2fr,1fr,1fr] gap-x-2 items-center">
+                                <span>{sys.name} {isRepairing && <span className="text-accent-yellow text-xs italic ml-1">(repairing)</span>}</span>
+                                <span className={`text-center font-mono ${healthColor}`}>{Math.round(sys.health)}%</span>
+                                <span className={`text-right font-mono ${powerColor}`}>
+                                    {sys.powerDelta > 0 ? '+' : ''}{sys.powerDelta.toFixed(1)}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
                 
-                <DetailItem
-                    label="Consumption"
-                    value={<span className="text-red-400">-{totalConsumption.toFixed(1)} / turn</span>}
-                />
-                <div className="pl-4 text-xs">
-                    {consumptionBreakdown.map(item => (
-                        <DetailItem key={item.label} label={item.label} value={`-${item.value.toFixed(1)}`} />
-                    ))}
-                </div>
-
-                <DetailItem
-                    label="Net Power"
-                    value={
-                        <span className={netChange >= 0 ? 'text-green-400' : 'text-red-400'}>
-                            {netChange >= 0 ? '+' : ''}{netChange.toFixed(1)} / turn
+                {activeConsumption.length > 0 && (
+                     <div className="text-sm mt-2 pt-1 border-t border-border-dark space-y-1">
+                        {activeConsumption.map(item => (
+                             <div key={item.label} className="grid grid-cols-[2fr,1fr,1fr] gap-x-2 items-center">
+                                <span>{item.label}</span>
+                                <span className="text-center font-mono text-text-disabled">-</span>
+                                <span className="text-right font-mono text-red-400">{item.value.toFixed(1)}</span>
+                            </div>
+                        ))}
+                     </div>
+                )}
+                
+                <div className="text-sm mt-2 pt-1 border-t-2 border-border-main space-y-1">
+                     <div className="grid grid-cols-[2fr,2fr] gap-x-2 font-bold">
+                        <span>Total Generation:</span>
+                        <span className="text-right text-green-400 font-mono">+{generatedFromEngines.toFixed(1)}</span>
+                    </div>
+                     <div className="grid grid-cols-[2fr,2fr] gap-x-2 font-bold">
+                        <span>Total Consumption:</span>
+                        <span className="text-right text-red-400 font-mono">{totalConsumption.toFixed(1)}</span>
+                    </div>
+                     <div className="grid grid-cols-[2fr,2fr] gap-x-2 font-bold text-base">
+                        <span>Net Power:</span>
+                        <span className={`text-right font-mono ${netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {netChange >= 0 ? '+' : ''}{netChange.toFixed(1)}
                         </span>
-                    }
-                />
+                    </div>
+                </div>
             </DetailSection>
         );
     }
+    
+    const getShipStatusText = (): { text: string, color: string } => {
+        if (!ship) return { text: 'N/A', color: 'text-text-disabled' };
+        if (ship.isDerelict) return { text: 'DERELICT', color: 'text-red-600 animate-pulse' };
+        if (lifeSupportCountdown !== null) return { text: 'CRITICAL (LIFE SUPPORT)', color: 'text-red-500 animate-pulse' };
+        if (ship.hull / ship.maxHull < 0.25) return { text: 'CRITICAL (HULL)', color: 'text-red-500' };
+        if (ship.subsystems.engines.health / ship.subsystems.engines.maxHealth < 0.5) return { text: 'DISABLED', color: 'text-orange-400' };
+        if (ship.subsystems.weapons.health === 0) return { text: 'DISARMED', color: 'text-yellow-500' };
+        if (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth < 0.3) return { text: 'WEAPONS CRITICAL', color: 'text-yellow-400' };
+        
+        return { text: 'OPERATIONAL', color: 'text-green-500' };
+    };
+
+    const shipStatus = getShipStatusText();
 
     return (
         <div className="panel-style p-3 h-full flex flex-col">
@@ -169,78 +236,47 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                         </DetailSection>
 
                         <DetailSection title="Status">
-                            {ship.isDerelict ? (
-                                <StatusIndicator label="Status" value="DERELICT" color="text-red-500" />
-                            ) : (
-                                <StatusIndicator label="Status" value="OPERATIONAL" color="text-green-500" />
-                            )}
-
-                            {engineFailureTurns !== null && <StatusIndicator label="Engines Disabled" value={`${engineFailureTurns} Turns`} color="text-red-500 animate-pulse" />}
+                             <StatusIndicator label="Status" value={shipStatus.text} color={shipStatus.color} />
                             {lifeSupportCountdown !== null && <StatusIndicator label="Life Support" value={`${lifeSupportCountdown} Turns Left`} color="text-red-500 animate-pulse" />}
                             {captureRepairTurns !== null && captureRepairTurns > 0 && <StatusIndicator label="Captured" value={`${captureRepairTurns} Turns to Repair`} color="text-yellow-500" />}
-
+                            {ship.isStunned && <StatusIndicator label="Stunned" value="YES" color="text-yellow-500" />}
                             {ship.statusEffects.map((effect, i) => (
                                  <StatusIndicator key={i} label="Plasma Burn" value={`${effect.damage} DMG (${effect.turnsRemaining}T left)`} color="text-orange-400" />
                             ))}
-                        </DetailSection>
-                        
-                        <DetailSection title="Tactical Modifiers">
-                             {isInNebula && <StatusIndicator label="Environment" value="IN NEBULA" color="text-purple-400" />}
-                             {isInAsteroidField && <StatusIndicator label="Environment" value="IN ASTEROIDS" color="text-gray-400" />}
-                             <StatusIndicator label="Evasive" value={ship.evasive ? 'ACTIVE' : 'INACTIVE'} color={ship.evasive ? 'text-accent-green' : 'text-text-disabled'} />
-                             <StatusIndicator label="Point Defense" value={ship.pointDefenseEnabled ? 'ACTIVE (-40% Phaser Dmg)' : 'INACTIVE'} color={ship.pointDefenseEnabled ? 'text-accent-orange' : 'text-text-disabled'} />
-                             {ship.cloakingCapable && <StatusIndicator label="Cloak" value={cloakStatus} color={cloakColor} />}
-                             {ship.isStunned && <StatusIndicator label="Status" value="STUNNED" color="text-yellow-500" />}
                         </DetailSection>
 
                         <DetailSection title="Core Stats">
                             <DetailItem label="Hull" value={`${Math.round(ship.hull)} / ${ship.maxHull}`} />
                             <DetailItem label="Shields" value={`${Math.round(ship.shields)} / ${ship.maxShields}`} />
                             <DetailItem label="Reserve Power" value={`${Math.round(ship.energy.current)} / ${ship.energy.max}`} />
-                        </DetailSection>
-                        
-                        {energyGridContent}
-
-                        <DetailSection title="Resources">
                             <DetailItem label="Torpedoes" value={`${ship.torpedoes.current} / ${ship.torpedoes.max}`} />
                             <DetailItem label="Dilithium" value={`${ship.dilithium.current} / ${ship.dilithium.max}`} />
                             <DetailItem label="Security Teams" value={`${ship.securityTeams.current} / ${ship.securityTeams.max}`} />
                             <DetailItem label="Shuttlecraft" value={`${stats ? stats.shuttleCount : 'N/A'} craft`} />
                         </DetailSection>
-
-                        <DetailSection title="Energy Allocation">
-                            <DetailItem label="Weapons" value={<span className="text-red-400">{ship.energyAllocation.weapons}%</span>} />
-                            <DetailItem label="Shields" value={<span className="text-cyan-400">{ship.energyAllocation.shields}%</span>} />
-                            <DetailItem label="Engines" value={<span className="text-green-400">{ship.energyAllocation.engines}%</span>} />
+                        
+                        <DetailSection title="Tactical Modifiers">
+                            {ship.repairTarget && <StatusIndicator label="Damage Control" value={`REPAIRING ${ship.repairTarget.toUpperCase()}`} color="text-yellow-400" />}
+                            {isInNebula && <StatusIndicator label="Environment" value="IN NEBULA" color="text-purple-400" />}
+                            {isInAsteroidField && <StatusIndicator label="Environment" value="IN ASTEROIDS" color="text-gray-400" />}
+                            {ship.cloakingCapable && <StatusIndicator label="Cloak" value={cloakStatus} color={cloakColor} />}
+                            <StatusIndicator label="Evasive" value={ship.evasive ? 'ACTIVE' : 'INACTIVE'} color={ship.evasive ? 'text-accent-green' : 'text-text-disabled'} />
+                            <StatusIndicator label="Point Defense" value={ship.pointDefenseEnabled ? 'ACTIVE (-40% Phaser Dmg)' : 'INACTIVE'} color={ship.pointDefenseEnabled ? 'text-accent-orange' : 'text-text-disabled'} />
+                            {aiStance && (
+                                <>
+                                    <StatusIndicator label="Doctrine" value={aiStance.toUpperCase()} color="text-accent-yellow" />
+                                    <DetailItem label="Allocation" value={
+                                        <div className="flex justify-end gap-2 font-bold font-mono text-xs">
+                                            <span className="text-red-400">W:{String(ship.energyAllocation.weapons).padStart(2, ' ')}</span>
+                                            <span className="text-cyan-400">S:{String(ship.energyAllocation.shields).padStart(2, ' ')}</span>
+                                            <span className="text-green-400">E:{String(ship.energyAllocation.engines).padStart(2, ' ')}</span>
+                                        </div>
+                                    } />
+                                </>
+                            )}
                         </DetailSection>
 
-                        <DetailSection title="Subsystems">
-                            {(Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
-                                const system = ship.subsystems[key];
-                                if (system.maxHealth === 0) return null;
-                                const healthPercentage = (system.health / system.maxHealth) * 100;
-                                
-                                let colorClass = 'text-green-400';
-                                if (healthPercentage < 60) colorClass = 'text-yellow-400';
-                                if (healthPercentage < 25) colorClass = 'text-red-500';
-                                
-                                const consumption = stats ? stats.systemConsumption[key] : 0;
-                                const consumptionText = consumption > 0 ? `(-${consumption.toFixed(1)} pwr)` : '';
-                                
-                                return (
-                                    <DetailItem
-                                        key={key}
-                                        label={subsystemFullNames[key]}
-                                        value={
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-text-disabled w-16 text-right">{consumptionText}</span>
-                                                <span className={`${colorClass} w-10 text-right`}>{Math.round(healthPercentage)}%</span>
-                                            </div>
-                                        }
-                                    />
-                                );
-                            })}
-                        </DetailSection>
+                        {systemsGridContent}
                     </>
                 )}
             </div>

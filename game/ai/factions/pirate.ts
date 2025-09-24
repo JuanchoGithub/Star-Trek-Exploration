@@ -1,23 +1,23 @@
+
+
 import type { GameState, Ship, ShipSubsystems } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
+import { processCommonTurn, tryCaptureDerelict } from './common';
+// FIX: Imported 'calculateDistance' to resolve a reference error.
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
-    // FIX: Implemented missing abstract member 'determineStance'.
+    // FIX: Corrected method signature to match the abstract class and updated logic to use potentialTargets.
     determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
-        const closestTarget = findClosestTarget(ship, potentialTargets);
-        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
-            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
-                return 'Recovery';
-            }
+        const target = findClosestTarget(ship, potentialTargets);
+        if (!target) {
             return 'Balanced';
         }
 
         // Pirates are opportunistic cowards.
         const shipHealth = ship.hull / ship.maxHull;
-        const playerHealth = closestTarget.hull / closestTarget.maxHull;
+        const playerHealth = target.hull / target.maxHull;
 
         if (shipHealth < 0.6) {
             return 'Defensive'; // Prioritize self-preservation above all.
@@ -47,39 +47,28 @@ export class PirateAI extends FactionAI {
             return; // Turn spent capturing
         }
 
-        const stance = this.determineStance(ship, potentialTargets);
-
-        if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions);
-            return;
-        }
-
-        if (ship.repairTarget) {
-            ship.repairTarget = null;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `An easy prize! Halting repairs to attack.` });
-        }
-        
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
+            const stance = this.determineStance(ship, potentialTargets);
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
             let stanceChanged = false;
 
             switch (stance) {
                 case 'Aggressive':
-                    if (ship.energyAllocation.weapons !== 60) {
-                        ship.energyAllocation = { weapons: 60, shields: 20, engines: 20 };
+                    if (ship.energyAllocation.weapons !== 70) {
+                        ship.energyAllocation = { weapons: 70, shields: 30, engines: 0 };
                         stanceChanged = true;
                     }
                     break;
                 case 'Defensive':
-                    if (ship.energyAllocation.shields !== 60) {
-                        ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
+                    if (ship.energyAllocation.shields !== 80) {
+                        ship.energyAllocation = { weapons: 20, shields: 80, engines: 0 };
                         stanceChanged = true;
                     }
                     break;
                 case 'Balanced':
-                    if (ship.energyAllocation.weapons !== 34) {
-                        ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
+                    if (ship.energyAllocation.weapons !== 50) {
+                        ship.energyAllocation = { weapons: 50, shields: 50, engines: 0 };
                         stanceChanged = true;
                     }
                     break;
@@ -89,7 +78,7 @@ export class PirateAI extends FactionAI {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Re-routing power to take a ${stance.toLowerCase()} stance.`, isPlayerSource: false });
             }
             
-            // FIX: Added the missing 'stance' argument to the processCommonTurn call.
+            // FIX: Added the missing 'stance' argument to the processCommonTurn call to resolve the "Expected 6 arguments, but got 5" error.
             processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
         } else {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });

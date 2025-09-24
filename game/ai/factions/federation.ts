@@ -2,20 +2,17 @@ import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { processCommonTurn, processRecoveryTurn } from './common';
+import { determineGeneralStance, processCommonTurn, processRecoveryTurn } from './common';
 
 export class FederationAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): AIStance {
-        const closestTarget = findClosestTarget(ship, potentialTargets);
-        if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
-            if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
-                return 'Recovery';
-            }
-            return 'Balanced';
+        const generalStance = determineGeneralStance(ship, potentialTargets);
+        if (generalStance !== 'Balanced') {
+            return generalStance;
         }
 
         // Federation ships fight with a balanced approach but will go defensive if damaged.
-        if (ship.hull / ship.maxHull < 0.4) {
+        if (ship.hull / ship.maxHull < 0.5) {
             return 'Defensive';
         }
         return 'Balanced';
@@ -34,48 +31,36 @@ export class FederationAI extends FactionAI {
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        // If there are potential targets, engage in combat logic.
+        const stance = this.determineStance(ship, potentialTargets);
+        if (stance === 'Recovery') {
+            processRecoveryTurn(ship, actions);
+            return;
+        }
+
+        if (ship.repairTarget) {
+            ship.repairTarget = null;
+        }
+
         if (potentialTargets.length > 0) {
-            const stance = this.determineStance(ship, potentialTargets);
-
-            if (stance === 'Recovery') {
-                processRecoveryTurn(ship, actions);
-                return;
-            }
-
-            if (ship.repairTarget) {
-                ship.repairTarget = null;
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Hostiles detected. Halting repairs to engage.` });
-            }
-
             const target = findClosestTarget(ship, potentialTargets);
             if (target) {
                 const subsystemTarget = this.determineSubsystemTarget(ship, target);
-                let stanceChanged = false;
 
                 switch (stance) {
                     case 'Defensive':
                         if (ship.energyAllocation.shields !== 60) {
                             ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
-                            stanceChanged = true;
                         }
                         break;
                     case 'Balanced':
                     default:
                         if (ship.energyAllocation.weapons !== 34) {
                             ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
-                            stanceChanged = true;
                         }
                         break;
                 }
                 
-                if (stanceChanged) {
-                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Adjusting power levels for a ${stance.toLowerCase()} posture.`, isPlayerSource: false });
-                }
-
                 processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
-            } else {
-                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
             }
         } else { // Original non-hostile (ally/neutral) logic
             const { currentSector } = gameState;
@@ -88,8 +73,6 @@ export class FederationAI extends FactionAI {
                     actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
                     return;
                 }
-            } else if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth)) {
-                processRecoveryTurn(ship, actions);
             } else {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
             }

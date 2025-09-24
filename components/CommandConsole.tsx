@@ -85,11 +85,12 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     && targetShip.shields <= 1
     && !isTargetFriendly 
     && playerShip.securityTeams.current > 0 
-    && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5;
+    && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5
+    && targetShip.hull > 0;
 
   const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon, PointDefenseIcon } = getFactionIcons(themeName);
 
-  const canFireOnShip = hasTarget && target?.type === 'ship' && !isTargetFriendly;
+  const canFireOnShip = hasTarget && targetShip && !isTargetFriendly && targetShip.hull > 0;
   const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
   const canUsePhasers = playerShip.subsystems.weapons.health > 0 && (canFireOnShip || canFireOnTorpedo);
   const canLaunchTorpedoFinal = playerShip.torpedoes.current > 0 && (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) >= 0.34;
