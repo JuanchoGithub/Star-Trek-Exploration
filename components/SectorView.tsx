@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
@@ -14,7 +15,7 @@ import LcarsTargetingReticle from './LcarsTargetingReticle';
 import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
-import { canPlayerSeeEntity } from '../game/utils/visibility';
+import { canShipSeeEntity } from '../game/utils/visibility';
 import { isDeepNebula } from '../game/utils/sector';
 import { asteroidIcons } from '../assets/asteroids/icons';
 import { cyrb53 } from '../game/utils/helpers';
@@ -133,7 +134,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const visibleEntities = playerShip ? allEntities.filter(entity => {
       if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
-      return canPlayerSeeEntity(entity, playerShip, sector);
+      return canShipSeeEntity(entity, playerShip, sector);
   }) : allEntities;
   
   const occupiedPositions = useMemo(() => 

@@ -1,3 +1,4 @@
+
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage, consumeEnergy } from '../utils/combat';
@@ -9,6 +10,8 @@ import { processRecoveryTurn } from '../ai/factions/common';
 import { applyResourceChange } from '../utils/state';
 import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
 import { processPlayerTurn } from './player';
+import { canShipSeeEntity } from '../utils/visibility';
+import { isCommBlackout } from '../utils/sector';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -101,11 +104,34 @@ export const generatePhasedTurn = (
         if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict) continue;
         
         const factionAI = AIDirector.getAIForFaction(shipInState.faction);
-        const potentialTargets = allShipsInSector().filter(s => {
-            if (s.id === shipInState!.id || s.hull <= 0 || s.isDerelict) return false;
-            if (shipInState!.allegiance === 'enemy') return s.allegiance === 'player' || s.allegiance === 'ally';
-            if (shipInState!.allegiance === 'ally' || shipInState!.allegiance === 'player') return s.allegiance === 'enemy';
-            return false;
+        
+        let allPossibleOpponents: Ship[] = [];
+        if (shipInState.allegiance === 'enemy') {
+            allPossibleOpponents = allShipsInSector().filter(s => (s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
+        } else if (shipInState.allegiance === 'player' || shipInState.allegiance === 'ally') {
+            allPossibleOpponents = allShipsInSector().filter(s => s.allegiance === 'enemy' && s.hull > 0);
+        } else if (shipInState.allegiance === 'neutral') {
+            allPossibleOpponents = allShipsInSector().filter(s => (s.allegiance === 'enemy' || s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
+        }
+
+        // Find all allies that are NOT in a communication blackout.
+        // A ship can always use its own sensors, even in a blackout.
+        const alliesWithComms = allShipsInSector().filter(s => 
+            s.allegiance === shipInState!.allegiance && 
+            s.hull > 0 &&
+            (s.id === shipInState!.id || !isCommBlackout(s.position, currentState.currentSector))
+        );
+
+        const potentialTargets = allPossibleOpponents.filter(target => {
+            if (target.cloakState === 'cloaked') return false;
+
+            // Check if the target is visible to ANY allied ship with active communications.
+            // This simulates a shared sensor network (C3 - Command, Control, Communications).
+            const isVisibleToAnyAlly = alliesWithComms.some(ally => 
+                canShipSeeEntity(target, ally, currentState.currentSector)
+            );
+
+            return isVisibleToAnyAlly;
         });
 
         factionAI.processTurn(shipInState, currentState, actions, potentialTargets);

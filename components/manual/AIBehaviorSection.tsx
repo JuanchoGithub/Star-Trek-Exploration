@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -12,6 +13,9 @@ export const AIBehaviorSection: React.FC = () => (
             The current AI model for hostile vessels (Klingon, Romulan, Pirate) has been significantly upgraded with improved resource management and tactical flexibility.
         </p>
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+             <li>
+                <strong className="text-accent-yellow">Shared Sensor Network (C3):</strong> Allied vessels now share sensor data. A ship will be aware of any enemy vessel that is visible to any of its allies in the sector, provided that ally is not in a communication blackout (e.g., inside a dense nebula). This allows for coordinated squadron tactics, such as one ship acting as a forward scout while another provides fire support from a distance. A ship that is cut off from communications will only be able to engage targets it can see with its own sensors.
+            </li>
              <li>
                 <strong className="text-accent-yellow">Intelligent Point-Defense Grid:</strong> Hostile vessels no longer keep their LPD systems active at all times. They will now toggle the system based on the immediate threat level. LPD will activate if:
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">

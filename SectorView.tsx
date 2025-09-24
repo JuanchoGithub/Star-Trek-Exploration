@@ -13,7 +13,8 @@ import LcarsTargetingReticle from './LcarsTargetingReticle';
 import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
-import { canPlayerSeeEntity } from '../game/utils/visibility';
+// FIX: Corrected import from canPlayerSeeEntity to canShipSeeEntity.
+import { canShipSeeEntity } from '../game/utils/visibility';
 import { isDeepNebula } from '../game/utils/sector';
 import { asteroidIcons } from '../assets/asteroids/icons';
 import { cyrb53 } from '../game/utils/helpers';
@@ -99,7 +100,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const visibleEntities = playerShip ? allEntities.filter(entity => {
       if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
-      return canPlayerSeeEntity(entity, playerShip, sector);
+      // FIX: Corrected function call from canPlayerSeeEntity to canShipSeeEntity.
+      return canShipSeeEntity(entity, playerShip, sector);
   }) : allEntities;
 
 

@@ -116,11 +116,15 @@ const TargetInfo: React.FC<{
         if (hasEnemy) return { disabled: true, text: 'Cannot Begin Mission: Hostiles Present' };
         
         if (target.planetClass === 'J') {
-             if ((playerShip.subsystems.shuttlecraft.health / playerShip.subsystems.shuttlecraft.maxHealth) < 0.5) {
+             const shuttlecraft = playerShip.subsystems.shuttlecraft;
+             // FIX: Check if shuttlecraft exists (for old saves) and if maxHealth is > 0 before division.
+             if (!shuttlecraft || shuttlecraft.maxHealth === 0 || (shuttlecraft.health / shuttlecraft.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
             }
         } else {
-            if ((playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) < 0.5) {
+            const transporter = playerShip.subsystems.transporter;
+            // FIX: Check if transporter exists (for old saves) and if maxHealth is > 0 before division.
+            if (!transporter || transporter.maxHealth === 0 || (transporter.health / transporter.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Transporter Damaged' };
             }
         }
@@ -134,8 +138,13 @@ const TargetInfo: React.FC<{
         const shipTarget = target as Ship;
         if (selectedSubsystem) {
             const subsystem = shipTarget.subsystems[selectedSubsystem];
-            const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
-            targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
+            // FIX: Simplified check to resolve TypeScript type inference issues and prevent division by zero.
+            if (subsystem && subsystem.maxHealth > 0) {
+                const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
+                targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
+            } else {
+                targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (N/A)`;
+            }
         } else {
             const healthPercent = Math.round((shipTarget.hull / shipTarget.maxHull) * 100);
             targetingButtonText = `Targeting: Hull (${healthPercent}%)`;

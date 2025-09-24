@@ -466,7 +466,7 @@ A thorough understanding of your own weapon systems—and those of your potentia
 *   **Effective Range:** Sector-wide (Slow travel time)
 *   **Energy Cost:** None (Consumes ammunition)
 *   **Damage Profile:** Base 90. Heavily mitigated by shields.
-*   **Tactical Notes:** A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. Can be destroyed by asteroids.
+*   **Tactical Notes:** A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. It offers no special properties beyond sheer destructive power.
 
 ### Defensive Systems
 
@@ -603,6 +603,21 @@ The replayer interface provides a complete reconstruction of the battle:
 
 ---
 # Simulation Changelog
+
+## Version 1.6.2 - Save Game Compatibility Patch
+*Release Date: Stardate 49735.6, 11:00 (September 25, 2025)*
+
+A maintenance release to ensure backward compatibility with older save game files, preventing crashes related to newly added ship subsystems.
+
+### Summary of User Directives & Field Reports
+> Field reports indicated a critical runtime error occurring when loading save games from older simulation versions. The error, `TypeError: Cannot read properties of undefined (reading 'maxHealth')`, was traced to the `PlayerHUD` component attempting to access ship subsystems (specifically `shuttlecraft` and `transporter`) that did not exist in the older data structure.
+> 
+> A high-priority directive was issued to patch the simulation to handle these legacy save files gracefully and prevent game-breaking crashes for long-term players.
+
+### Summary of Implemented Changes
+*   **Bug Fix - Legacy Save Compatibility:** The `PlayerHUD.tsx` component has been updated to perform robust checks before accessing subsystem properties.
+*   **Defensive Coding Implementation:** The `getAwayMissionButtonState` function now verifies the existence of the `shuttlecraft` and `transporter` subsystems on the player's ship object before attempting to read their `health` or `maxHealth` values. This prevents runtime errors when loading save files created prior to the introduction of these systems.
+*   **Improved Stability:** This patch ensures that all players, regardless of when their game was started, can load their progress without encountering crashes related to evolving data structures.
 
 ## Version 1.6.1 - Tactical Clarity Update
 *Release Date: Stardate 49733.1, 10:00 (September 24, 2025)*
