@@ -453,8 +453,9 @@
       
       /* Combat FX Styles */
       .phaser-beam {
-          stroke-width: 3px;
-          animation: phaser-fire-animation 1s ease-out;
+          animation: phaser-fire-animation 750ms ease-out forwards;
+          stroke-dasharray: 2000;
+          stroke-dashoffset: 2000;
       }
       .phaser-beam.federation {
           stroke: #ff4141; /* Red */
@@ -481,22 +482,65 @@
           transform: translate(-50%, -50%);
           border-radius: 50%;
           background-color: white;
-          animation: torpedo-explosion-animation 0.5s ease-out forwards;
+          animation: torpedo-explosion-animation 0.75s ease-out forwards;
+      }
+      .phaser-impact {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        animation: phaser-impact-animation 0.5s ease-out forwards;
+        width: 3rem;
+        height: 3rem;
+      }
+      .phaser-impact.shield {
+        background: radial-gradient(circle, white, var(--color-secondary-light), transparent 70%);
+      }
+      .phaser-impact.hull {
+        background: radial-gradient(circle, #fff700, var(--color-accent-orange), var(--color-accent-red), transparent 70%);
       }
       @keyframes phaser-fire-animation {
-          0% { opacity: 1; stroke-width: 3px; }
-          99% { opacity: 1; stroke-width: 1px; }
-          100% { opacity: 0; }
+        /* Draw phase: 0-20% */
+        0% {
+            stroke-dashoffset: 2000;
+            stroke-width: 3px;
+            opacity: 1;
+        }
+        20% {
+            stroke-dashoffset: 0;
+            stroke-width: 4px;
+            opacity: 1;
+        }
+        /* Hold/Flash phase: 20-50% */
+        50% {
+            stroke-dashoffset: 0;
+            stroke-width: 3px;
+            opacity: 1;
+        }
+        /* Fade phase: 50-100% */
+        100% {
+            stroke-dashoffset: 0;
+            stroke-width: 1px;
+            opacity: 0;
+        }
       }
       @keyframes torpedo-explosion-animation {
         0% { transform: translate(-50%, -50%) scale(0.1); background-color: white; opacity: 1;}
         50% { background-color: var(--color-accent-orange); }
         100% { transform: translate(-50%, -50%) scale(1.5); background-color: var(--color-accent-red); opacity: 0; }
       }
+      @keyframes phaser-impact-animation {
+        0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; filter: brightness(2.0); }
+        100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; filter: brightness(1.0); }
+      }
       
+      @keyframes point-defense-fade {
+        from { opacity: 0.8; }
+        to { opacity: 0; }
+      }
       .point-defense-beam {
         stroke-width: 2px;
-        animation: phaser-fire-animation 0.5s ease-out;
+        animation: point-defense-fade 0.3s ease-out forwards;
+        opacity: 0;
       }
       .point-defense-beam.federation {
           stroke: #ff4141;

@@ -1,224 +1,356 @@
-import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems } from '../../types';
-import { processPlayerTurn } from './player';
-import { processAITurns } from './aiProcessor';
-import { AIActions } from '../ai/FactionAI';
+
+import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
+import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage, consumeEnergy } from '../utils/combat';
-import { calculateDistance, moveOneStep, uniqueId } from '../utils/ai';
+import { calculateDistance, moveOneStep, uniqueId, findClosestTarget } from '../utils/ai';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
-import { isPosInNebula } from '../utils/sector';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
+import { AIDirector } from '../ai/AIDirector';
+import { processRecoveryTurn } from '../ai/factions/common';
+import { applyResourceChange } from '../utils/state';
 
-const processEndOfTurnSystems = (state: GameState, addLog: (logData: Omit<LogEntry, 'id' | 'turn'>) => void): void => {
-    const allShips = [state.player.ship, ...state.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-    
-    allShips.forEach(ship => {
-        if (ship.hull <= 0) return;
+export interface TurnStep {
+    updatedState: GameState;
+    newNavigationTarget?: { x: number; y: number } | null;
+    newSelectedTargetId?: string | null;
+    delay: number;
+}
 
-        // 1. Status Effects (Plasma Burn)
-        ship.statusEffects = ship.statusEffects.filter(effect => {
-            if (effect.type === 'plasma_burn') {
-                ship.hull = Math.max(0, ship.hull - effect.damage);
-                addLog({ sourceId: ship.id, sourceName: 'Damage Control', message: `${ship.name} takes ${effect.damage} damage from plasma fire!`, color: 'border-orange-400', isPlayerSource: ship.id === 'player' });
-                effect.turnsRemaining--;
-                return effect.turnsRemaining > 0;
-            }
-            return false;
-        });
+interface TurnConfig {
+    mode: 'game' | 'dogfight' | 'spectate';
+    playerTurnActions: PlayerTurnActions;
+    navigationTarget: { x: number; y: number } | null;
+    selectedTargetId: string | null;
+}
 
-        // 2. Damage Control Repairs
-        if (ship.repairTarget) {
-            const repairCost = 5 * ship.energyModifier;
-            const { success } = consumeEnergy(ship, repairCost);
-            if (success) {
-                const repairAmount = 5;
-                if (ship.repairTarget === 'hull') {
-                    ship.hull = Math.min(ship.maxHull, ship.hull + repairAmount);
-                    addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `Damage control team repaired the hull by ${repairAmount} points.`, color: 'border-green-400', isPlayerSource: ship.id === 'player' });
-                } else {
-                    const subsystem = ship.subsystems[ship.repairTarget];
-                    if (subsystem) {
-                        subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + repairAmount);
-                        addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `Damage control team repaired ${ship.repairTarget} by ${repairAmount} points.`, color: 'border-green-400', isPlayerSource: ship.id === 'player' });
-                        if (subsystem.health >= subsystem.maxHealth) {
-                            ship.repairTarget = null;
-                            addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `${ship.repairTarget} fully repaired.`, color: 'border-green-400', isPlayerSource: ship.id === 'player' });
-                        }
-                    }
-                }
-            } else {
-                 addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `Insufficient power for damage control! Repairs halted.`, color: 'border-orange-400', isPlayerSource: ship.id === 'player' });
-            }
-        }
+const getShipsInTurnOrder = (state: GameState, mode: 'game' | 'dogfight' | 'spectate'): Ship[] => {
+    const allShips = (mode === 'game')
+        ? [state.player.ship, ...state.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
+        : state.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
 
-        // 3. System Failure Timers
-        if (ship.lifeSupportFailureTurn !== null) {
-            const turnsPassed = state.turn - ship.lifeSupportFailureTurn;
-            if (turnsPassed >= 2) {
-                ship.isDerelict = true;
-                ship.hull = 1; // Not destroyed, but disabled
-                addLog({ sourceId: ship.id, sourceName: 'SYSTEM', message: `Life support failure on ${ship.name}! The crew is lost. The ship is now a derelict hulk.`, color: 'border-red-600', isPlayerSource: false });
-            }
-        }
-        if (ship.engineFailureTurn !== null) {
-            const turnsPassed = state.turn - ship.engineFailureTurn;
-            if (turnsPassed >= 3) {
-                ship.engineFailureTurn = null; // Engines come back online after 3 turns
-                addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `${ship.name}'s engines have been stabilized and are back online.`, color: 'border-green-400', isPlayerSource: ship.id === 'player' });
-            }
-        }
-        
-        // 4. Energy Management (Generation & Consumption)
-        const stats = shipClasses[ship.shipModel][ship.shipClass];
-        const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
-        const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
-        const generatedFromEngines = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
-
-        let totalConsumption = 0;
-        for (const key in ship.subsystems) {
-            const systemKey = key as keyof ShipSubsystems;
-            if (ship.subsystems[systemKey].health > 0 && stats.systemConsumption[systemKey] > 0) {
-                totalConsumption += stats.systemConsumption[systemKey];
-            }
-        }
-        if (stats.systemConsumption.base > 0) totalConsumption += stats.systemConsumption.base;
-        if (ship.id === 'player' && state.redAlert) totalConsumption += 20;
-        if (ship.evasive) totalConsumption += 10;
-        if (ship.pointDefenseEnabled) totalConsumption += 15;
-        if (ship.repairTarget) totalConsumption += 5;
-
-        const netChange = generatedFromEngines - totalConsumption;
-        ship.energy.current += netChange;
-
-        // 5. Shield Regeneration
-        if (ship.shields < ship.maxShields && ship.subsystems.shields.health > 0 && ((ship.id === 'player' && state.redAlert) || (ship.id !== 'player'))) {
-            const regenAmount = (ship.energyAllocation.shields / 100) * (ship.maxShields * 0.1);
-            const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
-            const effectiveRegen = regenAmount * shieldEfficiency;
-            ship.shields = Math.min(ship.maxShields, ship.shields + effectiveRegen);
-        }
-
-        // 6. Cloaking Maintenance & Cooldown
-        if (ship.cloakState === 'cloaked') {
-            const baseReliability = ship.customCloakStats?.reliability ?? 0.90;
-            let currentReliability = baseReliability;
-            if(isPosInNebula(ship.position, state.currentSector)) currentReliability -= 0.25;
-            
-            const powerCost = ship.customCloakStats?.powerCost ?? 40;
-            const { success } = consumeEnergy(ship, powerCost);
-
-            if (!success || Math.random() > currentReliability) {
-                ship.cloakState = 'visible';
-                ship.cloakCooldown = 2;
-                addLog({ sourceId: ship.id, sourceName: 'Engineering', message: `Cloaking field collapsed due to power failure or instability!`, color: 'border-orange-400', isPlayerSource: ship.id === 'player' });
-            }
-        }
-        if (ship.cloakCooldown > 0) ship.cloakCooldown--;
-
-        // 7. Stun recovery
-        if (ship.isStunned) ship.isStunned = false;
-        
-        // Final energy clamp
-        ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current));
+    return [...allShips].sort((a, b) => {
+        const allegianceOrder: Record<Required<Ship>['allegiance'], number> = { player: 0, ally: 1, neutral: 2, enemy: 3 };
+        const aAllegiance = a.id === 'player' ? 'player' : a.allegiance;
+        const bAllegiance = b.id === 'player' ? 'player' : b.allegiance;
+        return allegianceOrder[aAllegiance!] - allegianceOrder[bAllegiance!];
     });
 };
 
-export const resolveTurn = (
-    gameState: GameState,
-    playerTurnActions: PlayerTurnActions,
-    navigationTarget: { x: number; y: number } | null,
-    selectedTargetId: string | null
-): { nextGameState: GameState; newNavigationTarget: { x: number; y: number } | null; newSelectedTargetId: string | null; } => {
-    const nextState: GameState = JSON.parse(JSON.stringify(gameState));
+export const generatePhasedTurn = (
+    initialState: GameState,
+    config: TurnConfig,
+): TurnStep[] => {
+    const steps: TurnStep[] = [];
+    let currentState: GameState = JSON.parse(JSON.stringify(initialState));
+    let logQueue: Omit<LogEntry, 'id' | 'turn'>[] = [];
     
-    const logQueue: Omit<LogEntry, 'id' | 'turn'>[] = [];
+    let currentNavTarget = config.navigationTarget;
+    let currentSelectedId = config.selectedTargetId;
+
     const addLog = (logData: Omit<LogEntry, 'id' | 'turn'>) => logQueue.push(logData);
 
-    const actedShipIds = new Set<string>();
-    
-    // 1. Process Player Actions
-    const { newNavigationTarget, newSelectedTargetId } = processPlayerTurn(nextState, playerTurnActions, navigationTarget, selectedTargetId, addLog);
-    actedShipIds.add('player');
+    const addStep = (delay: number) => {
+        if (steps.length === 0) {
+            currentState.turn++;
+        }
+        
+        logQueue.forEach(log => {
+            currentState.logs.push({
+                id: uniqueId(),
+                turn: currentState.turn,
+                ...log
+            });
+        });
+        logQueue = [];
 
-    // 2. Process AI Actions
-    const aiActions: AIActions = {
-        addLog,
-        applyPhaserDamage: (target: Ship, damage: number, subsystem: keyof ShipSubsystems | null, source: Ship, state: GameState) => {
-            return applyPhaserDamage(target, damage, subsystem, source, state);
-        },
-        triggerDesperationAnimation: (animation) => nextState.desperationMoveAnimations.push(animation),
+        steps.push({
+            updatedState: JSON.parse(JSON.stringify(currentState)),
+            delay: delay,
+            newNavigationTarget: currentNavTarget,
+            newSelectedTargetId: currentSelectedId,
+        });
     };
-    processAITurns(nextState, aiActions, actedShipIds);
 
-    // 3. Torpedo Movement & Resolution
-    nextState.currentSector.entities = nextState.currentSector.entities.filter(entity => {
-        if (entity.type !== 'torpedo_projectile') return true;
-        
-        const torpedo = entity as TorpedoProjectile;
-        const allShips = [nextState.player.ship, ...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-        const target = allShips.find(s => s.id === torpedo.targetId);
-        
-        if (!target || target.hull <= 0) return false; // Target destroyed or gone
+    const actions: AIActions = {
+        addLog: (log) => addLog({ ...log, isPlayerSource: false, color: log.color || 'border-gray-500' }),
+        applyPhaserDamage,
+        triggerDesperationAnimation: (animation) => {
+            currentState.desperationMoveAnimations.push(animation);
+        }
+    };
 
+    const shipsInOrder = getShipsInTurnOrder(currentState, config.mode);
+    const allShipsInSector = () => (config.mode === 'game')
+        ? [currentState.player.ship, ...currentState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
+        : currentState.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
+
+    for (const ship of shipsInOrder) {
+        let shipInState = allShipsInSector().find(s => s.id === ship.id);
+        if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict) continue;
+
+        const isPlayer = ship.id === 'player' && (config.mode === 'game' || config.mode === 'dogfight');
+
+        // --- AI/Player PRE-CALCULATION & DECISION MAKING ---
+        let stance: AIStance | 'player_actions' = 'Balanced';
+        let subsystemTarget: keyof ShipSubsystems | null = null;
+        let moveTarget: Position | null = null;
+        let phaserTargetId: string | null = null;
+        let torpedoTargetId: string | null = null;
+        let didAction = false;
+
+        if (isPlayer) {
+            stance = 'player_actions';
+            moveTarget = currentNavTarget;
+            phaserTargetId = config.playerTurnActions.phaserTargetId || null;
+            torpedoTargetId = config.playerTurnActions.torpedoTargetId || null;
+        } else {
+            const factionAI = AIDirector.getAIForFaction(shipInState.faction);
+            const potentialTargets = allShipsInSector().filter(s => {
+                if (s.id === shipInState!.id || s.hull <= 0 || s.isDerelict) return false;
+                if (shipInState!.allegiance === 'enemy') return s.allegiance === 'player' || s.allegiance === 'ally';
+                if (shipInState!.allegiance === 'ally' || shipInState!.allegiance === 'player') return s.allegiance === 'enemy';
+                return false;
+            });
+            
+            stance = factionAI.determineStance(shipInState, potentialTargets);
+            const closestTarget = findClosestTarget(shipInState, potentialTargets);
+            
+            if (stance === 'Recovery') {
+                processRecoveryTurn(shipInState, actions);
+            } else if (closestTarget) {
+                if (shipInState.repairTarget) {
+                    shipInState.repairTarget = null;
+                    // FIX: Added missing 'isPlayerSource' property to addLog call.
+                    addLog({ sourceId: ship.id, sourceName: ship.name, message: `Hostiles detected. Halting repairs to engage.`, color: ship.logColor, isPlayerSource: false });
+                }
+                subsystemTarget = factionAI.determineSubsystemTarget(shipInState, closestTarget);
+                const distance = calculateDistance(shipInState.position, closestTarget.position);
+
+                // Movement decision based on stance
+                if (stance === 'Aggressive' && distance > 2) moveTarget = closestTarget.position;
+                if (stance === 'Defensive' && distance < 6) {
+                    moveTarget = { 
+                        x: shipInState.position.x + (shipInState.position.x - closestTarget.position.x),
+                        y: shipInState.position.y + (shipInState.position.y - closestTarget.position.y)
+                    };
+                }
+                if (stance === 'Balanced' && distance > 4) moveTarget = closestTarget.position;
+
+                // Firing decision based on stance
+                if (distance <= 5 && stance !== 'Defensive') phaserTargetId = closestTarget.id;
+                if (distance <= 8 && stance === 'Aggressive' && Math.random() < 0.5) torpedoTargetId = closestTarget.id;
+            }
+        }
+        
+        // --- PHASE 1: POINT DEFENSE ---
+        _handlePointDefense(shipInState, currentState, addLog);
+        if (currentState.combatEffects.length > 0) { addStep(750); didAction = true; }
+
+        // --- PHASE 2: ENERGY/REPAIR ---
+        _handleEnergyAndRepair(shipInState, isPlayer, stance, actions);
+        addStep(0); // non-visual change
+
+        // --- PHASE 3: MOVEMENT & CLOAK ---
+        const moved = _handleMovement(shipInState, moveTarget, allShipsInSector(), addLog);
+        if (moved) {
+            addStep(750);
+            didAction = true;
+            if (isPlayer) { // Update nav target if reached
+                if (shipInState.position.x === moveTarget?.x && shipInState.position.y === moveTarget.y) {
+                    currentNavTarget = null;
+                }
+            }
+        }
+
+        // --- PHASE 4: TORPEDO ---
+        if (_handleTorpedo(shipInState, torpedoTargetId, currentState, addLog)) {
+            addStep(0); // Torpedo appears instantly
+            didAction = true;
+        }
+
+        // --- PHASE 5: PHASER ---
+        if (_handlePhaser(shipInState, phaserTargetId, subsystemTarget, currentState, actions, addLog)) {
+            addStep(750);
+            didAction = true;
+        }
+        
+        if (!didAction && !isPlayer && stance !== 'Recovery') {
+            // FIX: Added missing 'isPlayerSource' property to addLog call.
+            addLog({ sourceId: ship.id, sourceName: ship.name, message: 'Holding position.', color: ship.logColor, isPlayerSource: false });
+        }
+    }
+
+    // --- PROJECTILE MOVEMENT PHASE ---
+    _handleProjectileMovement(currentState, allShipsInSector(), addLog);
+    addStep(750);
+
+    // --- END OF TURN PHASE ---
+    _handleEndOfTurn(currentState, allShipsInSector());
+    addStep(0);
+    
+    return steps;
+};
+
+
+// Helper Functions
+function _handlePointDefense(ship: Ship, state: GameState, addLog: Function) {
+    const torpedoesInRange = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile' && e.faction !== ship.faction && calculateDistance(ship.position, e.position) <= 1) as TorpedoProjectile[];
+    if (ship.pointDefenseEnabled && ship.subsystems.pointDefense.health > 0 && torpedoesInRange.length > 0) {
+        const torpedoToTarget = torpedoesInRange.sort((a,b) => b.damage - a.damage)[0];
+        const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
+        let logMsg = `Point-defense system targets incoming ${torpedoToTarget.name}.`;
+        
+        if (Math.random() < hitChance) {
+            logMsg += ` Direct hit! The torpedo is destroyed.`;
+            state.currentSector.entities = state.currentSector.entities.filter(e => e.id !== torpedoToTarget.id);
+        } else { logMsg += ` The shot misses!`; }
+        
+        addLog({ sourceId: ship.id, sourceName: ship.name, message: logMsg, color: ship.logColor, isPlayerSource: false });
+        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: torpedoToTarget.position, faction: ship.faction, delay: 0 });
+    }
+}
+
+function _handleEnergyAndRepair(ship: Ship, isPlayer: boolean, stance: AIStance | 'player_actions', actions: AIActions) {
+    if (!isPlayer && stance !== 'player_actions') {
+        const energySettings: Record<AIStance, { w: number, s: number, e: number }> = {
+            'Aggressive': { w: 74, s: 13, e: 13 },
+            'Defensive': { w: 20, s: 60, e: 20 },
+            'Balanced': { w: 34, s: 33, e: 33 },
+            'Recovery': { w: 0, s: 0, e: 100 },
+        };
+        const targetAlloc = energySettings[stance];
+        if (ship.energyAllocation.weapons !== targetAlloc.w) {
+            ship.energyAllocation = { weapons: targetAlloc.w, shields: targetAlloc.s, engines: targetAlloc.e };
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Diverting power for a ${stance.toLowerCase()} footing.`, color: ship.logColor });
+        }
+    }
+}
+
+function _handleMovement(ship: Ship, moveTarget: Position | null, allShips: Ship[], addLog: Function): boolean {
+    const originalPosition = { ...ship.position };
+    if (moveTarget) {
+        const nextStep = moveOneStep(ship.position, moveTarget);
+        const isBlocked = allShips.some(s => s.id !== ship.id && s.position.x === nextStep.x && s.position.y === nextStep.y);
+        if (!isBlocked) {
+            ship.position = nextStep;
+        }
+    }
+    return ship.position.x !== originalPosition.x || ship.position.y !== originalPosition.y;
+}
+
+function _handleTorpedo(ship: Ship, targetId: string | null, state: GameState, addLog: Function): boolean {
+    if (!targetId || ship.torpedoes.current <= 0) return false;
+    
+    const shipStats = shipClasses[ship.shipModel][ship.shipClass];
+    if (shipStats.torpedoType === 'None') return false;
+
+    const torpedoData = torpedoStats[shipStats.torpedoType];
+    const target = state.currentSector.entities.find(e => e.id === targetId);
+    if (!target) return false;
+
+    ship.torpedoes.current--;
+    const torpedo: TorpedoProjectile = {
+        id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
+        position: { ...ship.position }, targetId, sourceId: ship.id, stepsTraveled: 0,
+        speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: state.turn, hull: 1, maxHull: 1,
+        torpedoType: shipStats.torpedoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
+    };
+    state.currentSector.entities.push(torpedo);
+    const isPlayerSource = ship.id === 'player';
+    addLog({ sourceId: ship.id, sourceName: ship.name, message: `${torpedoData.name} launched at ${target.name}.`, isPlayerSource, color: ship.logColor });
+    return true;
+}
+
+function _handlePhaser(ship: Ship, targetId: string | null, subsystem: keyof ShipSubsystems | null, state: GameState, actions: AIActions, addLog: Function): boolean {
+    if (!targetId || ship.subsystems.weapons.health <= 0) return false;
+    const target = state.currentSector.entities.find(e => e.id === targetId) as Ship | undefined;
+    if (!target) return false;
+
+    const phaserBaseDamage = 20 * ship.energyModifier;
+    const phaserPowerModifier = ship.energyAllocation.weapons / 100;
+    const pointDefenseModifier = ship.pointDefenseEnabled ? 0.6 : 1.0;
+    const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;
+
+    const combatLogs = actions.applyPhaserDamage(target, finalDamage, subsystem, ship, state);
+    state.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: 0 });
+    
+    const isPlayerSource = ship.id === 'player';
+    combatLogs.forEach(message => addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource, color: ship.logColor }));
+    return true;
+}
+
+function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function) {
+    const torpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    if (torpedoes.length === 0) return;
+
+    const entitiesToKeep = state.currentSector.entities.filter(e => e.type !== 'torpedo_projectile');
+    const newTorpedoes: TorpedoProjectile[] = [];
+
+    for (const torpedo of torpedoes) {
+        const target = allShips.find(e => e.id === torpedo.targetId);
+        if (!target || target.hull <= 0) continue;
+
+        let keepTorpedo = true;
         for (let i = 0; i < torpedo.speed; i++) {
             if (calculateDistance(torpedo.position, target.position) <= 0) {
-                 const combatLogs = applyTorpedoDamage(target, torpedo);
-                 combatLogs.forEach(log => addLog({ sourceId: torpedo.sourceId, sourceName: 'Combat Log', message: log, isPlayerSource: false, color: 'border-gray-500' }));
-                 nextState.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: 0, torpedoType: torpedo.torpedoType });
-                return false; // Torpedo is destroyed on impact
+                const damageLogs = applyTorpedoDamage(target, torpedo);
+                damageLogs.forEach(message => addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400'}));
+                state.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: i * (750 / torpedo.speed), torpedoType: torpedo.torpedoType });
+                keepTorpedo = false;
+                break;
             }
             torpedo.position = moveOneStep(torpedo.position, target.position);
             torpedo.path.push({ ...torpedo.position });
         }
-        return true; // Torpedo continues
-    });
-    
-    // 4. Process End-of-Turn Systems
-    processEndOfTurnSystems(nextState, addLog);
-    
-    // 5. Retreat Check
-    if (nextState.player.ship.retreatingTurn !== null && nextState.turn >= nextState.player.ship.retreatingTurn) {
-        addLog({ sourceId: 'player', sourceName: nextState.player.ship.name, message: 'Emergency warp engaged! We have escaped!', color: 'border-green-400', isPlayerSource: true });
-        nextState.isRetreatingWarp = true; // This will trigger the warp animation
-    }
-    
-    // 6. Clean up destroyed entities
-    nextState.currentSector.entities = nextState.currentSector.entities.filter(e => {
-        if (e.type === 'ship' || e.type === 'torpedo_projectile') {
-            return (e as Ship).hull > 0;
-        }
-        return true;
-    });
-
-    // 7. Check for Game Over
-    if (nextState.player.ship.hull <= 0) {
-        nextState.gameOver = true;
-        addLog({ sourceId: 'system', sourceName: 'SYSTEM', message: 'U.S.S. Endeavour has been destroyed. Mission failed.', color: 'border-red-600', isPlayerSource: false });
-    } else {
-        const enemyShips = nextState.currentSector.entities.filter(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
-        if (nextState.redAlert && enemyShips.length === 0) {
-            nextState.redAlert = false;
-            nextState.player.ship.shields = 0;
-            nextState.player.ship.evasive = false;
-            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: 'All hostile contacts neutralized. Standing down from Red Alert.', color: 'border-gray-500', isPlayerSource: false });
+        if (keepTorpedo) {
+            newTorpedoes.push(torpedo);
         }
     }
+    state.currentSector.entities = [...entitiesToKeep, ...newTorpedoes];
+}
 
-    // 8. Increment turn and add logs
-    nextState.turn++;
-    logQueue.forEach(log => {
-        nextState.logs.push({
-            id: uniqueId(),
-            turn: nextState.turn,
-            ...log
+function _handleEndOfTurn(state: GameState, allShips: Ship[]) {
+    allShips.forEach(ship => {
+        if (ship.hull <= 0) return;
+
+        // Repair
+        if (ship.repairTarget) {
+            const repairAmount = 5;
+            if (ship.repairTarget === 'hull') {
+                applyResourceChange(ship, 'hull', repairAmount);
+            } else {
+                applyResourceChange(ship, ship.repairTarget, repairAmount);
+            }
+        }
+        
+        // Energy Regen/Drain
+        const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
+        if (stats) {
+            const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
+            const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
+            const generated = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
+            
+            let consumption = stats.systemConsumption.base;
+            for (const key in ship.subsystems) {
+                const systemKey = key as keyof ShipSubsystems;
+                if (ship.subsystems[systemKey].health > 0) consumption += stats.systemConsumption[systemKey];
+            }
+            if(ship.shields > 0) consumption += 20;
+            if(ship.evasive) consumption += 10;
+            if(ship.pointDefenseEnabled) consumption += 15;
+            if(ship.repairTarget) consumption += 5;
+
+            const netChange = generated - consumption;
+            ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
+        }
+
+        // Status Effects
+        ship.statusEffects = ship.statusEffects.filter(effect => {
+            if (effect.type === 'plasma_burn') {
+                ship.hull = Math.max(0, ship.hull - effect.damage);
+                effect.turnsRemaining--;
+            }
+            return effect.turnsRemaining > 0;
         });
     });
-
-    if (nextState.logs.length > 200) {
-        nextState.logs = nextState.logs.slice(nextState.logs.length - 200);
-    }
-
-    return {
-        nextGameState: nextState,
-        newNavigationTarget,
-        newSelectedTargetId,
-    };
-};
+}

@@ -4,7 +4,7 @@ import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, Player
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { createInitialGameState } from '../game/state/initialization';
-import { resolveTurn } from '../game/turn/turnManager';
+import { generatePhasedTurn, TurnStep } from '../game/turn/turnManager';
 import { seededRandom, cyrb53 } from '../game/utils/helpers';
 import { canTargetEntity, consumeEnergy } from '../game/utils/combat';
 import { OfficerAdvice, ActiveAwayMissionOption, Planet } from '../types';
@@ -75,7 +75,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                         if ((savedState.player.ship.repairTarget as unknown) === 'scanners') {
                             savedState.player.ship.repairTarget = 'pointDefense';
                         }
-                        if ((savedState.player.targeting?.subsystem as unknown) === 'scanners') {
+                        if (savedState.player.targeting && (savedState.player.targeting.subsystem as unknown) === 'scanners') {
                             savedState.player.targeting.subsystem = 'pointDefense';
                         }
 
@@ -204,7 +204,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     useEffect(() => {
         if (gameState.combatEffects.length > 0) {
             const maxDelay = Math.max(0, ...gameState.combatEffects.map(e => e.delay));
-            const totalAnimationTime = maxDelay + 1000;
+            const totalAnimationTime = maxDelay + 750; // Phaser animation is 750ms
             const timer = setTimeout(() => {
                 setGameState(prev => ({ ...prev, combatEffects: [] }));
             }, totalAnimationTime);
@@ -304,41 +304,51 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         }
     }, [addLog]);
 
-    const onEndTurn = useCallback(() => {
-        if (isTurnResolving) return;
+    const onEndTurn = useCallback(async () => {
+        if (isTurnResolving || !gameState) return;
         setIsTurnResolving(true);
-        
-        const { nextGameState, newNavigationTarget, newSelectedTargetId } = resolveTurn(
-            gameState,
+    
+        const turnConfig = {
+            mode: 'game' as const,
             playerTurnActions,
             navigationTarget,
             selectedTargetId
-        );
-        
-        // Create a snapshot of the current state *without* the history to avoid exponential growth.
-        const stateSnapshot = { ...nextGameState };
+        };
+    
+        const turnSteps: TurnStep[] = generatePhasedTurn(gameState, turnConfig);
+    
+        // Snapshot of the state *before* any turn steps are processed for history
+        const stateSnapshot = { ...gameState };
         delete stateSnapshot.replayHistory;
-
-        // Get the current history, or start a new one, and push a deep copy of the snapshot.
-        const history = [...(nextGameState.replayHistory || [])];
-        history.push(JSON.parse(JSON.stringify(stateSnapshot))); 
-
-        // Trim the history if it's too long.
+        const history = [...(gameState.replayHistory || [])];
+        history.push(JSON.parse(JSON.stringify(stateSnapshot)));
         if (history.length > 100) {
-            history.shift(); 
+            history.shift();
         }
         
-        // Assign the new, clean history back to the main game state.
-        nextGameState.replayHistory = history;
+        // The first step should have the updated history
+        if(turnSteps.length > 0) {
+            turnSteps[0].updatedState.replayHistory = history;
+        }
 
-        setGameState(nextGameState);
-        setNavigationTarget(newNavigationTarget);
-        setSelectedTargetId(newSelectedTargetId);
-
-        setTimeout(() => {
-            setPlayerTurnActions({});
-            setIsTurnResolving(false);
-        }, 300);
+        for (const step of turnSteps) {
+            setGameState(step.updatedState);
+    
+            if (step.newNavigationTarget !== undefined) {
+                setNavigationTarget(step.newNavigationTarget);
+            }
+            if (step.newSelectedTargetId !== undefined) {
+                setSelectedTargetId(step.newSelectedTargetId);
+            }
+    
+            if (step.delay > 0) {
+                await new Promise(resolve => setTimeout(resolve, step.delay));
+            }
+        }
+    
+        setPlayerTurnActions({});
+        setIsTurnResolving(false);
+    
     }, [isTurnResolving, gameState, playerTurnActions, navigationTarget, selectedTargetId]);
     
     const onEnergyChange = useCallback((changedKey: 'weapons' | 'shields' | 'engines', value: number) => {
@@ -544,17 +554,13 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
     const onFirePhasers = useCallback((targetId: string) => {
         if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
-        setPlayerTurnActions(prev => ({ ...prev, combat: { type: 'phasers', targetId } }));
+        setPlayerTurnActions(prev => ({ ...prev, phaserTargetId: targetId }));
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Targeting ${target?.name || 'unknown'} with phasers.`, isPlayerSource: true, color: 'border-blue-400' });
     }, [addLog, gameState, playerTurnActions]);
 
     const onLaunchTorpedo = useCallback((targetId: string) => {
-        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
-        if (playerTurnActions.hasLaunchedTorpedo) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Torpedo tubes are reloading. Only one launch per turn.', isPlayerSource: true, color: 'border-blue-400' });
-            return;
-        }
+        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction || playerTurnActions.torpedoTargetId) return;
         
         const { ship } = gameState.player;
         const shipStats = shipClasses[ship.shipModel][ship.shipClass];
@@ -578,45 +584,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             return;
         }
     
-        setPlayerTurnActions(prev => ({ ...prev, hasLaunchedTorpedo: true }));
+        setPlayerTurnActions(prev => ({ ...prev, torpedoTargetId: targetId }));
+        addLog({ sourceId: 'player', sourceName: ship.name, message: `Acquiring torpedo lock on ${target?.name}.`, isPlayerSource: true, color: 'border-blue-400' });
     
-        setGameState(prev => {
-            const next: GameState = JSON.parse(JSON.stringify(prev));
-            const shipInNext = next.player.ship;
-            const targetInNext = next.currentSector.entities.find(e => e.id === targetId);
-    
-            // FIX: Re-evaluate ship stats inside the state updater to ensure type safety and use current data.
-            const currentShipStats = shipClasses[shipInNext.shipModel][shipInNext.shipClass];
-            if (currentShipStats.torpedoType === 'None') {
-                // This should be caught by the outside check, but this ensures type safety.
-                return prev;
-            }
-            const currentTorpedoData = torpedoStats[currentShipStats.torpedoType];
-
-            shipInNext.torpedoes.current--;
-            const torpedo: TorpedoProjectile = {
-                id: `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`,
-                name: currentTorpedoData.name,
-                type: 'torpedo_projectile',
-                faction: 'Federation',
-                position: { ...shipInNext.position },
-                targetId,
-                sourceId: shipInNext.id,
-                stepsTraveled: 0,
-                speed: currentTorpedoData.speed,
-                path: [{ ...shipInNext.position }],
-                scanned: true,
-                turnLaunched: next.turn,
-                hull: 1,
-                maxHull: 1,
-                torpedoType: currentShipStats.torpedoType,
-                damage: currentTorpedoData.damage,
-                specialDamage: currentTorpedoData.specialDamage,
-            };
-            next.currentSector.entities.push(torpedo);
-            addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `${currentTorpedoData.name} launched at ${targetInNext?.name}.`, isPlayerSource: true, color: 'border-blue-400' });
-            return next;
-        });
     }, [addLog, playerTurnActions, gameState]);
 
     const onScanTarget = useCallback(() => {

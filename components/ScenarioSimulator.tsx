@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity } from '../types';
@@ -136,7 +137,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         gameState, selectedTargetId, navigationTarget, playerTurnActions, isTurnResolving, desperationMoveAnimation,
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onSelectTarget, onSetNavigationTarget,
         onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity,
-        isRunning, togglePause, endSimulation, setGameState, setLogs, onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert
+        isRunning, togglePause, endSimulation, setGameState,
+        onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert
     } = useScenarioLogic(setupState.ships, setupState.sector, mode);
 
     const handleCellClick = useCallback((pos: { x: number; y: number }) => {
@@ -180,7 +182,6 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     const resetToSetup = () => {
         endSimulation();
-        setLogs([]);
         setGameState(null);
         setMode('setup');
     };
@@ -316,8 +317,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             </header>
             <main className="flex-grow grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 min-h-0">
                 {mode === 'dogfight' && playerShip ? (
-                     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 min-h-0 md:col-span-2">
-                        <div className="flex flex-col gap-4 min-h-0">
+                     <>
+                        <div className="grid grid-rows-[1fr_auto] gap-4 min-h-0">
                              <div className="relative flex-grow flex justify-center items-center min-h-0">
                                 <div className="w-full h-full aspect-[11/10] relative">
                                     <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
@@ -346,7 +347,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 orbitingPlanetId={null} onToggleCloak={onToggleCloak}
                             />
                         </div>
-                        <aside className="flex flex-col gap-2 min-h-0">
+                        <aside className="w-80 flex flex-col gap-2 min-h-0">
                             <div className="flex-grow min-h-0 flex flex-col gap-2">
                                 <div className="basis-1/2 flex-shrink min-h-0">
                                     <ShipStatus
@@ -370,7 +371,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 </div>
                             )}
                         </aside>
-                    </div>
+                    </>
                 ) : ( // Spectate mode
                     <>
                         <div className="flex flex-col gap-4 min-h-0">

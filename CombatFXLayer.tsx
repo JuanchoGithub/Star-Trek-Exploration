@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CombatEffect, Entity, Ship, TorpedoType } from '../types';
+import type { CombatEffect, Entity, TorpedoType } from '../types';
 
 interface CombatFXLayerProps {
     effects: CombatEffect[];
@@ -60,26 +60,6 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                         const target = entityMap.get(effect.targetId);
                         if (!source || !target) return null;
 
-                        let yOffset = 0;
-                        if (source.type === 'ship') {
-                            const sourceShip = source as Ship;
-                            const allegiance = sourceShip.id === 'player' ? 'player' : sourceShip.allegiance;
-                            switch (allegiance) {
-                                case 'player':
-                                    yOffset = -5; // 5px higher
-                                    break;
-                                case 'ally':
-                                    yOffset = -3; // 3px higher
-                                    break;
-                                case 'enemy':
-                                    yOffset = 5; // 5px lower
-                                    break;
-                                case 'neutral':
-                                    yOffset = 3; // 3px lower
-                                    break;
-                            }
-                        }
-
                         const start = getPercentageCoords(source.position);
                         const end = getPercentageCoords(target.position);
                         const phaserClass = getPhaserClass(effect.faction);
@@ -88,9 +68,9 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                             <line 
                                 key={`${effect.sourceId}-${effect.targetId}-${index}`} 
                                 x1={start.x} 
-                                y1={`calc(${start.y} + ${yOffset}px)`} 
+                                y1={start.y} 
                                 x2={end.x} 
-                                y2={`calc(${end.y} + ${yOffset}px)`} 
+                                y2={end.y} 
                                 className={phaserClass}
                                 style={{ animationDelay: `${effect.delay}ms` }}
                             />

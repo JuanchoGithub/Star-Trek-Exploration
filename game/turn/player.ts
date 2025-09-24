@@ -1,25 +1,71 @@
-import type { GameState, PlayerTurnActions, Ship, ShipSubsystems } from '../../types';
+
+import type { GameState, PlayerTurnActions, Ship, ShipSubsystems, Position } from '../../types';
 import { applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep } from '../utils/ai';
 
 export const processPlayerTurn = (
     nextState: GameState,
     playerTurnActions: PlayerTurnActions,
-    navigationTarget: { x: number; y: number } | null,
+    navigationTarget: Position | null,
     selectedTargetId: string | null,
     addLog: (logData: any) => void
-): { newNavigationTarget: { x: number; y: number } | null, newSelectedTargetId: string | null } => {
+): { newNavigationTarget: Position | null, newSelectedTargetId: string | null } => {
     const { player, currentSector } = nextState;
     const { ship } = player;
+    const originalPosition = { ...ship.position };
 
     if (ship.isStunned) {
         addLog({ sourceId: 'player', sourceName: ship.name, message: 'Systems are offline! Cannot perform actions.', isPlayerSource: true, color: 'border-orange-500' });
         return { newNavigationTarget: navigationTarget, newSelectedTargetId: selectedTargetId };
     }
 
+    // Movement
+    let newNavigationTarget = navigationTarget;
+    if (navigationTarget) {
+        const moveSpeed = nextState.redAlert ? 1 : 3;
+        const allOtherShips = nextState.currentSector.entities.filter(e => e.type === 'ship' && e.id !== ship.id) as Ship[];
+
+        for (let i = 0; i < moveSpeed; i++) {
+            if (!newNavigationTarget || (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y)) {
+                if (newNavigationTarget) {
+                    // FIX: addLog call was missing properties.
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                    newNavigationTarget = null;
+                }
+                break;
+            }
+
+            const nextStep = moveOneStep(ship.position, newNavigationTarget);
+            
+            const isBlocked = allOtherShips.some(s => s.position.x === nextStep.x && s.position.y === nextStep.y);
+
+            if (isBlocked) {
+                // FIX: addLog call was missing properties.
+                addLog({ sourceId: 'player', sourceName: ship.name, message: 'Path blocked by another vessel. Halting movement for this turn.', isPlayerSource: true, color: 'border-blue-400' });
+                // Do not clear navigation target, just stop for this turn.
+                break; 
+            }
+
+            ship.position = nextStep;
+
+            // check arrival again after moving one step
+            if (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y) {
+                 // FIX: addLog call was missing properties.
+                 addLog({ sourceId: 'player', sourceName: ship.name, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                 newNavigationTarget = null;
+                 break;
+            }
+        }
+    }
+    
+    const didMove = ship.position.x !== originalPosition.x || ship.position.y !== originalPosition.y;
+    const phaserDelay = didMove ? 700 : 0;
+
     // Combat
-    if (playerTurnActions.combat) {
-        const target = currentSector.entities.find(e => e.id === playerTurnActions.combat!.targetId) as Ship | undefined;
+    // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Replaced with 'phaserTargetId'.
+    if (playerTurnActions.phaserTargetId) {
+        // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Replaced with 'phaserTargetId'.
+        const target = currentSector.entities.find(e => e.id === playerTurnActions.phaserTargetId) as Ship | undefined;
         if (target) {
             const phaserBaseDamage = 20 * ship.energyModifier;
             const phaserPowerModifier = ship.energyAllocation.weapons / 100;
@@ -27,29 +73,9 @@ export const processPlayerTurn = (
             const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;
 
             const combatLogs = applyPhaserDamage(target, finalDamage, player.targeting?.subsystem || null, ship, nextState);
-            nextState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: 0 });
+            nextState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: phaserDelay });
             combatLogs.forEach(message => addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400' }));
         }
-    }
-
-    // Movement
-    let newNavigationTarget = navigationTarget;
-    if (navigationTarget && !playerTurnActions.combat && !playerTurnActions.hasTakenMajorAction) {
-        const moveSpeed = nextState.redAlert ? 1 : 3;
-        for (let i = 0; i < moveSpeed; i++) {
-            if (!navigationTarget || (ship.position.x === navigationTarget.x && ship.position.y === navigationTarget.y)) {
-                if (navigationTarget) {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
-                    newNavigationTarget = null;
-                }
-                break;
-            }
-            ship.position = moveOneStep(ship.position, navigationTarget);
-        }
-    }
-    
-    if (newNavigationTarget && ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y) {
-        newNavigationTarget = null;
     }
 
     // Targeting

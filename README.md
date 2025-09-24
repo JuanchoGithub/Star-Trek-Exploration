@@ -604,6 +604,34 @@ The replayer interface provides a complete reconstruction of the battle:
 ---
 # Simulation Changelog
 
+## Version 1.6 - The Phased Combat & AI Overhaul
+*Release Date: Stardate 49732.5, 15:00 (September 24, 2025)*
+
+A major update focusing on a more dynamic, cinematic combat experience through a new phased turn system. This release also introduces a significantly more advanced AI, a modernized mobile UI, and a suite of enhanced visual effects.
+
+### Summary of User Directives & Field Reports
+> Analysis of previous simulation logs indicated that the turn-based combat system, while functional, lacked dynamism. All actions resolved simultaneously, leading to a static and sometimes confusing battlefield. Feedback also highlighted that AI opponents were predictable, failing to adapt their strategies to changing combat conditions.
+>
+> Furthermore, with increasing deployment on touch-enabled PADDs, the primary user interface was reported as clunky and difficult to operate on smaller screens. A full modernization was ordered to improve mobile usability. Finally, a general directive was issued to enhance the visual fidelity of combat to better represent the tactical situation.
+
+### Summary of Implemented Changes
+*   **New Phased Turn System:** Combat is now resolved in a logical, sequential order instead of all at once. The new turn manager processes actions in distinct phases (Point-Defense, Energy Management, Movement, Torpedo Launch, Phaser Fire, Projectile Movement), creating a more cinematic and easier-to-follow battle flow.
+*   **Advanced AI Doctrine Overhaul:**
+    *   AI ships now operate under a dynamic 'Stance' system (Aggressive, Defensive, Balanced, Recovery), intelligently reallocating power and choosing actions based on their current situation and factional doctrine.
+    *   Hostile AI will now strategically target specific ship subsystems to exploit weaknesses, such as Klingons targeting weapons or Romulans targeting engines.
+    *   AI vessels now manage energy and repair critical systems when out of combat, ensuring they are better prepared for subsequent encounters.
+*   **Tactical Viewscreen Enhancements:**
+    *   Entity rendering has been upgraded to use dynamic pixel-based positioning, resulting in smooth, animated movement on the tactical grid.
+    *   Nebula cells are now rendered with subtle animations, creating a more vibrant and atmospheric battlefield.
+    *   Torpedoes now leave a visible trail, making their paths and trajectories clear at a glance.
+*   **Modernized Mobile UI/UX:**
+    *   For touch-enabled devices, the main sidebar has been replaced with a floating "Systems" button that opens an intuitive, full-height slide-out overlay panel.
+    *   The "Sector View" and "Quadrant Map" buttons have been redesigned into a clean, vertical stack to the left of the viewscreen, improving ergonomics and screen real estate.
+*   **Enhanced Combat Visual Effects:**
+    *   Phaser beam animations are now multi-stage, featuring a distinct draw, hold, and fade phase for a more impactful feel.
+    *   New shield and hull impact animations provide clear visual feedback for where damage is being dealt.
+    *   Point-defense lasers now render as a visible defensive beam, showing their interception attempts.
+
 ## Version 1.5.2 - AI Resource Management & UI Polish
 *Release Date: Stardate 49728.1, 20:00 (September 23, 2025)*
 

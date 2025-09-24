@@ -95,6 +95,8 @@ export const applyPhaserDamage = (
         return logs;
     }
     
+    const hitType: 'shield' | 'hull' = target.shields > 0 ? 'shield' : 'hull';
+
     const phaserEfficiency = sourceShip.subsystems.weapons.health / sourceShip.subsystems.weapons.maxHealth;
     const baseDamage = damage * phaserEfficiency;
     if (phaserEfficiency < 1.0) {
@@ -203,6 +205,15 @@ export const applyPhaserDamage = (
     } else {
          logs.push(`--> Shields absorbed the entire hit.`);
     }
+
+    const PHASER_BEAM_DRAW_TIME = 150; // 20% of 750ms animation
+    gameState.combatEffects.push({
+        type: 'phaser_impact',
+        position: { ...target.position },
+        delay: PHASER_BEAM_DRAW_TIME,
+        hitType: hitType,
+    });
+
     return logs;
 };
 

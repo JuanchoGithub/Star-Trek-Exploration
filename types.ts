@@ -233,11 +233,8 @@ export interface ActiveHail {
 }
 
 export interface PlayerTurnActions {
-    combat?: {
-        type: 'phasers';
-        targetId: string;
-    };
-    hasLaunchedTorpedo?: boolean;
+    phaserTargetId?: string;
+    torpedoTargetId?: string;
     hasUsedAwayTeam?: boolean;
     hasTakenMajorAction?: boolean;
 }
@@ -278,9 +275,14 @@ export type CombatEffect = {
 } | {
     type: 'point_defense';
     sourceId: string;
-    targetId: string;
+    targetPosition: Position;
     faction: string;
     delay: number;
+} | {
+    type: 'phaser_impact';
+    position: Position;
+    delay: number;
+    hitType: 'shield' | 'hull';
 };
 
 export interface LogEntry {

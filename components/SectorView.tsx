@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
@@ -53,20 +55,46 @@ const getPath = (start: { x: number; y: number }, end: { x: number; y: number } 
   return path;
 };
 
-const getPercentageCoords = (gridPos: { x: number; y: number }, sectorSize: {width: number, height: number}) => {
-    const x = (gridPos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2);
-    const y = (gridPos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2);
-    return { x: `${x}%`, y: `${y}%` };
+const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
+    if (containerSize.width === 0 || containerSize.height === 0) {
+        return { x: 0, y: 0 };
+    }
+    const cellWidth = containerSize.width / sectorSize.width;
+    const cellHeight = containerSize.height / sectorSize.height;
+
+    const x = gridPos.x * cellWidth + cellWidth / 2;
+    const y = gridPos.y * cellHeight + cellHeight / 2;
+    return { x, y };
 };
+
 
 const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false }) => {
   const sectorSize = { width: 11, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  const allEntities = [
+  useEffect(() => {
+    const updateSize = () => {
+        if (containerRef.current) {
+            setContainerSize({
+                width: containerRef.current.offsetWidth,
+                height: containerRef.current.offsetHeight,
+            });
+        }
+    };
+    updateSize();
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+    }
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const allEntities = useMemo(() => [
       ...entities, 
       ...(playerShip ? [{...playerShip, type: 'ship' as const}] : [])
-  ];
+  ], [entities, playerShip]);
 
   const computerHealthPercent = playerShip ? (playerShip.subsystems.computer.health / playerShip.subsystems.computer.maxHealth) * 100 : 100;
   const isNavDisabled = computerHealthPercent < 100;
@@ -77,30 +105,26 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
         return;
     }
 
-    const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y && e.id !== playerShip?.id);
-
     if (spectatorMode) {
+        const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y);
         if (entityAtPos) {
-            // Toggle selection: if clicking the same entity, deselect. Otherwise, select.
             onSelectTarget(selectedTargetId === entityAtPos.id ? null : entityAtPos.id);
         } else {
-            // Clicking empty space deselects.
             onSelectTarget(null);
         }
         return;
     }
 
-    // Cancel navigation if clicking the currently set target
     if (navigationTarget && navigationTarget.x === x && navigationTarget.y === y) {
         onSetNavigationTarget(null);
         return;
     }
 
-    // If the cell is empty or contains an asteroid field, treat it as a navigation target
+    const entityAtPos = allEntities.find(e => e.position.x === x && e.position.y === y);
+
     if ((!entityAtPos || entityAtPos.type === 'asteroid_field') && !isNavDisabled) {
         onSetNavigationTarget({ x, y });
-    } else if (entityAtPos && entityAtPos.type !== 'event_beacon') {
-        // If it contains another interactable entity (ship, planet), select it for targeting/info
+    } else if (entityAtPos && entityAtPos.id !== playerShip?.id && entityAtPos.type !== 'event_beacon') {
         onSelectTarget(entityAtPos.id);
     }
   };
@@ -111,46 +135,54 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
       if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
       return canPlayerSeeEntity(entity, playerShip, sector);
   }) : allEntities;
+  
+  const occupiedPositions = useMemo(() => 
+    new Set(
+      allEntities
+        .filter(e => e.type !== 'asteroid_field' && e.type !== 'torpedo_projectile')
+        .map(e => `${e.position.x},${e.position.y}`)
+    )
+  , [allEntities]);
 
 
   return (
-    <div className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
+    <div ref={containerRef} className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
       
-      {/* Background grid for borders and click handlers */}
       <div className="grid grid-cols-11 grid-rows-10 h-full gap-0 relative z-0">
         {gridCells.map((_, index) => {
           const x = index % sectorSize.width;
           const y = Math.floor(index / sectorSize.width);
+          const isOccupied = occupiedPositions.has(`${x},${y}`);
+          const canNavigateTo = !isOccupied && !isNavDisabled && !spectatorMode;
+
           return (
             <div
               key={`cell-${x}-${y}`}
-              className={`border border-border-dark border-opacity-50 ${!isNavDisabled ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-not-allowed'}`}
+              className={`border border-border-dark border-opacity-50 ${canNavigateTo ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-default'}`}
               onClick={() => handleGridInteraction(x, y)}
-              title={isNavDisabled ? "Navigation computer is damaged" : ""}
+              title={isNavDisabled ? "Navigation computer is damaged" : isOccupied ? "Cell is occupied" : ""}
             />
           );
         })}
       </div>
 
-      {/* Absolutely positioned layer for nebula effects */}
       <div className="absolute inset-0 z-10 pointer-events-none">
         {sector.nebulaCells.map(pos => {
           const isDeep = isDeepNebula(pos, sector);
-          const topPercent = (pos.y / sectorSize.height) * 100;
-          const leftPercent = (pos.x / sectorSize.width) * 100;
-          const widthPercent = 100 / sectorSize.width;
-          const heightPercent = 100 / sectorSize.height;
+          const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
+          const cellWidth = containerSize.width / sectorSize.width;
+          const cellHeight = containerSize.height / sectorSize.height;
 
           return (
             <div
               key={`nebula-${pos.x}-${pos.y}`}
               className="absolute"
               style={{
-                top: `${topPercent}%`,
-                left: `${leftPercent}%`,
-                width: `${widthPercent}%`,
-                height: `${heightPercent}%`,
+                top: `${y - cellHeight / 2}px`,
+                left: `${x - cellWidth / 2}px`,
+                width: `${cellWidth}px`,
+                height: `${cellHeight}px`,
               }}
             >
               <div className="nebula-cell" />
@@ -160,227 +192,225 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
         })}
       </div>
 
-       <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-20 overflow-visible">
-          {(() => {
-              if (!selectedTargetId) return null;
-              const selectedEntity = allEntities.find(e => e.id === selectedTargetId);
-              if (!selectedEntity || selectedEntity.type !== 'torpedo_projectile') return null;
-              
-              const torpedo = selectedEntity as TorpedoProjectile;
-              const target = allEntities.find(e => e.id === torpedo.targetId);
-              if (!target) return null;
+      {containerSize.width > 0 && (
+        <>
+            {navigationTarget && (
+                <>
+                {path.map((pos, i) => {
+                    const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
+                    return (
+                        <div key={`path-${i}`}
+                            className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
+                            style={{
+                                left: `${x}px`,
+                                top: `${y}px`,
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 20
+                            }}
+                        />
+                    )
+                })}
+                {(() => {
+                    const { x, y } = getPixelCoords(navigationTarget, sectorSize, containerSize);
+                    return (
+                        <div
+                            className="absolute flex items-center justify-center text-accent-yellow cursor-pointer"
+                            style={{
+                                left: `${x}px`,
+                                top: `${y}px`,
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 20
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSetNavigationTarget(null);
+                            }}
+                            title="Cancel Navigation"
+                        >
+                            <NavigationTargetIcon className="w-8 h-8 animate-pulse" />
+                        </div>
+                    );
+                })()}
+                </>
+            )}
 
-              const start = getPercentageCoords(torpedo.position, sectorSize);
-              const end = getPercentageCoords(target.position, sectorSize);
-              
-              return <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="var(--color-accent-yellow)" strokeWidth="1" strokeDasharray="4 4" />;
-          })()}
-      </svg>
+            {visibleEntities.map((entity) => {
+                const { x: pixelX, y: pixelY } = getPixelCoords(entity.position, sectorSize, containerSize);
+                let transformValue = `translate3d(${pixelX}px, ${pixelY}px, 0) translate3d(-50%, -50%, 0)`;
 
-      {navigationTarget && (
-          <>
-          {path.map((pos, i) => (
-              <div key={`path-${i}`}
-                  className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
-                  style={{
-                      left: `${(pos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
-                      top: `${(pos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 20
-                  }}
-              />
-          ))}
-          <div
-              className="absolute flex items-center justify-center text-accent-yellow cursor-pointer"
-              style={{
-                  left: `${(navigationTarget.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
-                  top: `${(navigationTarget.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 20
-              }}
-              onClick={(e) => {
-                  e.stopPropagation();
-                  onSetNavigationTarget(null);
-              }}
-              title="Cancel Navigation"
-          >
-              <NavigationTargetIcon className="w-8 h-8 animate-pulse" />
-          </div>
-          </>
-      )}
+                const style: React.CSSProperties = {
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    transform: transformValue,
+                    transition: 'transform 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
+                };
 
-      {visibleEntities.map((entity) => {
-          const isSelected = entity.id === selectedTargetId;
-          const isPlayer = playerShip && entity.id === playerShip.id;
+                const isSelected = entity.id === selectedTargetId;
+                const isPlayer = playerShip && entity.id === playerShip.id;
 
-          let icon: React.ReactNode;
-          let factionColor = 'text-gray-400';
-          let entityName = entity.name;
-          let transformStyle = { transform: `translate(-50%, -50%)` };
-          
-          let wrapperClass = 'transition-opacity duration-500';
-          if (entity.type === 'ship') {
-              const ship = entity as Ship;
-              if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
-                  wrapperClass += ' opacity-50';
-              }
-              if (ship.isDerelict) {
-                  wrapperClass += ' opacity-60 grayscale';
-                  entityName = `${entity.name} (Derelict)`;
-              }
-          }
-
-          if (entity.type === 'torpedo_projectile') {
-               const torpedo = entity as TorpedoProjectile;
-               const target = allEntities.find(e => e.id === torpedo.targetId);
-               if (target) {
-                  const angle = Math.atan2(target.position.y - entity.position.y, target.position.x - entity.position.x) * 180 / Math.PI;
-                  transformStyle = { transform: `translate(-50%, -50%) rotate(${angle}deg)` };
-               }
-               
-               const torpedoConfig = torpedoStats[torpedo.torpedoType];
-               const TorpedoIcon = torpedoConfig.icon;
-
-               return (
-                  <React.Fragment key={torpedo.id}>
-                      {torpedo.path.map((pos, i) => (
-                          <div key={`trail-${torpedo.id}-${i}`}
-                              className="absolute w-1.5 h-1.5 torpedo-trail-dot"
-                              style={{
-                                  opacity: 0.1 + (i / torpedo.path.length) * 0.5,
-                                  left: `${(pos.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`,
-                                  top: `${(pos.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
-                                  transform: 'translate(-50%, -50%)',
-                                  zIndex: 25
-                              }}
-                          />
-                      ))}
-                      <div
-                          className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''}`}
-                          style={{ 
-                              left: `${(torpedo.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, 
-                              top: `${(torpedo.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
-                              ...transformStyle 
-                          }}
-                           onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
-                      >
-                          <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass}`} />
-                      </div>
-                  </React.Fragment>
-               );
-          }
-          if (entity.type === 'ship') {
-              const shipEntity = entity as Ship;
-              
-              if (!shipEntity.scanned && !isPlayer) {
-                  const config = shipVisuals.Unknown.classes['Unknown']!;
-                  const IconComponent = config.icon;
-                  icon = <IconComponent className="w-8 h-8"/>;
-                  factionColor = config.colorClass;
-                  entityName = 'Unknown Contact';
-              } else {
-                  const visualConfig = shipVisuals[shipEntity.shipModel];
-                  const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
-                  const IconComponent = classConfig.icon;
-                  icon = <IconComponent className="w-8 h-8"/>;
-                  
-                  if (shipEntity.allegiance) {
-                    switch(shipEntity.allegiance) {
-                        case 'player': factionColor = 'text-green-400'; break;
-                        case 'ally': factionColor = 'text-sky-400'; break;
-                        case 'enemy': factionColor = 'text-red-500'; break;
-                        case 'neutral': factionColor = 'text-yellow-400'; break;
-                        default: factionColor = 'text-gray-400';
+                let icon: React.ReactNode;
+                let factionColor = 'text-gray-400';
+                let entityName = entity.name;
+                
+                if (entity.type === 'ship') {
+                    const ship = entity as Ship;
+                    if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+                        style.opacity = 0.5;
                     }
-                  } else {
-                      if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
-                          factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
-                      } else {
-                          factionColor = classConfig.colorClass;
-                      }
-                  }
-              }
+                    if (ship.isDerelict) {
+                        style.opacity = 0.6;
+                        style.filter = 'grayscale(1)';
+                        entityName = `${entity.name} (Derelict)`;
+                    }
+                }
+                
+                if (entity.type === 'torpedo_projectile') {
+                    const torpedo = entity as TorpedoProjectile;
+                    const target = allEntities.find(e => e.id === torpedo.targetId);
+                    if (target) {
+                        const angle = Math.atan2(target.position.y - entity.position.y, target.position.x - entity.position.x) * 180 / Math.PI;
+                        style.transform += ` rotate(${angle}deg)`;
+                    }
+                    
+                    const torpedoConfig = torpedoStats[torpedo.torpedoType];
+                    const TorpedoIcon = torpedoConfig.icon;
 
-          } else if (entity.type === 'shuttle') {
-              icon = <FederationShuttleIcon className="w-6 h-6" />;
-              factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
-          } else if (entity.type === 'starbase') {
-              const starbase = entity as Starbase;
-              const config = starbaseTypes[starbase.starbaseType];
-              const IconComponent = config.icon;
-              icon = <IconComponent className="w-12 h-12" />;
-              factionColor = config.colorClass;
-          } else if (entity.type === 'asteroid_field') {
-              const iconIndex = cyrb53(entity.id, 1) % asteroidIcons.length;
-              const IconComponent = asteroidIcons[iconIndex];
-              icon = <IconComponent className="w-12 h-12" />;
-              factionColor = asteroidType.colorClass;
-          } else if (entity.type === 'event_beacon') {
-              const IconComponent = beaconType.icon;
-              if (entity.isResolved) {
-                  icon = <IconComponent className="w-8 h-8 text-text-disabled" />;
-                  factionColor = 'text-text-disabled';
-              } else {
-                  icon = <IconComponent className="w-8 h-8 animate-pulse" />;
-                  factionColor = beaconType.colorClass;
-              }
-          } else { // Planet
-              const planet = entity as Planet;
-              const planetConfig = planetTypes[planet.planetClass];
-              if (planetConfig) {
-                  const IconComponent = planetConfig.icon;
-                  icon = <IconComponent className={`w-10 h-10 ${planetConfig.colorClass}`} />;
-              } else {
-                  const FallbackIcon = planetTypes['M'].icon;
-                  icon = <FallbackIcon className={`w-10 h-10 ${planetTypes['M'].colorClass}`} />;
-              }
-          }
-          
-          return (
-              <div
-                  key={entity.id}
-                  className={`absolute flex flex-col items-center justify-center transition-all duration-300 z-30 cursor-pointer ${wrapperClass}`}
-                  style={{ 
-                      left: `${(entity.position.x / sectorSize.width) * 100 + (100 / sectorSize.width / 2)}%`, 
-                      top: `${(entity.position.y / sectorSize.height) * 100 + (100 / sectorSize.height / 2)}%`,
-                      ...transformStyle
-                  }}
-                  onClick={(e) => {
-                       e.stopPropagation();
-                       if (isPlayer) {
-                           if(navigationTarget) onSetNavigationTarget(null);
-                           return;
-                       }
-                       // All entity clicks are now routed through the main handler
-                       handleGridInteraction(entity.position.x, entity.position.y);
-                  }}
-              >
-                  <div className={`relative ${factionColor}`}>
-                      {icon}
-                      {isSelected && (
-                          <>
-                              {themeName === 'federation' ? (
-                                  <LcarsTargetingReticle />
-                              ) : themeName === 'klingon' ? (
-                                  <KlingonTargetingReticle />
-                              ) : themeName === 'romulan' ? (
-                                  <RomulanTargetingReticle />
-                              ) : (
-                                  <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
-                              )}
-                          </>
-                      )}
-                      <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
-                  </div>
-                  {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
-                  {entity.type === 'ship' && (
-                      <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
-                          <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
-                      </div>
-                  )}
-              </div>
-          );
-      })}
+                    return (
+                        <React.Fragment key={torpedo.id}>
+                            {torpedo.path.map((pos, i) => {
+                                const {x, y} = getPixelCoords(pos, sectorSize, containerSize);
+                                return (
+                                <div key={`trail-${torpedo.id}-${i}`}
+                                    className="absolute w-1.5 h-1.5 torpedo-trail-dot"
+                                    style={{
+                                        opacity: 0.1 + (i / torpedo.path.length) * 0.5,
+                                        left: `${x}px`,
+                                        top: `${y}px`,
+                                        transform: 'translate(-50%, -50%)',
+                                        zIndex: 25
+                                    }}
+                                />
+                            )})}
+                            <div
+                                className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''}`}
+                                style={style}
+                                onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
+                            >
+                                <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass}`} />
+                            </div>
+                        </React.Fragment>
+                    );
+                }
+                if (entity.type === 'ship') {
+                    const shipEntity = entity as Ship;
+                    
+                    if (!shipEntity.scanned && !isPlayer) {
+                        const config = shipVisuals.Unknown.classes['Unknown']!;
+                        const IconComponent = config.icon;
+                        icon = <IconComponent className="w-8 h-8"/>;
+                        factionColor = config.colorClass;
+                        entityName = 'Unknown Contact';
+                    } else {
+                        const visualConfig = shipVisuals[shipEntity.shipModel];
+                        const classConfig = visualConfig?.classes[shipEntity.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+                        const IconComponent = classConfig.icon;
+                        icon = <IconComponent className="w-8 h-8"/>;
+                        
+                        if (shipEntity.allegiance) {
+                            switch(shipEntity.allegiance) {
+                                case 'player': factionColor = 'text-green-400'; break;
+                                case 'ally': factionColor = 'text-sky-400'; break;
+                                case 'enemy': factionColor = 'text-red-500'; break;
+                                case 'neutral': factionColor = 'text-yellow-400'; break;
+                                default: factionColor = 'text-gray-400';
+                            }
+                        } else {
+                            if (shipEntity.faction === 'Federation' && shipEntity.shipModel !== 'Federation') {
+                                factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
+                            } else {
+                                factionColor = classConfig.colorClass;
+                            }
+                        }
+                    }
+
+                } else if (entity.type === 'shuttle') {
+                    icon = <FederationShuttleIcon className="w-6 h-6" />;
+                    factionColor = shipVisuals.Federation.classes['Sovereign-class']!.colorClass;
+                } else if (entity.type === 'starbase') {
+                    const starbase = entity as Starbase;
+                    const config = starbaseTypes[starbase.starbaseType];
+                    const IconComponent = config.icon;
+                    icon = <IconComponent className="w-12 h-12" />;
+                    factionColor = config.colorClass;
+                } else if (entity.type === 'asteroid_field') {
+                    const iconIndex = cyrb53(entity.id, 1) % asteroidIcons.length;
+                    const IconComponent = asteroidIcons[iconIndex];
+                    icon = <IconComponent className="w-12 h-12" />;
+                    factionColor = asteroidType.colorClass;
+                } else if (entity.type === 'event_beacon') {
+                    const IconComponent = beaconType.icon;
+                    if (entity.isResolved) {
+                        icon = <IconComponent className="w-8 h-8 text-text-disabled" />;
+                        factionColor = 'text-text-disabled';
+                    } else {
+                        icon = <IconComponent className="w-8 h-8 animate-pulse" />;
+                        factionColor = beaconType.colorClass;
+                    }
+                } else { // Planet
+                    const planet = entity as Planet;
+                    const planetConfig = planetTypes[planet.planetClass];
+                    if (planetConfig) {
+                        const IconComponent = planetConfig.icon;
+                        icon = <IconComponent className={`w-10 h-10 ${planetConfig.colorClass}`} />;
+                    } else {
+                        const FallbackIcon = planetTypes['M'].icon;
+                        icon = <FallbackIcon className={`w-10 h-10 ${planetTypes['M'].colorClass}`} />;
+                    }
+                }
+                
+                return (
+                    <div
+                        key={entity.id}
+                        className="absolute flex flex-col items-center justify-center z-30 cursor-pointer"
+                        style={style}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isPlayer) {
+                                if(navigationTarget) onSetNavigationTarget(null);
+                                return;
+                            }
+                            handleGridInteraction(entity.position.x, entity.position.y);
+                        }}
+                    >
+                        <div className={`relative ${factionColor}`}>
+                            {icon}
+                            {isSelected && (
+                                <>
+                                    {themeName === 'federation' ? (
+                                        <LcarsTargetingReticle />
+                                    ) : themeName === 'klingon' ? (
+                                        <KlingonTargetingReticle />
+                                    ) : themeName === 'romulan' ? (
+                                        <RomulanTargetingReticle />
+                                    ) : (
+                                        <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
+                                    )}
+                                </>
+                            )}
+                            <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
+                        </div>
+                        {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
+                        {entity.type === 'ship' && (
+                            <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
+                                <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </>
+      )}
     </div>
   );
 };

@@ -57,13 +57,19 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     if (playerShip.isStunned) return "Systems Stunned";
     if (isTurnResolving) return "Resolving...";
     if (isRetreating && turnsToRetreat === 0) return "Engage Emergency Warp";
-    if (playerTurnActions.combat) return "End Turn & Fire";
-    if (navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y)) {
-      if (playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
+    
+    const isMoving = navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y);
+    // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Changed to check for phaser or torpedo targets.
+    const isFiring = !!playerTurnActions.phaserTargetId || !!playerTurnActions.torpedoTargetId;
+
+    if (isMoving && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
         return "Engines Offline";
-      }
-      return "End Turn & Move";
     }
+
+    if (isFiring && isMoving) return "End Turn & Move & Fire";
+    if (isFiring) return "End Turn & Fire";
+    if (isMoving) return "End Turn & Move";
+
     return "End Turn";
   }
   
@@ -121,7 +127,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                 <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked || !targetingCheck.canTarget} accentColor="red" title={cannotTargetReason}>
                     <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
                 </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || playerTurnActions.hasLaunchedTorpedo || !targetingCheck.canTarget} accentColor="sky" title={cannotTargetReason}>
+                {/* FIX: Property 'hasLaunchedTorpedo' does not exist on type 'PlayerTurnActions'. Replaced with a check for 'torpedoTargetId'. */}
+                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || isCloaked || !!playerTurnActions.torpedoTargetId || !targetingCheck.canTarget} accentColor="sky" title={cannotTargetReason}>
                     <TorpedoIcon className="w-5 h-5" />
                     Torpedo
                 </CommandButton>

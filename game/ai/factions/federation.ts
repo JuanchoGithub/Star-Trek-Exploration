@@ -1,7 +1,6 @@
 import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
-// FIX: Corrected import path for shipRoleStats.
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { processCommonTurn, processRecoveryTurn } from './common';
 
@@ -35,8 +34,8 @@ export class FederationAI extends FactionAI {
     }
 
     processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        // If allegiance is 'enemy', behave like a hostile combatant.
-        if (ship.allegiance === 'enemy') {
+        // If there are potential targets, engage in combat logic.
+        if (potentialTargets.length > 0) {
             const stance = this.determineStance(ship, potentialTargets);
 
             if (stance === 'Recovery') {
