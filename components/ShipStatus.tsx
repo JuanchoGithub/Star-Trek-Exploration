@@ -1,6 +1,5 @@
-
 import React, { useRef } from 'react';
-import type { GameState, ShipSubsystems } from '../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import EnergyAllocator from './EnergyAllocator';
@@ -48,11 +47,18 @@ const TacticalButton: React.FC<{
     </button>
 );
 
+const ReadOnlyStatusIndicator: React.FC<{ label: string; status: string; colorClass: string; }> = ({ label, status, colorClass }) => (
+    <div className="flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded">
+        <span className="font-bold text-text-secondary uppercase tracking-wider pl-1">{label}</span>
+        <span className={`font-bold px-2 py-0.5 rounded ${colorClass}`}>{status}</span>
+    </div>
+);
+
 
 const ShipStatus: React.FC<ShipStatusProps> = ({ 
     gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName 
 }) => {
-  const { player, redAlert } = gameState;
+  const { player, redAlert, currentSector } = gameState;
   const { ship } = player;
   const { TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
   
@@ -79,6 +85,18 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
         FAILING ({Math.max(0, 2 - (gameState.turn - ship.lifeSupportFailureTurn))})
     </span>
   ) : null;
+
+    const allEntities = [...currentSector.entities, ship];
+    const allShips = allEntities.filter(e => e.type === 'ship') as Ship[];
+    const torpedoes = allEntities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+
+    const shipsTargetingMe = allShips.filter(s => s.currentTargetId === ship.id);
+    const incomingTorpedoes = torpedoes.filter(t => t.targetId === ship.id);
+
+    const incomingTorpedoesByType = incomingTorpedoes.reduce((acc, torpedo) => {
+        acc[torpedo.torpedoType] = (acc[torpedo.torpedoType] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
 
   return (
     <div className="panel-style p-3 flex flex-col h-full">
@@ -141,6 +159,28 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
                     colorClass={ship.pointDefenseEnabled ? 'text-accent-orange bg-orange-900 bg-opacity-50' : 'text-text-disabled'}
                     onClick={onTogglePointDefense}
                 />
+            </div>
+        </div>
+
+        <div className="mt-3">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary">Threat Analysis</h4>
+            <div className="flex flex-col gap-1 mt-1">
+                <ReadOnlyStatusIndicator
+                    label="Hostiles Targeting"
+                    status={`${shipsTargetingMe.length}`}
+                    colorClass={shipsTargetingMe.length > 0 ? 'text-accent-red bg-red-900 bg-opacity-50' : 'text-text-disabled'}
+                />
+                <ReadOnlyStatusIndicator
+                    label="Inbound Torpedoes"
+                    status={`${incomingTorpedoes.length}`}
+                    colorClass={incomingTorpedoes.length > 0 ? 'text-accent-orange bg-orange-900 bg-opacity-50' : 'text-text-disabled'}
+                />
+                {Object.entries(incomingTorpedoesByType).map(([type, count]) => (
+                    <div key={type} className="text-xs text-text-secondary pl-4 flex justify-between">
+                        <span>- {type}</span>
+                        <span className="font-bold">{count}</span>
+                    </div>
+                ))}
             </div>
         </div>
 

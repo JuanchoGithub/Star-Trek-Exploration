@@ -273,6 +273,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setSelectedTargetId(id);
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
+            next.player.ship.currentTargetId = id;
             if (id) {
                 const targetEntity = next.currentSector.entities.find(e => e.id === id);
                 const currentTargeting = next.player.targeting;

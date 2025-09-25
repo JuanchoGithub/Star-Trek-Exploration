@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
@@ -145,6 +142,44 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
     )
   , [allEntities]);
 
+  const tacticalOverlayElements = useMemo(() => {
+    if (!spectatorMode || !selectedTargetId) return null;
+
+    const selectedShip = allEntities.find(e => e.id === selectedTargetId && e.type === 'ship') as Ship | undefined;
+    if (!selectedShip) return null;
+
+    const allShips = allEntities.filter(e => e.type === 'ship') as Ship[];
+    
+    const shipsTargetingSelected = allShips.filter(s => s.id !== selectedShip.id && s.currentTargetId === selectedTargetId);
+    const selectedShipTarget = allShips.find(s => s.id === selectedShip.currentTargetId);
+
+    const selectedCoords = getPixelCoords(selectedShip.position, sectorSize, containerSize);
+
+    return (
+        <>
+            {shipsTargetingSelected.map(ship => {
+                const attackerCoords = getPixelCoords(ship.position, sectorSize, containerSize);
+                return <line key={`in-${ship.id}`} x1={attackerCoords.x} y1={attackerCoords.y} x2={selectedCoords.x} y2={selectedCoords.y}
+                    stroke="var(--color-accent-red)" strokeWidth="1.5" strokeDasharray="4 4"
+                />;
+            })}
+
+            {selectedShipTarget && (() => {
+                const targetCoords = getPixelCoords(selectedShipTarget.position, sectorSize, containerSize);
+                return <line key={`out-${selectedShipTarget.id}`} x1={selectedCoords.x} y1={selectedCoords.y} x2={targetCoords.x} y2={targetCoords.y}
+                    stroke="var(--color-accent-sky)" strokeWidth="1.5" strokeDasharray="5 2"
+                />;
+            })()}
+        </>
+    );
+}, [spectatorMode, selectedTargetId, allEntities, sectorSize, containerSize]);
+
+const torpedoesTargetingSelectedIds = useMemo(() => {
+    if (!spectatorMode || !selectedTargetId) return new Set<string>();
+    const torpedoes = allEntities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    return new Set(torpedoes.filter(t => t.targetId === selectedTargetId).map(t => t.id));
+}, [spectatorMode, selectedTargetId, allEntities]);
+
 
   return (
     <div ref={containerRef} className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
@@ -192,6 +227,12 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
           );
         })}
       </div>
+
+       {containerSize.width > 0 && (
+          <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-20 overflow-visible">
+              {tacticalOverlayElements}
+          </svg>
+      )}
 
       {containerSize.width > 0 && (
         <>
@@ -285,6 +326,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                     
                     const torpedoConfig = torpedoStats[torpedo.torpedoType];
                     const TorpedoIcon = torpedoConfig.icon;
+                    const isTargetingSelected = torpedoesTargetingSelectedIds.has(torpedo.id);
 
                     return (
                         <React.Fragment key={torpedo.id}>
@@ -303,11 +345,11 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
                                 />
                             )})}
                             <div
-                                className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''}`}
+                                className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''} ${isTargetingSelected ? 'animate-pulse' : ''}`}
                                 style={style}
                                 onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
                             >
-                                <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass}`} />
+                                <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
                             </div>
                         </React.Fragment>
                     );

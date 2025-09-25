@@ -76,6 +76,7 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                                 onSetNavigationTarget={() => {}}
                                 sector={currentGameState.currentSector}
                                 themeName={themeName}
+                                spectatorMode={true}
                             />
                         </div>
                         <div className="panel-style p-3 flex-shrink-0">

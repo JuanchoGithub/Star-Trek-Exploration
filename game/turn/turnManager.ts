@@ -2,17 +2,13 @@ import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, S
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep, uniqueId, findClosestTarget } from '../utils/ai';
-import { shipClasses } from '../../assets/ships/configs/shipClassStats';
-import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 import { AIDirector } from '../ai/AIDirector';
-import { processRecoveryTurn } from '../ai/factions/common';
-import { applyResourceChange } from '../utils/state';
 import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
 import { processPlayerTurn } from './player';
 import { canShipSeeEntity } from '../utils/visibility';
 import { isCommBlackout } from '../utils/sector';
-import { handleFullRecharge } from '../utils/energy';
 import { handleBoardingTurn } from '../actions/boarding';
+import { handleShipEndOfTurnSystems } from '../utils/energy';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -115,8 +111,6 @@ export const generatePhasedTurn = (
             allPossibleOpponents = allShipsInSector().filter(s => (s.allegiance === 'enemy' || s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
         }
 
-        // Find all allies that are NOT in a communication blackout.
-        // A ship can always use its own sensors, even in a blackout.
         const alliesWithComms = allShipsInSector().filter(s => 
             s.allegiance === shipInState!.allegiance && 
             s.hull > 0 &&
@@ -126,8 +120,6 @@ export const generatePhasedTurn = (
         const potentialTargets = allPossibleOpponents.filter(target => {
             if (target.cloakState === 'cloaked') return false;
 
-            // Check if the target is visible to ANY allied ship with active communications.
-            // This simulates a shared sensor network (C3 - Command, Control, Communications).
             const isVisibleToAnyAlly = alliesWithComms.some(ally => 
                 canShipSeeEntity(target, ally, currentState.currentSector)
             );
@@ -153,23 +145,6 @@ export const generatePhasedTurn = (
 
 
 // Helper Functions
-function _handlePointDefense(ship: Ship, state: GameState, addLog: Function) {
-    const torpedoesInRange = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile' && e.faction !== ship.faction && calculateDistance(ship.position, e.position) <= 1) as TorpedoProjectile[];
-    if (ship.pointDefenseEnabled && ship.subsystems.pointDefense.health > 0 && torpedoesInRange.length > 0) {
-        const torpedoToTarget = torpedoesInRange.sort((a,b) => b.damage - a.damage)[0];
-        const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
-        let logMsg = `Point-defense system targets incoming ${torpedoToTarget.name}.`;
-        
-        if (Math.random() < hitChance) {
-            logMsg += ` Direct hit! The torpedo is destroyed.`;
-            state.currentSector.entities = state.currentSector.entities.filter(e => e.id !== torpedoToTarget.id);
-        } else { logMsg += ` The shot misses!`; }
-        
-        addLog({ sourceId: ship.id, sourceName: ship.name, message: logMsg, color: ship.logColor, isPlayerSource: false });
-        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: torpedoToTarget.position, faction: ship.faction, delay: 0 });
-    }
-}
-
 function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function) {
     const torpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     if (torpedoes.length === 0) return;
@@ -205,7 +180,7 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
     allShips.forEach(ship => {
         if (ship.hull <= 0) return;
 
-        // Boarding / Capture Logic
+        // Boarding / Capture Logic must run before other system checks
         if (ship.captureInfo?.turnsToRepair) {
             const result = handleBoardingTurn(ship, state);
             if (result.logs.length > 0) {
@@ -228,141 +203,8 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
             }
         }
 
-        if (ship.isDerelict) return;
-
-        const isPlayerSource = ship.id === 'player';
-        const logColor = ship.logColor || 'border-gray-500';
-        
-        // Docking Repairs & Resupply
-        if (ship.id === 'player' && state.isDocked) {
-            const hullRepair = ship.maxHull * 0.2;
-            const dilithiumResupply = ship.dilithium.max * 0.2;
-            const torpedoResupply = ship.torpedoes.max * 0.5;
-
-            applyResourceChange(ship, 'hull', hullRepair);
-            applyResourceChange(ship, 'dilithium', dilithiumResupply);
-            applyResourceChange(ship, 'torpedoes', torpedoResupply);
-
-            (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).forEach(key => {
-                const subsystem = ship.subsystems[key];
-                const subRepair = subsystem.maxHealth * 0.2;
-                applyResourceChange(ship, key, subRepair);
-            });
-            
-            addLog({ sourceId: 'system', sourceName: 'Starbase Control', message: 'Repairs and resupply in progress.', isPlayerSource: false, color: 'border-gray-500' });
-            return; // No other end-of-turn actions while docked
-        }
-
-        // Repair
-        if (ship.repairTarget) {
-            const repairAmount = 5;
-            if (ship.repairTarget === 'hull') {
-                applyResourceChange(ship, 'hull', repairAmount);
-            } else {
-                applyResourceChange(ship, ship.repairTarget, repairAmount);
-            }
-        }
-
-        // Shield Regeneration
-        if (state.redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
-            const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
-            const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
-            const baseRegen = ship.maxShields * 0.10;
-            const regenerationAmount = baseRegen * powerToShieldsModifier * shieldEfficiency;
-            
-            if (regenerationAmount > 0) {
-                ship.shields = Math.min(ship.maxShields, ship.shields + regenerationAmount);
-            }
-        }
-        
-        // Energy Regen/Drain
-        const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
-        if (stats) {
-            const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
-            const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
-            const generated = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
-            
-            let consumption: number;
-            if (ship.isRestored) {
-                consumption = 0;
-                if (ship.subsystems.weapons.health > 0) consumption += stats.systemConsumption.weapons;
-                if (ship.shields > 0) consumption += 20 * stats.energyModifier;
-            } else {
-                consumption = stats.systemConsumption.base;
-                for (const key in ship.subsystems) {
-                    const systemKey = key as keyof ShipSubsystems;
-                    if (ship.subsystems[systemKey].health > 0) consumption += stats.systemConsumption[systemKey];
-                }
-                if(ship.shields > 0) consumption += 20 * stats.energyModifier;
-                if(ship.evasive) consumption += 10 * stats.energyModifier;
-                if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
-                if(ship.repairTarget) consumption += 5 * stats.energyModifier;
-            }
-
-            const netChange = generated - consumption;
-            ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
-
-            const logMessage = `Energy grid: +${generated.toFixed(1)} GEN, -${consumption.toFixed(1)} CON. Net: ${netChange.toFixed(1)}. Reserve power is now ${Math.round(ship.energy.current)}/${ship.energy.max}. Dilithium: ${ship.dilithium.current}/${ship.dilithium.max}.`;
-            addLog({
-                sourceId: ship.id,
-                sourceName: ship.name,
-                message: logMessage,
-                isPlayerSource,
-                color: logColor,
-            });
-        }
-        
-        // Dilithium/Life Support Failure Logic
-        if (ship.energy.current <= 0) {
-            const rechargeLogs = handleFullRecharge(ship, state.turn);
-            rechargeLogs.forEach(message => {
-                addLog({
-                    sourceId: ship.id,
-                    sourceName: ship.name,
-                    message,
-                    isPlayerSource,
-                    color: message.startsWith('WARNING:') ? 'border-orange-500' : (message.startsWith('CRITICAL:') ? 'border-red-600' : logColor)
-                });
-            });
-        }
-
-        // Life support countdown and dereliction
-        if (ship.lifeSupportFailureTurn !== null) {
-            const turnsSinceFailure = state.turn - ship.lifeSupportFailureTurn;
-            const turnsRemaining = 2 - turnsSinceFailure;
-            if (turnsRemaining > 0) {
-                 addLog({
-                    sourceId: ship.id, sourceName: ship.name,
-                    message: `CRITICAL: Life support is on emergency batteries. Main power failure in ${turnsRemaining} turn(s)!`,
-                    isPlayerSource, color: 'border-red-600'
-                });
-            } else {
-                ship.isDerelict = true;
-                ship.hull = Math.min(ship.hull, ship.maxHull * 0.1);
-                ship.shields = 0;
-                ship.energy.current = 0;
-                Object.keys(ship.subsystems).forEach(key => {
-                    const system = ship.subsystems[key as keyof ShipSubsystems];
-                    if (system) system.health = 0;
-                });
-                addLog({
-                    sourceId: ship.id, sourceName: ship.name,
-                    message: `Life support has failed! The ship is now a derelict hulk.`,
-                    isPlayerSource, color: 'border-red-600'
-                });
-            }
-        }
-
-        // Status Effects
-        ship.statusEffects = ship.statusEffects.filter(effect => {
-            if (effect.type === 'plasma_burn') {
-                const damage = Math.round(effect.damage * (stats ? stats.energyModifier : 1));
-                ship.hull = Math.max(0, ship.hull - damage);
-                addLog({ sourceId: ship.id, sourceName: ship.name, message: `Plasma fire burns the hull for ${damage} damage!`, isPlayerSource, color: 'border-orange-400' });
-                effect.turnsRemaining--;
-            }
-            return effect.turnsRemaining > 0;
-        });
-
+        // Handle all other end-of-turn system processes (repairs, energy, effects, etc.)
+        const systemLogs = handleShipEndOfTurnSystems(ship, state);
+        systemLogs.forEach(log => addLog(log));
     });
 }

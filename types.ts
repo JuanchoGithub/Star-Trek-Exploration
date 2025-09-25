@@ -95,6 +95,7 @@ export interface Ship extends BaseEntity {
   };
   lastKnownPlayerPosition?: Position | null;
   lastAttackerPosition?: Position | null;
+  currentTargetId?: string | null;
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid

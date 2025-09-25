@@ -1,6 +1,5 @@
-
 import React from 'react';
-import type { Entity, GameState, Ship, ShipSubsystems } from '../types';
+import type { Entity, GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import WireframeDisplay from './WireframeDisplay';
 import { ThemeName } from '../hooks/useTheme';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
@@ -88,6 +87,24 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     
     const isInNebula = ship ? isPosInNebula(ship.position, gameState.currentSector) : false;
     const isInAsteroidField = ship ? gameState.currentSector.entities.some(e => e.type === 'asteroid_field' && e.position.x === ship.position.x && e.position.y === ship.position.y) : false;
+
+    let shipsTargetingSelected: Ship[] = [];
+    let incomingTorpedoes: TorpedoProjectile[] = [];
+    let incomingTorpedoesByType: Record<string, number> = {};
+
+    if (ship) {
+        const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
+        const allShips = allEntities.filter(e => e.type === 'ship') as Ship[];
+        const torpedoes = allEntities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+        
+        shipsTargetingSelected = allShips.filter(s => s.currentTargetId === ship.id);
+        incomingTorpedoes = torpedoes.filter(t => t.targetId === ship.id);
+        
+        incomingTorpedoesByType = incomingTorpedoes.reduce((acc, torpedo) => {
+            acc[torpedo.torpedoType] = (acc[torpedo.torpedoType] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+    }
 
     let systemsGridContent: React.ReactNode = null;
     if (ship && stats) {
@@ -276,6 +293,25 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                                     } />
                                 </>
                             )}
+                        </DetailSection>
+
+                        <DetailSection title="Threat Analysis">
+                            <StatusIndicator
+                                label="Targeted By"
+                                value={`${shipsTargetingSelected.length} vessel(s)`}
+                                color={shipsTargetingSelected.length > 0 ? 'text-accent-red' : 'text-text-disabled'}
+                            />
+                            <StatusIndicator
+                                label="Inbound Torpedoes"
+                                value={`${incomingTorpedoes.length}`}
+                                color={incomingTorpedoes.length > 0 ? 'text-accent-orange' : 'text-text-disabled'}
+                            />
+                            {Object.entries(incomingTorpedoesByType).map(([type, count]) => (
+                                <div key={type} className="text-xs text-text-secondary pl-4 flex justify-between">
+                                    <span>- {type}</span>
+                                    <span className="font-bold">{count}</span>
+                                </div>
+                            ))}
                         </DetailSection>
 
                         {systemsGridContent}

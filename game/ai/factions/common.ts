@@ -65,6 +65,7 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
 }
 
 export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
+    ship.currentTargetId = null;
     // Set energy allocation for recovery
     if (ship.energyAllocation.engines !== 100) {
         ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
@@ -110,6 +111,7 @@ export function processCommonTurn(
     stance: AIStance
 ) {
     const target = findClosestTarget(ship, potentialTargets);
+    ship.currentTargetId = target ? target.id : null;
 
     if (!target && ship.lastAttackerPosition) {
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detecting weapon impacts from an unseen source! Attempting to evade!`, isPlayerSource: false, color: ship.logColor });
@@ -130,6 +132,7 @@ export function processCommonTurn(
         fleePosition.y = Math.max(0, Math.min(SECTOR_HEIGHT - 1, fleePosition.y));
         
         ship.position = moveOneStep(ship.position, fleePosition);
+        ship.currentTargetId = null;
         ship.lastAttackerPosition = null; 
         return;
     }
