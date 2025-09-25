@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
@@ -472,7 +473,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
         const targetingCheck = canTargetEntity(gameState.player.ship, target, gameState.currentSector);
         if (!targetingCheck.canTarget) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Cannot launch torpedo: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400' });
             return;
         }
     
@@ -796,43 +797,42 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [addLog]);
 
     const onToggleCloak = useCallback(() => {
-        setGameState(prev => {
-            const next = JSON.parse(JSON.stringify(prev));
-            const { ship } = next.player;
+        if (playerTurnActions.hasTakenMajorAction) {
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Cannot perform another action this turn.", isPlayerSource: true, color: 'border-blue-400' });
+            return;
+        }
 
-            if (playerTurnActions.hasTakenMajorAction) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot perform another action this turn.", isPlayerSource: true, color: 'border-blue-400' });
-                return prev;
-            }
+        const { ship } = gameState.player;
 
-            if (!ship.cloakingCapable) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true, color: 'border-blue-400' });
-                return prev;
-            }
+        if (!ship.cloakingCapable) {
+            addLog({ sourceId: 'player', sourceName: ship.name, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true, color: 'border-blue-400' });
+            return;
+        }
 
-            if (ship.cloakState === 'cloaked') {
-                ship.cloakState = 'visible';
-                ship.cloakCooldown = 2;
-                ship.shieldReactivationTurn = next.turn + 2; 
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged. Shields will be offline for 2 turns for recalibration. This has used our tactical action for the turn.", isPlayerSource: true, color: 'border-blue-400' });
-                setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
-            } else if (ship.cloakState === 'visible') {
-                if (ship.cloakCooldown > 0) {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true, color: 'border-blue-400' });
-                    return prev;
-                }
-                if (next.redAlert) {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true, color: 'border-blue-400' });
-                    return prev;
-                }
-                ship.pointDefenseEnabled = false;
-                ship.cloakState = 'cloaking';
-                addLog({ sourceId: 'player', sourceName: ship.name, message: `Initiating cloaking sequence. Ship is immobile and vulnerable this turn.`, isPlayerSource: true, color: 'border-blue-400' });
-                setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
+        if (ship.cloakState === 'cloaked') {
+            setPlayerTurnActions(prev => ({ ...prev, wantsToDecloak: true, hasTakenMajorAction: true }));
+            addLog({ sourceId: 'player', sourceName: ship.name, message: "Initiating decloaking sequence. This will take two turns.", isPlayerSource: true, color: 'border-blue-400' });
+        } else if (ship.cloakState === 'visible') {
+            if (ship.cloakCooldown > 0) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true, color: 'border-blue-400' });
+                return;
             }
-            return next;
-        });
-    }, [addLog, playerTurnActions]);
+            if (gameState.redAlert) {
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true, color: 'border-blue-400' });
+                return;
+            }
+            const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
+            const reliability = stats ? (1 - stats.cloakFailureChance) * 100 : 90;
+            setPlayerTurnActions(prev => ({ ...prev, wantsToCloak: true, hasTakenMajorAction: true }));
+            addLog({
+                sourceId: 'player',
+                sourceName: ship.name,
+                message: `Initiating cloaking sequence. Base reliability: ${reliability.toFixed(0)}%. Ship will be vulnerable this turn.`,
+                isPlayerSource: true,
+                color: 'border-blue-400'
+            });
+        }
+    }, [addLog, gameState, playerTurnActions]);
 
     const onTogglePointDefense = useCallback(() => {
         setGameState(prev => {

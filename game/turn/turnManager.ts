@@ -1,3 +1,4 @@
+
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
@@ -131,6 +132,9 @@ export const generatePhasedTurn = (
         addStep(0);
     }
     
+    // --- POINT DEFENSE PHASE ---
+    _handlePointDefense(currentState, allShipsInSector(), addLog);
+    addStep(300);
 
     // --- PROJECTILE MOVEMENT PHASE ---
     _handleProjectileMovement(currentState, allShipsInSector(), addLog);
@@ -145,6 +149,54 @@ export const generatePhasedTurn = (
 
 
 // Helper Functions
+
+function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Function) {
+    const shipsWithPD = allShips.filter(s => s.pointDefenseEnabled && s.subsystems.pointDefense.health > 0 && s.hull > 0);
+    if (shipsWithPD.length === 0) return;
+
+    let allTorpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    if (allTorpedoes.length === 0) return;
+    
+    const torpedoesDestroyedThisTurn = new Set<string>();
+
+    for (const ship of shipsWithPD) {
+        const hostileTorpedoes = allTorpedoes.filter(t => {
+            if (torpedoesDestroyedThisTurn.has(t.id)) return false;
+            const source = allShips.find(s => s.id === t.sourceId);
+            const sourceAllegiance = source?.id === 'player' ? 'player' : source?.allegiance;
+            const shipAllegiance = ship.id === 'player' ? 'player' : ship.allegiance;
+            return sourceAllegiance !== shipAllegiance;
+        });
+
+        const nearbyTorpedoes = hostileTorpedoes.filter(t => calculateDistance(ship.position, t.position) <= 1);
+        if (nearbyTorpedoes.length === 0) continue;
+
+        nearbyTorpedoes.sort((a, b) => b.damage - a.damage); // Prioritize most dangerous
+        const targetTorpedo = nearbyTorpedoes[0];
+        
+        const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
+        const isPlayerSource = ship.id === 'player';
+
+        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: targetTorpedo.position, faction: ship.faction, delay: 0 });
+        
+        let logMessage = `Point-defense grid fires at an incoming ${targetTorpedo.name}! (Hit Chance: ${Math.round(hitChance * 100)}%)...`;
+
+        if (Math.random() < hitChance) {
+            torpedoesDestroyedThisTurn.add(targetTorpedo.id);
+            logMessage += " >> HIT! << Projectile destroyed.";
+            addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-green-400' });
+        } else {
+            logMessage += " >> MISS! <<";
+            addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-yellow-400' });
+        }
+    }
+    
+    if (torpedoesDestroyedThisTurn.size > 0) {
+        state.currentSector.entities = state.currentSector.entities.filter(e => !torpedoesDestroyedThisTurn.has(e.id));
+    }
+}
+
+
 function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function) {
     const torpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     if (torpedoes.length === 0) return;

@@ -34,7 +34,7 @@ export type ShipRole = 'Explorer' | 'Cruiser' | 'Escort' | 'Freighter' | 'Dreadn
 // FIX: Exported ShipModel type to be used across the application.
 export type ShipModel = 'Federation' | 'Klingon' | 'Romulan' | 'Pirate' | 'Independent';
 
-export type CloakState = 'visible' | 'cloaking' | 'cloaked';
+export type CloakState = 'visible' | 'cloaking' | 'cloaked' | 'decloaking';
 
 export type StatusEffect = {
     type: 'plasma_burn';
@@ -70,6 +70,7 @@ export interface Ship extends BaseEntity {
   shieldReactivationTurn: number | null; // Turn number until shields can be raised again after decloaking
   cloakInstability: number; // 0.0 to 1.0, represents permanent degradation
   cloakDestabilizedThisTurn: boolean; // Flag if damaged while cloaking this turn
+  cloakTransitionTurnsRemaining: number | null;
   isStunned: boolean; // Skips next turn if true
   engineFailureTurn: number | null;
   lifeSupportFailureTurn: number | null;
@@ -247,6 +248,8 @@ export interface PlayerTurnActions {
     hasUsedAwayTeam?: boolean;
     hasTakenMajorAction?: boolean;
     isUndocking?: boolean;
+    wantsToCloak?: boolean;
+    wantsToDecloak?: boolean;
 }
 
 export interface EventTemplateOption {

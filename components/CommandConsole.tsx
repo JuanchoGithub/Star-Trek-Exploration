@@ -113,7 +113,8 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const canLaunchTorpedoFinal = playerShip.torpedoes.current > 0 && (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) >= 0.34;
   const hasTakenMajorAction = playerTurnActions.hasTakenMajorAction || false;
 
-  const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction;
+  const isCloakingOrDecloaking = playerShip.cloakState === 'cloaking' || playerShip.cloakState === 'decloaking';
+  const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction || isCloakingOrDecloaking;
 
   const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector) : { canTarget: true, reason: '' };
   const cannotTargetReason = !targetingCheck.canTarget ? targetingCheck.reason : '';
@@ -125,13 +126,12 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
 
   const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
   const canCloak = playerShip.cloakingCapable && cloakStats;
-  const isCloaking = playerShip.cloakState === 'cloaking';
   const isCloaked = playerShip.cloakState === 'cloaked';
   const isCloakOnCooldown = playerShip.cloakCooldown > 0;
   
   const cannotCloakReason = 
       !canCloak ? "Cloaking device not equipped" :
-      isCloaking ? "Cloaking sequence in progress." :
+      isCloakingOrDecloaking ? "Cloak sequence in progress." :
       isCloakOnCooldown ? `Cloak recharging (${playerShip.cloakCooldown} turns)` : 
       gameState.redAlert ? "Cannot cloak while at Red Alert" : 
       hasTakenMajorAction ? "Major action already taken this turn." :
@@ -152,11 +152,11 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                  {playerShip.cloakingCapable && (
                     <CommandButton 
                         onClick={onToggleCloak} 
-                        disabled={!canCloak || isCloaking || (isCloaked && hasTakenMajorAction) || (!isCloaked && (isCloakOnCooldown || gameState.redAlert || hasTakenMajorAction))}
+                        disabled={!canCloak || isCloakingOrDecloaking || (isCloaked && hasTakenMajorAction) || (!isCloaked && (isCloakOnCooldown || gameState.redAlert || hasTakenMajorAction))}
                         accentColor="teal"
                         title={cannotCloakReason}
                     >
-                        <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : isCloaking ? 'Engaging...' : 'Cloak'}
+                        <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : (isCloakingOrDecloaking ? 'Engaging...' : 'Cloak')}
                     </CommandButton>
                  )}
                 <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="purple">

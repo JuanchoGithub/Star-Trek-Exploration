@@ -25,6 +25,18 @@ export abstract class FactionAI {
 
     // The main turn processing method, now in the base class to enforce order of operations.
     public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+        // A ship in transition cannot take any actions.
+        if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: `Is vulnerable while its cloaking field is in transition. All systems are offline.`,
+                isPlayerSource: false,
+                color: ship.logColor,
+            });
+            return;
+        }
+
         const incomingTorpedoes = (gameState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[]).filter(t => t.targetId === ship.id);
 
         if (incomingTorpedoes.length > 0) {

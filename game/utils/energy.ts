@@ -1,5 +1,6 @@
 import type { Ship, ShipSubsystems, ResourceType, GameState, LogEntry } from '../../types';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
+import { isPosInNebula } from './sector';
 
 /**
  * Mutates a ship object to apply a change to one of its resources or subsystems.
@@ -180,6 +181,64 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     const logColor = ship.logColor || 'border-gray-500';
     const { turn, redAlert, isDocked } = gameState;
 
+    // Cloak Reliability Check & Maintenance
+    if (ship.cloakState === 'cloaking' || ship.cloakState === 'cloaked') {
+        const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
+        if (stats) {
+            let baseReliability = ship.customCloakStats ? ship.customCloakStats.reliability : (1 - stats.cloakFailureChance);
+            let environmentalModifier = 1.0;
+            let envReason = "";
+
+            const isInNebula = isPosInNebula(ship.position, gameState.currentSector);
+            const isInAsteroids = gameState.currentSector.entities.some(e => e.type === 'asteroid_field' && e.position.x === ship.position.x && e.position.y === ship.position.y);
+
+            if (isInNebula) {
+                environmentalModifier = 0.75; // 25% penalty
+                envReason = ", Nebula x0.75";
+            } else if (isInAsteroids) {
+                environmentalModifier = 0.90; // 10% penalty
+                envReason = ", Asteroids x0.90";
+            }
+
+            const finalReliability = (baseReliability - ship.cloakInstability) * environmentalModifier;
+            const reliabilityPercent = Math.round(finalReliability * 100);
+
+            let logMessage = `Cloaking field check: ${reliabilityPercent}% reliability (Base: ${Math.round(baseReliability * 100)}%, Instability: -${Math.round(ship.cloakInstability * 100)}%${envReason}). Rolling...`;
+
+            if (Math.random() < finalReliability) {
+                logMessage += " >> SUCCESS << Cloak remains stable.";
+                logs.push({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-gray-400' });
+                
+                // Check for pirate-specific failures on success
+                if (ship.customCloakStats) {
+                    if (Math.random() < ship.customCloakStats.explosionChance) {
+                        logs.push({ sourceId: ship.id, sourceName: ship.name, message: `Catastrophic failure! The makeshift cloaking device explodes, destroying the ship!`, isPlayerSource, color: 'border-red-600' });
+                        ship.hull = 0;
+                        return logs; // Ship is destroyed, no further processing
+                    } else if (Math.random() < ship.customCloakStats.subsystemDamageChance) {
+                        const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields'];
+                        const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
+                        const targetSubsystem = ship.subsystems[randomSubsystemKey];
+                        if(targetSubsystem) {
+                            const damage = Math.round(targetSubsystem.maxHealth * 0.3);
+                            targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
+                            logs.push({ sourceId: ship.id, sourceName: ship.name, message: `WARNING: The makeshift cloak backfires, causing a power surge! ${damage} damage dealt to ${randomSubsystemKey}!`, isPlayerSource, color: 'border-orange-500' });
+                        }
+                    }
+                }
+
+            } else {
+                logMessage += " >> FAILURE << The cloaking field has collapsed!";
+                logs.push({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-red-500' });
+                ship.cloakState = 'visible';
+                ship.cloakCooldown = 2;
+                ship.shieldReactivationTurn = turn + 2;
+                ship.cloakTransitionTurnsRemaining = null; // Stop any transitions
+            }
+        }
+    }
+    ship.cloakDestabilizedThisTurn = false;
+
     // Shield Reactivation Timer
     if (ship.shieldReactivationTurn && turn >= ship.shieldReactivationTurn) {
         ship.shieldReactivationTurn = null;
@@ -221,8 +280,8 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     }
 
     // Shield Regeneration
-    if (ship.shieldReactivationTurn && turn < ship.shieldReactivationTurn) {
-        ship.shields = 0; // Force shields to remain at 0 due to penalty
+    if ((ship.shieldReactivationTurn && turn < ship.shieldReactivationTurn) || ship.shields < 0) {
+        ship.shields = 0; // Force shields to remain at 0 due to penalty or if negative
     } else if (redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
         const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
         const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
@@ -259,7 +318,7 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
             if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
             if(ship.repairTarget) consumption += 5 * stats.energyModifier;
 
-            if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+            if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
                 const cloakStats = shipClasses[ship.shipModel]?.[ship.shipClass];
                 if (cloakStats) {
                     let maintainCost = cloakStats.cloakEnergyCost.maintain;
@@ -274,14 +333,16 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
         const netChange = generated - consumption;
         ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
 
-        const logMessage = `Energy grid: +${generated.toFixed(1)} GEN, -${consumption.toFixed(1)} CON. Net: ${netChange.toFixed(1)}. Reserve power is now ${Math.round(ship.energy.current)}/${ship.energy.max}. Dilithium: ${ship.dilithium.current}/${ship.dilithium.max}.`;
-        logs.push({
-            sourceId: ship.id,
-            sourceName: ship.name,
-            message: logMessage,
-            isPlayerSource,
-            color: logColor,
-        });
+        if(ship.id === 'player') {
+            const logMessage = `Energy grid: +${generated.toFixed(1)} GEN, -${consumption.toFixed(1)} CON. Net: ${netChange.toFixed(1)}. Reserve power is now ${Math.round(ship.energy.current)}/${ship.energy.max}. Dilithium: ${ship.dilithium.current}/${ship.dilithium.max}.`;
+            logs.push({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: logMessage,
+                isPlayerSource,
+                color: logColor,
+            });
+        }
     }
     
     // Emergency Power (Dilithium) & Life Support Failure
@@ -326,46 +387,20 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     }
 
     // Cloaking Sequence Resolution
-    if (ship.cloakState === 'cloaking') {
-        const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
-        let baseFailureChance = stats?.cloakFailureChance ?? 0.10;
-        let logMsg: string;
-
-        if (ship.customCloakStats) {
-            baseFailureChance = 1 - ship.customCloakStats.reliability;
-            logMsg = `Makeshift cloak engagement sequence complete. Base reliability: ${(ship.customCloakStats.reliability * 100).toFixed(0)}%.`;
-        } else {
-            logMsg = `Cloak engagement sequence complete. Base failure chance: ${(baseFailureChance * 100).toFixed(0)}%.`;
+    if (ship.cloakTransitionTurnsRemaining !== null && ship.cloakState !== 'visible') { // Check if cloak didn't just fail
+        ship.cloakTransitionTurnsRemaining--;
+        if (ship.cloakTransitionTurnsRemaining <= 0) {
+            ship.cloakTransitionTurnsRemaining = null;
+            if (ship.cloakState === 'cloaking') {
+                ship.cloakState = 'cloaked';
+                logs.push({ sourceId: ship.id, sourceName: ship.name, message: 'Cloaking field is now active.', isPlayerSource, color: 'border-green-400' });
+            } else if (ship.cloakState === 'decloaking') {
+                ship.cloakState = 'visible';
+                ship.cloakCooldown = 2;
+                ship.shieldReactivationTurn = turn + 2;
+                logs.push({ sourceId: ship.id, sourceName: ship.name, message: 'Decloaking sequence complete. All systems are back online.', isPlayerSource, color: 'border-blue-400' });
+            }
         }
-        
-        let totalFailureChance = baseFailureChance + ship.cloakInstability;
-        logMsg += ` Instability penalty: +${(ship.cloakInstability * 100).toFixed(0)}%.`;
-
-        if (ship.cloakDestabilizedThisTurn) {
-            totalFailureChance += 0.30; // 30% penalty for being hit this turn
-            logMsg += ` Hit while cloaking penalty: +30%.`;
-        }
-        
-        logMsg += ` Final failure chance: ${(Math.min(1, totalFailureChance) * 100).toFixed(0)}%.`;
-        logs.push({
-            sourceId: ship.id, sourceName: ship.name, message: logMsg, isPlayerSource, color: logColor,
-        });
-
-        if (Math.random() < totalFailureChance) {
-            // Failure
-            ship.cloakState = 'visible';
-            ship.cloakCooldown = 1;
-            logs.push({
-                sourceId: ship.id, sourceName: ship.name, message: 'Cloaking device failed to engage! Emitters require 1 turn to reset.', isPlayerSource, color: 'border-orange-500',
-            });
-        } else {
-            // Success
-            ship.cloakState = 'cloaked';
-            logs.push({
-                sourceId: ship.id, sourceName: ship.name, message: 'Cloaking field is active.', isPlayerSource, color: 'border-green-400',
-            });
-        }
-        ship.cloakDestabilizedThisTurn = false;
     }
 
     // Status Effects Processing

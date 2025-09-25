@@ -122,6 +122,7 @@ const createEntityFromTemplate = (
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
                 lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
                 cloakInstability: 0, cloakDestabilizedThisTurn: false,
+                cloakTransitionTurnsRemaining: null,
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
                 statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier,
                 lastAttackerPosition: null,
@@ -300,6 +301,8 @@ export const createInitialGameState = (): GameState => {
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR, lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
     cloakInstability: 0, cloakDestabilizedThisTurn: false,
+    // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
+    cloakTransitionTurnsRemaining: null,
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
     energyModifier: playerStats.energyModifier,
     lastAttackerPosition: null,

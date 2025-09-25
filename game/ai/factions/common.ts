@@ -173,11 +173,10 @@ export function processCommonTurn(
         
         const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
         if (shouldDecloak) {
-            ship.cloakState = 'visible';
-            ship.cloakCooldown = 2;
-            ship.shieldReactivationTurn = gameState.turn + 2;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Decloaks, preparing to engage! Shields will be offline for 2 turns.`, isPlayerSource: false, color: ship.logColor });
-            // Let the turn continue to fire phasers etc.
+            ship.cloakState = 'decloaking';
+            ship.cloakTransitionTurnsRemaining = 2;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Initiates decloaking sequence to engage!`, isPlayerSource: false, color: ship.logColor });
+            // Let the turn continue, but actions will be disabled due to decloaking state
         } else {
             if (distance > 1) {
                 ship.position = moveOneStep(ship.position, target.position);
@@ -185,11 +184,16 @@ export function processCommonTurn(
             } else {
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, holding position.`, isPlayerSource: false, color: ship.logColor });
             }
-            return; // End turn if just moving while cloaked
         }
     }
-    
+
     // --- STANDARD AI DECISION MAKING & LOGGING ---
+    // Actions are disabled during cloak/decloak transitions
+    if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Is vulnerable while its cloaking field is in transition.`, isPlayerSource: false, color: ship.logColor });
+        return;
+    }
+
     let moveTarget: Position | null = null;
     let aiDecisionLog = `Targeting ${target.name} (Dist: ${distance}).`;
 
@@ -257,9 +261,6 @@ export function processCommonTurn(
     const phaserDelay = didMove ? 700 : 0;
 
     // Firing Logic
-    // FIX: Removed redundant `ship.cloakState !== 'cloaked'` check.
-    // The control flow of this function ensures the ship is not cloaked at this point,
-    // and the redundant check was causing a TypeScript type narrowing error.
     if (ship.subsystems.weapons.health > 0 && distance <= 5) {
         const phaserBaseDamage = 20 * ship.energyModifier;
         const phaserPowerModifier = ship.energyAllocation.weapons / 100;
@@ -280,9 +281,6 @@ export function processCommonTurn(
         torpedoLaunchChance = 0.3;
     }
 
-    // FIX: Removed redundant `ship.cloakState !== 'cloaked'` check.
-    // The control flow of this function ensures the ship is not cloaked at this point,
-    // and the redundant check was causing a TypeScript type narrowing error.
     if (canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance) {
         const shipStats = shipClasses[ship.shipModel][ship.shipClass];
         if (shipStats.torpedoType === 'None') return;

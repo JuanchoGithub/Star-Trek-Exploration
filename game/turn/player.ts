@@ -89,6 +89,18 @@ export const processPlayerTurn = (
         }
     }
 
+    // Cloaking initiation
+    if (playerTurnActions.wantsToCloak) {
+        ship.cloakState = 'cloaking';
+        ship.cloakTransitionTurnsRemaining = 1;
+        ship.pointDefenseEnabled = false; // Cannot have PD up while cloaking
+    }
+    if (playerTurnActions.wantsToDecloak) {
+        ship.cloakState = 'decloaking';
+        ship.cloakTransitionTurnsRemaining = 2;
+    }
+
+
     // Targeting
     const targetEntity = currentSector.entities.find(e => e.id === selectedTargetId);
     let newSelectedTargetId = selectedTargetId;
@@ -103,19 +115,6 @@ export const processPlayerTurn = (
              if (player.targeting.entityId === selectedTargetId) {
                 player.targeting.consecutiveTurns++;
             }
-        }
-    }
-
-    // Cloaking state transition
-    if (ship.cloakState === 'cloaking') {
-        const reliability = ship.customCloakStats?.reliability ?? 0.90;
-        if (Math.random() < reliability) {
-            ship.cloakState = 'cloaked';
-            addLog({ sourceId: 'player', sourceName: ship.name, message: 'Cloaking field is active.', isPlayerSource: true, color: 'border-blue-400' });
-        } else {
-            ship.cloakState = 'visible';
-            ship.cloakCooldown = 2;
-            addLog({ sourceId: 'player', sourceName: ship.name, message: 'Cloaking device failed to engage!', isPlayerSource: true, color: 'border-orange-500' });
         }
     }
 

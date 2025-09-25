@@ -48,6 +48,7 @@ export class PirateAI extends FactionAI {
         // Pirates with an unstable cloak will gamble
         if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
             ship.cloakState = 'cloaking';
+            ship.cloakTransitionTurnsRemaining = 1;
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Attempting to engage makeshift cloaking device!` });
             return true; // Cloaking is a turn-ending action
         }

@@ -13,6 +13,7 @@ export class KlingonAI extends FactionAI {
         return { stance: 'Aggressive', reason: generalStance.reason + ` Defaulting to honorable aggression.` };
     }
 
+    // FIX: Added explicit return type to match the base class.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Klingons target weapons to force a close, honorable fight.
         if (playerShip.subsystems.weapons.health > 0) {
@@ -22,6 +23,7 @@ export class KlingonAI extends FactionAI {
     }
 
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        // Klingons prefer to shoot down torpedoes rather than flee.
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Activating point-defense grid.` });

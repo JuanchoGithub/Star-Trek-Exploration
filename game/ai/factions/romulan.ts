@@ -20,6 +20,7 @@ export class RomulanAI extends FactionAI {
         return { stance: 'Balanced', reason: generalStance.reason + ' Adopting standard Romulan balanced doctrine.' };
     }
 
+    // FIX: Added explicit return type to match the base class.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Romulans target engines to disable and control the engagement.
         if (playerShip.subsystems.engines.health > 0) {
@@ -31,6 +32,7 @@ export class RomulanAI extends FactionAI {
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
         if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
              ship.cloakState = 'cloaking';
+             ship.cloakTransitionTurnsRemaining = 1;
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedo threat. Evading via cloaking device.` });
              return true; // Cloaking is a turn-ending action.
         }

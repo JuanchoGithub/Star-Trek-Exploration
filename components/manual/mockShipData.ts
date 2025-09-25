@@ -23,6 +23,8 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         // FIX: Added missing cloak properties to conform to the Ship type.
         cloakInstability: 0,
         cloakDestabilizedThisTurn: false,
+        // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
+        cloakTransitionTurnsRemaining: null,
         isStunned: false,
         engineFailureTurn: null,
         // FIX: Added missing 'lifeSupportFailureTurn' property to conform to the Ship interface.

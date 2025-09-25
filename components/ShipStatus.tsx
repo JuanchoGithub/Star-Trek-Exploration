@@ -67,9 +67,12 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
   const cloakStatusText =
     ship.cloakState === 'cloaked' ? 'ACTIVE' :
     ship.cloakState === 'cloaking' ? 'ENGAGING' :
+    ship.cloakState === 'decloaking' ? 'DECLOAKING' :
     ship.cloakCooldown > 0 ? `COOLING (${ship.cloakCooldown})` : 'INACTIVE';
 
-  const cloakColor = ship.cloakState === 'cloaked' ? 'text-accent-teal bg-teal-900 bg-opacity-50' : (ship.cloakState === 'cloaking' ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled');
+  const cloakColor = 
+    ship.cloakState === 'cloaked' ? 'text-accent-teal bg-teal-900 bg-opacity-50' : 
+    (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking' ? 'text-accent-yellow bg-yellow-900 bg-opacity-50' : 'text-text-disabled');
 
   const hullPercentage = (ship.hull / ship.maxHull) * 100;
   let hullColor = 'text-green-400';
@@ -150,7 +153,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
                         status={cloakStatusText}
                         colorClass={cloakColor}
                         onClick={onToggleCloak}
-                        disabled={ship.cloakState === 'cloaking' || (ship.cloakState === 'visible' && ship.cloakCooldown > 0)}
+                        disabled={ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking' || (ship.cloakState === 'visible' && ship.cloakCooldown > 0)}
                     />
                 )}
                  <TacticalButton

@@ -70,6 +70,8 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         // FIX: Added missing cloak properties to conform to the Ship interface.
         cloakInstability: 0,
         cloakDestabilizedThisTurn: false,
+        // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
+        cloakTransitionTurnsRemaining: null,
         lastAttackerPosition: null,
     };
     if (allegiance === 'player' || allegiance === 'ally') {
