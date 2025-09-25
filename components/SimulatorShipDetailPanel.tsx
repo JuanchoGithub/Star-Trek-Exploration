@@ -108,7 +108,16 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     }
 
     let systemsGridContent: React.ReactNode = null;
+    let shieldRechargeRate = 0;
+
     if (ship && stats) {
+        if (gameState.redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
+            const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
+            const powerToShieldsModifier = (ship.energyAllocation.shields / 33);
+            const baseRegen = ship.maxShields * 0.10;
+            shieldRechargeRate = baseRegen * powerToShieldsModifier * shieldEfficiency;
+        }
+
         const isRedAlert = ship.allegiance === 'enemy' || ship.allegiance === 'player' || ship.allegiance === 'ally';
 
         const engineOutputMultiplier = 0.5 + 1.5 * (ship.energyAllocation.engines / 100);
@@ -183,10 +192,19 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
 
                         const powerColor = sys.powerDelta > 0 ? 'text-green-400' : (sys.powerDelta < 0 ? 'text-red-400' : 'text-text-disabled');
                         const isRepairing = ship.repairTarget === sys.key;
+                        
+                        let repairInfo = null;
+                        if (isRepairing) {
+                            const system = ship.subsystems[sys.key];
+                            if (system && system.maxHealth > 0) {
+                                const repairPercentPerTurn = (5 / system.maxHealth) * 100;
+                                repairInfo = <span className="text-green-400 text-xs ml-1">(+{repairPercentPerTurn.toFixed(1)}%/t)</span>;
+                            }
+                        }
 
                         return (
                             <div key={sys.key} className="grid grid-cols-[2fr,1fr,1fr] gap-x-2 items-center">
-                                <span>{sys.name} {isRepairing && <span className="text-accent-yellow text-xs italic ml-1">(repairing)</span>}</span>
+                                <span>{sys.name} {repairInfo}</span>
                                 <span className={`text-center font-mono ${healthColor}`}>{Math.round(sys.health)}%</span>
                                 <span className={`text-right font-mono ${powerColor}`}>
                                     {sys.powerDelta > 0 ? '+' : ''}{sys.powerDelta.toFixed(1)}
@@ -273,8 +291,28 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                         </DetailSection>
 
                         <DetailSection title="Core Stats">
-                            <DetailItem label="Hull" value={`${Math.round(ship.hull)} / ${ship.maxHull}`} />
-                            <DetailItem label="Shields" value={`${Math.round(ship.shields)} / ${ship.maxShields}`} />
+                            <DetailItem 
+                                label="Hull" 
+                                value={
+                                    <>
+                                        {`${Math.round(ship.hull)} / ${ship.maxHull}`}
+                                        {ship.repairTarget === 'hull' && (
+                                            <span className="text-green-400 text-xs ml-2">(+5/t)</span>
+                                        )}
+                                    </>
+                                } 
+                            />
+                            <DetailItem 
+                                label="Shields" 
+                                value={
+                                    <>
+                                        {`${Math.round(ship.shields)} / ${ship.maxShields}`}
+                                        {shieldRechargeRate > 0 && (
+                                            <span className="text-green-400 text-xs ml-2">(+{shieldRechargeRate.toFixed(1)}/t)</span>
+                                        )}
+                                    </>
+                                } 
+                            />
                             <DetailItem label="Reserve Power" value={`${Math.round(ship.energy.current)} / ${ship.energy.max}`} />
                             <DetailItem label="Torpedoes" value={`${ship.torpedoes.current} / ${ship.torpedoes.max}`} />
                             <DetailItem label="Dilithium" value={`${ship.dilithium.current} / ${ship.dilithium.max}`} />

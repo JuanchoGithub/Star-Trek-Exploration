@@ -180,17 +180,39 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     useEffect(() => {
         if (mode === 'spectate' && isRunning && historyIndex === replayHistory.length - 1) {
             const interval = setInterval(() => {
-                onEndTurn();
+                if (!isTurnResolving) {
+                    onEndTurn();
+                }
             }, 1000);
             return () => clearInterval(interval);
         }
-    }, [mode, isRunning, onEndTurn, historyIndex, replayHistory.length]);
+    }, [mode, isRunning, onEndTurn, historyIndex, replayHistory.length, isTurnResolving]);
 
     const resetToSetup = () => {
         endSimulation();
         setGameState(null);
         setMode('setup');
     };
+
+    const handleStep = useCallback((direction: number) => {
+        // When stepping, ensure the simulation is paused.
+        if (isRunning) {
+            togglePause();
+        }
+
+        const newIndex = historyIndex + direction;
+        
+        // If we are at the end of history and stepping forward, generate a new turn.
+        if (direction > 0 && newIndex >= replayHistory.length) {
+            if (!isTurnResolving) {
+                onEndTurn();
+            }
+        } 
+        // Otherwise, just navigate through existing history.
+        else if (newIndex >= 0 && newIndex < replayHistory.length) {
+            goToHistoryTurn(newIndex);
+        }
+    }, [isRunning, togglePause, historyIndex, replayHistory, isTurnResolving, onEndTurn, goToHistoryTurn]);
 
     if (mode === 'setup') {
         if (!setupState.sector) return <div>Loading Sector...</div>;
@@ -308,7 +330,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const allEntities = gameState.currentSector.entities;
     const isViewingHistory = historyIndex < replayHistory.length - 1;
 
-    const handleStep = (direction: number) => {
+    const handleStepSpectate = (direction: number) => {
         const newIndex = historyIndex + direction;
         if (newIndex >= 0 && newIndex < replayHistory.length) {
             goToHistoryTurn(newIndex);
@@ -415,6 +437,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 onTogglePlay={togglePause}
                                 onStep={handleStep}
                                 onSliderChange={goToHistoryTurn}
+                                allowStepPastEnd={true}
                             />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">

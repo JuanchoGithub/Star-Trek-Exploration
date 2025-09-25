@@ -9,6 +9,7 @@ interface PlaybackControlsProps {
     onStep: (direction: number) => void;
     onSliderChange: (index: number) => void;
     onResumeFromHistory?: () => void;
+    allowStepPastEnd?: boolean;
 }
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
@@ -20,6 +21,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     onStep,
     onSliderChange,
     onResumeFromHistory,
+    allowStepPastEnd = false,
 }) => {
     return (
         <div className="panel-style p-3">
@@ -36,7 +38,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     onChange={e => onSliderChange(Number(e.target.value))}
                     className="flex-grow"
                 />
-                <button onClick={() => onStep(1)} disabled={isTurnResolving || currentIndex >= maxIndex} className="btn btn-secondary">Next</button>
+                <button onClick={() => onStep(1)} disabled={isTurnResolving || (!allowStepPastEnd && currentIndex >= maxIndex)} className="btn btn-secondary">Next</button>
                 <span className="font-bold text-lg whitespace-nowrap">Turn: {currentIndex + 1} / {maxIndex + 1}</span>
             </div>
             {onResumeFromHistory && (

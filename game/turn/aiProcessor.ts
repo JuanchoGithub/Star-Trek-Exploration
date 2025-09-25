@@ -1,9 +1,11 @@
 
+
 import type { GameState, Ship } from '../../types';
 import { AIDirector } from '../ai/AIDirector';
 import type { AIActions } from '../ai/FactionAI';
 import { canShipSeeEntity } from '../utils/visibility';
 import '../ai/factions/index'; // This import ensures the registration script runs
+import { findClosestTarget, calculateDistance } from '../utils/ai';
 
 export function processAITurns(
     gameState: GameState,
@@ -42,9 +44,36 @@ export function processAITurns(
             return canShipSeeEntity(target, ship, gameState.currentSector);
         });
 
-        if (ship.hull / ship.maxHull <= 0.05) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `The ${ship.name}'s hull is critical! They're making a desperate move!`, color: 'border-orange-400', isPlayerSource: false });
-            factionAI.processDesperationMove(ship, gameState, actions);
+        const isDistressed = ship.hull / ship.maxHull < 0.3; // Distress at < 30% hull
+        const closestEnemy = findClosestTarget(ship, potentialTargets);
+        const isEnemyClose = closestEnemy && calculateDistance(ship.position, closestEnemy.position) <= 3;
+
+        if (isDistressed && isEnemyClose) {
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: `The ${ship.name} is heavily damaged and cornered! The captain is considering a desperate maneuver!`,
+                color: 'border-orange-400',
+                isPlayerSource: false
+            });
+
+            const hullPercentage = ship.hull / ship.maxHull;
+            // Chance increases linearly from 0% at 30% hull to 100% at 0% hull.
+            const desperationChance = (0.3 - hullPercentage) / 0.3;
+
+            if (Math.random() < desperationChance) {
+                 actions.addLog({
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message: `With no other options, the ${ship.name} commits to its final action!`,
+                    color: 'border-red-600',
+                    isPlayerSource: false
+                });
+                factionAI.processDesperationMove(ship, gameState, actions);
+            } else {
+                factionAI.processTurn(ship, gameState, actions, potentialTargets);
+            }
+
         } else {
             factionAI.processTurn(ship, gameState, actions, potentialTargets);
         }
