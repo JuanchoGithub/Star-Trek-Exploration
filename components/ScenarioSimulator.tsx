@@ -49,9 +49,9 @@ const createSectorForSim = (templateId: string, seed: string): SectorState => {
     return sector;
 };
 
-const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'], allegiance: Ship['allegiance'], position: {x:number, y:number}): Ship => {
+const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'], allegiance: Ship['allegiance'], position: {x:number, y:number}, name: string): Ship => {
     const newShip: Ship = {
-        id: uniqueId(), name: `${faction} ${shipClass.role}`, type: 'ship', shipModel: faction,
+        id: uniqueId(), name, type: 'ship', shipModel: faction,
         shipClass: shipClass.name, shipRole: shipClass.role, faction: faction, position, hull: shipClass.maxHull,
         maxHull: shipClass.maxHull, shields: 0, maxShields: shipClass.maxShields,
         energy: { current: shipClass.energy.max, max: shipClass.energy.max },
@@ -117,6 +117,12 @@ const SectorSelectorModal: React.FC<{
     );
 };
 
+const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+    </svg>
+);
+
 
 const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { themeName } = useTheme();
@@ -127,9 +133,15 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         seed: `sim_${Date.now()}`,
         sector: null,
     });
-    const [tool, setTool] = useState<Tool>(null);
+    const [tool, setTool] = useState<Tool>({
+        type: 'add_ship',
+        shipClass: shipClasses.Federation['Sovereign-class'],
+        faction: 'Federation',
+        allegiance: 'player',
+    });
     const [showSectorSelector, setShowSectorSelector] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
+    const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
     
     useEffect(() => {
         if (mode === 'setup') {
@@ -159,15 +171,42 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 alert("Only one player ship can be added.");
                 return;
             }
+            
+            const factionNames = availableNames[tool.faction];
+            let newShipName: string;
+            const updatedFactionNames = [...factionNames];
 
-            const newShip = createShipForSim(tool.shipClass, tool.faction, tool.allegiance, pos);
+            if (factionNames.length > 0) {
+                const nameIndex = Math.floor(Math.random() * factionNames.length);
+                newShipName = factionNames[nameIndex];
+                updatedFactionNames.splice(nameIndex, 1);
+            } else {
+                newShipName = `${tool.faction} Vessel ${uniqueId().substr(-4)}`;
+            }
+
+            const newShip = createShipForSim(tool.shipClass, tool.faction, tool.allegiance, pos, newShipName);
             setSetupState(prev => ({ ...prev, ships: [...prev.ships, newShip] }));
+            setAvailableNames(prev => ({ ...prev, [tool.faction]: updatedFactionNames }));
+
         } else if (tool?.type === 'remove_ship') {
             if (existingShipAtPos) {
                 setSetupState(prev => ({ ...prev, ships: prev.ships.filter(s => s.id !== existingShipAtPos.id) }));
             }
         }
-    }, [mode, tool, setupState.ships]);
+    }, [mode, tool, setupState.ships, availableNames]);
+
+    const handleMoveShip = useCallback((shipId: string, newPos: { x: number, y: number }) => {
+        setSetupState(prev => {
+            const isOccupied = prev.ships.some(s => s.id !== shipId && s.position.x === newPos.x && s.position.y === newPos.y);
+            if (isOccupied) {
+                return prev;
+            }
+            const updatedShips = prev.ships.map(ship => 
+                ship.id === shipId ? { ...ship, position: newPos } : ship
+            );
+            return { ...prev, ships: updatedShips };
+        });
+    }, []);
     
     const handleRefreshSeed = useCallback(() => {
         setSetupState(prev => ({ ...prev, seed: `sim_${Date.now()}` }));
@@ -192,6 +231,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         endSimulation();
         setGameState(null);
         setMode('setup');
+        // Reset available names for a fresh setup
+        setAvailableNames(JSON.parse(JSON.stringify(shipNames)));
     };
 
     const handleStep = useCallback((direction: number) => {
@@ -240,13 +281,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                              <div className="w-full h-full aspect-[11/10] relative">
                                 <SectorView
                                     sector={setupState.sector}
-                                    entities={[...setupState.ships, ...setupState.sector.entities].map(e => {
-                                        if(e.type === 'ship') {
-                                            const ship = e as Ship;
-                                            return {...ship, allegiance: tool?.type === 'add_ship' && ship.id.startsWith('temp') ? tool.allegiance : ship.allegiance};
-                                        }
-                                        return e;
-                                    })}
+                                    entities={setupState.ships}
                                     playerShip={null as any}
                                     selectedTargetId={null}
                                     onSelectTarget={() => {}}
@@ -254,6 +289,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     onSetNavigationTarget={() => {}}
                                     themeName={themeName}
                                     onCellClick={handleCellClick}
+                                    onMoveShip={handleMoveShip}
                                     spectatorMode={true}
                                 />
                             </div>
@@ -261,45 +297,69 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     </div>
                     <aside className="flex flex-col gap-4 min-h-0">
                         <div className="panel-style p-3">
-                            <h2 className="text-lg font-bold text-secondary-light mb-2">Set Allegiance</h2>
+                            <h2 className="text-lg font-bold text-secondary-light mb-2">Allegiance</h2>
                              <div className="grid grid-cols-2 gap-2">
-                                {allegiances.map(a => (
-                                    <button 
-                                        key={a}
-                                        onClick={() => setTool(prev => (prev?.type === 'add_ship' ? {...prev, allegiance: a} : prev))}
-                                        className={`w-full btn text-sm capitalize ${allegianceColors[a]} ${tool?.type === 'add_ship' && tool.allegiance === a ? 'ring-2 ring-white' : ''}`}
-                                    >
-                                        {a}
-                                    </button>
-                                ))}
+                                {allegiances.map(a => {
+                                    const isActive = tool?.type === 'add_ship' && tool.allegiance === a;
+                                    const buttonClasses = `w-full btn text-sm capitalize ${allegianceColors[a]} ${isActive ? 'btn-allegiance-active' : 'btn-allegiance-inactive'}`;
+                                    return (
+                                        <button 
+                                            key={a}
+                                            onClick={() => {
+                                                setTool(prev => {
+                                                    if (prev?.type === 'add_ship') {
+                                                        return { ...prev, allegiance: a };
+                                                    }
+                                                    return {
+                                                        type: 'add_ship',
+                                                        shipClass: shipClasses.Federation['Sovereign-class'],
+                                                        faction: 'Federation',
+                                                        allegiance: a,
+                                                    };
+                                                });
+                                            }}
+                                            className={buttonClasses}
+                                        >
+                                            {a}
+                                        </button>
+                                    );
+                                })}
                                  <button
                                     onClick={() => setTool({ type: 'remove_ship'})}
-                                    className={`w-full btn btn-tertiary col-span-2 ${tool?.type === 'remove_ship' ? 'ring-2 ring-white' : ''}`}
+                                    className={`w-full btn text-sm btn-tertiary col-span-2 flex items-center justify-center gap-2 ${tool?.type === 'remove_ship' ? 'btn-allegiance-active' : 'btn-allegiance-inactive'}`}
                                 >
+                                    <TrashIcon className="w-5 h-5" />
                                     Remove Ship
                                 </button>
                              </div>
                         </div>
-                        <div className="panel-style p-3 flex-grow min-h-0 overflow-y-auto">
-                            <h2 className="text-lg font-bold text-secondary-light mb-2">Ship Registry</h2>
-                            {factionModels.map(faction => (
-                                <div key={faction}>
-                                    <h3 className="font-bold text-primary-light mt-2">{faction}</h3>
-                                    {Object.values(shipClasses[faction]).map(shipClass => {
-                                        const visualConfig = shipVisuals[faction]?.classes[shipClass.name];
-                                        const Icon = visualConfig?.icon;
-                                        return (
-                                        <button 
-                                            key={shipClass.name}
-                                            onClick={() => setTool({ type: 'add_ship', shipClass, faction, allegiance: tool?.type === 'add_ship' ? tool.allegiance : 'enemy' })}
-                                            className={`w-full text-left p-1 rounded hover:bg-bg-paper-lighter flex items-center gap-2 ${tool?.type === 'add_ship' && tool.shipClass.name === shipClass.name ? 'bg-bg-paper-lighter' : ''}`}
-                                        >
-                                            {Icon && <Icon className="w-6 h-6 flex-shrink-0" />}
-                                            <span className="truncate">{shipClass.name}</span>
-                                        </button>
-                                    )})}
-                                </div>
-                            ))}
+                        <div className="panel-style p-3 flex-grow min-h-0 flex flex-col">
+                            <h2 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">Ship Registry</h2>
+                            <div className="flex-grow min-h-0 overflow-y-auto pr-2">
+                                {factionModels.map(faction => (
+                                    <div key={faction}>
+                                        <h3 className="font-bold text-primary-light mt-2">{faction}</h3>
+                                        {Object.values(shipClasses[faction]).map(shipClass => {
+                                            const visualConfig = shipVisuals[faction]?.classes[shipClass.name];
+                                            const Icon = visualConfig?.icon;
+                                            return (
+                                            <button 
+                                                key={shipClass.name}
+                                                onClick={() => setTool(prev => ({
+                                                    type: 'add_ship',
+                                                    shipClass,
+                                                    faction,
+                                                    allegiance: (prev?.type === 'add_ship' ? prev.allegiance : 'enemy')
+                                                }))}
+                                                className={`w-full text-left p-1 rounded hover:bg-bg-paper-lighter flex items-center gap-2 ${tool?.type === 'add_ship' && tool.shipClass.name === shipClass.name ? 'bg-bg-paper-lighter' : ''}`}
+                                            >
+                                                {Icon && <Icon className="w-9 h-9 flex-shrink-0" />}
+                                                <span className="truncate">{shipClass.name}</span>
+                                            </button>
+                                        )})}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                         <div className="panel-style p-3 flex-shrink-0">
                              <h2 className="text-lg font-bold text-secondary-light mb-2">Deployed Ships ({setupState.ships.length})</h2>

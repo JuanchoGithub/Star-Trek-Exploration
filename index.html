@@ -1021,6 +1021,23 @@
               opacity: 0.9;
           }
       }
+
+      /* Scenario Simulator Allegiance Buttons */
+      .btn-allegiance-inactive {
+        filter: brightness(0.6) saturate(0.8);
+        transition: filter 0.2s ease-in-out;
+      }
+      .btn-allegiance-inactive:hover:not(:disabled) {
+        filter: brightness(0.8) saturate(1);
+      }
+      @keyframes allegiance-pulse {
+        0%, 100% { filter: brightness(1.05) saturate(1.1); }
+        50% { filter: brightness(1.25) saturate(1.2); }
+      }
+      .btn-allegiance-active {
+        filter: brightness(1.05) saturate(1.1);
+        animation: allegiance-pulse 2s ease-in-out infinite;
+      }
     </style>
     <script>
       tailwind.config = {

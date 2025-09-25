@@ -28,6 +28,7 @@ interface SectorViewProps {
   themeName: ThemeName;
   onCellClick?: (pos: { x: number; y: number }) => void;
   spectatorMode?: boolean;
+  onMoveShip?: (shipId: string, newPos: { x: number; y: number }) => void;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -66,7 +67,7 @@ const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: 
 };
 
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false }) => {
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip }) => {
   const sectorSize = { width: 11, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -233,6 +234,16 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
               key={`cell-${x}-${y}`}
               className={`border border-border-dark border-opacity-50 ${canNavigateTo ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-default'}`}
               onClick={() => handleGridInteraction(x, y)}
+              onDragOver={(e) => { if (onMoveShip) e.preventDefault(); }}
+              onDrop={(e) => {
+                  if (onMoveShip) {
+                      e.preventDefault();
+                      const shipId = e.dataTransfer.getData("shipId");
+                      if (shipId) {
+                          onMoveShip(shipId, { x, y });
+                      }
+                  }
+              }}
               title={isNavDisabled ? "Navigation computer is damaged" : isOccupied ? "Cell is occupied" : ""}
             />
           );
@@ -467,8 +478,14 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 return (
                     <div
                         key={entity.id}
-                        className="absolute flex flex-col items-center justify-center z-30 cursor-pointer"
+                        className="absolute flex flex-col items-center justify-center z-30"
                         style={style}
+                        draggable={spectatorMode && onMoveShip && entity.type === 'ship'}
+                        onDragStart={(e) => {
+                            if (spectatorMode && onMoveShip && entity.type === 'ship') {
+                                e.dataTransfer.setData("shipId", entity.id);
+                            }
+                        }}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (isPlayer) {
