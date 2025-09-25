@@ -10,6 +10,8 @@ import { canTargetEntity, consumeEnergy } from '../game/utils/combat';
 import { OfficerAdvice, ActiveAwayMissionOption, Planet } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { initiateBoardingProcess } from '../game/actions/boarding';
+import { uniqueId } from '../game/utils/ai';
 
 // Initialize AI and register faction handlers
 import '../game/ai/factions'; 
@@ -717,6 +719,28 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const target = gameState.currentSector.entities.find((e): e is Ship => e.id === targetId);
         if (!target) return;
     
+        if (target.isDerelict && type === 'boarding') {
+            setPlayerTurnActions(prev => ({ ...prev, hasUsedAwayTeam: true }));
+            setGameState(prev => {
+                const next = JSON.parse(JSON.stringify(prev));
+                const shipInNext = next.player.ship;
+                const targetInNext = next.currentSector.entities.find((e): e is Ship => e.id === targetId);
+                if (!targetInNext) return prev;
+
+                const { success, logs } = initiateBoardingProcess(shipInNext, targetInNext, next.turn);
+
+                logs.forEach(log => {
+                    const newLog = {
+                        id: uniqueId(), turn: next.turn, sourceId: 'player', sourceName: shipInNext.name,
+                        message: log, isPlayerSource: true, color: success ? 'border-blue-400' : 'border-red-400'
+                    };
+                    next.logs.push(newLog);
+                });
+                return next;
+            });
+            return;
+        }
+
         setPlayerTurnActions(prev => ({ ...prev, hasUsedAwayTeam: true }));
         
         setGameState(prev => {
@@ -730,21 +754,16 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Sending a security team to ${targetInNext.name}...`, isPlayerSource: true, color: 'border-blue-400' });
             
             let successChance = type === 'boarding' ? 0.5 : 0.8;
-            if (targetInNext.isDerelict && type === 'boarding') {
-                successChance = 1.0;
-            }
+            
             const success = Math.random() < successChance;
 
             if (success) {
                 if (type === 'boarding') {
-                    const wasDerelict = targetInNext.isDerelict;
                     targetInNext.faction = 'Federation';
                     targetInNext.logColor = 'border-blue-300';
                     targetInNext.isDerelict = false;
                     targetInNext.captureInfo = { captorId: shipInNext.id, repairTurn: next.turn };
-                    const message = wasDerelict
-                        ? `Boarding successful! We have secured the derelict ${targetInNext.name}! An engineering team is being dispatched to begin repairs.`
-                        : `Boarding successful! We have captured the ${targetInNext.name}! An engineering team is being dispatched to stabilize and repair the vessel.`;
+                    const message = `Boarding successful! We have captured the ${targetInNext.name}! An engineering team is being dispatched to stabilize and repair the vessel.`;
                     addLog({ sourceId: 'player', sourceName: shipInNext.name, message: message, isPlayerSource: true, color: 'border-blue-400' });
                 } else { // strike
                     const damage = 20 + Math.floor(Math.random() * 10);

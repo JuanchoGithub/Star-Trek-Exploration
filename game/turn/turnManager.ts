@@ -1,6 +1,6 @@
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
-import { applyTorpedoDamage, applyPhaserDamage, consumeEnergy } from '../utils/combat';
+import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep, uniqueId, findClosestTarget } from '../utils/ai';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
@@ -11,6 +11,8 @@ import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants'
 import { processPlayerTurn } from './player';
 import { canShipSeeEntity } from '../utils/visibility';
 import { isCommBlackout } from '../utils/sector';
+import { handleFullRecharge } from '../utils/energy';
+import { handleBoardingTurn } from '../actions/boarding';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -100,7 +102,7 @@ export const generatePhasedTurn = (
         if (ship.id === 'player') continue; // Player already acted
 
         let shipInState = allShipsInSector().find(s => s.id === ship.id);
-        if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict) continue;
+        if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict || shipInState.captureInfo) continue;
         
         const factionAI = AIDirector.getAIForFaction(shipInState.faction);
         
@@ -201,8 +203,36 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
 
 function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void) {
     allShips.forEach(ship => {
-        if (ship.hull <= 0 || ship.isDerelict) return;
+        if (ship.hull <= 0) return;
 
+        // Boarding / Capture Logic
+        if (ship.captureInfo?.turnsToRepair) {
+            const result = handleBoardingTurn(ship, state);
+            if (result.logs.length > 0) {
+                const captor = allShips.find(s => s.id === ship.captureInfo?.captorId);
+                const isPlayerCapture = captor ? (captor.id === 'player' || captor.allegiance === 'ally') : (ship.captureInfo?.captorId === 'player');
+                
+                result.logs.forEach(logInfo => {
+                     addLog({
+                        sourceId: captor?.id || 'system',
+                        sourceName: captor?.name || 'Salvage Team',
+                        message: logInfo.message,
+                        isPlayerSource: isPlayerCapture,
+                        color: logInfo.color,
+                    });
+                });
+            }
+            // If the ship is still under repair, skip all other end-of-turn logic for it
+            if (!result.isComplete) {
+                return;
+            }
+        }
+
+        if (ship.isDerelict) return;
+
+        const isPlayerSource = ship.id === 'player';
+        const logColor = ship.logColor || 'border-gray-500';
+        
         // Docking Repairs & Resupply
         if (ship.id === 'player' && state.isDocked) {
             const hullRepair = ship.maxHull * 0.2;
@@ -236,10 +266,8 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
         // Shield Regeneration
         if (state.redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
             const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
-            // Power modifier is proportional: 33% power = 1x regen, 66% = 2x, 100% = ~3x
             const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
-            const baseRegen = ship.maxShields * 0.10; // Base regen is 10% of max shields at 33% power
-            
+            const baseRegen = ship.maxShields * 0.10;
             const regenerationAmount = baseRegen * powerToShieldsModifier * shieldEfficiency;
             
             if (regenerationAmount > 0) {
@@ -254,67 +282,69 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
             const engineEfficiency = ship.subsystems.engines.maxHealth > 0 ? ship.subsystems.engines.health / ship.subsystems.engines.maxHealth : 0;
             const generated = stats.baseEnergyGeneration * engineOutputMultiplier * engineEfficiency;
             
-            let consumption = stats.systemConsumption.base;
-            for (const key in ship.subsystems) {
-                const systemKey = key as keyof ShipSubsystems;
-                if (ship.subsystems[systemKey].health > 0) consumption += stats.systemConsumption[systemKey];
+            let consumption: number;
+            if (ship.isRestored) {
+                consumption = 0;
+                if (ship.subsystems.weapons.health > 0) consumption += stats.systemConsumption.weapons;
+                if (ship.shields > 0) consumption += 20 * stats.energyModifier;
+            } else {
+                consumption = stats.systemConsumption.base;
+                for (const key in ship.subsystems) {
+                    const systemKey = key as keyof ShipSubsystems;
+                    if (ship.subsystems[systemKey].health > 0) consumption += stats.systemConsumption[systemKey];
+                }
+                if(ship.shields > 0) consumption += 20 * stats.energyModifier;
+                if(ship.evasive) consumption += 10 * stats.energyModifier;
+                if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
+                if(ship.repairTarget) consumption += 5 * stats.energyModifier;
             }
-            if(ship.shields > 0) consumption += 20 * stats.energyModifier;
-            if(ship.evasive) consumption += 10 * stats.energyModifier;
-            if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
-            if(ship.repairTarget) consumption += 5 * stats.energyModifier;
 
             const netChange = generated - consumption;
             ship.energy.current = Math.max(0, Math.min(ship.energy.max, ship.energy.current + netChange));
+
+            const logMessage = `Energy grid: +${generated.toFixed(1)} GEN, -${consumption.toFixed(1)} CON. Net: ${netChange.toFixed(1)}. Reserve power is now ${Math.round(ship.energy.current)}/${ship.energy.max}. Dilithium: ${ship.dilithium.current}/${ship.dilithium.max}.`;
+            addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: logMessage,
+                isPlayerSource,
+                color: logColor,
+            });
         }
         
-        const isPlayerSource = ship.id === 'player';
-        const logColor = isPlayerSource ? 'border-blue-400' : ship.logColor;
-
         // Dilithium/Life Support Failure Logic
         if (ship.energy.current <= 0) {
-            if (ship.dilithium.current > 0) {
-                ship.dilithium.current--;
-                ship.energy.current = ship.energy.max;
+            const rechargeLogs = handleFullRecharge(ship, state.turn);
+            rechargeLogs.forEach(message => {
                 addLog({
-                    sourceId: ship.id, sourceName: ship.name,
-                    message: `Reserve power depleted! Consuming one dilithium crystal to restore energy reserves.`,
-                    isPlayerSource, color: logColor
+                    sourceId: ship.id,
+                    sourceName: ship.name,
+                    message,
+                    isPlayerSource,
+                    color: message.startsWith('WARNING:') ? 'border-orange-500' : (message.startsWith('CRITICAL:') ? 'border-red-600' : logColor)
                 });
-
-                if (Math.random() < 0.25) { // 25% chance of damage
-                    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter', 'pointDefense', 'computer', 'lifeSupport'];
-                    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-                    const targetSubsystem = ship.subsystems[randomSubsystemKey];
-                    if (targetSubsystem.maxHealth > 0) {
-                        const damage = 5 + Math.floor(Math.random() * 6);
-                        targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
-                        addLog({
-                            sourceId: ship.id, sourceName: ship.name,
-                            message: `WARNING: The emergency power transfer caused ${damage} damage to the ${randomSubsystemKey} system!`,
-                            isPlayerSource, color: 'border-orange-500'
-                        });
-                    }
-                }
-            } else {
-                if (ship.lifeSupportFailureTurn === null) {
-                    ship.lifeSupportFailureTurn = state.turn;
-                    addLog({
-                        sourceId: ship.id, sourceName: ship.name,
-                        message: `CRITICAL: All power and dilithium reserves exhausted! Life support is running on emergency batteries. Failure in 2 turns!`,
-                        isPlayerSource, color: 'border-red-600'
-                    });
-                }
-            }
+            });
         }
 
-        // Check for life support failure resolution
+        // Life support countdown and dereliction
         if (ship.lifeSupportFailureTurn !== null) {
-            if (state.turn - ship.lifeSupportFailureTurn >= 2) {
+            const turnsSinceFailure = state.turn - ship.lifeSupportFailureTurn;
+            const turnsRemaining = 2 - turnsSinceFailure;
+            if (turnsRemaining > 0) {
+                 addLog({
+                    sourceId: ship.id, sourceName: ship.name,
+                    message: `CRITICAL: Life support is on emergency batteries. Main power failure in ${turnsRemaining} turn(s)!`,
+                    isPlayerSource, color: 'border-red-600'
+                });
+            } else {
                 ship.isDerelict = true;
                 ship.hull = Math.min(ship.hull, ship.maxHull * 0.1);
                 ship.shields = 0;
                 ship.energy.current = 0;
+                Object.keys(ship.subsystems).forEach(key => {
+                    const system = ship.subsystems[key as keyof ShipSubsystems];
+                    if (system) system.health = 0;
+                });
                 addLog({
                     sourceId: ship.id, sourceName: ship.name,
                     message: `Life support has failed! The ship is now a derelict hulk.`,

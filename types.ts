@@ -1,6 +1,4 @@
-import React from 'react';
-
-// Fix: Replaced entire file content with correct type definitions and removed logic.
+// FIX: Replaced entire file content with correct type definitions and removed logic.
 // This resolves circular dependency issues and provides strongly-typed interfaces for the application.
 export interface Position {
   x: number;
@@ -73,7 +71,13 @@ export interface Ship extends BaseEntity {
   engineFailureTurn: number | null;
   lifeSupportFailureTurn: number | null;
   isDerelict: boolean;
-  captureInfo: { captorId: string; repairTurn: number; } | null;
+  captureInfo: {
+    captorId: string;
+    repairTurn: number;
+    turnsToRepair?: number;
+    dilithiumToTransfer?: number;
+  } | null;
+  isRestored?: boolean;
   pointDefenseEnabled: boolean;
   statusEffects: StatusEffect[];
   allegiance?: 'player' | 'ally' | 'enemy' | 'neutral';

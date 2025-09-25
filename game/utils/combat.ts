@@ -1,6 +1,7 @@
 import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
+import { useOneDilithiumCrystal } from './energy';
 
 export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState): { canTarget: boolean, reason: string } => {
     if (target.type === 'ship' && (target as Ship).cloakState === 'cloaked') {
@@ -38,24 +39,16 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
     }
 
     ship.energy.current = 0;
-    ship.dilithium.current--;
-    const rechargedEnergy = ship.energy.max;
-    logs.push(`CRITICAL: Drained remaining ${initialEnergy} power. Rerouting 1 Dilithium to batteries. Power fully restored.`);
+    logs.push(`CRITICAL: Drained remaining ${Math.round(initialEnergy)} power. Rerouting 1 Dilithium to batteries.`);
 
-    const subsystems: (keyof ShipSubsystems)[] = ['weapons', 'engines', 'shields', 'transporter', 'pointDefense', 'computer', 'lifeSupport'];
-    const randomSubsystemKey = subsystems[Math.floor(Math.random() * subsystems.length)];
-    const targetSubsystem = ship.subsystems[randomSubsystemKey];
-    if (targetSubsystem.maxHealth > 0) {
-        const damage = 5 + Math.floor(Math.random() * 6);
-        targetSubsystem.health = Math.max(0, targetSubsystem.health - damage);
-        logs.push(`WARNING: The power surge caused ${damage} damage to the ${randomSubsystemKey} system!`);
-    }
+    const { restoredEnergy, logs: dilithiumLogs } = useOneDilithiumCrystal(ship);
+    logs.push(...dilithiumLogs);
 
-    if (rechargedEnergy >= remainingCost) {
-        ship.energy.current = rechargedEnergy - remainingCost;
+    if (restoredEnergy >= remainingCost) {
+        ship.energy.current = restoredEnergy - remainingCost;
         return { success: true, logs };
     } else {
-        ship.energy.current = rechargedEnergy;
+        ship.energy.current = restoredEnergy;
         logs.push(`Action failed: Power cost is too high even for a dilithium boost. Power restored, but action aborted.`);
         return { success: false, logs };
     }
@@ -149,7 +142,7 @@ export const applyPhaserDamage = (
 
     const absorbedByShields = Math.min(target.shields, damageToProcess);
     if (absorbedByShields > 0) {
-        target.shields -= absorbedByShields;
+        target.shields = Math.max(0, target.shields - absorbedByShields);
         mainFireLog += ` Shields absorbed ${Math.round(absorbedByShields)} damage`;
         if (damageToProcess - absorbedByShields <= 0 && damageBypassingShields <= 0) {
             mainFireLog += `, the full hit was absorbed.`;
@@ -229,7 +222,7 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
     damageToHull -= absorbedDamageRatio;
 
     if (shieldAbsorption > 0) {
-        target.shields -= shieldAbsorption;
+        target.shields = Math.max(0, target.shields - shieldAbsorption);
         let shieldLog = `Shields absorb ${Math.round(shieldAbsorption)} energy, reducing torpedo damage by ${Math.round(absorbedDamageRatio)}`;
         if (damageToHull <= 0) {
             shieldLog += `, the full hit was absorbed.`;
