@@ -1,4 +1,4 @@
-import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
 import { processRecoveryTurn } from './common';
@@ -21,7 +21,15 @@ export class IndependentAI extends FactionAI {
         return 'engines'; // Target engines to aid escape
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes while attempting to flee! Activating point-defense!` });
+        }
+        return false;
+    }
+
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         const { stance } = this.determineStance(ship, potentialTargets);
         
         if (stance === 'Recovery') {

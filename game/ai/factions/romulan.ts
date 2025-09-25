@@ -1,4 +1,4 @@
-import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
 import { findClosestTarget } from '../../utils/ai';
@@ -28,7 +28,22 @@ export class RomulanAI extends FactionAI {
         return null; // Target hull if engines are already destroyed.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
+             ship.cloakState = 'cloaking';
+             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedo threat. Evading via cloaking device.` });
+             return true; // Cloaking is a turn-ending action.
+        }
+    
+        // Fallback to point defense if cloak is not available
+        if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cloaking device is unavailable. Activating point-defense grid as a contingency.` });
+        }
+        return false;
+    }
+
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }

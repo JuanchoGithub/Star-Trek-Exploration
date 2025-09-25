@@ -118,7 +118,7 @@ export const generatePhasedTurn = (
         );
 
         const potentialTargets = allPossibleOpponents.filter(target => {
-            if (target.cloakState === 'cloaked') return false;
+            if (target.cloakState === 'cloaked' || target.cloakState === 'cloaking') return false;
 
             const isVisibleToAnyAlly = alliesWithComms.some(ally => 
                 canShipSeeEntity(target, ally, currentState.currentSector)
@@ -154,7 +154,19 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
 
     for (const torpedo of torpedoes) {
         const target = allShips.find(e => e.id === torpedo.targetId);
-        if (!target || target.hull <= 0) continue;
+
+        if (!target || target.hull <= 0 || target.cloakState === 'cloaked' || target.cloakState === 'cloaking') {
+            if (target && (target.cloakState === 'cloaked' || target.cloakState === 'cloaking')) {
+                addLog({ 
+                    sourceId: torpedo.sourceId, 
+                    sourceName: torpedo.name, 
+                    message: `The ${torpedo.name} loses its lock as the ${target.name} enters a cloaking field! The projectile continues into deep space.`, 
+                    isPlayerSource: torpedo.sourceId === 'player', 
+                    color: 'border-yellow-400'
+                });
+            }
+            continue; // Skips the torpedo, effectively removing it.
+        }
 
         let keepTorpedo = true;
         for (let i = 0; i < torpedo.speed; i++) {

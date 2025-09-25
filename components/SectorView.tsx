@@ -130,7 +130,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const path = playerShip ? getPath(playerShip.position, navigationTarget) : [];
 
   const visibleEntities = playerShip ? allEntities.filter(entity => {
-      if (entity.type === 'ship' && (entity as Ship).cloakState === 'cloaked') return false;
+      if (entity.type === 'ship' && ((entity as Ship).cloakState === 'cloaked' || (entity as Ship).cloakState === 'cloaking')) return false;
       return canShipSeeEntity(entity, playerShip, sector);
   }) : allEntities;
   

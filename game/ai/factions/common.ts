@@ -147,8 +147,49 @@ export function processCommonTurn(
     const { currentSector } = gameState;
     const distance = calculateDistance(ship.position, target.position);
     const originalPosition = { ...ship.position };
+
+    // --- CLOAK HANDLING & TACTICAL CHOICE ---
+    if (ship.cloakState === 'cloaked') {
+        const canLaunchTorpedo = ship.torpedoes.current > 0 && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
+        const isGoodTorpedoRange = distance >= 2 && distance <= 8;
+        const willFireTorpedo = canLaunchTorpedo && isGoodTorpedoRange && Math.random() < 0.75;
+
+        if (willFireTorpedo) {
+            const shipStats = shipClasses[ship.shipModel][ship.shipClass];
+            if (shipStats.torpedoType !== 'None') {
+                const torpedoData = torpedoStats[shipStats.torpedoType];
+                ship.torpedoes.current--;
+                const torpedo: TorpedoProjectile = {
+                    id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
+                    position: { ...ship.position }, targetId: target.id, sourceId: ship.id, stepsTraveled: 0,
+                    speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
+                    torpedoType: shipStats.torpedoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
+                };
+                currentSector.entities.push(torpedo);
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Fires a ${torpedoData.name} from beneath its cloak!`, isPlayerSource: false, color: ship.logColor });
+            }
+            return; // End turn after firing torpedo
+        }
+        
+        const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
+        if (shouldDecloak) {
+            ship.cloakState = 'visible';
+            ship.cloakCooldown = 2;
+            ship.shieldReactivationTurn = gameState.turn + 2;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Decloaks, preparing to engage! Shields will be offline for 2 turns.`, isPlayerSource: false, color: ship.logColor });
+            // Let the turn continue to fire phasers etc.
+        } else {
+            if (distance > 1) {
+                ship.position = moveOneStep(ship.position, target.position);
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, maneuvering for a better position.`, isPlayerSource: false, color: ship.logColor });
+            } else {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, holding position.`, isPlayerSource: false, color: ship.logColor });
+            }
+            return; // End turn if just moving while cloaked
+        }
+    }
     
-    // --- AI DECISION MAKING & LOGGING ---
+    // --- STANDARD AI DECISION MAKING & LOGGING ---
     let moveTarget: Position | null = null;
     let aiDecisionLog = `Targeting ${target.name} (Dist: ${distance}).`;
 
@@ -192,25 +233,6 @@ export function processCommonTurn(
         }
     }
 
-    // Cloak Handling
-    if (ship.cloakState === 'cloaked') {
-        const shouldDecloak = (distance <= 5 && (ship.hull / ship.maxHull) > 0.4);
-        if (shouldDecloak) {
-            ship.cloakState = 'visible';
-            ship.cloakCooldown = 2;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Decloaks, preparing to engage!`, isPlayerSource: false, color: ship.logColor });
-            return;
-        } else {
-            if (distance > 1) {
-                ship.position = moveOneStep(ship.position, target.position);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, maneuvering for a better position.`, isPlayerSource: false, color: ship.logColor });
-            } else {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, holding position.`, isPlayerSource: false, color: ship.logColor });
-            }
-            return;
-        }
-    }
-    
     // Movement
     if (moveTarget) {
         if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
@@ -235,6 +257,9 @@ export function processCommonTurn(
     const phaserDelay = didMove ? 700 : 0;
 
     // Firing Logic
+    // FIX: Removed redundant `ship.cloakState !== 'cloaked'` check.
+    // The control flow of this function ensures the ship is not cloaked at this point,
+    // and the redundant check was causing a TypeScript type narrowing error.
     if (ship.subsystems.weapons.health > 0 && distance <= 5) {
         const phaserBaseDamage = 20 * ship.energyModifier;
         const phaserPowerModifier = ship.energyAllocation.weapons / 100;
@@ -255,6 +280,9 @@ export function processCommonTurn(
         torpedoLaunchChance = 0.3;
     }
 
+    // FIX: Removed redundant `ship.cloakState !== 'cloaked'` check.
+    // The control flow of this function ensures the ship is not cloaked at this point,
+    // and the redundant check was causing a TypeScript type narrowing error.
     if (canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance) {
         const shipStats = shipClasses[ship.shipModel][ship.shipClass];
         if (shipStats.torpedoType === 'None') return;

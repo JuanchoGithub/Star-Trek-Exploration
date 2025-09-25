@@ -18,6 +18,11 @@ const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: stri
         lifeSupportReserves: { current: 100, max: 100 },
         cloakState: 'visible',
         cloakCooldown: 0,
+        // FIX: Added missing 'shieldReactivationTurn' property to conform to the Ship interface.
+        shieldReactivationTurn: null,
+        // FIX: Added missing cloak properties to conform to the Ship type.
+        cloakInstability: 0,
+        cloakDestabilizedThisTurn: false,
         isStunned: false,
         engineFailureTurn: null,
         // FIX: Added missing 'lifeSupportFailureTurn' property to conform to the Ship interface.

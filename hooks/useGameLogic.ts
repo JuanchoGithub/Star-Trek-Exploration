@@ -375,6 +375,11 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                     addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot go to Red Alert while cloaking device is active.`, isPlayerSource: true, color: 'border-blue-400' });
                     return prev;
                 }
+                if (ship.shieldReactivationTurn && next.turn < ship.shieldReactivationTurn) {
+                    const turnsRemaining = ship.shieldReactivationTurn - next.turn;
+                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot raise shields: Emitters are recalibrating for ${turnsRemaining} more turn(s).`, isPlayerSource: false, color: 'border-orange-400' });
+                    return prev;
+                }
 
                 const shieldHealthPercent = ship.subsystems.shields.maxHealth > 0 ? ship.subsystems.shields.health / ship.subsystems.shields.maxHealth : 0;
                 
@@ -447,7 +452,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [addLog, gameState, playerTurnActions]);
 
     const onLaunchTorpedo = useCallback((targetId: string) => {
-        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction || playerTurnActions.torpedoTargetId) return;
+        if (gameState.player.ship.isStunned || playerTurnActions.hasTakenMajorAction || playerTurnActions.torpedoTargetId) return;
         
         const { ship } = gameState.player;
         const shipStats = shipClasses[ship.shipModel][ship.shipClass];
@@ -807,8 +812,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
             if (ship.cloakState === 'cloaked') {
                 ship.cloakState = 'visible';
-                ship.cloakCooldown = 2; 
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged. This has used our tactical action for the turn.", isPlayerSource: true, color: 'border-blue-400' });
+                ship.cloakCooldown = 2;
+                ship.shieldReactivationTurn = next.turn + 2; 
+                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cloaking device disengaged. Shields will be offline for 2 turns for recalibration. This has used our tactical action for the turn.", isPlayerSource: true, color: 'border-blue-400' });
                 setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
             } else if (ship.cloakState === 'visible') {
                 if (ship.cloakCooldown > 0) {
@@ -819,8 +825,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                     addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true, color: 'border-blue-400' });
                     return prev;
                 }
+                ship.pointDefenseEnabled = false;
                 ship.cloakState = 'cloaking';
-                addLog({ sourceId: 'player', sourceName: ship.name, message: `Initiating cloaking sequence. Ship is vulnerable.`, isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, message: `Initiating cloaking sequence. Ship is immobile and vulnerable this turn.`, isPlayerSource: true, color: 'border-blue-400' });
                 setPlayerTurnActions(pt => ({...pt, hasTakenMajorAction: true}));
             }
             return next;

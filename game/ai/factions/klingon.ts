@@ -1,4 +1,4 @@
-import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
 import { findClosestTarget } from '../../utils/ai';
@@ -21,7 +21,15 @@ export class KlingonAI extends FactionAI {
         return null; // Target hull if weapons are already destroyed.
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Activating point-defense grid.` });
+        }
+        return false; // Point-defense is not a turn-ending action.
+    }
+
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }

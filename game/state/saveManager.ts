@@ -57,6 +57,15 @@ export const migrateSaveData = (savedState: any): GameState => {
         if (ship.lastAttackerPosition === undefined) {
             ship.lastAttackerPosition = null;
         }
+        if (ship.shieldReactivationTurn === undefined) {
+            ship.shieldReactivationTurn = null;
+        }
+        if (ship.cloakInstability === undefined) {
+            ship.cloakInstability = 0;
+        }
+        if (ship.cloakDestabilizedThisTurn === undefined) {
+            ship.cloakDestabilizedThisTurn = false;
+        }
     };
     
     migrateShip(state.player.ship);

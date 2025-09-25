@@ -65,6 +65,11 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         isDerelict: false, captureInfo: null, pointDefenseEnabled: false, statusEffects: [],
         allegiance, cloakingCapable: shipClass.cloakingCapable,
         energyModifier: shipClass.energyModifier,
+        // FIX: Added missing 'shieldReactivationTurn' property to satisfy the Ship interface.
+        shieldReactivationTurn: null,
+        // FIX: Added missing cloak properties to conform to the Ship interface.
+        cloakInstability: 0,
+        cloakDestabilizedThisTurn: false,
         lastAttackerPosition: null,
     };
     if (allegiance === 'player' || allegiance === 'ally') {

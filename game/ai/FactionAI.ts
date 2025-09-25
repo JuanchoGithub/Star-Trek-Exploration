@@ -1,4 +1,4 @@
-import type { GameState, Ship, ShipSubsystems } from '../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../types';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
 export interface AIActions {
@@ -16,9 +16,34 @@ export abstract class FactionAI {
 
     // Determines which subsystem to target, if any.
     abstract determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null;
+    
+    // NEW abstract method for torpedo defense
+    abstract handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean;
+    
+    // NEW abstract method for the main turn logic
+    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void;
 
-    // Defines the standard turn logic for a ship of this faction.
-    abstract processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void;
+    // The main turn processing method, now in the base class to enforce order of operations.
+    public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+        const incomingTorpedoes = (gameState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[]).filter(t => t.targetId === ship.id);
+
+        if (incomingTorpedoes.length > 0) {
+            const turnEndingActionTaken = this.handleTorpedoThreat(ship, gameState, actions, incomingTorpedoes);
+            if (turnEndingActionTaken) {
+                // The defensive action (e.g., cloaking) uses the whole turn.
+                return; 
+            }
+        } else {
+            // If there are no torpedoes, ensure point defense is off to conserve power.
+            if (ship.pointDefenseEnabled) {
+                ship.pointDefenseEnabled = false;
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Torpedo threat has passed. Deactivating point-defense grid to conserve power.` });
+            }
+        }
+        
+        // Execute the main logic for the turn
+        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets);
+    }
     
     // This method will execute the desperation move.
     abstract processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void;

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Entity, GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import WireframeDisplay from './WireframeDisplay';
@@ -152,7 +153,14 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
             activeConsumption.push({ label: 'Damage Control', value: -5 * stats.energyModifier });
         }
          if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
-            activeConsumption.push({ label: 'Cloak Engaged', value: -(ship.customCloakStats?.powerCost || 45) * stats.energyModifier });
+            const cloakStats = shipClasses[ship.shipModel]?.[ship.shipClass];
+            if (cloakStats) {
+                let maintainCost = cloakStats.cloakEnergyCost.maintain;
+                if (ship.customCloakStats) {
+                    maintainCost = ship.customCloakStats.powerCost;
+                }
+                activeConsumption.push({ label: 'Cloak Engaged', value: -maintainCost * stats.energyModifier });
+            }
         }
         
         const totalConsumption = systemData.reduce((sum, sys) => sum + (sys.powerDelta < 0 ? sys.powerDelta : 0), 0) 

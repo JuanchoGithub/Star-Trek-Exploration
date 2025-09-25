@@ -1,4 +1,4 @@
-import type { GameState, Ship, Shuttle, ShipSubsystems } from '../../../types';
+import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
@@ -30,7 +30,15 @@ export class FederationAI extends FactionAI {
         return null;
     }
 
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Activating point-defense grid.` });
+        }
+        return false; // Point-defense is not a turn-ending action.
+    }
+
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
 

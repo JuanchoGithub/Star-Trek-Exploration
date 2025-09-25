@@ -180,6 +180,18 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     const logColor = ship.logColor || 'border-gray-500';
     const { turn, redAlert, isDocked } = gameState;
 
+    // Shield Reactivation Timer
+    if (ship.shieldReactivationTurn && turn >= ship.shieldReactivationTurn) {
+        ship.shieldReactivationTurn = null;
+        logs.push({
+            sourceId: ship.id,
+            sourceName: ship.name,
+            message: 'Shield emitters are back online.',
+            isPlayerSource,
+            color: 'border-green-400',
+        });
+    }
+
     // Docking Repairs & Resupply (only for player)
     if (ship.id === 'player' && isDocked) {
         const hullRepair = ship.maxHull * 0.2;
@@ -209,7 +221,9 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     }
 
     // Shield Regeneration
-    if (redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
+    if (ship.shieldReactivationTurn && turn < ship.shieldReactivationTurn) {
+        ship.shields = 0; // Force shields to remain at 0 due to penalty
+    } else if (redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
         const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
         const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
         const baseRegen = ship.maxShields * 0.10;
@@ -244,6 +258,17 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
             if(ship.evasive) consumption += 10 * stats.energyModifier;
             if(ship.pointDefenseEnabled) consumption += 15 * stats.energyModifier;
             if(ship.repairTarget) consumption += 5 * stats.energyModifier;
+
+            if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
+                const cloakStats = shipClasses[ship.shipModel]?.[ship.shipClass];
+                if (cloakStats) {
+                    let maintainCost = cloakStats.cloakEnergyCost.maintain;
+                    if (ship.customCloakStats) {
+                        maintainCost = ship.customCloakStats.powerCost;
+                    }
+                    consumption += maintainCost * stats.energyModifier;
+                }
+            }
         }
 
         const netChange = generated - consumption;
@@ -298,6 +323,49 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
                 isPlayerSource, color: 'border-red-600'
             });
         }
+    }
+
+    // Cloaking Sequence Resolution
+    if (ship.cloakState === 'cloaking') {
+        const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
+        let baseFailureChance = stats?.cloakFailureChance ?? 0.10;
+        let logMsg: string;
+
+        if (ship.customCloakStats) {
+            baseFailureChance = 1 - ship.customCloakStats.reliability;
+            logMsg = `Makeshift cloak engagement sequence complete. Base reliability: ${(ship.customCloakStats.reliability * 100).toFixed(0)}%.`;
+        } else {
+            logMsg = `Cloak engagement sequence complete. Base failure chance: ${(baseFailureChance * 100).toFixed(0)}%.`;
+        }
+        
+        let totalFailureChance = baseFailureChance + ship.cloakInstability;
+        logMsg += ` Instability penalty: +${(ship.cloakInstability * 100).toFixed(0)}%.`;
+
+        if (ship.cloakDestabilizedThisTurn) {
+            totalFailureChance += 0.30; // 30% penalty for being hit this turn
+            logMsg += ` Hit while cloaking penalty: +30%.`;
+        }
+        
+        logMsg += ` Final failure chance: ${(Math.min(1, totalFailureChance) * 100).toFixed(0)}%.`;
+        logs.push({
+            sourceId: ship.id, sourceName: ship.name, message: logMsg, isPlayerSource, color: logColor,
+        });
+
+        if (Math.random() < totalFailureChance) {
+            // Failure
+            ship.cloakState = 'visible';
+            ship.cloakCooldown = 1;
+            logs.push({
+                sourceId: ship.id, sourceName: ship.name, message: 'Cloaking device failed to engage! Emitters require 1 turn to reset.', isPlayerSource, color: 'border-orange-500',
+            });
+        } else {
+            // Success
+            ship.cloakState = 'cloaked';
+            logs.push({
+                sourceId: ship.id, sourceName: ship.name, message: 'Cloaking field is active.', isPlayerSource, color: 'border-green-400',
+            });
+        }
+        ship.cloakDestabilizedThisTurn = false;
     }
 
     // Status Effects Processing

@@ -198,6 +198,13 @@ export const applyPhaserDamage = (
         }
     }
 
+    if (target.cloakState === 'cloaking') {
+        target.cloakDestabilizedThisTurn = true;
+        const instabilityIncrease = 0.15;
+        target.cloakInstability = Math.min(0.8, target.cloakInstability + instabilityIncrease); // Cap instability at 80% to avoid guaranteed failure
+        mainFireLog += ` The impact destabilizes the ${target.name}'s cloaking field!`;
+    }
+
     return [mainFireLog];
 };
 
@@ -249,6 +256,13 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
 
     if (target.hull <= 0) {
         logs.push(`${target.name} is destroyed by the torpedo impact!`);
+    }
+    
+    if (target.cloakState === 'cloaking') {
+        target.cloakDestabilizedThisTurn = true;
+        const instabilityIncrease = 0.25; // Torpedoes are more jarring
+        target.cloakInstability = Math.min(0.8, target.cloakInstability + instabilityIncrease);
+        logs.push(`The torpedo impact severely destabilizes the ${target.name}'s cloaking field!`);
     }
 
     return logs;

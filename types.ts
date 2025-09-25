@@ -67,6 +67,9 @@ export interface Ship extends BaseEntity {
   lifeSupportReserves: { current: number; max: number };
   cloakState: CloakState;
   cloakCooldown: number; // Turns until cloak is available again
+  shieldReactivationTurn: number | null; // Turn number until shields can be raised again after decloaking
+  cloakInstability: number; // 0.0 to 1.0, represents permanent degradation
+  cloakDestabilizedThisTurn: boolean; // Flag if damaged while cloaking this turn
   isStunned: boolean; // Skips next turn if true
   engineFailureTurn: number | null;
   lifeSupportFailureTurn: number | null;

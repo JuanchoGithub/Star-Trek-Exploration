@@ -1,6 +1,4 @@
-
-
-import type { GameState, Ship, ShipSubsystems } from '../../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 // FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn } from './common';
@@ -46,8 +44,24 @@ export class PirateAI extends FactionAI {
         return null; // Target hull as a last resort.
     }
 
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+        // Pirates with an unstable cloak will gamble
+        if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
+            ship.cloakState = 'cloaking';
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Attempting to engage makeshift cloaking device!` });
+            return true; // Cloaking is a turn-ending action
+        }
+        
+        // Fallback to point defense
+        if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
+            ship.pointDefenseEnabled = true;
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cloak unavailable! Activating point-defense grid.` });
+        }
+        return false;
+    }
+
     // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
-    processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }

@@ -152,7 +152,7 @@ A registry of all known vessels, planets, and anomalies identified by Starfleet 
 *   **Weapon Power:** Extreme
 *   **Energy Reserves:** 162
 *   **Dilithium Stores:** 16
-*   **Cloaking Device:** Yes
+*   **Cloaking Device:** Yes (50 Pwr/turn)
 *   **Torpedoes:** 8 (Quantum)
 *   **Shuttlebay:** 1 craft
 *   **Special Notes:** Possesses a rare, treaty-permitted cloaking device, making it an excellent anti-cloak platform. Use in non-Federation space may cause diplomatic incidents.
@@ -166,7 +166,7 @@ A registry of all known vessels, planets, and anomalies identified by Starfleet 
 *   **Weapon Power:** Strong
 *   **Energy Reserves:** 135
 *   **Dilithium Stores:** 13
-*   **Cloaking Device:** Yes
+*   **Cloaking Device:** Yes (45 Pwr/turn)
 *   **Torpedoes:** 6 (Photon)
 *   **Shuttlebay:** 0 craft
 *   **Special Notes:** Vulnerable if its cloak is penetrated or if it is caught in a sustained fight.
@@ -216,7 +216,7 @@ A registry of all known vessels, planets, and anomalies identified by Starfleet 
 *   **Weapon Power:** Extreme
 *   **Energy Reserves:** 188
 *   **Dilithium Stores:** 19
-*   **Cloaking Device:** Yes
+*   **Cloaking Device:** Yes (40 Pwr/turn)
 *   **Torpedoes:** 15 (Heavy Plasma)
 *   **Shuttlebay:** 0 craft
 *   **Special Notes:** Its primary weakness is its relatively slow speed and large target profile when decloaked.
@@ -228,7 +228,7 @@ A registry of all known vessels, planets, and anomalies identified by Starfleet 
 *   **Weapon Power:** Strong
 *   **Energy Reserves:** 149
 *   **Dilithium Stores:** 15
-*   **Cloaking Device:** Yes
+*   **Cloaking Device:** Yes (40 Pwr/turn)
 *   **Torpedoes:** 8 (Plasma)
 *   **Shuttlebay:** 0 craft
 *   **Special Notes:** Often operates in pairs, a "Talon" of ships, to overwhelm targets.
@@ -240,7 +240,7 @@ A registry of all known vessels, planets, and anomalies identified by Starfleet 
 *   **Weapon Power:** Extreme
 *   **Energy Reserves:** 200
 *   **Dilithium Stores:** 20
-*   **Cloaking Device:** Yes
+*   **Cloaking Device:** Yes (40 Pwr/turn)
 *   **Torpedoes:** 25 (Heavy Plasma)
 *   **Shuttlebay:** 0 craft
 *   **Special Notes:** Complex power systems may cause a delay between decloaking and firing main weapons. Can fire while cloaked, a unique and deadly ability.
