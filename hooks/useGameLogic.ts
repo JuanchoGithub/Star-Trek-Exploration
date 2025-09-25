@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
-import { SAVE_GAME_KEY } from '../assets/configs/gameConstants';
 import { createInitialGameState } from '../game/state/initialization';
+import { saveGameToLocalStorage, loadGameFromLocalStorage, exportGameState, importGameState } from '../game/state/saveManager';
 import { generatePhasedTurn, TurnStep } from '../game/turn/turnManager';
 import { seededRandom, cyrb53 } from '../game/utils/helpers';
 import { canTargetEntity, consumeEnergy } from '../game/utils/combat';
@@ -19,106 +19,8 @@ const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }
 export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const [gameState, setGameState] = useState<GameState>(() => {
         if (mode === 'load') {
-            const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
-            if (savedStateJSON) {
-                try {
-                    const savedState: GameState = JSON.parse(savedStateJSON);
-                     if (savedState.player && savedState.turn) {
-                        if ((savedState.player as any).boardingParty) delete (savedState.player as any).boardingParty;
-                        if (!savedState.player.ship.securityTeams) savedState.player.ship.securityTeams = { current: 3, max: 3 };
-                        if (savedState.player.ship.repairTarget === undefined) savedState.player.ship.repairTarget = null;
-                        if (!savedState.player.ship.subsystems.transporter) savedState.player.ship.subsystems.transporter = { health: 100, maxHealth: 100 };
-                        if (!savedState.player.targeting) delete savedState.player.targeting;
-                        else if (!savedState.player.targeting.consecutiveTurns) savedState.player.targeting.consecutiveTurns = 1;
-                        if (savedState.isRetreatingWarp === undefined) savedState.isRetreatingWarp = false;
-                        if (savedState.usedAwayMissionSeeds === undefined) savedState.usedAwayMissionSeeds = [];
-                         if(savedState.usedAwayMissionTemplateIds === undefined) savedState.usedAwayMissionTemplateIds = [];
-                        if (savedState.desperationMoveAnimations === undefined) savedState.desperationMoveAnimations = [];
-                        if(savedState.orbitingPlanetId === undefined) savedState.orbitingPlanetId = null;
-                        if (savedState.player.ship.engineFailureTurn === undefined) savedState.player.ship.engineFailureTurn = null;
-                        if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
-                        if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
-                        if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
-                        if (savedState.player.ship.lastAttackerPosition === undefined) savedState.player.ship.lastAttackerPosition = null;
-                        if (savedState.replayHistory === undefined) savedState.replayHistory = [];
-                        
-                        const migrateSubsystems = (subsystems: any) => {
-                            if (subsystems && (subsystems as any).scanners) {
-                                (subsystems as any).pointDefense = (subsystems as any).scanners;
-                                delete (subsystems as any).scanners;
-                            }
-                        };
-                        migrateSubsystems(savedState.player.ship.subsystems);
-                        savedState.quadrantMap.forEach(row => row.forEach(sector => {
-                            sector.entities.forEach(entity => {
-                                if (entity.type === 'ship') {
-                                    migrateSubsystems(entity.subsystems);
-                                    if (!entity.dilithium) { // Add dilithium to old saves
-                                        const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
-                                        entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
-                                    }
-                                    if (entity.lastAttackerPosition === undefined) {
-                                        entity.lastAttackerPosition = null;
-                                    }
-                                }
-                            });
-                        }));
-                         if (savedState.currentSector.entities) {
-                            savedState.currentSector.entities.forEach(entity => {
-                                if (entity.type === 'ship') {
-                                    migrateSubsystems(entity.subsystems);
-                                     if (!entity.dilithium) {
-                                        const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
-                                        entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
-                                    }
-                                     if (entity.lastAttackerPosition === undefined) {
-                                        entity.lastAttackerPosition = null;
-                                    }
-                                }
-                            });
-                        }
-                        // FIX: Corrected legacy save data migration logic to be compatible with TypeScript's type checking.
-                        // 'scanners' was renamed to 'pointDefense' and this ensures old saves are updated correctly.
-                        if ((savedState.player.ship.repairTarget as unknown) === 'scanners') {
-                            savedState.player.ship.repairTarget = 'pointDefense';
-                        }
-                        if (savedState.player.targeting && (savedState.player.targeting.subsystem as unknown) === 'scanners') {
-                            savedState.player.targeting.subsystem = 'pointDefense';
-                        }
-
-                        const migrateSectorData = (sector: any) => {
-                            if (!sector.seed) {
-                                sector.seed = `legacy_${Math.random().toString(36).substring(2, 11)}`;
-                            }
-                            if (!sector.templateId) {
-                                sector.templateId = 'unknown_legacy';
-                            }
-                            if (sector.hasNebula && !sector.nebulaCells) {
-                                const cells = new Set<string>();
-                                const percentage = 0.3 + Math.random() * 0.4;
-                                const targetCount = Math.floor(12 * 10 * percentage);
-                                while(cells.size < targetCount) {
-                                    const x = Math.floor(Math.random() * 12);
-                                    const y = Math.floor(Math.random() * 10);
-                                    cells.add(`${x},${y}`);
-                                }
-                                sector.nebulaCells = Array.from(cells).map(s => {
-                                    const [x, y] = s.split(',').map(Number);
-                                    return { x, y };
-                                });
-                            }
-                            if (!sector.nebulaCells) {
-                                sector.nebulaCells = [];
-                            }
-                        };
-
-                        savedState.quadrantMap.forEach(row => row.forEach(migrateSectorData));
-                        migrateSectorData(savedState.currentSector);
-                        
-                        return savedState;
-                     }
-                } catch (e) { console.error("Could not parse saved state, starting new game.", e); }
-            }
+            // At app start, if a save exists, load it. Otherwise, create a new game.
+            return loadGameFromLocalStorage({ createNewIfNotFound: true }) as GameState;
         }
         return createInitialGameState();
     });
@@ -241,74 +143,48 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     }, [gameState.isRetreatingWarp]);
 
     const saveGame = useCallback(() => {
-        try {
-            localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
+        const success = saveGameToLocalStorage(gameState);
+        if (success) {
             addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state saved successfully.', isPlayerSource: false, color: 'border-gray-500' });
-        } catch (error) {
-            console.error("Failed to save game:", error);
+        } else {
             addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not save game state.', isPlayerSource: false, color: 'border-red-500' });
         }
     }, [gameState, addLog]);
 
     const loadGame = useCallback(() => {
-        try {
-            const savedStateJSON = localStorage.getItem(SAVE_GAME_KEY);
-            if (savedStateJSON) {
-                 const savedState: GameState = JSON.parse(savedStateJSON);
-                 if (savedState.player && savedState.turn) {
-                    setGameState(savedState);
-                    addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state loaded successfully.', isPlayerSource: false, color: 'border-gray-500' });
-                    addLog({
-                        sourceId: 'system',
-                        sourceName: 'Debug',
-                        message: `Loaded Sector. Type: ${savedState.currentSector.templateId}, Seed: ${savedState.currentSector.seed}`,
-                        isPlayerSource: false,
-                        color: 'border-purple-500',
-                    });
-                    isGameLoaded.current = true;
-                 } else {
-                    addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Invalid save data found.', isPlayerSource: false, color: 'border-red-500' });
-                }
-            } else {
-                addLog({ sourceId: 'system', sourceName: 'Computer', message: 'No saved game found to load.', isPlayerSource: false, color: 'border-gray-500' });
-            }
-        } catch (error) {
-            console.error("Failed to load game:", error);
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not load game state.', isPlayerSource: false, color: 'border-red-500' });
+        const savedState = loadGameFromLocalStorage({ createNewIfNotFound: false });
+        if (savedState) {
+            setGameState(savedState);
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state loaded successfully.', isPlayerSource: false, color: 'border-gray-500' });
+            addLog({
+                sourceId: 'system',
+                sourceName: 'Debug',
+                message: `Loaded Sector. Type: ${savedState.currentSector.templateId}, Seed: ${savedState.currentSector.seed}`,
+                isPlayerSource: false,
+                color: 'border-purple-500',
+            });
+            isGameLoaded.current = true;
+        } else {
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'No saved game found or save file was corrupt.', isPlayerSource: false, color: 'border-red-500' });
         }
     }, [addLog]);
 
     const exportSave = useCallback(() => {
-        try {
-            const stateJSON = JSON.stringify(gameState, null, 2);
-            const blob = new Blob([stateJSON], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `startrek-save-turn-${gameState.turn}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+        const result = exportGameState(gameState);
+        if (result.success) {
             addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Save file exported.', isPlayerSource: false, color: 'border-gray-500' });
-        } catch (error) {
-            console.error("Failed to export save:", error);
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not export save file.', isPlayerSource: false, color: 'border-red-500' });
+        } else {
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not export save file.', isPlayerSource: false, color: 'border-red-500' });
         }
     }, [gameState, addLog]);
 
     const importSave = useCallback((jsonString: string) => {
-        try {
-            const newState: GameState = JSON.parse(jsonString);
-            if (newState.player && newState.turn && newState.quadrantMap) {
-                setGameState(newState);
-                addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state imported successfully.', isPlayerSource: false, color: 'border-gray-500' });
-            } else {
-                addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: The imported file is not a valid save file.', isPlayerSource: false, color: 'border-red-500' });
-            }
-        } catch (error) {
-            console.error("Failed to import save:", error);
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not parse the imported save file.', isPlayerSource: false, color: 'border-red-500' });
+        const result = importGameState(jsonString);
+        if (result.success && result.gameState) {
+            setGameState(result.gameState);
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state imported successfully.', isPlayerSource: false, color: 'border-gray-500' });
+        } else {
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not import save file.', isPlayerSource: false, color: 'border-red-500' });
         }
     }, [addLog]);
 

@@ -140,10 +140,14 @@ const TargetInfo: React.FC<{
         const shipTarget = target as Ship;
         if (selectedSubsystem) {
             const subsystem = shipTarget.subsystems[selectedSubsystem];
-            // FIX: Simplified check to resolve TypeScript type inference issues and prevent division by zero.
-            if (subsystem && subsystem.maxHealth > 0) {
-                const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
-                targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
+            // FIX: Replaced check to handle potentially missing subsystems from old save files and prevent type errors.
+            if (subsystem && typeof subsystem.maxHealth === 'number' && typeof subsystem.health === 'number') {
+                if (subsystem.maxHealth > 0) {
+                    const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
+                    targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
+                } else {
+                    targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (N/A)`;
+                }
             } else {
                 targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (N/A)`;
             }
@@ -261,7 +265,7 @@ const TargetInfo: React.FC<{
                                 {targetingButtonText}
                             </button>
                             {isPickerVisible && (
-                                <div ref={pickerRef} className="absolute bottom-full left-0 right-0 mb-2 w-full panel-style p-2 z-10">
+                                <div ref={pickerRef} className="absolute bottom-full left-0 right-0 mb-2 w-full panel-style p-2 z-40">
                                     <h4 className="text-xs font-bold text-text-secondary mb-2 text-center uppercase tracking-wider">Select Subsystem Target</h4>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
@@ -280,7 +284,10 @@ const TargetInfo: React.FC<{
                                         </button>
                                         {(Object.keys((target as Ship).subsystems) as Array<keyof ShipSubsystems>).map((key) => {
                                             const subsystem = (target as Ship).subsystems[key];
-                                            if (subsystem.maxHealth === 0) return null;
+                                            // FIX: Replaced check to handle potentially missing subsystems from old save files and prevent type errors.
+                                            if (!subsystem || typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number' || subsystem.maxHealth === 0) {
+                                                return null;
+                                            }
                                             const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
                                             
                                             let colorClass = 'text-green-400';
