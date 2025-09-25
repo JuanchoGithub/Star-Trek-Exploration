@@ -1,3 +1,4 @@
+
 import type { GameState, PlayerTurnActions, Ship, ShipSubsystems, Position } from '../../types';
 import { applyPhaserDamage } from '../utils/combat';
 import { calculateDistance, moveOneStep } from '../utils/ai';
@@ -92,7 +93,7 @@ export const processPlayerTurn = (
     // Cloaking initiation
     if (playerTurnActions.wantsToCloak) {
         ship.cloakState = 'cloaking';
-        ship.cloakTransitionTurnsRemaining = 1;
+        ship.cloakTransitionTurnsRemaining = 2;
         ship.pointDefenseEnabled = false; // Cannot have PD up while cloaking
     }
     if (playerTurnActions.wantsToDecloak) {

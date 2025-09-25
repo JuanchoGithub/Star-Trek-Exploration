@@ -251,6 +251,20 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
         });
     }
 
+    // Drop shields if cloaking
+    if (ship.cloakState !== 'visible') {
+        if (ship.shields > 0) {
+            ship.shields = 0;
+            logs.push({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                message: 'Diverting power from shields to the cloaking device.',
+                isPlayerSource,
+                color: 'border-yellow-400'
+            });
+        }
+    }
+
     // Docking Repairs & Resupply (only for player)
     if (ship.id === 'player' && isDocked) {
         const hullRepair = ship.maxHull * 0.2;

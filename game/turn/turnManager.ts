@@ -1,4 +1,3 @@
-
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
@@ -44,6 +43,7 @@ export const generatePhasedTurn = (
 ): TurnStep[] => {
     const steps: TurnStep[] = [];
     let currentState: GameState = JSON.parse(JSON.stringify(initialState));
+    currentState.combatEffects = []; // Ensure a clean slate for effects each turn.
     let logQueue: Omit<LogEntry, 'id' | 'turn'>[] = [];
     
     let currentNavTarget = config.navigationTarget;
@@ -185,6 +185,7 @@ function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Functio
             torpedoesDestroyedThisTurn.add(targetTorpedo.id);
             logMessage += " >> HIT! << Projectile destroyed.";
             addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-green-400' });
+            state.combatEffects.push({ type: 'torpedo_hit', position: targetTorpedo.position, delay: 100, torpedoType: targetTorpedo.torpedoType });
         } else {
             logMessage += " >> MISS! <<";
             addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-yellow-400' });

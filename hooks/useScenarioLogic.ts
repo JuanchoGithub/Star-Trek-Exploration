@@ -1,22 +1,22 @@
-
-
 import { useState, useCallback, useEffect, useMemo } from 'react';
-// FIX: Added 'SectorState' to the import to resolve 'Cannot find name' errors.
 import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { uniqueId } from '../game/utils/ai';
-// FIX: Changed import from 'resolveTurn' to 'generatePhasedTurn' as 'resolveTurn' does not exist.
 import { generatePhasedTurn, TurnStep } from '../game/turn/turnManager';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorState | null, scenarioMode: ScenarioMode) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
-    const [isRunning, setIsRunning] = useState(true);
+    const [isRunning, setIsRunning] = useState(scenarioMode !== 'spectate');
     const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
     const [navigationTarget, setNavigationTarget] = useState<Position | null>(null);
     const [playerTurnActions, setPlayerTurnActions] = useState<PlayerTurnActions>({});
     const [isTurnResolving, setIsTurnResolving] = useState(false);
     
+    // New state for history management
+    const [replayHistory, setReplayHistory] = useState<GameState[]>([]);
+    const [historyIndex, setHistoryIndex] = useState<number>(0);
+
     useEffect(() => {
         if (scenarioMode === 'setup' || !initialSector || gameState) return;
 
@@ -36,7 +36,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         
         const initialState: GameState = {
             player: {
-                ship: playerShip || ({} as Ship), // Placeholder, actual player ship is in entities
+                ship: playerShip || ({} as Ship),
                 position: { qx: 0, qy: 0 },
                 crew: [],
             },
@@ -52,18 +52,19 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             usedAwayMissionSeeds: [],
             desperationMoveAnimations: [],
             orbitingPlanetId: null,
-            // FIX: Add missing 'isDocked' property to satisfy the GameState type.
             isDocked: false,
             replayHistory: [],
             usedAwayMissionTemplateIds: [],
         };
         setGameState(initialState);
+        setReplayHistory([initialState]);
+        setHistoryIndex(0);
     }, [scenarioMode, initialShips, initialSector, gameState]);
 
     useEffect(() => {
         if (gameState && gameState.combatEffects.length > 0) {
             const maxDelay = Math.max(0, ...gameState.combatEffects.map(e => e.delay));
-            const totalAnimationTime = maxDelay + 500; // Match new phaser animation duration
+            const totalAnimationTime = maxDelay + 500;
             const timer = setTimeout(() => {
                 setGameState(prev => prev ? { ...prev, combatEffects: [] } : null);
             }, totalAnimationTime);
@@ -91,35 +92,35 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         if (isTurnResolving || !gameState) return;
         setIsTurnResolving(true);
         
-        // FIX: The `scenarioMode` can be 'setup', which is not a valid mode for the turn manager. Cast it to the valid modes for when this function is actually called.
-        const turnSteps: TurnStep[] = generatePhasedTurn(gameState, {
+        const currentHistory = replayHistory.slice(0, historyIndex + 1);
+        const stateForTurn = currentHistory[currentHistory.length - 1];
+
+        const turnSteps: TurnStep[] = generatePhasedTurn(stateForTurn, {
             mode: scenarioMode as 'spectate' | 'dogfight',
             playerTurnActions,
             navigationTarget,
             selectedTargetId
         });
 
-        // For the simulator, we can process all steps nearly instantly.
+        let tempState = gameState;
         for (const step of turnSteps) {
-             setGameState(step.updatedState);
-
-            if (step.newNavigationTarget !== undefined) {
-                setNavigationTarget(step.newNavigationTarget);
-            }
-            if (step.newSelectedTargetId !== undefined) {
-                setSelectedTargetId(step.newSelectedTargetId);
-            }
-    
-            if (step.delay > 0) {
-                // In a real game, we'd await. In the simulator, we can speed it up or ignore it.
-                // For spectate mode, a small delay makes it watchable.
-                if(scenarioMode === 'spectate') await new Promise(resolve => setTimeout(resolve, 200));
-            }
+            tempState = step.updatedState;
+            setGameState(tempState);
+            if (step.newNavigationTarget !== undefined) setNavigationTarget(step.newNavigationTarget);
+            if (step.newSelectedTargetId !== undefined) setSelectedTargetId(step.newSelectedTargetId);
+            if (scenarioMode === 'spectate') await new Promise(resolve => setTimeout(resolve, 200));
         }
+        
+        const finalState = tempState;
+        const newHistory = [...currentHistory, finalState];
+        if (newHistory.length > 101) newHistory.shift();
+
+        setReplayHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
 
         setPlayerTurnActions({});
         setIsTurnResolving(false);
-    }, [isTurnResolving, gameState, playerTurnActions, navigationTarget, selectedTargetId, scenarioMode]);
+    }, [isTurnResolving, gameState, playerTurnActions, navigationTarget, selectedTargetId, scenarioMode, replayHistory, historyIndex]);
     
     const onSelectTarget = useCallback((id: string | null) => setSelectedTargetId(id), []);
     const onSetNavigationTarget = useCallback((pos: Position | null) => setNavigationTarget(pos), []);
@@ -134,7 +135,6 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         }
     }, [isTurnResolving, playerTurnActions, gameState, addLog]);
 
-    // FIX: Property 'hasLaunchedTorpedo' does not exist on type 'PlayerTurnActions'. Rewrote function to correctly use `torpedoTargetId` and integrate with turn manager.
     const onLaunchTorpedo = useCallback((targetId: string) => {
         if (isTurnResolving || playerTurnActions.torpedoTargetId) return;
     
@@ -292,6 +292,19 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         });
     }, [gameState, addLog]);
 
+    const goToHistoryTurn = useCallback((index: number) => {
+        if (index >= 0 && index < replayHistory.length) {
+            setHistoryIndex(index);
+            setGameState(replayHistory[index]);
+        }
+    }, [replayHistory]);
+
+    const resumeFromHistory = useCallback(() => {
+        if (historyIndex < replayHistory.length - 1) {
+            const newHistory = replayHistory.slice(0, historyIndex + 1);
+            setReplayHistory(newHistory);
+        }
+    }, [replayHistory, historyIndex]);
 
     return {
         gameState,
@@ -299,7 +312,6 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         togglePause: () => setIsRunning(prev => !prev),
         endSimulation: () => setGameState(null),
         setGameState,
-        setLogs: (logs: LogEntry[]) => setGameState(prev => prev ? { ...prev, logs } : null),
         onEndTurn,
         selectedTargetId, onSelectTarget,
         navigationTarget, onSetNavigationTarget,
@@ -310,5 +322,9 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         onFirePhasers, onLaunchTorpedo,
         onSelectSubsystem, onEnergyChange, onToggleCloak, onTogglePointDefense,
         onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
+        replayHistory,
+        historyIndex,
+        goToHistoryTurn,
+        resumeFromHistory,
     };
 };

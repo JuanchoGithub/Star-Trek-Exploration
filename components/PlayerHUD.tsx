@@ -8,6 +8,7 @@ import { planetTypes } from '../assets/planets/configs/planetTypes';
 import LcarsDecoration from './LcarsDecoration';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
 import { ScienceIcon, ShuttleIcon } from '../assets/ui/icons';
+import PlaybackControls from './PlaybackControls';
 
 
 interface PlayerHUDProps {
@@ -40,6 +41,11 @@ interface PlayerHUDProps {
   onSelectSubsystem: (subsystem: keyof ShipSubsystems | null) => void;
   onEnterOrbit: (planetId: string) => void;
   orbitingPlanetId: string | null;
+  // Props for simulator history control
+  isViewingHistory?: boolean;
+  historyIndex?: number;
+  onGoToPreviousTurn?: () => void;
+  onResumeFromHistory?: () => void;
 }
 
 const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
@@ -117,15 +123,11 @@ const TargetInfo: React.FC<{
         
         if (target.planetClass === 'J') {
              const shuttlecraft = playerShip.subsystems.shuttlecraft;
-             // FIX: Robustly check if shuttlecraft subsystem exists and is sufficiently repaired for missions.
-             // This handles old save files and prevents division by zero.
              if (!shuttlecraft || shuttlecraft.maxHealth <= 0 || (shuttlecraft.health / shuttlecraft.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
             }
         } else {
             const transporter = playerShip.subsystems.transporter;
-            // FIX: Robustly check if transporter subsystem exists and is sufficiently repaired for missions.
-            // This handles old save files and prevents division by zero.
             if (!transporter || transporter.maxHealth <= 0 || (transporter.health / transporter.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Transporter Damaged' };
             }
@@ -140,7 +142,6 @@ const TargetInfo: React.FC<{
         const shipTarget = target as Ship;
         if (selectedSubsystem) {
             const subsystem = shipTarget.subsystems[selectedSubsystem];
-            // FIX: Replaced check to handle potentially missing subsystems from old save files and prevent type errors.
             if (subsystem && typeof subsystem.maxHealth === 'number' && typeof subsystem.health === 'number') {
                 if (subsystem.maxHealth > 0) {
                     const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
@@ -195,7 +196,6 @@ const TargetInfo: React.FC<{
                 const totalSubMaxHealth = Object.values(playerShip.subsystems).reduce((sum, s) => sum + s.maxHealth, 0);
                 const subPercent = (totalSubMaxHealth > 0 ? totalSubHealth / totalSubMaxHealth : 1) * 100;
 
-                // Weighted average: Hull (3), Subsystems (3), Dilithium (1), Torpedoes (1)
                 const totalWeight = 8;
                 const overallProgress = (
                     (hullPercent * 3) +
@@ -230,7 +230,6 @@ const TargetInfo: React.FC<{
                 );
             })() : (
                 <div className="flex-grow flex flex-col justify-end space-y-2 pr-2">
-                    {/* Ship Actions */}
                     {target.type === 'ship' && (
                         <div className="grid grid-cols-2 gap-2">
                             <button onClick={onScanTarget} disabled={target.scanned || isTurnResolving} className="btn btn-accent yellow">Scan</button>
@@ -238,7 +237,6 @@ const TargetInfo: React.FC<{
                         </div>
                     )}
 
-                    {/* Planet Actions */}
                     {target.type === 'planet' && isAdjacent && !isOrbiting && (
                         <button onClick={() => onEnterOrbit(target.id)} className="w-full btn btn-primary">Enter Orbit</button>
                     )}
@@ -254,7 +252,6 @@ const TargetInfo: React.FC<{
                         </div>
                     )}
 
-                    {/* Subsystem Targeting (for ships) */}
                     {target.type === 'ship' && !isUnscannedShip && (
                         <div className="relative">
                             <button
@@ -284,7 +281,6 @@ const TargetInfo: React.FC<{
                                         </button>
                                         {(Object.keys((target as Ship).subsystems) as Array<keyof ShipSubsystems>).map((key) => {
                                             const subsystem = (target as Ship).subsystems[key];
-                                            // FIX: Replaced check to handle potentially missing subsystems from old save files and prevent type errors.
                                             if (!subsystem || typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number' || subsystem.maxHealth === 0) {
                                                 return null;
                                             }
@@ -296,19 +292,19 @@ const TargetInfo: React.FC<{
                                             if (healthPercentage < 25) { colorClass = 'text-red-500'; colorHex = '#ef4444'; }
 
                                             if (isFederation) {
-                                                colorHex = '#14532d'; // dark green
-                                                if (healthPercentage < 60) { colorHex = '#b45309'; } // dark orange/brown
-                                                if (healthPercentage < 25) { colorHex = '#7f1d1d'; } // dark red
+                                                colorHex = '#14532d';
+                                                if (healthPercentage < 60) { colorHex = '#b45309'; }
+                                                if (healthPercentage < 25) { colorHex = '#7f1d1d'; }
                                             } else if (themeName === 'klingon') {
                                                 const isSelected = selectedSubsystem === key;
-                                                if (isSelected) { // Primary button: dark red bg, light text
-                                                    colorClass = 'text-yellow-200'; // Healthy
-                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-300'; } // Medium
-                                                    if (healthPercentage < 25) { colorClass = 'text-orange-400'; } // Damaged
-                                                } else { // Secondary button: yellow bg, dark text
-                                                    colorClass = 'text-green-800'; // Healthy
-                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-700'; } // Medium
-                                                    if (healthPercentage < 25) { colorClass = 'text-red-800'; } // Damaged
+                                                if (isSelected) {
+                                                    colorClass = 'text-yellow-200';
+                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-300'; }
+                                                    if (healthPercentage < 25) { colorClass = 'text-orange-400'; }
+                                                } else {
+                                                    colorClass = 'text-green-800';
+                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-700'; }
+                                                    if (healthPercentage < 25) { colorClass = 'text-red-800'; }
                                                 }
                                             }
 
@@ -346,7 +342,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     target, isDocked, onDockWithStarbase, onUndock,
     onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onHailTarget,
     playerTurnActions, navigationTarget, isTurnResolving, onSendAwayTeam, themeName,
-    desperationMoveAnimation, selectedSubsystem, onSelectSubsystem, onEnterOrbit, orbitingPlanetId
+    desperationMoveAnimation, selectedSubsystem, onSelectSubsystem, onEnterOrbit, orbitingPlanetId,
+    isViewingHistory, historyIndex, onGoToPreviousTurn, onResumeFromHistory,
 }) => {
     const playerShip = gameState.player.ship;
     
@@ -363,7 +360,6 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                 </>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Column 1: Contextual Info & Operations */}
                 <div className="relative flex flex-col space-y-2">
                     <div className="flex-grow">
                         {target ? (
@@ -402,32 +398,43 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                     )}
                 </div>
 
-                {/* Column 2: Command & Control */}
                 <div className="flex flex-col h-full">
-                    <CommandConsole 
-                        gameState={gameState}
-                        onEndTurn={onEndTurn}
-                        onFirePhasers={() => target && onFirePhasers(target.id)}
-                        onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
-                        onInitiateRetreat={onInitiateRetreat}
-                        onCancelRetreat={onCancelRetreat}
-                        onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
-                        onToggleCloak={onToggleCloak}
-                        retreatingTurn={playerShip.retreatingTurn}
-                        currentTurn={gameState.turn}
-                        hasTarget={!!target}
-                        hasEnemy={hasEnemy}
-                        playerTurnActions={playerTurnActions}
-                        navigationTarget={navigationTarget}
-                        playerShipPosition={playerShip.position}
-                        isTurnResolving={isTurnResolving}
-                        playerShip={playerShip}
-                        target={target}
-                        targeting={gameState.player.targeting}
-                        themeName={themeName}
-                        isDocked={isDocked}
-                        onUndock={onUndock}
-                    />
+                    {isViewingHistory ? (
+                         <PlaybackControls
+                            currentIndex={historyIndex!}
+                            maxIndex={(gameState.replayHistory || []).length > 0 ? gameState.replayHistory!.length - 1 : 0}
+                            isPlaying={false}
+                            isTurnResolving={isTurnResolving}
+                            onStep={(dir) => onGoToPreviousTurn && onGoToPreviousTurn()}
+                            onSliderChange={() => {}} // Not implemented for this view
+                            onResumeFromHistory={onResumeFromHistory}
+                        />
+                    ) : (
+                        <CommandConsole 
+                            gameState={gameState}
+                            onEndTurn={onEndTurn}
+                            onFirePhasers={() => target && onFirePhasers(target.id)}
+                            onLaunchTorpedo={() => target && onLaunchTorpedo(target.id)}
+                            onInitiateRetreat={onInitiateRetreat}
+                            onCancelRetreat={onCancelRetreat}
+                            onSendAwayTeam={(type) => target && onSendAwayTeam(target.id, type)}
+                            onToggleCloak={onToggleCloak}
+                            retreatingTurn={playerShip.retreatingTurn}
+                            currentTurn={gameState.turn}
+                            hasTarget={!!target}
+                            hasEnemy={hasEnemy}
+                            playerTurnActions={playerTurnActions}
+                            navigationTarget={navigationTarget}
+                            playerShipPosition={playerShip.position}
+                            isTurnResolving={isTurnResolving}
+                            playerShip={playerShip}
+                            target={target}
+                            targeting={gameState.player.targeting}
+                            themeName={themeName}
+                            isDocked={isDocked}
+                            onUndock={onUndock}
+                        />
+                    )}
                 </div>
             </div>
         </div>

@@ -18,6 +18,7 @@ import { shipNames } from '../assets/ships/configs/shipNames';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
+import PlaybackControls from './PlaybackControls';
 
 type Tool = {
     type: 'add_ship';
@@ -65,12 +66,9 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         isDerelict: false, captureInfo: null, pointDefenseEnabled: false, statusEffects: [],
         allegiance, cloakingCapable: shipClass.cloakingCapable,
         energyModifier: shipClass.energyModifier,
-        // FIX: Added missing 'shieldReactivationTurn' property to satisfy the Ship interface.
         shieldReactivationTurn: null,
-        // FIX: Added missing cloak properties to conform to the Ship interface.
         cloakInstability: 0,
         cloakDestabilizedThisTurn: false,
-        // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
         cloakTransitionTurnsRemaining: null,
         lastAttackerPosition: null,
     };
@@ -145,7 +143,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onSelectTarget, onSetNavigationTarget,
         onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity,
         isRunning, togglePause, endSimulation, setGameState,
-        onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert
+        onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
+        replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory,
     } = useScenarioLogic(setupState.ships, setupState.sector, mode);
 
     const handleCellClick = useCallback((pos: { x: number; y: number }) => {
@@ -179,13 +178,13 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     };
     
     useEffect(() => {
-        if (mode === 'spectate' && isRunning) {
+        if (mode === 'spectate' && isRunning && historyIndex === replayHistory.length - 1) {
             const interval = setInterval(() => {
                 onEndTurn();
             }, 1000);
             return () => clearInterval(interval);
         }
-    }, [mode, isRunning, onEndTurn]);
+    }, [mode, isRunning, onEndTurn, historyIndex, replayHistory.length]);
 
     const resetToSetup = () => {
         endSimulation();
@@ -307,18 +306,23 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     const playerShip = gameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
     const allEntities = gameState.currentSector.entities;
+    const isViewingHistory = historyIndex < replayHistory.length - 1;
+
+    const handleStep = (direction: number) => {
+        const newIndex = historyIndex + direction;
+        if (newIndex >= 0 && newIndex < replayHistory.length) {
+            goToHistoryTurn(newIndex);
+        } else if (direction > 0 && newIndex >= replayHistory.length && !isTurnResolving) {
+            onEndTurn();
+        }
+    };
 
     return (
         <div className="h-screen w-screen bg-bg-default text-text-primary p-4 flex flex-col gap-4">
              <header className="flex-shrink-0 flex justify-between items-center panel-style p-2">
                 <h1 className="text-2xl font-bold text-secondary-light">Simulation Running: {mode.toUpperCase()}</h1>
                 <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg">Turn: {gameState.turn}</span>
-                    {mode === 'spectate' && (
-                         <button onClick={togglePause} className="btn btn-secondary w-28">
-                            {isRunning ? 'Pause' : 'Play'}
-                        </button>
-                    )}
+                    {mode === 'spectate' && <span className="font-bold text-lg">Turn: {gameState.turn}</span>}
                     <button onClick={resetToSetup} className="btn btn-tertiary">End Simulation</button>
                 </div>
             </header>
@@ -342,7 +346,6 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     />
                                 </div>
                             </div>
-                            {/* FIX: Removed invalid props (onRechargeDilithium, onResupplyTorpedoes, onStarbaseRepairs) and added the required `onUndock` prop with a dummy function to satisfy the PlayerHUDProps interface. */}
                             <PlayerHUD
                                 gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
                                 onEndTurn={onEndTurn}
@@ -353,6 +356,10 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 playerTurnActions={playerTurnActions} navigationTarget={navigationTarget} isTurnResolving={isTurnResolving} onSendAwayTeam={() => {}} themeName={themeName}
                                 desperationMoveAnimation={desperationMoveAnimation} selectedSubsystem={null} onSelectSubsystem={onSelectSubsystem} onEnterOrbit={() => {}}
                                 orbitingPlanetId={null} onToggleCloak={onToggleCloak}
+                                isViewingHistory={isViewingHistory}
+                                historyIndex={historyIndex}
+                                onGoToPreviousTurn={() => goToHistoryTurn(historyIndex - 1)}
+                                onResumeFromHistory={resumeFromHistory}
                             />
                         </div>
                         <aside className="w-80 flex flex-col gap-2 min-h-0">
@@ -383,7 +390,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 ) : ( // Spectate mode
                     <>
                         <div className="flex flex-col gap-4 min-h-0">
-                             <div className="relative flex-grow flex justify-center items-center min-h-0">
+                            <div className="relative flex-grow flex justify-center items-center min-h-0">
                                 <div className="w-full h-full aspect-[11/10] relative">
                                     <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
                                     {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
@@ -400,6 +407,15 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     />
                                 </div>
                             </div>
+                             <PlaybackControls
+                                currentIndex={historyIndex}
+                                maxIndex={replayHistory.length - 1}
+                                isPlaying={isRunning}
+                                isTurnResolving={isTurnResolving}
+                                onTogglePlay={togglePause}
+                                onStep={handleStep}
+                                onSliderChange={goToHistoryTurn}
+                            />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">
                              {targetEntity ? (

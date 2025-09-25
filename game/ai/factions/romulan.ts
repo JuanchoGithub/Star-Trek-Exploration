@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
@@ -32,7 +33,7 @@ export class RomulanAI extends FactionAI {
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
         if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
              ship.cloakState = 'cloaking';
-             ship.cloakTransitionTurnsRemaining = 1;
+             ship.cloakTransitionTurnsRemaining = 2;
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedo threat. Evading via cloaking device.` });
              return true; // Cloaking is a turn-ending action.
         }

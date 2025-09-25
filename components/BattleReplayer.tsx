@@ -6,6 +6,7 @@ import CombatFXLayer from './CombatFXLayer';
 import ReplayStatusPanel from './ReplayStatusPanel';
 import ReplayShipDetailPanel from './ReplayShipDetailPanel';
 import LogPanel from './LogPanel';
+import PlaybackControls from './PlaybackControls';
 
 interface BattleReplayerProps {
     history: GameState[];
@@ -24,11 +25,12 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
     useEffect(() => {
         if (isPlaying) {
             const timer = setTimeout(() => {
-                setCurrentIndex(prev => Math.min(prev + 1, history.length - 1));
+                if (currentIndex < history.length - 1) {
+                    setCurrentIndex(prev => prev + 1);
+                } else {
+                    setIsPlaying(false);
+                }
             }, 1000);
-            if (currentIndex === history.length - 1) {
-                setIsPlaying(false);
-            }
             return () => clearTimeout(timer);
         }
     }, [isPlaying, currentIndex, history.length]);
@@ -36,6 +38,10 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
     const handleSelectTarget = useCallback((id: string | null) => {
         setSelectedEntityId(id);
     }, []);
+    
+    const handleStep = useCallback((direction: number) => {
+        setCurrentIndex(prev => Math.max(0, Math.min(history.length - 1, prev + direction)));
+    }, [history.length]);
 
     if (!currentGameState) {
         return (
@@ -48,13 +54,12 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
         );
     }
 
-    const currentTurnForDisplay = currentGameState.turn > 0 ? currentGameState.turn - 1 : 0;
-    const turnToFilter = Math.max(1, currentTurnForDisplay);
+    const currentTurnForDisplay = currentGameState.turn;
+    const logsForCurrentTurn = currentGameState.logs.filter(log => log.turn === currentTurnForDisplay);
 
     const playerShip = currentGameState.player.ship;
     const allEntities = [...currentGameState.currentSector.entities, playerShip];
     const selectedEntity = allEntities.find(e => e.id === selectedEntityId) || null;
-    const logsForCurrentTurn = currentGameState.logs.filter(log => log.turn === turnToFilter);
 
     return (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
@@ -79,37 +84,29 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                                 spectatorMode={true}
                             />
                         </div>
-                        <div className="panel-style p-3 flex-shrink-0">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setIsPlaying(p => !p)} className="btn btn-primary w-24">{isPlaying ? 'Pause' : 'Play'}</button>
-                                <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} className="btn btn-secondary">Prev</button>
-                                <input 
-                                    type="range"
-                                    min="0"
-                                    max={history.length - 1}
-                                    value={currentIndex}
-                                    onChange={e => setCurrentIndex(Number(e.target.value))}
-                                    className="flex-grow"
-                                />
-                                <button onClick={() => setCurrentIndex(p => Math.min(history.length - 1, p + 1))} className="btn btn-secondary">Next</button>
-                                <span className="font-bold text-lg">Turn: {turnToFilter}</span>
-                            </div>
-                        </div>
+                        <PlaybackControls
+                            currentIndex={currentIndex}
+                            maxIndex={history.length - 1}
+                            isPlaying={isPlaying}
+                            onTogglePlay={() => setIsPlaying(p => !p)}
+                            onStep={handleStep}
+                            onSliderChange={setCurrentIndex}
+                        />
                     </div>
                     <aside className="relative flex flex-col gap-2 min-h-0">
                        <div className="flex-grow min-h-0 overflow-y-auto space-y-2 pr-2">
                             <ReplayStatusPanel gameState={currentGameState} themeName={themeName} />
-                            <ReplayShipDetailPanel selectedEntity={selectedEntity} themeName={themeName} turn={turnToFilter} gameState={currentGameState} />
+                            <ReplayShipDetailPanel selectedEntity={selectedEntity} themeName={themeName} turn={currentTurnForDisplay} gameState={currentGameState} />
                         </div>
                        <div className="flex-shrink-0 panel-style p-2">
                             <button onClick={() => setIsLogExpanded(true)} className="btn btn-primary w-full">
-                                Show Full Log for Turn {turnToFilter}
+                                Show Full Log for Turn {currentTurnForDisplay}
                             </button>
                         </div>
                         {isLogExpanded && (
                             <div className="absolute inset-0 bg-bg-paper z-10 panel-style p-2 flex flex-col">
                                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
-                                    <h2 className="text-xl font-bold text-secondary-light">Full Log: Turn {turnToFilter}</h2>
+                                    <h2 className="text-xl font-bold text-secondary-light">Full Log: Turn {currentTurnForDisplay}</h2>
                                     <button onClick={() => setIsLogExpanded(false)} className="btn btn-tertiary">Close</button>
                                 </div>
                                 <div className="flex-grow min-h-0">

@@ -187,13 +187,13 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
             </div>
         </div>
       <div className="flex items-center gap-2 mt-auto flex-shrink-0 pt-2">
-        <button
-            onClick={() => onEndTurn()}
-            disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
-            className="flex-grow btn btn-primary w-full"
-        >
-            {getEndTurnButtonText()}
-        </button>
+            <button
+                onClick={() => onEndTurn()}
+                disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
+                className="flex-grow btn btn-primary w-full"
+            >
+                {getEndTurnButtonText()}
+            </button>
       </div>
     </div>
   );
