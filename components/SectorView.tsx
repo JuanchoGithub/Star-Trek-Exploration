@@ -29,6 +29,7 @@ interface SectorViewProps {
   onCellClick?: (pos: { x: number; y: number }) => void;
   spectatorMode?: boolean;
   onMoveShip?: (shipId: string, newPos: { x: number; y: number }) => void;
+  isResizing?: boolean;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -67,7 +68,7 @@ const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: 
 };
 
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip }) => {
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip, isResizing = false }) => {
   const sectorSize = { width: 11, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -335,7 +336,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     left: 0,
                     top: 0,
                     transform: transformValue,
-                    transition: 'transform 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
+                    transition: isResizing ? 'none' : 'transform 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
                 };
 
                 const isSelected = entity.id === selectedTargetId;
