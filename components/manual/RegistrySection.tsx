@@ -185,7 +185,7 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-start mb-6 p-3 bg-bg-paper-lighter rounded">
             <div className="flex flex-col items-center">
                 <div className="w-32 h-32"><Wireframe /></div>
-                <Icon className={`w-16 h-16 -mt-4 ${visualConfig.colorClass}`} />
+                <Icon className={`w-16 h-16 mt-2 ${visualConfig.colorClass}`} />
             </div>
             <div>
                 <h4 className="text-xl font-bold text-secondary-light">{shipClass.name}</h4>

@@ -262,7 +262,7 @@ export function processCommonTurn(
 
     // Firing Logic
     if (ship.subsystems.weapons.health > 0 && distance <= 5) {
-        const phaserBaseDamage = 20 * ship.energyModifier;
+        const phaserBaseDamage = 30 * ship.energyModifier;
         const phaserPowerModifier = ship.energyAllocation.weapons / 100;
         const finalDamage = phaserBaseDamage * phaserPowerModifier;
         

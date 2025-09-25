@@ -1,66 +1,63 @@
 import type { Ship, ShipModel, ShipRole } from '../../types';
-import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
-import { shipNames } from '../../assets/ships/configs/shipNames';
+// FIX: Switched from shipRoleStats to shipClasses for more accurate data lookup.
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
 // A helper to create a mock ship object
-const createMockShip = (id: string, model: ShipModel, role: ShipRole, name: string): Ship => {
-    // FIX: Get stats from shipRoleStats to access role-specific properties.
-    const stats = shipRoleStats[role];
+// REFACTORED to remove the `name` parameter and generate it from class/role.
+const createMockShip = (id: string, model: ShipModel, className: string): Ship => {
+    // FIX: Get stats directly from the specific ship class, not the generic role.
+    const stats = shipClasses[model][className];
+    const name = `${stats.name} (${stats.role})`;
     return {
-        id, name, type: 'ship', shipModel: model, shipRole: role, faction: model,
-        // FIX: Added missing properties 'shipClass' and 'cloakingCapable' to conform to the Ship type.
+        id, name, type: 'ship', shipModel: model, shipRole: stats.role, faction: model,
         shipClass: stats.name,
         cloakingCapable: stats.cloakingCapable,
-        position: { x: 0, y: 0 }, hull: 1, maxHull: stats.maxHull,
-        shields: 0, maxShields: stats.maxShields,
+        position: { x: 0, y: 0 }, hull: stats.maxHull, maxHull: stats.maxHull,
+        shields: stats.maxShields, maxShields: stats.maxShields,
         subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, torpedoes: {} as any, dilithium: {} as any,
         scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
         lifeSupportReserves: { current: 100, max: 100 },
         cloakState: 'visible',
         cloakCooldown: 0,
-        // FIX: Added missing 'shieldReactivationTurn' property to conform to the Ship interface.
         shieldReactivationTurn: null,
-        // FIX: Added missing cloak properties to conform to the Ship type.
         cloakInstability: 0,
         cloakDestabilizedThisTurn: false,
-        // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
         cloakTransitionTurnsRemaining: null,
         isStunned: false,
         engineFailureTurn: null,
-        // FIX: Added missing 'lifeSupportFailureTurn' property to conform to the Ship interface.
         lifeSupportFailureTurn: null,
         isDerelict: false,
         captureInfo: null,
-        // FIX: Added missing 'statusEffects' property to conform to the Ship interface.
         statusEffects: [],
-        // FIX: Added missing 'pointDefenseEnabled' property to satisfy the Ship interface.
         pointDefenseEnabled: false,
-        // FIX: Added missing 'energyModifier' property to satisfy the Ship interface.
         energyModifier: stats.energyModifier,
     };
 };
 
 // Create a comprehensive list of all possible ships for dropdowns
+// UPDATED to use specific class names and generate names from stats.
 export const allMockShips: Ship[] = [
     // Federation
-    createMockShip('fed-explorer', 'Federation', 'Explorer', shipNames.Federation[0]),
-    createMockShip('fed-cruiser', 'Federation', 'Cruiser', shipNames.Federation[1]),
-    createMockShip('fed-escort', 'Federation', 'Escort', shipNames.Federation[2]),
-    createMockShip('fed-dreadnought', 'Federation', 'Dreadnought', 'U.S.S. Endeavour'),
-    createMockShip('fed-freighter', 'Federation', 'Freighter', shipNames.Federation[3]),
+    createMockShip('fed-dreadnought', 'Federation', 'Sovereign-class'),
+    createMockShip('fed-explorer', 'Federation', 'Galaxy-class'),
+    createMockShip('fed-cruiser', 'Federation', 'Constitution-class'),
+    createMockShip('fed-escort', 'Federation', 'Defiant-class'),
+    createMockShip('fed-scout', 'Federation', 'Intrepid-class'),
     // Klingon
-    createMockShip('klingon-cruiser', 'Klingon', 'Cruiser', shipNames.Klingon[0]),
-    createMockShip('klingon-escort', 'Klingon', 'Escort', shipNames.Klingon[1]),
-    createMockShip('klingon-freighter', 'Klingon', 'Freighter', shipNames.Klingon[2]),
+    createMockShip('klingon-battleship', 'Klingon', "Negh'Var-class"),
+    createMockShip('klingon-attack-cruiser', 'Klingon', "Vor'cha-class"),
+    createMockShip('klingon-cruiser', 'Klingon', "K't'inga-class"),
+    createMockShip('klingon-escort', 'Klingon', "B'rel-class Bird-of-Prey"),
     // Romulan
-    createMockShip('romulan-cruiser', 'Romulan', 'Cruiser', shipNames.Romulan[0]),
-    createMockShip('romulan-escort', 'Romulan', 'Escort', shipNames.Romulan[1]),
+    createMockShip('romulan-command', 'Romulan', 'Scimitar-class'),
+    createMockShip('romulan-warbird', 'Romulan', "D'deridex-class"),
+    createMockShip('romulan-scout', 'Romulan', 'Valdore-type'),
     // Pirate
-    createMockShip('pirate-escort', 'Pirate', 'Escort', shipNames.Pirate[0]),
-    createMockShip('pirate-cruiser', 'Pirate', 'Cruiser', shipNames.Pirate[1]),
+    createMockShip('pirate-marauder', 'Pirate', 'Ferengi Marauder'),
+    createMockShip('pirate-raider', 'Pirate', 'Orion Raider'),
+    createMockShip('pirate-battleship', 'Pirate', 'Nausicaan Battleship'),
     // Independent
-    createMockShip('ind-freighter', 'Independent', 'Freighter', shipNames.Independent[0]),
-    createMockShip('ind-explorer', 'Independent', 'Explorer', shipNames.Independent[1]),
+    createMockShip('ind-freighter', 'Independent', 'Civilian Freighter'),
 ];
 
 // Helper to get ships by faction

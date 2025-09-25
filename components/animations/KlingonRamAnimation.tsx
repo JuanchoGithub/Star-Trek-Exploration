@@ -8,7 +8,6 @@ interface KlingonRamAnimationProps {
 }
 
 const KlingonRamAnimation: React.FC<KlingonRamAnimationProps> = ({ source, target }) => {
-    // FIX: Replaced incorrect logic that used 'roles' with correct logic using 'classes' and ship.shipClass.
     const getShipIcon = (ship: Ship) => {
         const visualConfig = shipVisuals[ship.shipModel];
         const classConfig = visualConfig?.classes[ship.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;

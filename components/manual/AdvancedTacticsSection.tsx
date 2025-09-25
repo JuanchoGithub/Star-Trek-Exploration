@@ -147,6 +147,12 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     <p><strong>Disengaging Cloak:</strong> This is a three-turn process. On Turn 1, you initiate the sequence. The ship enters a vulnerable 'decloaking' state. It remains in this vulnerable state for Turn 1 and Turn 2. At the start of Turn 3, the ship is fully visible and can act normally. This means the ship is vulnerable for two full turns.</p>
                     <p><strong>Action Cost & Restrictions:</strong> Initiating either sequence consumes your major tactical action for the turn. A cloaked ship cannot fire weapons or be at Red Alert. A ship in a 'cloaking' or 'decloaking' state is also unable to perform any other major actions.</p>
                 </DetailBox>
+                
+                 <DetailBox title="Reliability & Failure Cascade" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-red-500">
+                    <p>At the end of every turn a cloak is active or engaging, it must pass a reliability check and consume a significant amount of reserve power.</p>
+                    <p><strong>Instability:</strong> Taking damage while engaging the cloak will increase the device's 'instability', permanently reducing its base reliability for the rest of combat.</p>
+                    <p><strong>Failure:</strong> If the reliability check fails or there is insufficient power, the cloak collapses. This makes the ship visible, puts the cloaking device on a 2-turn cooldown, and critically, shorts out the shield emitters, preventing you from raising shields for 2 turns. A failed cloak is a moment of extreme vulnerability.</p>
+                </DetailBox>
 
                 <h4 className="text-lg font-bold text-accent-yellow mt-4">Technical Specifications by Faction</h4>
                 <p className="text-sm text-text-secondary mb-2">Each faction's cloaking technology has different performance parameters. Romulan technology is superior, but all devices are susceptible to environmental interference.</p>

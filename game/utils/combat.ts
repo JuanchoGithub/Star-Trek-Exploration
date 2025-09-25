@@ -1,3 +1,4 @@
+
 import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
@@ -130,30 +131,34 @@ export const applyPhaserDamage = (
 
     mainFireLog += ` Chance resolved as a >>HIT!<<`;
     
-    let damageToProcess = effectiveDamage;
-    let damageBypassingShields = 0;
     const shieldPercent = target.maxShields > 0 ? target.shields / target.maxShields : 0;
-
-    if (subsystem) {
-        const bypassMultiplier = (1 - shieldPercent) ** 2;
-        damageBypassingShields = damageToProcess * bypassMultiplier;
-        damageToProcess -= damageBypassingShields;
-    }
-
-    const absorbedByShields = Math.min(target.shields, damageToProcess);
-    if (absorbedByShields > 0) {
-        target.shields = Math.max(0, target.shields - absorbedByShields);
-        mainFireLog += ` Shields absorbed ${Math.round(absorbedByShields)} damage`;
-        if (damageToProcess - absorbedByShields <= 0 && damageBypassingShields <= 0) {
-            mainFireLog += `, the full hit was absorbed.`;
-        } else {
-            mainFireLog += '.';
-        }
-    }
-    damageToProcess -= absorbedByShields;
+    const leakageChance = 0.05 + Math.pow(1 - shieldPercent, 2) * 0.95;
+    const leakRoll = Math.random();
     
-    const totalPenetratingDamage = damageToProcess + damageBypassingShields;
+    let leakageDamage = 0;
+    let damageHittingShields = effectiveDamage;
 
+    if (target.shields > 0 && leakRoll < leakageChance) {
+        // Leakage success
+        const leakageAmount = effectiveDamage * leakageChance;
+        leakageDamage = Math.max(1, Math.round(leakageAmount));
+        damageHittingShields = effectiveDamage - leakageDamage;
+        mainFireLog += `\n--> Shield leakage check: ${Math.round(leakageChance * 100)}% chance... SUCCESS! ${leakageDamage} damage bypassed shields.`;
+    } else if (target.shields > 0) {
+        // Leakage fail
+        mainFireLog += `\n--> Shield leakage check: ${Math.round(leakageChance * 100)}% chance... FAILED. Shields held firm.`;
+    }
+    
+    const absorbedByShields = Math.min(target.shields, damageHittingShields);
+    target.shields = Math.max(0, target.shields - absorbedByShields);
+    
+    if (absorbedByShields > 0) {
+        mainFireLog += ` Shields absorbed ${Math.round(absorbedByShields)} damage.`;
+    }
+
+    const breakthroughDamage = damageHittingShields - absorbedByShields;
+    const totalPenetratingDamage = leakageDamage + breakthroughDamage;
+    
     if (totalPenetratingDamage > 0) {
         let finalSubsystemDamage = 0;
         let finalHullDamage = 0;
@@ -188,7 +193,7 @@ export const applyPhaserDamage = (
         }
         
         const logParts = [];
-        if (finalHullDamage > 0) logParts.push(`${finalHullDamage} hull`);
+        if (finalHullDamage > 0) logParts.push(`${Math.round(finalHullDamage)} hull`);
         if (finalSubsystemDamage > 0 && subsystem) logParts.push(`${finalSubsystemDamage} ${subsystem}`);
 
         if (logParts.length > 0) mainFireLog += ` ${target.name} takes ${logParts.join(' and ')} damage.`;

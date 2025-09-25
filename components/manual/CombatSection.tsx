@@ -25,6 +25,21 @@ const DamageFalloffTable: React.FC<{ data: { range: number; modifier: string }[]
     </div>
 );
 
+const ShieldLeakageExplanation: React.FC = () => (
+    <div className="mt-2">
+        <dt className="font-bold text-text-secondary">Phaser Shield Leakage (Probabilistic):</dt>
+        <dd className="mt-1 text-sm text-text-primary">
+            <p>Phaser fire against shielded targets now has a chance to "leak" a portion of its damage directly to the hull, bypassing the shields entirely. This mechanic makes every phaser hit meaningful and prevents combat stalemates.</p>
+            <ul className="list-disc list-inside ml-4 my-2 space-y-1">
+                <li>The chance of a leak is calculated based on the target's current shield percentage. It starts at a base of <strong className="text-white">5%</strong> against full shields and increases exponentially as shields weaken. A ship at 50% shields has a ~29% chance of suffering a leak, while a ship at 10% shields has a ~82% chance.</li>
+                <li>If a leak occurs, the amount of damage that bypasses the shields is also proportional to the leakage chance.</li>
+                <li>Any successful leak that would deal less than 1 point of damage is rounded up to a minimum of <strong className="text-white">1 point</strong>, ensuring even glancing hits have an impact.</li>
+                <li>The combat log will explicitly state the chance of leakage, whether the check succeeded or failed, and the amount of damage that penetrated.</li>
+            </ul>
+        </dd>
+    </div>
+);
+
 
 const WeaponDetail: React.FC<{
     name: string;
@@ -86,10 +101,13 @@ export const CombatSection: React.FC = () => {
             users="All Factions"
             range="1-6 hexes"
             energy="Draws directly from main reactor based on 'Weapons' allocation setting."
-            damage="Variable (Base 20 for player * % Power to Weapons). Modified by range and phaser subsystem health."
-            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. Accuracy is negatively affected by nebulae, evasive maneuvers, and firing at targets inside an asteroid field (-30%)."
+            damage="Variable (Base 30 for player * % Power to Weapons). Modified by range and phaser subsystem health."
+            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. A portion of phaser damage will always leak through shields, with the effect becoming more pronounced as shields weaken. Accuracy is negatively affected by nebulae, evasive maneuvers, and firing at targets inside an asteroid field (-30%)."
         >
-            <DamageFalloffTable data={phaserFalloffData} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DamageFalloffTable data={phaserFalloffData} />
+                <ShieldLeakageExplanation />
+            </div>
         </WeaponDetail>
         
         <SubHeader>Projectile Weapons (Torpedoes)</SubHeader>
@@ -136,7 +154,7 @@ export const CombatSection: React.FC = () => {
             range="Sector-wide (Slow travel time)"
             energy="None (Consumes ammunition)"
             damage="Base 90. Heavily mitigated by shields."
-            notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. Can be destroyed by asteroids."
+            notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. It offers no special properties beyond sheer destructive power."
         />
 
         <SubHeader>Defensive Systems</SubHeader>

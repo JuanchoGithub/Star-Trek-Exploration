@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -49,9 +48,9 @@ export const ScenarioSimulatorSection: React.FC = () => (
         <div className="p-3 bg-bg-paper-lighter rounded mb-3">
             <h4 className="font-bold text-white">Spectate Mode</h4>
             <p className="text-sm text-text-secondary">
-                 This is a read-only observation mode.
+                 This is a read-only observation mode where all ships are controlled by the AI.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Controls:</strong> At the top of the screen, you can see the current turn and a Play/Pause button to control the automatic turn progression.</li>
+                    <li><strong>Playback Controls:</strong> At the bottom of the tactical map, you have full control over the simulation's flow. You can Play/Pause the automatic turn progression, step forward and backward one turn at a time, or use the slider to jump to any point in the battle's history. This allows for detailed turn-by-turn analysis.</li>
                     <li><strong>Layout:</strong> The screen is split between the tactical map on the left and a sidebar on the right.</li>
                     <li><strong>Ship Inspection:</strong> Clicking on any ship on the map will select it. This splits the right sidebar, showing a detailed, scrollable status panel for that ship in the top half and the turn-by-turn combat log in the bottom half. Clicking an empty cell or the selected ship again will deselect it, giving the log the full sidebar height.</li>
                 </ul>
@@ -62,7 +61,7 @@ export const ScenarioSimulatorSection: React.FC = () => (
             <p className="text-sm text-text-secondary">
                  This mode gives you direct control over your designated 'Player' ship.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Interface:</strong> The layout mirrors the main game. The tactical map is on the left, with your full Player HUD below it. A sidebar on the right contains your Ship Status panel and, if a target is selected, its detailed information panel.</li>
+                    <li><strong>Interface:</strong> The layout mirrors the main game. The tactical map is on the left, with your full Player HUD below it. A sidebar on the right contains your Ship Status panel and, if a target is selected, its detailed information panel. Refer to the "Bridge Interface" section for a full breakdown of these elements.</li>
                     <li><strong>Log:</strong> The combat log is available via a "Show Log" button, which opens it in a large modal window over the screen.</li>
                 </ul>
             </p>

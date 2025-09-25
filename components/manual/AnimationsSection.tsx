@@ -19,7 +19,7 @@ const ShipSelectDropdown: React.FC<{
         >
             {ships.map(ship => (
                 <option key={ship.id} value={ship.id}>
-                    {ship.name} ({ship.shipRole})
+                    {ship.name}
                 </option>
             ))}
         </select>
@@ -40,12 +40,13 @@ export const AnimationsSection: React.FC = () => {
     const [sourceShip, setSourceShip] = useState<Ship | null>(null);
     const [targetShip, setTargetShip] = useState<Ship | null>(null);
 
+    // FIX: Updated find calls to be more specific and robust against list reordering.
     const animationList = useMemo(() => [
-        { name: 'Federation: Evacuate', type: 'evacuate', source: allMockShips.find(s => s.shipRole === 'Dreadnought' && s.faction === 'Federation')!, sourceFaction: 'Federation' as ShipModel },
-        { name: 'Klingon: Ram', type: 'ram', source: allMockShips.find(s => s.shipModel === 'Klingon')!, target: allMockShips.find(s => s.shipModel === 'Federation'), sourceFaction: 'Klingon' as ShipModel },
-        { name: 'Romulan: Escape (Success)', type: 'escape', source: allMockShips.find(s => s.shipModel === 'Romulan')!, outcome: 'success' as const, sourceFaction: 'Romulan' as ShipModel },
-        { name: 'Romulan: Escape (Failure)', type: 'escape', source: allMockShips.find(s => s.shipModel === 'Romulan')!, outcome: 'failure' as const, sourceFaction: 'Romulan' as ShipModel },
-        { name: 'Pirate: Self-Destruct', type: 'self_destruct', source: allMockShips.find(s => s.shipModel === 'Pirate')!, sourceFaction: 'Pirate' as ShipModel },
+        { name: 'Federation: Evacuate', type: 'evacuate', source: allMockShips.find(s => s.shipClass === 'Sovereign-class')!, sourceFaction: 'Federation' as ShipModel },
+        { name: 'Klingon: Ram', type: 'ram', source: allMockShips.find(s => s.shipClass === "Negh'Var-class")!, target: allMockShips.find(s => s.shipClass === 'Sovereign-class')!, sourceFaction: 'Klingon' as ShipModel },
+        { name: 'Romulan: Escape (Success)', type: 'escape', source: allMockShips.find(s => s.shipClass === "D'deridex-class")!, outcome: 'success' as const, sourceFaction: 'Romulan' as ShipModel },
+        { name: 'Romulan: Escape (Failure)', type: 'escape', source: allMockShips.find(s => s.shipClass === "D'deridex-class")!, outcome: 'failure' as const, sourceFaction: 'Romulan' as ShipModel },
+        { name: 'Pirate: Self-Destruct', type: 'self_destruct', source: allMockShips.find(s => s.shipClass === 'Orion Raider')!, sourceFaction: 'Pirate' as ShipModel },
     ], []);
 
     useEffect(() => {
@@ -94,7 +95,7 @@ export const AnimationsSection: React.FC = () => {
                         <button
                             key={anim.name}
                             onClick={() => handleAnimationSelect(anim)}
-                            className={`w-full text-left p-3 rounded transition-colors btn btn-primary flex-shrink-0 ${activeAnimation?.name.startsWith(anim.name) ? 'bg-primary-light' : ''}`}
+                            className={`w-full text-left p-3 rounded transition-colors btn btn-tertiary flex-shrink-0 ${activeAnimation?.name.startsWith(anim.name) ? 'bg-primary-main !text-primary-text' : ''}`}
                         >
                             {anim.name}
                         </button>

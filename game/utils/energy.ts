@@ -1,3 +1,4 @@
+
 import type { Ship, ShipSubsystems, ResourceType, GameState, LogEntry } from '../../types';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 import { isPosInNebula } from './sector';
@@ -299,7 +300,7 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState): Om
     } else if (redAlert && ship.shields < ship.maxShields && ship.subsystems.shields.health > 0) {
         const shieldEfficiency = ship.subsystems.shields.health / ship.subsystems.shields.maxHealth;
         const powerToShieldsModifier = (ship.energyAllocation.shields / 33); 
-        const baseRegen = ship.maxShields * 0.10;
+        const baseRegen = 7;
         const regenerationAmount = baseRegen * powerToShieldsModifier * shieldEfficiency;
         
         if (regenerationAmount > 0) {

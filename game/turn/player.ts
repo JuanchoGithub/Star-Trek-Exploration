@@ -79,7 +79,7 @@ export const processPlayerTurn = (
         // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Replaced with 'phaserTargetId'.
         const target = currentSector.entities.find(e => e.id === playerTurnActions.phaserTargetId) as Ship | undefined;
         if (target) {
-            const phaserBaseDamage = 20 * ship.energyModifier;
+            const phaserBaseDamage = 30 * ship.energyModifier;
             const phaserPowerModifier = ship.energyAllocation.weapons / 100;
             const pointDefenseModifier = ship.pointDefenseEnabled ? 0.6 : 1.0;
             const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;

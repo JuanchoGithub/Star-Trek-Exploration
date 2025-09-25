@@ -47,6 +47,30 @@ export const UISection: React.FC = () => {
                  <div className="font-bold mb-2 mt-4">3. Energy Allocation</div>
                  <p>Perhaps the most critical system. Distribute 100% of your main reactor's power between Weapons, Shields, and Engines. This directly impacts phaser damage, shield regeneration rate, and a passive evasion bonus.</p>
              </div>
+            <SubHeader>Dissecting the Ship Systems Status Panel</SubHeader>
+            <p className="text-text-secondary mb-4">The right-hand panel provides a comprehensive, at-a-glance overview of the Endeavour's operational status. Mastering this display is key to effective command.</p>
+            <div className="mt-4 p-2 border border-border-dark rounded space-y-4">
+                <div>
+                    <h4 className="font-bold text-accent-yellow">1. Primary Status & Resources</h4>
+                    <p className="text-sm text-text-secondary">These bars and readouts track your core ship resources. Hull is your health, Shields are your primary defense (only active on Red Alert), and Reserve Power is the energy pool for all tactical actions. Dilithium, Torpedoes, and Security teams are finite resources for warping, combat, and away missions.</p>
+                </div>
+                <div>
+                    <h4 className="font-bold text-accent-yellow">2. Tactical Systems</h4>
+                    <p className="text-sm text-text-secondary">These toggles control your ship's combat state. 'Red Alert' raises shields, 'Evasive' increases your chance to dodge attacks, 'Cloak' conceals your ship, and 'Point-Defense' automatically targets incoming torpedoes. Each provides a significant advantage at the cost of increased energy consumption.</p>
+                </div>
+                <div>
+                    <h4 className="font-bold text-accent-yellow">3. Threat Analysis</h4>
+                    <p className="text-sm text-text-secondary">This vital intelligence panel shows how many hostile ships are currently targeting you and the number of torpedoes on an intercept course. Use this information to decide whether to press the attack or adopt a defensive posture.</p>
+                </div>
+                 <div>
+                    <h4 className="font-bold text-accent-yellow">4. Damage Control</h4>
+                    <p className="text-sm text-text-secondary">This section allows you to assign damage control teams. Select a damaged subsystem or the hull to begin slow, automated repairs at the end of each turn. A flashing red indicator next to a system denotes a critical failure (e.g., Engines offline, Life Support failing).</p>
+                </div>
+                 <div>
+                    <h4 className="font-bold text-accent-yellow">5. Energy Allocation</h4>
+                    <p className="text-sm text-text-secondary">This is your primary command interface for managing the ship's reactor output. Distribute 100% of your power between Weapons, Shields, and Engines. This directly impacts your phaser damage, shield regeneration rate, and energy generation. Adjusting this is a free action and can be done at any time.</p>
+                </div>
+            </div>
         </div>
     )
 };

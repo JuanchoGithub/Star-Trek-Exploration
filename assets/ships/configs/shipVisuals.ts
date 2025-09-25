@@ -82,15 +82,11 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
                 icon: IntrepidIcon, 
                 wireframe: IntrepidWireframe, 
                 colorClass: 'text-sky-300',
-                saucerWireframe: FederationEscortSaucerWireframe, // Fallback
-                engineeringWireframe: FederationEscortEngineeringWireframe, // Fallback
             },
             'Defiant-class': { 
                 icon: DefiantIcon, 
                 wireframe: DefiantWireframe, 
                 colorClass: 'text-sky-400',
-                saucerWireframe: FederationEscortSaucerWireframe, // Fallback
-                engineeringWireframe: FederationEscortEngineeringWireframe, // Fallback
             },
         }
     },

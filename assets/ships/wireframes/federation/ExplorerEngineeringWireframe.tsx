@@ -1,7 +1,7 @@
 import React from 'react';
 
 const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
+    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
         <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
             {children}
         </g>
@@ -10,25 +10,6 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const FederationExplorerEngineeringWireframe: React.FC = () => (
     <WireframeSVG>
-        {/* Secondary Hull */}
-        <ellipse cx="68" cy="72" rx="30" ry="10" />
-        {/* Deflector Dish */}
-        <ellipse cx="41" cy="72" rx="5" ry="5" />
-        <line x1="41" y1="67" x2="41" y2="77" />
-        <line x1="36" y1="72" x2="46" y2="72" />
-
-        {/* Neck */}
-        <path d="M 50 45 C 55 55, 60 63, 60 63" />
-        <path d="M 40 45 C 45 55, 50 63, 50 63" />
-
-        {/* Pylons */}
-        <path d="M 80 65 C 85 55, 88 40, 85 30" />
-        <line x1="80" y1="65" x2="84" y2="67" /> 
-        <line x1="85" y1="30" x2="89" y2="32" /> 
-
-        {/* Nacelle */}
-        <ellipse cx="80" cy="25" rx="18" ry="5" />
-        <ellipse cx="65" cy="25" rx="4" ry="4" strokeWidth="2" />
-        <line x1="62" y1="25" x2="98" y2="25" />
+        <path d="M47.0 1.0L64.0 5.0 73.0 10.0 82.0 20.0 85.0 30.0 80.0 46.0 59.0 62.0 57.0 75.0 60.0 78.0 66.0 75.0 67.0 63.0 71.0 65.0 70.0 88.0 55.0 83.0 51.0 86.0 49.0 92.0 46.0 92.0 44.0 86.0 40.0 83.0 25.0 88.0 24.0 65.0 28.0 63.0 29.0 75.0 34.0 78.0 38.0 74.0 36.0 62.0 15.0 46.0 10.0 33.0 13.0 20.0 22.0 10.0 31.0 5.0 46.0 2.0Z M43.0 60.0L40.0 63.0 41.0 70.0 44.0 71.0 46.0 67.0 49.0 67.0 50.0 70.0 53.0 71.0 55.0 63.0 52.0 60.0 50.0 61.0 45.0 61.0 44.0 60.0Z" />
     </WireframeSVG>
 );
