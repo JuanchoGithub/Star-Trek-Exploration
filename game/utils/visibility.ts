@@ -10,6 +10,7 @@ export const canShipSeeEntity = (targetEntity: Entity, viewerShip: Ship, sector:
     const distance = calculateDistance(viewerShip.position, targetEntity.position);
 
     const isViewerInNebula = isPosInNebula(viewerShip.position, sector);
+    const isTargetInNebula = isPosInNebula(targetEntity.position, sector);
     const isEntityInDeepNebula = isDeepNebula(targetEntity.position, sector);
 
     // Deep Nebula check: completely undetectable
@@ -17,8 +18,8 @@ export const canShipSeeEntity = (targetEntity: Entity, viewerShip: Ship, sector:
         return false;
     }
 
-    // Viewer inside nebula check: sensor range is 1
-    if (isViewerInNebula) {
+    // If either ship is in a nebula, visibility is reduced to adjacency
+    if (isViewerInNebula || isTargetInNebula) {
         return distance <= 1;
     }
 

@@ -1,5 +1,3 @@
-
-
 import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
@@ -124,7 +122,8 @@ const createEntityFromTemplate = (
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
                 lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
-                statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier
+                statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier,
+                lastAttackerPosition: null,
             } as Ship;
 
             if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
@@ -301,6 +300,7 @@ export const createInitialGameState = (): GameState => {
     logColor: PLAYER_LOG_COLOR, lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
     energyModifier: playerStats.energyModifier,
+    lastAttackerPosition: null,
   };
 
   const playerCrew: BridgeOfficer[] = [

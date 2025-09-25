@@ -1,5 +1,3 @@
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity } from '../types';
@@ -67,6 +65,7 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         isDerelict: false, captureInfo: null, pointDefenseEnabled: false, statusEffects: [],
         allegiance, cloakingCapable: shipClass.cloakingCapable,
         energyModifier: shipClass.energyModifier,
+        lastAttackerPosition: null,
     };
     if (allegiance === 'player' || allegiance === 'ally') {
         newShip.logColor = 'border-blue-400';

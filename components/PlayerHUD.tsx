@@ -117,14 +117,16 @@ const TargetInfo: React.FC<{
         
         if (target.planetClass === 'J') {
              const shuttlecraft = playerShip.subsystems.shuttlecraft;
-             // FIX: Check if shuttlecraft exists (for old saves) and if maxHealth is > 0 before division.
-             if (!shuttlecraft || shuttlecraft.maxHealth === 0 || (shuttlecraft.health / shuttlecraft.maxHealth) < 0.5) {
+             // FIX: Robustly check if shuttlecraft subsystem exists and is sufficiently repaired for missions.
+             // This handles old save files and prevents division by zero.
+             if (!shuttlecraft || shuttlecraft.maxHealth <= 0 || (shuttlecraft.health / shuttlecraft.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
             }
         } else {
             const transporter = playerShip.subsystems.transporter;
-            // FIX: Check if transporter exists (for old saves) and if maxHealth is > 0 before division.
-            if (!transporter || transporter.maxHealth === 0 || (transporter.health / transporter.maxHealth) < 0.5) {
+            // FIX: Robustly check if transporter subsystem exists and is sufficiently repaired for missions.
+            // This handles old save files and prevents division by zero.
+            if (!transporter || transporter.maxHealth <= 0 || (transporter.health / transporter.maxHealth) < 0.5) {
                 return { disabled: true, text: 'Cannot Begin Mission: Transporter Damaged' };
             }
         }

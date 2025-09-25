@@ -1,4 +1,3 @@
-
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, applyPhaserDamage, consumeEnergy } from '../utils/combat';
@@ -183,7 +182,8 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
         let keepTorpedo = true;
         for (let i = 0; i < torpedo.speed; i++) {
             if (calculateDistance(torpedo.position, target.position) <= 0) {
-                const damageLogs = applyTorpedoDamage(target, torpedo);
+                const sourceShip = allShips.find(s => s.id === torpedo.sourceId);
+                const damageLogs = applyTorpedoDamage(target, torpedo, sourceShip?.position || null);
                 damageLogs.forEach(message => addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400'}));
                 state.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: i * (750 / torpedo.speed), torpedoType: torpedo.torpedoType });
                 keepTorpedo = false;

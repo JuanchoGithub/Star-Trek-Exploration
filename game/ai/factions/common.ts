@@ -110,6 +110,32 @@ export function processCommonTurn(
     stance: AIStance
 ) {
     const target = findClosestTarget(ship, potentialTargets);
+
+    if (!target && ship.lastAttackerPosition) {
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detecting weapon impacts from an unseen source! Attempting to evade!`, isPlayerSource: false, color: ship.logColor });
+        
+        const fleeVector = {
+            x: ship.position.x - ship.lastAttackerPosition.x,
+            y: ship.position.y - ship.lastAttackerPosition.y,
+        };
+
+        let fleePosition = { ...ship.position };
+        if (Math.abs(fleeVector.x) > Math.abs(fleeVector.y)) {
+            fleePosition.x += Math.sign(fleeVector.x) || 1;
+        } else {
+            fleePosition.y += Math.sign(fleeVector.y) || 1;
+        }
+
+        fleePosition.x = Math.max(0, Math.min(SECTOR_WIDTH - 1, fleePosition.x));
+        fleePosition.y = Math.max(0, Math.min(SECTOR_HEIGHT - 1, fleePosition.y));
+        
+        ship.position = moveOneStep(ship.position, fleePosition);
+        ship.lastAttackerPosition = null; 
+        return;
+    }
+    
+    ship.lastAttackerPosition = null;
+
     if (!target) {
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Holding position, no targets in sight.", isPlayerSource: false, color: ship.logColor });
         return;

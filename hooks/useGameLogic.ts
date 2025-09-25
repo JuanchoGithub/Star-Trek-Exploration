@@ -39,6 +39,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                         if (savedState.player.ship.lifeSupportFailureTurn === undefined) savedState.player.ship.lifeSupportFailureTurn = null;
                         if (savedState.player.ship.statusEffects === undefined) savedState.player.ship.statusEffects = [];
                         if (savedState.player.ship.pointDefenseEnabled === undefined) savedState.player.ship.pointDefenseEnabled = false;
+                        if (savedState.player.ship.lastAttackerPosition === undefined) savedState.player.ship.lastAttackerPosition = null;
                         if (savedState.replayHistory === undefined) savedState.replayHistory = [];
                         
                         const migrateSubsystems = (subsystems: any) => {
@@ -56,6 +57,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                                         const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
                                         entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
                                     }
+                                    if (entity.lastAttackerPosition === undefined) {
+                                        entity.lastAttackerPosition = null;
+                                    }
                                 }
                             });
                         }));
@@ -66,6 +70,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                                      if (!entity.dilithium) {
                                         const stats = shipClasses[entity.shipModel]?.[entity.shipClass];
                                         entity.dilithium = { current: stats?.dilithium.max || 0, max: stats?.dilithium.max || 0 };
+                                    }
+                                     if (entity.lastAttackerPosition === undefined) {
+                                        entity.lastAttackerPosition = null;
                                     }
                                 }
                             });

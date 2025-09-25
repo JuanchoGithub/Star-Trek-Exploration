@@ -1,4 +1,4 @@
-import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity } from '../../types';
+import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 
@@ -65,6 +65,7 @@ export const applyPhaserDamage = (
     target: Ship, damage: number, subsystem: keyof ShipSubsystems | null,
     sourceShip: Ship, gameState: GameState
 ): string[] => {
+    target.lastAttackerPosition = { ...sourceShip.position };
     const wasShieldHit = target.shields > 0;
 
     const PHASER_BEAM_DRAW_TIME = 150; // 20% of 750ms animation
@@ -208,8 +209,11 @@ export const applyPhaserDamage = (
 };
 
 
-export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile): string[] => {
+export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sourcePosition: Position | null): string[] => {
     const logs: string[] = [];
+    if (sourcePosition) {
+        target.lastAttackerPosition = { ...sourcePosition };
+    }
     let damageToHull = torpedo.damage;
 
     // Quantum Torpedoes partially bypass shields
