@@ -229,7 +229,7 @@ const TargetInfo: React.FC<{
                     </div>
                 );
             })() : (
-                <div className="flex-grow flex flex-col justify-end space-y-2 overflow-y-auto pr-2">
+                <div className="flex-grow flex flex-col justify-end space-y-2 pr-2">
                     {/* Ship Actions */}
                     {target.type === 'ship' && (
                         <div className="grid grid-cols-2 gap-2">
