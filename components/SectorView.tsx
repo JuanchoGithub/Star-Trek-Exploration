@@ -54,7 +54,7 @@ const getPath = (start: { x: number; y: number }, end: { x: number; y: number } 
 };
 
 const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
-    if (containerSize.width === 0 || containerSize.height === 0) {
+    if (containerSize.width === 0 || containerSize.height === 0 || !gridPos) {
         return { x: 0, y: 0 };
     }
     const cellWidth = containerSize.width / sectorSize.width;
@@ -71,6 +71,42 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  const getTorpedoPixelCoords = (torpedo: TorpedoProjectile, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
+    const { position: currentPos, path } = torpedo;
+    
+    if (!currentPos) {
+        return { x: 0, y: 0 };
+    }
+
+    const cellWidth = containerSize.width / sectorSize.width;
+    const cellHeight = containerSize.height / sectorSize.height;
+    
+    const getCenterCoords = () => ({
+        x: currentPos.x * cellWidth + cellWidth / 2,
+        y: currentPos.y * cellHeight + cellHeight / 2
+    });
+
+    if (!path || path.length < 2) {
+        return getCenterCoords();
+    }
+
+    const prevPos = path[path.length - 2];
+
+    if (!prevPos) {
+        return getCenterCoords();
+    }
+
+    const dx = currentPos.x - prevPos.x; // -1, 0, or 1
+    const dy = currentPos.y - prevPos.y; // -1, 0, or 1
+
+    // Calculate position on the border
+    // (1 - dx) / 2 gives: 0 for dx=1 (left), 0.5 for dx=0 (center), 1 for dx=-1 (right)
+    const x = (currentPos.x * cellWidth) + ((1 - dx) * cellWidth / 2);
+    const y = (currentPos.y * cellHeight) + ((1 - dy) * cellHeight / 2);
+
+    return { x, y };
+  };
 
   useEffect(() => {
     const updateSize = () => {
@@ -277,7 +313,10 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
             )}
 
             {visibleEntities.map((entity) => {
-                const { x: pixelX, y: pixelY } = getPixelCoords(entity.position, sectorSize, containerSize);
+                const { x: pixelX, y: pixelY } = entity.type === 'torpedo_projectile'
+                    ? getTorpedoPixelCoords(entity as TorpedoProjectile, sectorSize, containerSize)
+                    : getPixelCoords(entity.position, sectorSize, containerSize);
+
                 let transformValue = `translate3d(${pixelX}px, ${pixelY}px, 0) translate3d(-50%, -50%, 0)`;
 
                 const style: React.CSSProperties = {
