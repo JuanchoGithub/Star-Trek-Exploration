@@ -93,8 +93,9 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     let incomingTorpedoes: TorpedoProjectile[] = [];
     let incomingTorpedoesByType: Record<string, number> = {};
 
+    const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
+
     if (ship) {
-        const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
         const allShips = allEntities.filter(e => e.type === 'ship') as Ship[];
         const torpedoes = allEntities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
         
@@ -126,7 +127,8 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
         
         const systemData = (Object.keys(ship.subsystems) as Array<keyof ShipSubsystems>).map(key => {
             const system = ship.subsystems[key];
-            if (system.maxHealth === 0) return null;
+            // FIX: Add a null check for 'system' before accessing its properties to prevent crashes when iterating over subsystems, especially when dealing with data from older save files that might be missing certain subsystem keys.
+            if (!system || system.maxHealth === 0) return null;
 
             const healthPercentage = (system.health / system.maxHealth) * 100;
             
@@ -259,6 +261,7 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
     };
 
     const shipStatus = getShipStatusText();
+    const threatInfo = ship?.threatInfo;
 
     return (
         <div className="panel-style p-3 h-full flex flex-col">
@@ -358,6 +361,24 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                                     <span className="font-bold">{count}</span>
                                 </div>
                             ))}
+                             {threatInfo && threatInfo.total > 0 && (
+                                <>
+                                    <StatusIndicator
+                                        label="Threat Pressure"
+                                        value={threatInfo.total.toFixed(2)}
+                                        color={threatInfo.total > 0.5 ? 'text-accent-red' : (threatInfo.total > 0.2 ? 'text-accent-yellow' : 'text-text-secondary')}
+                                    />
+                                    {threatInfo.contributors.map(c => {
+                                        const source = allEntities.find(e => e.id === c.sourceId);
+                                        return (
+                                            <div key={c.sourceId} className="text-xs text-text-secondary pl-4 flex justify-between">
+                                                <span>- {source?.name || 'Unknown'}</span>
+                                                <span className="font-bold">{c.score.toFixed(2)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            )}
                         </DetailSection>
 
                         {systemsGridContent}

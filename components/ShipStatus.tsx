@@ -95,6 +95,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
 
     const shipsTargetingMe = allShips.filter(s => s.currentTargetId === ship.id);
     const incomingTorpedoes = torpedoes.filter(t => t.targetId === ship.id);
+    const threatInfo = ship.threatInfo;
 
     const incomingTorpedoesByType = incomingTorpedoes.reduce((acc, torpedo) => {
         acc[torpedo.torpedoType] = (acc[torpedo.torpedoType] || 0) + 1;
@@ -184,6 +185,24 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
                         <span className="font-bold">{count}</span>
                     </div>
                 ))}
+                {threatInfo && threatInfo.total > 0 && (
+                    <>
+                        <ReadOnlyStatusIndicator
+                            label="Threat Pressure"
+                            status={threatInfo.total.toFixed(2)}
+                            colorClass={threatInfo.total > 0.5 ? 'text-accent-red' : (threatInfo.total > 0.2 ? 'text-accent-yellow' : 'text-text-secondary')}
+                        />
+                        {threatInfo.contributors.map(c => {
+                            const source = allEntities.find(e => e.id === c.sourceId);
+                            return (
+                                <div key={c.sourceId} className="text-xs text-text-secondary pl-4 flex justify-between">
+                                    <span>- {source?.name || 'Unknown'}</span>
+                                    <span className="font-bold">{c.score.toFixed(2)}</span>
+                                </div>
+                            );
+                        })}
+                    </>
+                )}
             </div>
         </div>
 

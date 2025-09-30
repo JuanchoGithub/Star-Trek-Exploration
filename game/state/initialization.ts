@@ -1,4 +1,4 @@
-import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField } from '../../types';
+import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField, BeamWeapon, ProjectileWeapon, AmmoType } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
 import { shipClasses, type ShipClassStats } from '../../assets/ships/configs/shipClassStats';
@@ -116,7 +116,6 @@ const createEntityFromTemplate = (
                 shipClass: stats.name, shipRole: stats.role, cloakingCapable: stats.cloakingCapable,
                 faction: chosenFaction, position, allegiance, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields,
                 energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
-                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
                 subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
                 dilithium: { current: stats.dilithium.max, max: stats.dilithium.max }, scanned: false, evasive: false, retreatingTurn: null,
                 crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
@@ -126,6 +125,14 @@ const createEntityFromTemplate = (
                 isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
                 statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier,
                 lastAttackerPosition: null,
+                // @deprecated
+                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
+                // New weapon system
+                weapons: JSON.parse(JSON.stringify(stats.weapons)),
+                ammo: Object.keys(stats.ammo).reduce((acc, key) => {
+                    acc[key as AmmoType] = { current: stats.ammo[key as AmmoType]!.max, max: stats.ammo[key as AmmoType]!.max };
+                    return acc;
+                }, {} as Ship['ammo']),
             } as Ship;
 
             if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
@@ -296,7 +303,7 @@ export const createInitialGameState = (): GameState => {
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
     subsystems: JSON.parse(JSON.stringify(playerStats.subsystems)),
     energy: { current: playerStats.energy.max, max: playerStats.energy.max }, energyAllocation: { weapons: 34, shields: 33, engines: 33 },
-    torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max }, dilithium: { current: playerStats.dilithium.max, max: playerStats.dilithium.max },
+    dilithium: { current: playerStats.dilithium.max, max: playerStats.dilithium.max },
     scanned: true, evasive: false, retreatingTurn: null,
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR, lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
@@ -306,6 +313,14 @@ export const createInitialGameState = (): GameState => {
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
     energyModifier: playerStats.energyModifier,
     lastAttackerPosition: null,
+    // @deprecated
+    torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max },
+    // New weapon system
+    weapons: JSON.parse(JSON.stringify(playerStats.weapons)),
+    ammo: Object.keys(playerStats.ammo).reduce((acc, key) => {
+        acc[key as AmmoType] = { current: playerStats.ammo[key as AmmoType]!.max, max: playerStats.ammo[key as AmmoType]!.max };
+        return acc;
+    }, {} as Ship['ammo']),
   };
 
   const playerCrew: BridgeOfficer[] = [

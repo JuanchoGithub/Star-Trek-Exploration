@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { GameState, Ship, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -29,7 +30,8 @@ const SubsystemStatus: React.FC<{ subsystems: ShipSubsystems; }> = ({ subsystems
     <div className="grid grid-cols-2 gap-1 mt-2">
         {(Object.keys(subsystems) as Array<keyof ShipSubsystems>).map(key => {
             const system = subsystems[key];
-            if (system.maxHealth === 0) return null;
+            // FIX: Add a null check for 'system' to prevent crashes when accessing properties on potentially undefined subsystems, which can occur when loading older save files.
+            if (!system || system.maxHealth === 0) return null;
             const healthPercentage = (system.health / system.maxHealth) * 100;
             let color = 'text-green-400';
             if (healthPercentage < 60) color = 'text-yellow-400';

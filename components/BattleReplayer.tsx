@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameState, Entity } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import SectorView from './SectorView';
@@ -19,6 +19,8 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
     const [isPlaying, setIsPlaying] = useState(false);
     const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
     const [isLogExpanded, setIsLogExpanded] = useState(false);
+    // FIX: Added a ref to hold references to entity DOM elements for animations.
+    const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const currentGameState = history[currentIndex];
 
@@ -71,7 +73,7 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                 <main className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow min-h-0">
                     <div className="md:col-span-2 flex flex-col gap-2">
                         <div className="relative flex-grow">
-                             <CombatFXLayer effects={currentGameState.combatEffects} entities={allEntities} />
+                             <CombatFXLayer effects={currentGameState.combatEffects} entities={allEntities} entityRefs={entityRefs} />
                              <SectorView 
                                 entities={currentGameState.currentSector.entities} 
                                 playerShip={playerShip}
@@ -82,6 +84,7 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                                 sector={currentGameState.currentSector}
                                 themeName={themeName}
                                 spectatorMode={true}
+                                entityRefs={entityRefs}
                             />
                         </div>
                         <PlaybackControls

@@ -1,14 +1,14 @@
 import React from 'react';
-import type { PlayerTurnActions, Position, Ship, Entity, GameState } from '../types';
+import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { canTargetEntity } from '../game/utils/combat';
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
-  onFirePhasers: () => void;
-  onLaunchTorpedo: () => void;
+  onFireWeapon: (weaponId: string, targetId: string) => void;
   onToggleCloak: () => void;
   onInitiateRetreat: () => void;
   onCancelRetreat: () => void;
@@ -47,7 +47,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 
 const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFirePhasers, onLaunchTorpedo, onToggleCloak,
+    onEndTurn, onFireWeapon, onToggleCloak,
     onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
     retreatingTurn, currentTurn, hasTarget, hasEnemy, 
     playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState,
@@ -62,7 +62,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
     if (isRetreating && turnsToRetreat === 0) return "Engage Emergency Warp";
     
     const isMoving = navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y);
-    const isFiring = !!playerTurnActions.phaserTargetId || !!playerTurnActions.torpedoTargetId;
+    const isFiring = !!playerTurnActions.firedWeaponId;
 
     if (isMoving && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
         return "Engines Offline";
@@ -91,39 +91,27 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   }
 
   const targetShip = target?.type === 'ship' ? (target as Ship) : null;
-  const isTargetFriendly = targetShip?.allegiance
-      ? ['player', 'ally', 'neutral'].includes(targetShip.allegiance)
-      : target?.faction === 'Federation';
 
   const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
   
   const canBoardOrStrike = targetShip
     && isAdjacentToTarget 
     && targetShip.shields <= 1
-    && !isTargetFriendly 
+    && targetShip.allegiance === 'enemy'
     && playerShip.securityTeams.current > 0 
     && (playerShip.subsystems.transporter.health / playerShip.subsystems.transporter.maxHealth) >= 0.5
     && targetShip.hull > 0;
 
-  const { WeaponIcon, TorpedoIcon, BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
-
-  const canFireOnShip = hasTarget && targetShip && !isTargetFriendly && targetShip.hull > 0;
-  const canFireOnTorpedo = hasTarget && target?.type === 'torpedo_projectile' && target.faction !== 'Federation';
-  const canUsePhasers = playerShip.subsystems.weapons.health > 0 && (canFireOnShip || canFireOnTorpedo);
-  const canLaunchTorpedoFinal = playerShip.torpedoes.current > 0 && (playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) >= 0.34;
-  const hasTakenMajorAction = playerTurnActions.hasTakenMajorAction || false;
+  const { BoardingIcon, StrikeTeamIcon, RetreatIcon, CloakIcon } = getFactionIcons(themeName);
+  
+  const hasTakenMajorAction = playerTurnActions.hasTakenMajorAction || !!playerTurnActions.firedWeaponId || false;
 
   const isCloakingOrDecloaking = playerShip.cloakState === 'cloaking' || playerShip.cloakState === 'decloaking';
   const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction || isCloakingOrDecloaking;
 
-  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector) : { canTarget: true, reason: '' };
+  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector) : { canTarget: false, reason: 'No target selected.' };
   const cannotTargetReason = !targetingCheck.canTarget ? targetingCheck.reason : '';
-
-  const isTargetingSubsystem = targeting && targeting.entityId === target?.id && targeting.subsystem;
-  const phaserButtonText = isTargetingSubsystem
-    ? `Phasers (${targeting.subsystem.charAt(0).toUpperCase()})`
-    : 'Phasers';
-
+  
   const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
   const canCloak = playerShip.cloakingCapable && cloakStats;
   const isCloaked = playerShip.cloakState === 'cloaked';
@@ -142,13 +130,49 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
         <div className="flex-grow space-y-1">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2 tactical-grid">
-                <CommandButton onClick={onFirePhasers} disabled={!canUsePhasers || actionDisabled || isCloaked || !targetingCheck.canTarget} accentColor="red" title={cannotTargetReason}>
-                    <WeaponIcon className="w-5 h-5" /> {phaserButtonText}
-                </CommandButton>
-                <CommandButton onClick={onLaunchTorpedo} disabled={!canLaunchTorpedoFinal || !canFireOnShip || actionDisabled || !!playerTurnActions.torpedoTargetId || !targetingCheck.canTarget} accentColor="sky" title={cannotTargetReason}>
-                    <TorpedoIcon className="w-5 h-5" />
-                    Torpedo
-                </CommandButton>
+                {playerShip.weapons.map(weapon => {
+                    let isDisabled = !target || actionDisabled || isCloaked || !targetingCheck.canTarget;
+                    let title = cannotTargetReason;
+                    let accentColor = 'red';
+                    let Icon = getFactionIcons(themeName).WeaponIcon;
+
+                    if (weapon.type === 'beam') {
+                        if (playerShip.subsystems.weapons.health <= 0) {
+                            isDisabled = true;
+                            title = 'Phaser array is offline.';
+                        }
+                    } else if (weapon.type === 'projectile') {
+                        const projectileWeapon = weapon as ProjectileWeapon;
+                        const ammo = playerShip.ammo[projectileWeapon.ammoType];
+                        const torpedoConfig = torpedoStats[projectileWeapon.ammoType];
+                        
+                        Icon = torpedoConfig.icon;
+                        accentColor = 'sky';
+                        
+                        if (!target || target.type !== 'ship' || (target as Ship).hull <= 0) {
+                            isDisabled = true;
+                            title = 'Must target a ship with torpedoes.';
+                        } else if (!ammo || ammo.current <= 0) {
+                            isDisabled = true;
+                            title = 'No ammunition remaining.';
+                        } else if ((playerShip.subsystems.weapons.health / playerShip.subsystems.weapons.maxHealth) < 0.34) {
+                            isDisabled = true;
+                            title = 'Weapon systems too damaged to launch.';
+                        }
+                    }
+
+                    return (
+                        <CommandButton
+                            key={weapon.id}
+                            onClick={() => onFireWeapon(weapon.id, target!.id)}
+                            disabled={isDisabled}
+                            accentColor={accentColor}
+                            title={title}
+                        >
+                            <Icon className="w-5 h-5" /> {weapon.name}
+                        </CommandButton>
+                    );
+                })}
                  {playerShip.cloakingCapable && (
                     <CommandButton 
                         onClick={onToggleCloak} 

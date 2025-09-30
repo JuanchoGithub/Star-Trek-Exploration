@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
@@ -13,7 +14,6 @@ export class KlingonAI extends FactionAI {
         return { stance: 'Aggressive', reason: generalStance.reason + ` Defaulting to honorable aggression.` };
     }
 
-    // FIX: Added explicit return type to match the base class.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Klingons target weapons to force a close, honorable fight.
         if (playerShip.subsystems.weapons.health > 0) {
@@ -22,26 +22,24 @@ export class KlingonAI extends FactionAI {
         return null; // Target hull if weapons are already destroyed.
     }
 
-    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         // Klingons prefer to shoot down torpedoes rather than flee.
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Activating point-defense grid.` });
+            return { turnEndingAction: false, defenseActionTaken: 'Activating point-defense grid.' };
         }
-        return false; // Point-defense is not a turn-ending action.
+        return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
-
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions);
+            processRecoveryTurn(ship, actions, gameState.turn);
             return;
         }
 
@@ -72,7 +70,7 @@ export class KlingonAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
         } else {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }

@@ -70,12 +70,8 @@ export const MechanicsSection: React.FC = () => (
                 <p className="text-sm text-text-secondary">Impulse engines are much simpler than warp engines; they either work or they don't. When they are at less than 50% repair, they simply stop functioning, leaving the ship dead in space.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-secondary-light">Phasers</h4>
-                <p className="text-sm text-text-secondary">Phaser percentage of repair is a direct indication of what percentage of energy is converted to destructive force at the point of impact. In other words, for a given level of phaser energy, 100% working phasers will do twice the damage of 50% working phasers.</p>
-            </div>
-            <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-secondary-light">Photon Torpedo Tubes</h4>
-                <p className="text-sm text-text-secondary">Like impulse engines, photon torpedo tubes' functionality degrades with damage, reducing the number of tubes available. At 100% repair, three tubes are functional. At 67-99%, two tubes work. At 34-66%, only one works. This effectively reduces potential torpedo damage output.</p>
+                <h4 className="font-bold text-secondary-light">Weapon Systems</h4>
+                <p className="text-sm text-text-secondary">This subsystem governs both phasers and projectile launchers. Its health percentage directly scales the damage output of your phaser arrays. Additionally, if system health drops below 34%, your torpedo launchers will be inoperable due to critical damage to the loading and targeting mechanisms.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Laser Point-Defense System (LPDS)</h4>

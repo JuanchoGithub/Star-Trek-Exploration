@@ -1,7 +1,8 @@
-import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position } from '../../types';
+import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position, BeamWeapon } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
-import { applyTorpedoDamage, applyPhaserDamage } from '../utils/combat';
-import { calculateDistance, moveOneStep, uniqueId, findClosestTarget } from '../utils/ai';
+import { applyTorpedoDamage, fireBeamWeapon } from '../utils/combat';
+// FIX: Imported 'calculateThreatInfo' to resolve a "Cannot find name" error.
+import { calculateDistance, moveOneStep, uniqueId, findClosestTarget, calculateThreatInfo } from '../utils/ai';
 import { AIDirector } from '../ai/AIDirector';
 import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
 import { processPlayerTurn } from './player';
@@ -44,12 +45,20 @@ export const generatePhasedTurn = (
     const steps: TurnStep[] = [];
     let currentState: GameState = JSON.parse(JSON.stringify(initialState));
     currentState.combatEffects = []; // Ensure a clean slate for effects each turn.
+    currentState.turnEvents = []; // Initialize for the new turn
     let logQueue: Omit<LogEntry, 'id' | 'turn'>[] = [];
     
     let currentNavTarget = config.navigationTarget;
     let currentSelectedId = config.selectedTargetId;
 
     const addLog = (logData: Omit<LogEntry, 'id' | 'turn'>) => logQueue.push(logData);
+
+    const addTurnEvent = (event: string) => {
+        if (!currentState.turnEvents) {
+            currentState.turnEvents = [];
+        }
+        currentState.turnEvents.push(event);
+    };
 
     const addStep = (delay: number) => {
         if (steps.length === 0) {
@@ -75,10 +84,11 @@ export const generatePhasedTurn = (
 
     const actions: AIActions = {
         addLog: (log) => addLog({ ...log, isPlayerSource: false, color: log.color || 'border-gray-500' }),
-        applyPhaserDamage,
+        fireBeamWeapon,
         triggerDesperationAnimation: (animation) => {
             currentState.desperationMoveAnimations.push(animation);
-        }
+        },
+        addTurnEvent,
     };
 
     const shipsInOrder = getShipsInTurnOrder(currentState, config.mode);
@@ -88,7 +98,7 @@ export const generatePhasedTurn = (
     
     // --- PLAYER TURN ---
     if (config.mode === 'game') {
-        const playerResult = processPlayerTurn(currentState, config.playerTurnActions, currentNavTarget, currentSelectedId, addLog);
+        const playerResult = processPlayerTurn(currentState, config.playerTurnActions, currentNavTarget, currentSelectedId, addLog, addTurnEvent);
         currentNavTarget = playerResult.newNavigationTarget;
         currentSelectedId = playerResult.newSelectedTargetId;
     }
@@ -133,15 +143,15 @@ export const generatePhasedTurn = (
     }
     
     // --- POINT DEFENSE PHASE ---
-    _handlePointDefense(currentState, allShipsInSector(), addLog);
+    _handlePointDefense(currentState, allShipsInSector(), addLog, addTurnEvent);
     addStep(300);
 
     // --- PROJECTILE MOVEMENT PHASE ---
-    _handleProjectileMovement(currentState, allShipsInSector(), addLog);
+    _handleProjectileMovement(currentState, allShipsInSector(), addLog, addTurnEvent);
     addStep(750);
 
     // --- END OF TURN PHASE ---
-    _handleEndOfTurn(currentState, allShipsInSector(), addLog);
+    _handleEndOfTurn(currentState, allShipsInSector(), addLog, addTurnEvent);
     addStep(0);
     
     return steps;
@@ -150,7 +160,7 @@ export const generatePhasedTurn = (
 
 // Helper Functions
 
-function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Function) {
+function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Function, addTurnEvent: (event: string) => void) {
     const shipsWithPD = allShips.filter(s => s.pointDefenseEnabled && s.subsystems.pointDefense.health > 0 && s.hull > 0);
     if (shipsWithPD.length === 0) return;
 
@@ -177,18 +187,20 @@ function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Functio
         const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
         const isPlayerSource = ship.id === 'player';
 
-        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: targetTorpedo.position, faction: ship.faction, delay: 0 });
+        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: { ...targetTorpedo.position }, faction: ship.faction, delay: 0 });
         
+        addTurnEvent(`PD: ${ship.name} fires at [${targetTorpedo.id}]`);
         let logMessage = `Point-defense grid fires at an incoming ${targetTorpedo.name}! (Hit Chance: ${Math.round(hitChance * 100)}%)...`;
 
         if (Math.random() < hitChance) {
             torpedoesDestroyedThisTurn.add(targetTorpedo.id);
             logMessage += " >> HIT! << Projectile destroyed.";
-            addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-green-400' });
-            state.combatEffects.push({ type: 'torpedo_hit', position: targetTorpedo.position, delay: 100, torpedoType: targetTorpedo.torpedoType });
+            addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-green-400', category: 'combat' });
+            state.combatEffects.push({ type: 'torpedo_hit', position: { ...targetTorpedo.position }, delay: 100, torpedoType: targetTorpedo.torpedoType });
+            addTurnEvent(`INTERCEPTED: [${targetTorpedo.id}]`);
         } else {
             logMessage += " >> MISS! <<";
-            addLog({ sourceId: ship.id, sourceName: ship.name, message: logMessage, isPlayerSource, color: 'border-yellow-400' });
+            addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-yellow-400', category: 'combat' });
         }
     }
     
@@ -198,7 +210,7 @@ function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Functio
 }
 
 
-function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function) {
+function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function, addTurnEvent: (event: string) => void) {
     const torpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     if (torpedoes.length === 0) return;
 
@@ -208,14 +220,16 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
     for (const torpedo of torpedoes) {
         const target = allShips.find(e => e.id === torpedo.targetId);
 
-        if (!target || target.hull <= 0 || target.cloakState === 'cloaked' || target.cloakState === 'cloaking') {
-            if (target && (target.cloakState === 'cloaked' || target.cloakState === 'cloaking')) {
+        if (!target || target.hull <= 0 || target.cloakState === 'cloaked') {
+            if (target && target.cloakState === 'cloaked') {
                 addLog({ 
                     sourceId: torpedo.sourceId, 
-                    sourceName: torpedo.name, 
-                    message: `The ${torpedo.name} loses its lock as the ${target.name} enters a cloaking field! The projectile continues into deep space.`, 
+                    sourceName: torpedo.name,
+                    sourceFaction: torpedo.faction,
+                    message: `The ${torpedo.name} loses its lock as the ${target.name} activates its cloaking field! The projectile continues into deep space.`, 
                     isPlayerSource: torpedo.sourceId === 'player', 
-                    color: 'border-yellow-400'
+                    color: 'border-yellow-400',
+                    category: 'combat'
                 });
             }
             continue; // Skips the torpedo, effectively removing it.
@@ -223,15 +237,18 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
 
         let keepTorpedo = true;
         for (let i = 0; i < torpedo.speed; i++) {
+            const originalTorpedoPos = { ...torpedo.position };
             if (calculateDistance(torpedo.position, target.position) <= 0) {
                 const sourceShip = allShips.find(s => s.id === torpedo.sourceId);
                 const damageLogs = applyTorpedoDamage(target, torpedo, sourceShip?.position || null);
-                damageLogs.forEach(message => addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, message, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400'}));
+                damageLogs.forEach(message => addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, sourceFaction: torpedo.faction, message, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400', category: 'combat'}));
                 state.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: i * (750 / torpedo.speed), torpedoType: torpedo.torpedoType });
+                addTurnEvent(`HIT TORPEDO: [${torpedo.id}] -> ${target.name}`);
                 keepTorpedo = false;
                 break;
             }
             torpedo.position = moveOneStep(torpedo.position, target.position);
+            addTurnEvent(`MOVE TORPEDO: [${torpedo.id}] from (${originalTorpedoPos.x},${originalTorpedoPos.y}) to (${torpedo.position.x},${torpedo.position.y})`);
             torpedo.path.push({ ...torpedo.position });
         }
         if (keepTorpedo) {
@@ -241,9 +258,12 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
     state.currentSector.entities = [...entitiesToKeep, ...newTorpedoes];
 }
 
-function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void) {
+function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void, addTurnEvent: (event: string) => void) {
     allShips.forEach(ship => {
-        if (ship.hull <= 0) return;
+        if (ship.hull <= 0) {
+            ship.threatInfo = { total: 0, contributors: [] }; // Clear threat info for dead ships
+            return;
+        }
 
         // Boarding / Capture Logic must run before other system checks
         if (ship.captureInfo?.turnsToRepair) {
@@ -256,9 +276,11 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
                      addLog({
                         sourceId: captor?.id || 'system',
                         sourceName: captor?.name || 'Salvage Team',
+                        sourceFaction: captor?.faction,
                         message: logInfo.message,
                         isPlayerSource: isPlayerCapture,
                         color: logInfo.color,
+                        category: logInfo.category,
                     });
                 });
             }
@@ -269,7 +291,17 @@ function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit
         }
 
         // Handle all other end-of-turn system processes (repairs, energy, effects, etc.)
-        const systemLogs = handleShipEndOfTurnSystems(ship, state);
+        const systemLogs = handleShipEndOfTurnSystems(ship, state, addTurnEvent);
         systemLogs.forEach(log => addLog(log));
+
+        // Calculate and update threat info for the next turn's display
+        let potentialThreats: Ship[] = [];
+        const shipAllegiance = ship.id === 'player' ? 'player' : ship.allegiance;
+        if (shipAllegiance === 'player' || shipAllegiance === 'ally') {
+            potentialThreats = allShips.filter(s => s.allegiance === 'enemy' && s.hull > 0);
+        } else if (shipAllegiance === 'enemy') {
+            potentialThreats = allShips.filter(s => (s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
+        }
+        ship.threatInfo = calculateThreatInfo(ship, potentialThreats);
     });
 }

@@ -1,10 +1,11 @@
-import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../types';
+import type { GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, BeamAttackResult } from '../../types';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
 export interface AIActions {
     addLog: (log: any) => void;
-    applyPhaserDamage: (target: Ship, damage: number, subsystem: any, source: Ship, state: GameState) => string[];
+    fireBeamWeapon: (target: Ship, weapon: BeamWeapon, subsystem: any, source: Ship, state: GameState) => BeamAttackResult;
     triggerDesperationAnimation: (animation: { source: Ship; target?: Ship; type: string; outcome?: 'success' | 'failure' }) => void;
+    addTurnEvent: (event: string) => void;
 }
 
 export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced' | 'Recovery';
@@ -18,30 +19,25 @@ export abstract class FactionAI {
     abstract determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null;
     
     // NEW abstract method for torpedo defense
-    abstract handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean;
+    abstract handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null };
     
     // NEW abstract method for the main turn logic
-    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void;
+    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void;
 
     // The main turn processing method, now in the base class to enforce order of operations.
     public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
-        // A ship in transition cannot take any actions.
+        // A ship in transition cannot take any actions. The log for this is now generated at the end of turn.
         if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
-            actions.addLog({
-                sourceId: ship.id,
-                sourceName: ship.name,
-                message: `Is vulnerable while its cloaking field is in transition. All systems are offline.`,
-                isPlayerSource: false,
-                color: ship.logColor,
-            });
             return;
         }
 
         const incomingTorpedoes = (gameState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[]).filter(t => t.targetId === ship.id);
 
+        let defenseActionTaken: string | null = null;
         if (incomingTorpedoes.length > 0) {
-            const turnEndingActionTaken = this.handleTorpedoThreat(ship, gameState, actions, incomingTorpedoes);
-            if (turnEndingActionTaken) {
+            const defenseResult = this.handleTorpedoThreat(ship, gameState, actions, incomingTorpedoes);
+            defenseActionTaken = defenseResult.defenseActionTaken;
+            if (defenseResult.turnEndingAction) {
                 // The defensive action (e.g., cloaking) uses the whole turn.
                 return; 
             }
@@ -49,12 +45,12 @@ export abstract class FactionAI {
             // If there are no torpedoes, ensure point defense is off to conserve power.
             if (ship.pointDefenseEnabled) {
                 ship.pointDefenseEnabled = false;
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Torpedo threat has passed. Deactivating point-defense grid to conserve power.` });
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Torpedo threat has passed. Deactivating point-defense grid to conserve power.`, isPlayerSource: false, color: ship.logColor, category: 'system' });
             }
         }
         
         // Execute the main logic for the turn
-        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets);
+        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets, defenseActionTaken);
     }
     
     // This method will execute the desperation move.

@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
-import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity } from '../types';
+import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -10,11 +10,11 @@ import { useTheme } from '../hooks/useTheme';
 import ShipStatus from './ShipStatus';
 import { SampleSector } from './manual/SampleSector';
 import { templateInfo } from './manual/templateInfo';
-import { shipVisuals } from '../assets/ships/configs/shipVisuals';
+import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { createSectorFromTemplate } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
-import { planetNames } from '../assets/planets/configs/planetNames';
-import { shipNames } from '../assets/ships/configs/shipNames';
+import { planetNames } from '../../assets/planets/configs/planetNames';
+import { shipNames } from '../../assets/ships/configs/shipNames';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
@@ -57,6 +57,14 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
         energy: { current: shipClass.energy.max, max: shipClass.energy.max },
         energyAllocation: { weapons: 34, shields: 33, engines: 33 },
         torpedoes: { current: shipClass.torpedoes.max, max: shipClass.torpedoes.max },
+        weapons: JSON.parse(JSON.stringify(shipClass.weapons)),
+        ammo: Object.keys(shipClass.ammo).reduce((acc, key) => {
+            const ammoType = key as AmmoType;
+            if (shipClass.ammo[ammoType]) {
+                acc[ammoType] = { current: shipClass.ammo[ammoType]!.max, max: shipClass.ammo[ammoType]!.max };
+            }
+            return acc;
+        }, {} as Ship['ammo']),
         subsystems: JSON.parse(JSON.stringify(shipClass.subsystems)),
         securityTeams: { current: shipClass.securityTeams.max, max: shipClass.securityTeams.max },
         dilithium: { current: shipClass.dilithium.max, max: shipClass.dilithium.max }, scanned: true, evasive: false, retreatingTurn: null,
@@ -101,6 +109,7 @@ const SectorSelectorModal: React.FC<{
                             <div className="grid grid-cols-[2fr_1fr] gap-4">
                                 <div>
                                     <h4 className="text-xl font-bold text-primary-light">{template.name}</h4>
+                                    <p className="text-sm font-bold text-accent-yellow-dark mb-2">{/* Chance description removed for brevity */}</p>
                                     <p className="text-sm text-text-secondary mb-2"><strong>Description:</strong> {templateInfo[template.id]?.description || 'No description available.'}</p>
                                     <p className="text-sm text-text-secondary"><strong>Intent:</strong> {templateInfo[template.id]?.intent || 'No intent specified.'}</p>
                                 </div>
@@ -123,6 +132,35 @@ const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+const parseEvent = (event: string) => {
+    if (!event) return null;
+    const moveShipMatch = event.match(/^MOVE: '(.+?)' from \((\d+),(\d+)\) to \((\d+),(\d+)\)/);
+    if (moveShipMatch) {
+        return { type: 'MOVE_SHIP', shipName: moveShipMatch[1], to: { x: parseInt(moveShipMatch[4], 10), y: parseInt(moveShipMatch[5], 10) } };
+    }
+    const launchMatch = event.match(/^LAUNCH TORPEDO: \[(.+?)\] '(.+?)' ->/);
+    if (launchMatch) {
+        return { type: 'LAUNCH_TORPEDO', torpedoId: launchMatch[1], shipName: launchMatch[2] };
+    }
+    const moveTorpedoMatch = event.match(/^MOVE TORPEDO: \[(.+?)\] from \((\d+),(\d+)\) to \((\d+),(\d+)\)/);
+    if (moveTorpedoMatch) {
+        return { type: 'MOVE_TORPEDO', torpedoId: moveTorpedoMatch[1], to: { x: parseInt(moveTorpedoMatch[4], 10), y: parseInt(moveTorpedoMatch[5], 10) } };
+    }
+    const hitMatch = event.match(/^HIT TORPEDO: \[(.+?)\]/);
+    if (hitMatch) {
+        return { type: 'HIT_TORPEDO', torpedoId: hitMatch[1] };
+    }
+    const interceptedMatch = event.match(/^INTERCEPTED: \[(.+?)\]/);
+    if (interceptedMatch) {
+        return { type: 'INTERCEPT_TORPEDO', torpedoId: interceptedMatch[1] };
+    }
+
+    const combatMatch = event.match(/^(FIRE PHASER|PD)/);
+    if (combatMatch) {
+        return { type: 'COMBAT' };
+    }
+    return null;
+};
 
 const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { themeName } = useTheme();
@@ -141,23 +179,83 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     });
     const [showSectorSelector, setShowSectorSelector] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
+    const [isPlayOrderMode, setIsPlayOrderMode] = useState(false);
+    const [playOrderIndex, setPlayOrderIndex] = useState(-1);
+    const [isOrderPlaying, setIsOrderPlaying] = useState(false);
     const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
+    const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
+    const isSteppingThroughEvents = isPlayOrderMode || mode === 'spectate';
+
     useEffect(() => {
-        if (mode === 'setup') {
+        if (mode === 'setup' && (!setupState.sector || setupState.sector.seed !== setupState.seed)) {
             const newSector = createSectorForSim(setupState.sectorTemplateId, setupState.seed);
             setSetupState(prev => ({ ...prev, sector: newSector }));
         }
-    }, [mode, setupState.sectorTemplateId, setupState.seed]);
+    }, [mode, setupState.sectorTemplateId, setupState.seed, setupState.sector]);
 
     const {
         gameState, selectedTargetId, navigationTarget, playerTurnActions, isTurnResolving, desperationMoveAnimation,
-        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onSelectTarget, onSetNavigationTarget,
-        onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity,
-        isRunning, togglePause, endSimulation, setGameState,
+        isRunning, setIsRunning, togglePause, endSimulation, setGameState,
         onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
-        replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory,
+        replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory, onFireWeapon, onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity, onEnergyChange, onEndTurn, onSelectTarget, onSetNavigationTarget
     } = useScenarioLogic(setupState.ships, setupState.sector, mode);
+
+    // Effect to handle auto-playing of turn orders in manual "Play Order" mode
+    useEffect(() => {
+        if (isPlayOrderMode && isOrderPlaying && gameState) {
+            const eventCount = gameState.turnEvents?.length || 0;
+            if (playOrderIndex >= eventCount - 1) {
+                setIsOrderPlaying(false); // Stop at the end
+                return;
+            }
+
+            const nextEventIndex = playOrderIndex + 1;
+            const nextEvent = gameState.turnEvents?.[nextEventIndex];
+            let delay = 300;
+            if (nextEvent && (nextEvent.startsWith('REGEN:') || nextEvent.startsWith('ENERGY:'))) {
+                delay = 30;
+            }
+
+            const timer = setTimeout(() => {
+                setPlayOrderIndex(prev => prev + 1);
+            }, delay);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isPlayOrderMode, isOrderPlaying, playOrderIndex, gameState]);
+
+    // Effect to handle auto-playing of turn orders in "Spectate" mode
+    useEffect(() => {
+        if (mode === 'spectate' && isRunning && !isTurnResolving && gameState) {
+            const eventCount = gameState.turnEvents?.length || 0;
+
+            // If at the end of a turn's events, start the next turn
+            if (playOrderIndex >= eventCount - 1) {
+                const nextTurnTimer = setTimeout(() => {
+                    if (!isTurnResolving) {
+                        setPlayOrderIndex(-1); // Reset index for new turn
+                        onEndTurn();
+                    }
+                }, 500); // Pause between turns
+                return () => clearTimeout(nextTurnTimer);
+            }
+
+            // Otherwise, play the next event
+            const nextEventIndex = playOrderIndex + 1;
+            const nextEvent = gameState.turnEvents?.[nextEventIndex];
+            let delay = 300;
+            if (nextEvent && (nextEvent.startsWith('REGEN:') || nextEvent.startsWith('ENERGY:'))) {
+                delay = 30;
+            }
+
+            const timer = setTimeout(() => {
+                setPlayOrderIndex(prev => prev + 1);
+            }, delay);
+
+            return () => clearTimeout(timer);
+        }
+    }, [mode, isRunning, isTurnResolving, gameState, playOrderIndex, onEndTurn]);
 
     const handleCellClick = useCallback((pos: { x: number; y: number }) => {
         if (mode !== 'setup') return;
@@ -187,6 +285,15 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             const newShip = createShipForSim(tool.shipClass, tool.faction, tool.allegiance, pos, newShipName);
             setSetupState(prev => ({ ...prev, ships: [...prev.ships, newShip] }));
             setAvailableNames(prev => ({ ...prev, [tool.faction]: updatedFactionNames }));
+            
+            if (tool.allegiance === 'player') {
+                setTool(prevTool => {
+                    if (prevTool?.type === 'add_ship') {
+                        return { ...prevTool, allegiance: 'enemy' };
+                    }
+                    return prevTool;
+                });
+            }
 
         } else if (tool?.type === 'remove_ship') {
             if (existingShipAtPos) {
@@ -216,44 +323,160 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         setMode(simMode);
     };
     
-    useEffect(() => {
-        if (mode === 'spectate' && isRunning && historyIndex === replayHistory.length - 1) {
-            const interval = setInterval(() => {
-                if (!isTurnResolving) {
-                    onEndTurn();
-                }
-            }, 1000);
-            return () => clearInterval(interval);
-        }
-    }, [mode, isRunning, onEndTurn, historyIndex, replayHistory.length, isTurnResolving]);
-
     const resetToSetup = () => {
         endSimulation();
-        setGameState(null);
         setMode('setup');
-        // Reset available names for a fresh setup
         setAvailableNames(JSON.parse(JSON.stringify(shipNames)));
+        setIsPlayOrderMode(false);
+        setPlayOrderIndex(-1);
+        setIsOrderPlaying(false);
+    };
+    
+    const handleStep = useCallback((direction: number) => {
+        const atEnd = historyIndex >= replayHistory.length - 1;
+        if (mode === 'spectate' && direction > 0 && atEnd && !isTurnResolving) {
+            setPlayOrderIndex(-1);
+            onEndTurn();
+        } else {
+            const newIndex = historyIndex + direction;
+            if (newIndex >= 0 && newIndex < replayHistory.length) {
+                setPlayOrderIndex(-1); // Reset event index when changing turns
+                goToHistoryTurn(newIndex);
+            }
+        }
+    }, [mode, goToHistoryTurn, historyIndex, replayHistory.length, onEndTurn, isTurnResolving]);
+
+    const handleTogglePlayOrder = () => {
+        setIsPlayOrderMode(true);
+        setIsRunning(false); // Pause auto-play of turns
+        setPlayOrderIndex(-1);
+        setIsOrderPlaying(false);
+    };
+    const handleExitPlayOrder = () => {
+        setIsPlayOrderMode(false);
+        setPlayOrderIndex(-1);
+        setIsOrderPlaying(false);
+    };
+    const handleStepOrder = (direction: number) => {
+        setIsOrderPlaying(false); // Stop playing when manually stepping
+        setPlayOrderIndex(prev => {
+            const eventCount = gameState?.turnEvents?.length || 0;
+            const newIndex = prev + direction;
+            return Math.max(-1, Math.min(eventCount - 1, newIndex));
+        });
     };
 
-    const handleStep = useCallback((direction: number) => {
-        // When stepping, ensure the simulation is paused.
-        if (isRunning) {
-            togglePause();
-        }
-
-        const newIndex = historyIndex + direction;
-        
-        // If we are at the end of history and stepping forward, generate a new turn.
-        if (direction > 0 && newIndex >= replayHistory.length) {
-            if (!isTurnResolving) {
-                onEndTurn();
+    const handleToggleOrderPlay = () => {
+        setIsOrderPlaying(prev => {
+            const eventCount = gameState?.turnEvents?.length || 0;
+            if (!prev && playOrderIndex >= eventCount - 1) {
+                setPlayOrderIndex(-1);
             }
-        } 
-        // Otherwise, just navigate through existing history.
-        else if (newIndex >= 0 && newIndex < replayHistory.length) {
-            goToHistoryTurn(newIndex);
+            return !prev;
+        });
+    };
+    
+    const currentGameState = historyIndex >= 0 && historyIndex < replayHistory.length ? replayHistory[historyIndex] : null;
+
+    const { entitiesForDisplay, effectsForDisplay } = useMemo(() => {
+        if (!currentGameState) return { entitiesForDisplay: [], effectsForDisplay: [] };
+
+        if (isSteppingThroughEvents) {
+            const turnEvents = currentGameState.turnEvents || [];
+            
+            const finalEntities = new Map(currentGameState.currentSector.entities.map(e => [e.id, e]));
+            if (currentGameState.player.ship.id) {
+                finalEntities.set(currentGameState.player.ship.id, currentGameState.player.ship);
+            }
+
+            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
+            
+            const entityMap = new Map(baseState.currentSector.entities.map(e => [e.id, JSON.parse(JSON.stringify(e))]));
+            if (baseState.player.ship.id) {
+                 entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
+            }
+
+            const shipNameToIdMap = new Map(Array.from(finalEntities.values()).filter(e => e.type === 'ship').map(s => [(s as Ship).name, s.id]));
+
+            if (playOrderIndex > -1) {
+                for (let i = 0; i <= playOrderIndex; i++) {
+                    const eventStr = turnEvents[i];
+                    const parsed = parseEvent(eventStr);
+                    
+                    if (parsed?.type === 'MOVE_SHIP') {
+                        const shipId = shipNameToIdMap.get(parsed.shipName);
+                        if (shipId) {
+                            const shipToMove = entityMap.get(shipId);
+                            if (shipToMove) shipToMove.position = parsed.to;
+                        }
+                    } else if (parsed?.type === 'LAUNCH_TORPEDO' && parsed.shipName) {
+                        const torpedoEntityFromFinalState = finalEntities.get(parsed.torpedoId) as TorpedoProjectile | undefined;
+                        const launchingShipId = shipNameToIdMap.get(parsed.shipName);
+
+                        if (torpedoEntityFromFinalState && launchingShipId) {
+                            const launchingShip = entityMap.get(launchingShipId) as Ship | undefined;
+                            if (launchingShip) {
+                                const newTorpedo: TorpedoProjectile = {
+                                    ...JSON.parse(JSON.stringify(torpedoEntityFromFinalState)),
+                                    position: { ...launchingShip.position },
+                                    path: [{ ...launchingShip.position }],
+                                };
+                                entityMap.set(parsed.torpedoId, newTorpedo);
+                            }
+                        }
+                    } else if (parsed?.type === 'MOVE_TORPEDO') {
+                        const torpedoToMove = entityMap.get(parsed.torpedoId) as TorpedoProjectile | undefined;
+                        if (torpedoToMove) {
+                            torpedoToMove.position = parsed.to;
+                            torpedoToMove.path.push(parsed.to);
+                        }
+                    } else if (parsed?.type === 'HIT_TORPEDO' || parsed?.type === 'INTERCEPT_TORPEDO') {
+                        entityMap.delete(parsed.torpedoId);
+                    }
+                }
+            }
+            
+            const entities = Array.from(entityMap.values());
+            
+            let effects: CombatEffect[] = [];
+            
+            if (playOrderIndex > -1) {
+                let effectSliceStart = 0;
+
+                for (let i = 0; i < playOrderIndex; i++) {
+                    const eventStr = turnEvents[i];
+                    if (eventStr.startsWith('FIRE PHASER:')) {
+                        effectSliceStart += 2;
+                    } else if (eventStr.startsWith('PD:')) {
+                        const nextEventStr = turnEvents[i + 1];
+                        const isHit = nextEventStr && nextEventStr.startsWith('INTERCEPTED:');
+                        effectSliceStart += isHit ? 2 : 1;
+                    } else if (eventStr.startsWith('HIT TORPEDO:')) {
+                        effectSliceStart += 1;
+                    }
+                }
+
+                const currentEventStr = turnEvents[playOrderIndex];
+                if (currentEventStr) {
+                    if (currentEventStr.startsWith('FIRE PHASER:')) {
+                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 2).map(e => ({ ...e, delay: 0 }));
+                    } else if (currentEventStr.startsWith('PD:')) {
+                        const nextEventStr = turnEvents[playOrderIndex + 1];
+                        const isHit = nextEventStr && nextEventStr.startsWith('INTERCEPTED:');
+                        const numEffects = isHit ? 2 : 1;
+                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + numEffects).map(e => ({ ...e, delay: e.delay || 0 }));
+                    } else if (currentEventStr.startsWith('HIT TORPEDO:')) {
+                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 1).map(e => ({ ...e, delay: 0 }));
+                    }
+                }
+            }
+            
+            return { entitiesForDisplay: entities, effectsForDisplay: effects };
         }
-    }, [isRunning, togglePause, historyIndex, replayHistory, isTurnResolving, onEndTurn, goToHistoryTurn]);
+        
+        return { entitiesForDisplay: currentGameState.currentSector.entities, effectsForDisplay: currentGameState.combatEffects };
+    }, [isSteppingThroughEvents, playOrderIndex, historyIndex, replayHistory, currentGameState, setupState.ships]);
+
 
     if (mode === 'setup') {
         if (!setupState.sector) return <div>Loading Sector...</div>;
@@ -291,6 +514,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                     onCellClick={handleCellClick}
                                     onMoveShip={handleMoveShip}
                                     spectatorMode={true}
+                                    entityRefs={entityRefs}
                                 />
                             </div>
                         </div>
@@ -382,29 +606,19 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         );
     }
     
-    if (!gameState) {
+    if (!gameState || !currentGameState) {
         return <div>Loading Simulation...</div>;
     }
 
-    const playerShip = gameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
-    const allEntities = gameState.currentSector.entities;
+    const playerShip = currentGameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
     const isViewingHistory = historyIndex < replayHistory.length - 1;
-
-    const handleStepSpectate = (direction: number) => {
-        const newIndex = historyIndex + direction;
-        if (newIndex >= 0 && newIndex < replayHistory.length) {
-            goToHistoryTurn(newIndex);
-        } else if (direction > 0 && newIndex >= replayHistory.length && !isTurnResolving) {
-            onEndTurn();
-        }
-    };
 
     return (
         <div className="h-screen w-screen bg-bg-default text-text-primary p-4 flex flex-col gap-4">
              <header className="flex-shrink-0 flex justify-between items-center panel-style p-2">
                 <h1 className="text-2xl font-bold text-secondary-light">Simulation Running: {mode.toUpperCase()}</h1>
                 <div className="flex items-center gap-4">
-                    {mode === 'spectate' && <span className="font-bold text-lg">Turn: {gameState.turn}</span>}
+                    {mode === 'spectate' && <span className="font-bold text-lg">Turn: {currentGameState.turn}</span>}
                     <button onClick={resetToSetup} className="btn btn-tertiary">End Simulation</button>
                 </div>
             </header>
@@ -414,25 +628,26 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         <div className="grid grid-rows-[1fr_auto] gap-4 min-h-0">
                              <div className="relative flex-grow flex justify-center items-center min-h-0">
                                 <div className="w-full h-full aspect-[11/10] relative">
-                                    <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
+                                    <CombatFXLayer effects={effectsForDisplay} entities={entitiesForDisplay} entityRefs={entityRefs} />
                                     {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
                                     <SectorView
-                                        sector={gameState.currentSector}
-                                        entities={gameState.currentSector.entities.filter(e => e.id !== playerShip.id)}
+                                        sector={currentGameState.currentSector}
+                                        entities={entitiesForDisplay.filter(e => e.id !== playerShip.id)}
                                         playerShip={playerShip}
                                         selectedTargetId={selectedTargetId}
                                         onSelectTarget={onSelectTarget}
                                         navigationTarget={navigationTarget}
                                         onSetNavigationTarget={onSetNavigationTarget}
                                         themeName={themeName}
+                                        entityRefs={entityRefs}
+                                        showTacticalOverlay={true}
                                     />
                                 </div>
                             </div>
                             <PlayerHUD
-                                gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
+                                gameState={{...currentGameState, player: {...currentGameState.player, ship: playerShip}}}
                                 onEndTurn={onEndTurn}
-                                onFirePhasers={() => selectedTargetId && onFirePhasers(selectedTargetId)}
-                                onLaunchTorpedo={() => selectedTargetId && onLaunchTorpedo(selectedTargetId)}
+                                onFireWeapon={onFireWeapon}
                                 target={targetEntity} isDocked={false} onDockWithStarbase={() => {}} onUndock={() => {}}
                                 onScanTarget={() => {}} onInitiateRetreat={() => {}} onCancelRetreat={() => {}} onStartAwayMission={() => {}} onHailTarget={() => {}}
                                 playerTurnActions={playerTurnActions} navigationTarget={navigationTarget} isTurnResolving={isTurnResolving} onSendAwayTeam={() => {}} themeName={themeName}
@@ -440,21 +655,21 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 orbitingPlanetId={null} onToggleCloak={onToggleCloak}
                                 isViewingHistory={isViewingHistory}
                                 historyIndex={historyIndex}
-                                onGoToPreviousTurn={() => goToHistoryTurn(historyIndex - 1)}
                                 onResumeFromHistory={resumeFromHistory}
+                                onStepHistory={handleStep}
                             />
                         </div>
                         <aside className="w-80 flex flex-col gap-2 min-h-0">
                             <div className="flex-grow min-h-0 flex flex-col gap-2">
                                 <div className="basis-1/2 flex-shrink min-h-0">
                                     <ShipStatus
-                                        gameState={{...gameState, player: {...gameState.player, ship: playerShip}}}
+                                        gameState={{...currentGameState, player: {...currentGameState.player, ship: playerShip}}}
                                         onEnergyChange={onEnergyChange} onToggleRedAlert={onToggleRedAlert} onEvasiveManeuvers={onEvasiveManeuvers} onSelectRepairTarget={onSelectRepairTarget as any}
                                         onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense} themeName={themeName}
                                     />
                                 </div>
                                 <div className="basis-1/2 flex-shrink min-h-0">
-                                    <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
+                                    <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={currentGameState.turn} gameState={currentGameState} />
                                 </div>
                             </div>
                             <div className="flex-shrink-0 panel-style p-2">
@@ -463,7 +678,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             {showLogModal && (
                                 <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col z-50 p-4" onClick={() => setShowLogModal(false)}>
                                     <div className="panel-style p-4 w-full max-w-4xl mx-auto flex-grow min-h-0 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                                        <LogPanel logs={gameState.logs} onClose={() => setShowLogModal(false)} />
+                                        <LogPanel logs={currentGameState.logs} onClose={() => setShowLogModal(false)} />
                                     </div>
                                 </div>
                             )}
@@ -474,11 +689,11 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         <div className="flex flex-col gap-4 min-h-0">
                             <div className="relative flex-grow flex justify-center items-center min-h-0">
                                 <div className="w-full h-full aspect-[11/10] relative">
-                                    <CombatFXLayer effects={gameState.combatEffects} entities={allEntities} />
+                                    <CombatFXLayer effects={effectsForDisplay} entities={entitiesForDisplay} entityRefs={entityRefs} />
                                     {desperationMoveAnimation && <DesperationMoveAnimation animation={desperationMoveAnimation} />}
                                     <SectorView
-                                        sector={gameState.currentSector}
-                                        entities={gameState.currentSector.entities}
+                                        sector={currentGameState.currentSector}
+                                        entities={entitiesForDisplay}
                                         playerShip={null as any}
                                         selectedTargetId={selectedTargetId}
                                         onSelectTarget={onSelectTarget}
@@ -486,6 +701,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                         onSetNavigationTarget={() => {}}
                                         themeName={themeName}
                                         spectatorMode={true}
+                                        entityRefs={entityRefs}
+                                        showTacticalOverlay={true}
                                     />
                                 </div>
                             </div>
@@ -498,23 +715,32 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 onStep={handleStep}
                                 onSliderChange={goToHistoryTurn}
                                 allowStepPastEnd={true}
+                                isPlayOrderMode={isPlayOrderMode}
+                                onTogglePlayOrder={handleTogglePlayOrder}
+                                onExitPlayOrder={handleExitPlayOrder}
+                                onStepOrder={handleStepOrder}
+                                turnEventsCount={currentGameState.turnEvents?.length || 0}
+                                playOrderIndex={playOrderIndex}
+                                isOrderPlaying={isOrderPlaying}
+                                onToggleOrderPlay={handleToggleOrderPlay}
                             />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">
-                             {targetEntity ? (
-                                <>
-                                    <div className="basis-1/2 flex-shrink min-h-0">
-                                        <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={gameState.turn} gameState={gameState} />
-                                    </div>
-                                    <div className="basis-1/2 flex-shrink min-h-0">
-                                        <LogPanel logs={gameState.logs} />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex-grow min-h-0">
-                                    <LogPanel logs={gameState.logs} />
+                             {targetEntity && !isPlayOrderMode ? (
+                                <div className="basis-1/2 flex-shrink min-h-0">
+                                    <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={currentGameState.turn} gameState={currentGameState} />
                                 </div>
-                            )}
+                            ) : null}
+                            <div className={`flex-grow min-h-0 ${targetEntity && !isPlayOrderMode ? 'basis-1/2' : ''}`}>
+                                <LogPanel
+                                    logs={currentGameState.logs}
+                                    allShips={currentGameState.currentSector.entities.filter(e => e.type === 'ship') as Ship[]}
+                                    isSpectateMode={true}
+                                    playOrderEvents={isPlayOrderMode ? currentGameState.turnEvents : undefined}
+                                    playOrderIndex={isPlayOrderMode ? playOrderIndex : undefined}
+                                    turn={currentGameState.turn}
+                                />
+                            </div>
                         </aside>
                     </>
                 )}

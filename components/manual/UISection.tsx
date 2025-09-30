@@ -25,7 +25,7 @@ export const UISection: React.FC = () => {
                 <p>This section is divided into the Target Information panel and the Command Console.</p>
                 <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
                     <li><strong>Target Info:</strong> Displays a wireframe and vital statistics (Hull, Shields, Subsystems) for your currently selected target. You must scan unscanned ships to see their details.</li>
-                    <li><strong>Command Console:</strong> Contains all your primary actions for the turn: Fire Phasers, Launch Torpedoes, Scan, Hail, Retreat, and special actions like Boarding.</li>
+                    <li><strong>Command Console:</strong> Contains all your primary actions for the turn. Weapon controls are dynamically generated based on your ship's loadout. Other actions include Scan, Hail, Retreat, and special operations like Boarding.</li>
                 </ul>
             </div>
             <SubHeader>Right Column: Ship Systems Status</SubHeader>

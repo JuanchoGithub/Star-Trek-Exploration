@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
+import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile, ProjectileWeapon } from '../types';
 import { awayMissionTemplates, hailResponses, counselAdvice, eventTemplates } from '../assets/content';
 import { createInitialGameState } from '../game/state/initialization';
 import { saveGameToLocalStorage, loadGameFromLocalStorage, exportGameState, importGameState } from '../game/state/saveManager';
@@ -80,6 +80,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                 message: `New Game. Sector Type: ${gameState.currentSector.templateId}, Seed: ${gameState.currentSector.seed}`,
                 isPlayerSource: false,
                 color: 'border-purple-500',
+                category: 'info'
             });
         }
     }, [gameState.currentSector.templateId, gameState.currentSector.seed, addLog]);
@@ -94,7 +95,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const distance = Math.max(Math.abs(gameState.player.ship.position.x - starbase.position.x), Math.abs(gameState.player.ship.position.y - starbase.position.y));
         if (distance > 1) {
             setGameState(prev => ({...prev, isDocked: false}));
-            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: "Undocked: Moved out of range of the starbase.", isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: "Undocked: Moved out of range of the starbase.", isPlayerSource: false, color: 'border-gray-500', category: 'info' });
         }
     }, [gameState.turn, gameState.currentSector.entities, gameState.isDocked, addLog, gameState.player.ship.position]);
 
@@ -108,7 +109,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const templates = eventTemplates[beacon.eventType];
             if (templates && templates.length > 0) {
                 const template = templates[Math.floor(Math.random() * templates.length)];
-                addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Approaching an ${beacon.name}...`, isPlayerSource: false, color: 'border-gray-500' });
+                addLog({ sourceId: 'system', sourceName: 'Sensors', message: `Approaching an ${beacon.name}...`, isPlayerSource: false, color: 'border-gray-500', category: 'info' });
                 setActiveEvent({ beaconId: beacon.id, template });
             }
         }
@@ -148,9 +149,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const saveGame = useCallback(() => {
         const success = saveGameToLocalStorage(gameState);
         if (success) {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state saved successfully.', isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state saved successfully.', isPlayerSource: false, color: 'border-gray-500', category: 'info' });
         } else {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not save game state.', isPlayerSource: false, color: 'border-red-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Error: Could not save game state.', isPlayerSource: false, color: 'border-red-500', category: 'info' });
         }
     }, [gameState, addLog]);
 
@@ -158,26 +159,27 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const savedState = loadGameFromLocalStorage({ createNewIfNotFound: false });
         if (savedState) {
             setGameState(savedState);
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state loaded successfully.', isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state loaded successfully.', isPlayerSource: false, color: 'border-gray-500', category: 'info' });
             addLog({
                 sourceId: 'system',
                 sourceName: 'Debug',
                 message: `Loaded Sector. Type: ${savedState.currentSector.templateId}, Seed: ${savedState.currentSector.seed}`,
                 isPlayerSource: false,
                 color: 'border-purple-500',
+                category: 'info',
             });
             isGameLoaded.current = true;
         } else {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'No saved game found or save file was corrupt.', isPlayerSource: false, color: 'border-red-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'No saved game found or save file was corrupt.', isPlayerSource: false, color: 'border-red-500', category: 'info' });
         }
     }, [addLog]);
 
     const exportSave = useCallback(() => {
         const result = exportGameState(gameState);
         if (result.success) {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Save file exported.', isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Save file exported.', isPlayerSource: false, color: 'border-gray-500', category: 'info' });
         } else {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not export save file.', isPlayerSource: false, color: 'border-red-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not export save file.', isPlayerSource: false, color: 'border-red-500', category: 'info' });
         }
     }, [gameState, addLog]);
 
@@ -185,9 +187,9 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const result = importGameState(jsonString);
         if (result.success && result.gameState) {
             setGameState(result.gameState);
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state imported successfully.', isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: 'Game state imported successfully.', isPlayerSource: false, color: 'border-gray-500', category: 'info' });
         } else {
-            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not import save file.', isPlayerSource: false, color: 'border-red-500' });
+            addLog({ sourceId: 'system', sourceName: 'Computer', message: result.error || 'Error: Could not import save file.', isPlayerSource: false, color: 'border-red-500', category: 'info' });
         }
     }, [addLog]);
 
@@ -267,8 +269,8 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setGameState(prev => ({
             ...prev, player: { ...prev.player, ship: { ...prev.player.ship, energyAllocation: { weapons: 34, shields: 33, engines: 33 } } }
         }));
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Energy allocation reset to default distribution.", isPlayerSource: true, color: 'border-blue-400' });
-    }, [addLog, gameState.player.ship.name]);
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: "Energy allocation reset to default distribution.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
+    }, [addLog, gameState.player.ship.name, gameState.player.ship.faction]);
 
     const onSelectTarget = useCallback((id: string | null) => {
         setSelectedTargetId(id);
@@ -291,11 +293,11 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const onSetNavigationTarget = useCallback((pos: { x: number; y: number } | null) => {
         setNavigationTarget(pos);
         if (pos) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Navigation target set to (${pos.x}, ${pos.y}).`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: `Navigation target set to (${pos.x}, ${pos.y}).`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
         } else {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Navigation cancelled.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: `Navigation cancelled.`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
         }
-    }, [addLog, gameState.player.ship.name]);
+    }, [addLog, gameState.player.ship.name, gameState.player.ship.faction]);
 
     const onSetView = useCallback((view: 'sector' | 'quadrant') => {
         setCurrentView(view);
@@ -306,18 +308,18 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const warpEnginesHealth = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
         
         if (warpEnginesHealth < 0.50) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot initiate warp: Main engines are too damaged.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Cannot initiate warp: Main engines are too damaged.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
 
         if (gameState.redAlert) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot initiate warp while on Red Alert.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Cannot initiate warp while on Red Alert.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
 
         const { current: dilithium } = gameState.player.ship.dilithium;
         if (dilithium <= 0) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Cannot warp: No dilithium crystals available.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: ship.faction, message: "Cannot warp: No dilithium crystals available.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
         
@@ -340,13 +342,14 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
           });
           setIsWarping(false);
           setCurrentView('sector');
-          addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true, color: 'border-blue-400' });
+          addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
           addLog({
               sourceId: 'system',
               sourceName: 'Debug',
               message: `Entering Sector. Type: ${nextState!.currentSector.templateId}, Seed: ${nextState!.currentSector.seed}`,
               isPlayerSource: false,
               color: 'border-purple-500',
+              category: 'info'
           });
         }, 2000);
     }, [gameState, addLog]);
@@ -357,15 +360,15 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const { ship } = next.player;
             const energyCost = 5 * ship.energyModifier;
             if(ship.energy.current < energyCost) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: 'Insufficient power for long-range scan.', isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Insufficient power for long-range scan.', isPlayerSource: true, color: 'border-blue-400', category: 'system' });
                 return prev;
             }
             ship.energy.current -= energyCost;
             next.quadrantMap[pos.qy][pos.qx].isScanned = true;
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Consumed ${Math.round(energyCost)} power.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Long-range scan of quadrant (${pos.qx}, ${pos.qy}) complete. Consumed ${Math.round(energyCost)} power.`, isPlayerSource: true, color: 'border-blue-400', category: 'info' });
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.faction]);
 
     const onToggleRedAlert = useCallback(() => {
         setGameState(prev => {
@@ -373,12 +376,12 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const { ship } = next.player;
             if (!next.redAlert) { // Activating Red Alert
                  if (ship.cloakState !== 'visible') {
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot go to Red Alert while cloaking device is active.`, isPlayerSource: true, color: 'border-blue-400' });
+                    addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot go to Red Alert while cloaking device is active.`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
                     return prev;
                 }
                 if (ship.shieldReactivationTurn && next.turn < ship.shieldReactivationTurn) {
                     const turnsRemaining = ship.shieldReactivationTurn - next.turn;
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot raise shields: Emitters are recalibrating for ${turnsRemaining} more turn(s).`, isPlayerSource: false, color: 'border-orange-400' });
+                    addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot raise shields: Emitters are recalibrating for ${turnsRemaining} more turn(s).`, isPlayerSource: false, color: 'border-orange-400', category: 'system' });
                     return prev;
                 }
 
@@ -394,7 +397,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                 }
 
                 if (ship.energy.current < energyCost) {
-                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Not enough reserve power to activate Red Alert! (Required: ${Math.round(energyCost)}, Available: ${Math.round(ship.energy.current)})`, isPlayerSource: false, color: 'border-orange-400' });
+                    addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `Not enough reserve power to activate Red Alert! (Required: ${Math.round(energyCost)}, Available: ${Math.round(ship.energy.current)})`, isPlayerSource: false, color: 'border-orange-400', category: 'system' });
                     return prev;
                 }
 
@@ -403,30 +406,30 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
                 if (shieldHealthPercent < 0.25) {
                     ship.shields = 0;
-                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Warning: Shield generator is below 25% health! Shields cannot be raised. Consumed ${Math.round(energyCost)} power for alert status.`, isPlayerSource: false, color: 'border-red-600' });
+                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Warning: Shield generator is below 25% health! Shields cannot be raised. Consumed ${Math.round(energyCost)} power for alert status.`, isPlayerSource: false, color: 'border-red-600', category: 'system' });
                 } else {
                     ship.shields = ship.maxShields;
-                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Shields up! Consumed ${Math.round(energyCost)} power.`, isPlayerSource: false, color: 'border-red-600' });
+                    addLog({ sourceId: 'system', sourceName: 'RED ALERT!', message: `Shields up! Consumed ${Math.round(energyCost)} power.`, isPlayerSource: false, color: 'border-red-600', category: 'system' });
                     if (shieldHealthPercent < 1.0) {
-                        addLog({ sourceId: 'system', sourceName: 'Engineering', message: `Note: Shield generator at ${Math.round(shieldHealthPercent * 100)}% efficiency. Energy consumption for shield operations is increased.`, isPlayerSource: false, color: 'border-orange-400' });
+                        addLog({ sourceId: 'system', sourceName: 'Engineering', message: `Note: Shield generator at ${Math.round(shieldHealthPercent * 100)}% efficiency. Energy consumption for shield operations is increased.`, isPlayerSource: false, color: 'border-orange-400', category: 'system' });
                     }
                 }
             } else { // Deactivating Red Alert
                 next.redAlert = false;
                 ship.shields = 0;
                 ship.evasive = false;
-                addLog({ sourceId: 'system', sourceName: 'Stand Down', message: 'Standing down from Red Alert. Shields offline.', isPlayerSource: false, color: 'border-gray-500' });
+                addLog({ sourceId: 'system', sourceName: 'Stand Down', message: 'Standing down from Red Alert. Shields offline.', isPlayerSource: false, color: 'border-gray-500', category: 'system' });
             }
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.faction]);
 
     const onEvasiveManeuvers = useCallback(() => {
         setGameState(prev => {
             if (!prev.redAlert || prev.player.ship.subsystems.engines.health <= 0) return prev;
             const next: GameState = JSON.parse(JSON.stringify(prev));
             next.player.ship.evasive = !next.player.ship.evasive;
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Evasive maneuvers ${next.player.ship.evasive ? 'engaged' : 'disengaged'}.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Evasive maneuvers ${next.player.ship.evasive ? 'engaged' : 'disengaged'}.`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
             return next;
         });
     }, [addLog]);
@@ -436,51 +439,44 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             if (next.player.ship.repairTarget === subsystem) {
                 next.player.ship.repairTarget = null;
-                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Damage control team standing by.`, isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Damage control team standing by.`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             } else {
                 next.player.ship.repairTarget = subsystem;
-                addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Damage control team assigned to repair ${subsystem}.`, isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Damage control team assigned to repair ${subsystem}.`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             }
             return next;
         });
     }, [addLog]);
 
-    const onFirePhasers = useCallback((targetId: string) => {
-        if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
-        setPlayerTurnActions(prev => ({ ...prev, phaserTargetId: targetId }));
-        const target = gameState.currentSector.entities.find(e => e.id === targetId);
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: `Targeting ${target?.name || 'unknown'} with phasers.`, isPlayerSource: true, color: 'border-blue-400' });
-    }, [addLog, gameState, playerTurnActions]);
-
-    const onLaunchTorpedo = useCallback((targetId: string) => {
-        if (gameState.player.ship.isStunned || playerTurnActions.hasTakenMajorAction || playerTurnActions.torpedoTargetId) return;
-        
+    const onFireWeapon = useCallback((weaponId: string, targetId: string) => {
+        if (gameState.player.ship.isStunned || playerTurnActions.hasTakenMajorAction) return;
+    
         const { ship } = gameState.player;
-        const shipStats = shipClasses[ship.shipModel][ship.shipClass];
-        if (shipStats.torpedoType === 'None') return;
-
-        const torpedoData = torpedoStats[shipStats.torpedoType];
-        
-        if (ship.torpedoes.current <= 0) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch ${torpedoData.name}: All tubes are empty.`, isPlayerSource: true, color: 'border-blue-400' });
-            return;
-        }
+        const weapon = ship.weapons.find(w => w.id === weaponId);
+        if (!weapon) return;
+    
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
-        if (!target || target.type !== 'ship') {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: Invalid target.`, isPlayerSource: true, color: 'border-blue-400' });
-            return;
-        }
-
-        const targetingCheck = canTargetEntity(gameState.player.ship, target, gameState.currentSector);
+        if (!target) return;
+    
+        const targetingCheck = canTargetEntity(ship, target, gameState.currentSector);
         if (!targetingCheck.canTarget) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot launch torpedo: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot fire: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
             return;
         }
+        
+        if (weapon.type === 'projectile') {
+            const projectileWeapon = weapon as ProjectileWeapon;
+            const ammo = ship.ammo[projectileWeapon.ammoType];
+            if (!ammo || ammo.current <= 0) {
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot fire ${weapon.name}: No ammunition remaining.`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
+                return;
+            }
+        }
+        
+        setPlayerTurnActions(prev => ({ ...prev, firedWeaponId: weaponId, weaponTargetId: targetId, hasTakenMajorAction: true }));
+        addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Targeting ${target.name} with ${weapon.name}.`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
     
-        setPlayerTurnActions(prev => ({ ...prev, torpedoTargetId: targetId }));
-        addLog({ sourceId: 'player', sourceName: ship.name, message: `Acquiring torpedo lock on ${target?.name}.`, isPlayerSource: true, color: 'border-blue-400' });
-    
-    }, [addLog, playerTurnActions, gameState]);
+    }, [addLog, gameState, playerTurnActions]);
 
     const onScanTarget = useCallback(() => {
         if (!selectedTargetId || gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
@@ -489,13 +485,13 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const { ship } = next.player;
             const energyCost = 5 * ship.energyModifier;
             const { success, logs } = consumeEnergy(ship, energyCost);
-            logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, message: log, isPlayerSource: true, color: 'border-blue-400' }));
+            logs.forEach(log => addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: log, isPlayerSource: true, color: 'border-blue-400', category: 'system' }));
             if (!success) return prev;
 
             const target = next.currentSector.entities.find(e => e.id === selectedTargetId);
             if (target) {
                 target.scanned = true;
-                addLog({ sourceId: 'player', sourceName: ship.name, message: `Scan complete on ${target.name}.`, isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Scan complete on ${target.name}.`, isPlayerSource: true, color: 'border-blue-400', category: 'info' });
             }
             return next;
         });
@@ -506,7 +502,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             next.player.ship.retreatingTurn = next.turn + 3;
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Retreat initiated! Charging warp core. We must survive for 3 turns.`, isPlayerSource: true, color: 'border-orange-400' });
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Retreat initiated! Charging warp core. We must survive for 3 turns.`, isPlayerSource: true, color: 'border-orange-400', category: 'special' });
             return next;
         });
     }, [addLog, gameState, playerTurnActions]);
@@ -515,10 +511,10 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         setGameState(prev => {
             const next: GameState = JSON.parse(JSON.stringify(prev));
             next.player.ship.retreatingTurn = null;
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Retreat cancelled.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Retreat cancelled.`, isPlayerSource: true, color: 'border-blue-400', category: 'special' });
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.faction]);
     
     const onDockWithStarbase = useCallback(() => {
         setGameState(prev => {
@@ -527,8 +523,8 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             return next;
         });
         setNavigationTarget(null);
-        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Docking procedures initiated. Welcome to Starbase.', isPlayerSource: true, color: 'border-blue-400' });
-    }, [addLog, gameState.player.ship.name]);
+        addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: 'Docking procedures initiated. Welcome to Starbase.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
+    }, [addLog, gameState.player.ship.name, gameState.player.ship.faction]);
 
     const onUndock = useCallback(() => {
         if(isTurnResolving) return;
@@ -563,7 +559,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         }
 
         if (!template) {
-            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `No suitable away missions available for this planet class.`, isPlayerSource: false, color: 'border-gray-500' });
+            addLog({ sourceId: 'system', sourceName: 'Ship Computer', message: `No suitable away missions available for this planet class.`, isPlayerSource: false, color: 'border-gray-500', category: 'info' });
             return;
         }
 
@@ -631,7 +627,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
     const onHailTarget = useCallback(async () => {
         if (!selectedTargetId || !ai) {
-            addLog({sourceId: 'system', sourceName: 'Comms', message: 'Cannot hail target: AI system offline or no target selected.', isPlayerSource: false, color: 'border-gray-500'});
+            addLog({sourceId: 'system', sourceName: 'Comms', message: 'Cannot hail target: AI system offline or no target selected.', isPlayerSource: false, color: 'border-gray-500', category: 'info'});
             return;
         }
         const target = gameState.currentSector.entities.find((e): e is Ship => e.id === selectedTargetId);
@@ -678,7 +674,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                 const amount = (option.outcome.type === 'damage' ? -1 : 1) * option.outcome.amount;
                 // applyResourceChange(ship, option.outcome.resource, amount);
             } else if (option.outcome.type === 'combat') {
-                addLog({ sourceId: 'system', sourceName: 'Tactical Alert', message: 'Hostile ships detected!', isPlayerSource: false, color: 'border-red-600' });
+                addLog({ sourceId: 'system', sourceName: 'Tactical Alert', message: 'Hostile ships detected!', isPlayerSource: false, color: 'border-red-600', category: 'combat' });
                 next.redAlert = true;
             }
 
@@ -714,13 +710,13 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
     const onSendAwayTeam = useCallback((targetId: string, type: 'boarding' | 'strike') => {
         if (gameState.player.ship.isStunned || gameState.player.ship.cloakState === 'cloaked' || playerTurnActions.hasTakenMajorAction) return;
         if (playerTurnActions.hasUsedAwayTeam) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: 'Transporter room is cycling. Only one away team action per turn.', isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: 'Transporter room is cycling. Only one away team action per turn.', isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
         
         const { ship } = gameState.player;
         if (ship.securityTeams.current <= 0) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: 'No security teams available to transport.', isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'No security teams available to transport.', isPlayerSource: true, color: 'border-blue-400', category: 'special' });
             return;
         }
         const target = gameState.currentSector.entities.find((e): e is Ship => e.id === targetId);
@@ -738,8 +734,8 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
                 logs.forEach(log => {
                     const newLog = {
-                        id: uniqueId(), turn: next.turn, sourceId: 'player', sourceName: shipInNext.name,
-                        message: log, isPlayerSource: true, color: success ? 'border-blue-400' : 'border-red-400'
+                        id: uniqueId(), turn: next.turn, sourceId: 'player', sourceName: shipInNext.name, sourceFaction: shipInNext.faction,
+                        message: log, isPlayerSource: true, color: success ? 'border-blue-400' : 'border-red-400', category: 'special'
                     };
                     next.logs.push(newLog);
                 });
@@ -758,7 +754,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             if (!targetInNext) return prev;
 
             shipInNext.securityTeams.current--;
-            addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Sending a security team to ${targetInNext.name}...`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: shipInNext.name, sourceFaction: shipInNext.faction, message: `Sending a security team to ${targetInNext.name}...`, isPlayerSource: true, color: 'border-blue-400', category: 'special' });
             
             let successChance = type === 'boarding' ? 0.5 : 0.8;
             
@@ -771,15 +767,15 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
                     targetInNext.isDerelict = false;
                     targetInNext.captureInfo = { captorId: shipInNext.id, repairTurn: next.turn };
                     const message = `Boarding successful! We have captured the ${targetInNext.name}! An engineering team is being dispatched to stabilize and repair the vessel.`;
-                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: message, isPlayerSource: true, color: 'border-blue-400' });
+                    addLog({ sourceId: 'player', sourceName: shipInNext.name, sourceFaction: shipInNext.faction, message: message, isPlayerSource: true, color: 'border-blue-400', category: 'special' });
                 } else { // strike
                     const damage = 20 + Math.floor(Math.random() * 10);
                     targetInNext.hull = Math.max(0, targetInNext.hull - damage);
-                    addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `Strike team successful! They have sabotaged the enemy hull, dealing ${damage} damage.`, isPlayerSource: true, color: 'border-blue-400' });
+                    addLog({ sourceId: 'player', sourceName: shipInNext.name, sourceFaction: shipInNext.faction, message: `Strike team successful! They have sabotaged the enemy hull, dealing ${damage} damage.`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
                 }
             } else {
                 shipInNext.crewMorale.current = Math.max(0, shipInNext.crewMorale.current - 10);
-                addLog({ sourceId: 'player', sourceName: shipInNext.name, message: `The away team was repelled! We have lost a security team and crew morale has dropped.`, isPlayerSource: true, color: 'border-red-500' });
+                addLog({ sourceId: 'player', sourceName: shipInNext.name, sourceFaction: shipInNext.faction, message: `The away team was repelled! We have lost a security team and crew morale has dropped.`, isPlayerSource: true, color: 'border-red-500', category: 'special' });
             }
 
             return next;
@@ -791,34 +787,34 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             const next = JSON.parse(JSON.stringify(prev));
             next.orbitingPlanetId = planetId;
             const planet = next.currentSector.entities.find(e => e.id === planetId);
-            addLog({ sourceId: 'player', sourceName: next.player.ship.name, message: `Entering orbit of ${planet?.name || 'the planet'}.`, isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: next.player.ship.name, sourceFaction: next.player.ship.faction, message: `Entering orbit of ${planet?.name || 'the planet'}.`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.faction]);
 
     const onToggleCloak = useCallback(() => {
         if (playerTurnActions.hasTakenMajorAction) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, message: "Cannot perform another action this turn.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: "Cannot perform another action this turn.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
 
         const { ship } = gameState.player;
 
         if (!ship.cloakingCapable) {
-            addLog({ sourceId: 'player', sourceName: ship.name, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "This ship is not equipped with a cloaking device.", isPlayerSource: true, color: 'border-blue-400', category: 'info' });
             return;
         }
 
         if (ship.cloakState === 'cloaked') {
             setPlayerTurnActions(prev => ({ ...prev, wantsToDecloak: true, hasTakenMajorAction: true }));
-            addLog({ sourceId: 'player', sourceName: ship.name, message: "Initiating decloaking sequence. This will take two turns.", isPlayerSource: true, color: 'border-blue-400' });
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Initiating decloaking sequence. This will take two turns.", isPlayerSource: true, color: 'border-blue-400', category: 'special' });
         } else if (ship.cloakState === 'visible') {
             if (ship.cloakCooldown > 0) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot engage cloak: Device is recharging for ${ship.cloakCooldown} more turn(s).`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
                 return;
             }
             if (gameState.redAlert) {
-                addLog({ sourceId: 'player', sourceName: ship.name, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Cannot engage cloak while shields are up (Red Alert).", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
                 return;
             }
             const stats = shipClasses[ship.shipModel]?.[ship.shipClass];
@@ -827,9 +823,11 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             addLog({
                 sourceId: 'player',
                 sourceName: ship.name,
+                sourceFaction: ship.faction,
                 message: `Initiating cloaking sequence. Base reliability: ${reliability.toFixed(0)}%. Ship will be vulnerable this turn.`,
                 isPlayerSource: true,
-                color: 'border-blue-400'
+                color: 'border-blue-400',
+                category: 'special'
             });
         }
     }, [addLog, gameState, playerTurnActions]);
@@ -843,29 +841,33 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             if (ship.pointDefenseEnabled) {
                 addLog({ 
                     sourceId: 'player', 
-                    sourceName: ship.name, 
+                    sourceName: ship.name,
+                    sourceFaction: ship.faction,
                     message: `Laser point-defense system activated. Phaser damage and range reduced.`, 
                     isPlayerSource: true, 
-                    color: 'border-blue-400' 
+                    color: 'border-blue-400',
+                    category: 'system'
                 });
             } else {
                 addLog({ 
                     sourceId: 'player', 
                     sourceName: ship.name, 
+                    sourceFaction: ship.faction,
                     message: `Point-defense system deactivated. Phaser output restored to normal.`, 
                     isPlayerSource: true, 
-                    color: 'border-blue-400' 
+                    color: 'border-blue-400',
+                    category: 'system'
                 });
             }
             return next;
         });
-    }, [addLog]);
+    }, [addLog, gameState.player.ship.faction]);
 
     return {
         gameState, selectedTargetId, navigationTarget, currentView, activeAwayMission, activeHail, targetEntity: gameState.currentSector.entities.find(e => e.id === selectedTargetId),
         playerTurnActions, activeEvent, isWarping, isTurnResolving, awayMissionResult, eventResult,
         desperationMoveAnimation: gameState.desperationMoveAnimations.length > 0 ? gameState.desperationMoveAnimations[0] : null,
-        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase,
+        onEnergyChange, onEndTurn, onFireWeapon, onEvasiveManeuvers, onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase,
         onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
         onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense,

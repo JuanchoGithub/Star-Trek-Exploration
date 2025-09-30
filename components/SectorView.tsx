@@ -30,6 +30,8 @@ interface SectorViewProps {
   spectatorMode?: boolean;
   onMoveShip?: (shipId: string, newPos: { x: number; y: number }) => void;
   isResizing?: boolean;
+  entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
+  showTacticalOverlay?: boolean;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -67,14 +69,7 @@ const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: 
     return { x, y };
 };
 
-
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip, isResizing = false }) => {
-  const sectorSize = { width: 11, height: 10 };
-  const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-
-  const getTorpedoPixelCoords = (torpedo: TorpedoProjectile, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
+const getTorpedoPixelCoords = (torpedo: TorpedoProjectile, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
     const { position: currentPos, path } = torpedo;
     
     if (!currentPos) {
@@ -109,6 +104,13 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
     return { x, y };
   };
+
+
+const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip, isResizing = false, entityRefs, showTacticalOverlay = false }) => {
+  const sectorSize = { width: 11, height: 10 };
+  const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const updateSize = () => {
@@ -181,7 +183,8 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   , [allEntities]);
 
   const tacticalOverlayElements = useMemo(() => {
-    if (!spectatorMode || !selectedTargetId) return null;
+    const shouldShow = spectatorMode || showTacticalOverlay;
+    if (!shouldShow || !selectedTargetId) return null;
 
     const selectedShip = allEntities.find(e => e.id === selectedTargetId && e.type === 'ship') as Ship | undefined;
     if (!selectedShip) return null;
@@ -210,13 +213,14 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
             })()}
         </>
     );
-}, [spectatorMode, selectedTargetId, allEntities, sectorSize, containerSize]);
+}, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities, sectorSize, containerSize]);
 
 const torpedoesTargetingSelectedIds = useMemo(() => {
-    if (!spectatorMode || !selectedTargetId) return new Set<string>();
+    const shouldShow = spectatorMode || showTacticalOverlay;
+    if (!shouldShow || !selectedTargetId) return new Set<string>();
     const torpedoes = allEntities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     return new Set(torpedoes.filter(t => t.targetId === selectedTargetId).map(t => t.id));
-}, [spectatorMode, selectedTargetId, allEntities]);
+}, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities]);
 
 
   return (
@@ -479,6 +483,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 return (
                     <div
                         key={entity.id}
+                        ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }}
                         className="absolute flex flex-col items-center justify-center z-30"
                         style={style}
                         draggable={spectatorMode && onMoveShip && entity.type === 'ship'}

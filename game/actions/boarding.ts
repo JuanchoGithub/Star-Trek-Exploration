@@ -37,8 +37,8 @@ export function initiateBoardingProcess(
 export function handleBoardingTurn(
     ship: Ship, 
     gameState: GameState,
-): { logs: { message: string, color: string }[], isComplete: boolean } {
-    const resultLogs: { message: string, color: string }[] = [];
+): { logs: { message: string, color: string, category: 'special' }[], isComplete: boolean } {
+    const resultLogs: { message: string, color: string, category: 'special' }[] = [];
     if (!ship.captureInfo || !ship.captureInfo.turnsToRepair) {
         return { logs: resultLogs, isComplete: false };
     }
@@ -47,7 +47,7 @@ export function handleBoardingTurn(
     const turnsRemaining = ship.captureInfo.turnsToRepair - turnsPassed;
 
     if (turnsRemaining > 0) {
-        resultLogs.push({ message: `Repair team on the ${ship.name} reports progress. ${turnsRemaining} turn(s) until operational.`, color: 'border-yellow-400'});
+        resultLogs.push({ message: `Repair team on the ${ship.name} reports progress. ${turnsRemaining} turn(s) until operational.`, color: 'border-yellow-400', category: 'special'});
         return { logs: resultLogs, isComplete: false };
     }
 
@@ -76,7 +76,7 @@ export function handleBoardingTurn(
         ship.dilithium.current = Math.min(ship.dilithium.max, ship.dilithium.current + ship.captureInfo.dilithiumToTransfer);
     }
     
-    resultLogs.push({ message: `Success! The ${ship.name} is now operational under our command, running on minimal power. Its dilithium reserves have been topped up by the salvage team.`, color: 'border-green-400' });
+    resultLogs.push({ message: `Success! The ${ship.name} is now operational under our command, running on minimal power. Its dilithium reserves have been topped up by the salvage team.`, color: 'border-green-400', category: 'special' });
     ship.captureInfo = null; // Clear the capture info
     
     return { logs: resultLogs, isComplete: true };

@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
@@ -30,20 +31,19 @@ export class FederationAI extends FactionAI {
         return null;
     }
 
-    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Activating point-defense grid.` });
+            return { turnEndingAction: false, defenseActionTaken: 'Activating point-defense grid.' };
         }
-        return false; // Point-defense is not a turn-ending action.
+        return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions);
+            processRecoveryTurn(ship, actions, gameState.turn);
             return;
         }
 
@@ -70,7 +70,7 @@ export class FederationAI extends FactionAI {
                         break;
                 }
                 
-                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
             }
         } else { // Original non-hostile (ally/neutral) logic
             const { currentSector } = gameState;
@@ -80,11 +80,11 @@ export class FederationAI extends FactionAI {
                 const closestShuttle = findClosestTarget(ship, shuttles as any);
                 if (closestShuttle) {
                     ship.position = moveOneStep(ship.position, closestShuttle.position);
-                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Moving to rescue escape shuttles.`, isPlayerSource: false });
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, category: 'movement' });
                     return;
                 }
             } else {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position.`, isPlayerSource: false });
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position.`, isPlayerSource: false, category: 'movement' });
             }
         }
     }
@@ -106,7 +106,7 @@ export class FederationAI extends FactionAI {
             };
             gameState.currentSector.entities.push(shuttle);
         }
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.` });
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `"${ship.name}" is abandoning ship! ${shuttleCount} escape shuttles have launched.`, category: 'special' });
         
         ship.isDerelict = true;
         ship.hull = 1; 

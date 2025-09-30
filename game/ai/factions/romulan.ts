@@ -21,7 +21,6 @@ export class RomulanAI extends FactionAI {
         return { stance: 'Balanced', reason: generalStance.reason + ' Adopting standard Romulan balanced doctrine.' };
     }
 
-    // FIX: Added explicit return type to match the base class.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Romulans target engines to disable and control the engagement.
         if (playerShip.subsystems.engines.health > 0) {
@@ -30,33 +29,30 @@ export class RomulanAI extends FactionAI {
         return null; // Target hull if engines are already destroyed.
     }
 
-    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
              ship.cloakState = 'cloaking';
              ship.cloakTransitionTurnsRemaining = 2;
-             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedo threat. Evading via cloaking device.` });
-             return true; // Cloaking is a turn-ending action.
+             return { turnEndingAction: true, defenseActionTaken: 'Evading via cloaking device.' };
         }
     
         // Fallback to point defense if cloak is not available
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cloaking device is unavailable. Activating point-defense grid as a contingency.` });
+            return { turnEndingAction: false, defenseActionTaken: 'Cloak unavailable. Activating point-defense.' };
         }
-        return false;
+        return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
-
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions);
+            processRecoveryTurn(ship, actions, gameState.turn);
             return;
         }
 
@@ -86,7 +82,7 @@ export class RomulanAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
         } else {
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }

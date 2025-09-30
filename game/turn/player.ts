@@ -1,14 +1,16 @@
-
-import type { GameState, PlayerTurnActions, Ship, ShipSubsystems, Position } from '../../types';
-import { applyPhaserDamage } from '../utils/combat';
-import { calculateDistance, moveOneStep } from '../utils/ai';
+import type { GameState, PlayerTurnActions, Ship, ShipSubsystems, Position, BeamWeapon, TorpedoProjectile, ProjectileWeapon } from '../../types';
+import { fireBeamWeapon } from '../utils/combat';
+import { calculateDistance, moveOneStep, uniqueId } from '../utils/ai';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
+import { generateBeamAttackLog, generatePlayerTorpedoLaunchLog } from '../ai/aiLogger';
 
 export const processPlayerTurn = (
     nextState: GameState,
     playerTurnActions: PlayerTurnActions,
     navigationTarget: Position | null,
     selectedTargetId: string | null,
-    addLog: (logData: any) => void
+    addLog: (logData: any) => void,
+    addTurnEvent: (event: string) => void
 ): { newNavigationTarget: Position | null, newSelectedTargetId: string | null } => {
     const { player, currentSector } = nextState;
     const { ship } = player;
@@ -74,19 +76,50 @@ export const processPlayerTurn = (
     const phaserDelay = didMove ? 700 : 0;
 
     // Combat
-    // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Replaced with 'phaserTargetId'.
-    if (playerTurnActions.phaserTargetId) {
-        // FIX: Property 'combat' does not exist on type 'PlayerTurnActions'. Replaced with 'phaserTargetId'.
-        const target = currentSector.entities.find(e => e.id === playerTurnActions.phaserTargetId) as Ship | undefined;
-        if (target) {
-            const phaserBaseDamage = 30 * ship.energyModifier;
-            const phaserPowerModifier = ship.energyAllocation.weapons / 100;
-            const pointDefenseModifier = ship.pointDefenseEnabled ? 0.6 : 1.0;
-            const finalDamage = phaserBaseDamage * phaserPowerModifier * pointDefenseModifier;
+    if (playerTurnActions.firedWeaponId && playerTurnActions.weaponTargetId) {
+        const weapon = ship.weapons.find(w => w.id === playerTurnActions.firedWeaponId);
+        const target = currentSector.entities.find(e => e.id === playerTurnActions.weaponTargetId) as Ship | undefined;
 
-            const combatLogs = applyPhaserDamage(target, finalDamage, player.targeting?.subsystem || null, ship, nextState);
-            nextState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: phaserDelay });
-            combatLogs.forEach(message => addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400' }));
+        if (weapon && target) {
+            if (weapon.type === 'beam') {
+                const attackResult = fireBeamWeapon(target, weapon as BeamWeapon, player.targeting?.subsystem || null, ship, nextState);
+                nextState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: phaserDelay });
+                const message = generateBeamAttackLog(ship, target, weapon as BeamWeapon, attackResult);
+                addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
+            } else if (weapon.type === 'projectile') {
+                const projectileWeapon = weapon as ProjectileWeapon;
+                const torpedoData = torpedoStats[projectileWeapon.ammoType];
+
+                if (torpedoData && ship.ammo[projectileWeapon.ammoType] && ship.ammo[projectileWeapon.ammoType]!.current > 0) {
+                    ship.ammo[projectileWeapon.ammoType]!.current--;
+                    // Also decrement old torpedoes property for now
+                    if (ship.torpedoes.current > 0) ship.torpedoes.current--;
+
+                    const torpedo: TorpedoProjectile = {
+                        id: uniqueId(),
+                        name: torpedoData.name,
+                        type: 'torpedo_projectile',
+                        faction: ship.faction,
+                        position: { ...ship.position },
+                        targetId: target.id,
+                        sourceId: ship.id,
+                        stepsTraveled: 0,
+                        speed: torpedoData.speed,
+                        path: [{ ...ship.position }],
+                        scanned: true,
+                        turnLaunched: nextState.turn,
+                        hull: 1,
+                        maxHull: 1,
+                        torpedoType: projectileWeapon.ammoType,
+                        damage: torpedoData.damage,
+                        specialDamage: torpedoData.specialDamage,
+                    };
+                    currentSector.entities.push(torpedo);
+                    addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${target.name}' [${torpedo.name}]`);
+                    const message = generatePlayerTorpedoLaunchLog(target, torpedoData.name);
+                    addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
+                }
+            }
         }
     }
 

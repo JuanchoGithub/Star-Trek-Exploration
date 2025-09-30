@@ -23,20 +23,10 @@ export class IndependentAI extends FactionAI {
         return 'engines'; // Target engines to aid escape
     }
 
-    // FIX: Updated method signature and return type to match the base FactionAI class.
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
-            actions.addLog({ 
-                sourceId: ship.id, 
-                sourceName: ship.name, 
-                sourceFaction: ship.faction,
-                message: `Detects incoming torpedoes while attempting to flee! Activating point-defense!`,
-                isPlayerSource: false,
-                color: ship.logColor,
-                category: 'system'
-            });
-            return { turnEndingAction: false, defenseActionTaken: 'Activating point-defense.' };
+            return { turnEndingAction: false, defenseActionTaken: 'Activating point-defense grid.' };
         }
         return { turnEndingAction: false, defenseActionTaken: null };
     }
@@ -45,7 +35,6 @@ export class IndependentAI extends FactionAI {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
         
         if (stance === 'Recovery') {
-            // FIX: Added missing 'gameState.turn' argument.
             processRecoveryTurn(ship, actions, gameState.turn);
             return;
         }
@@ -55,7 +44,7 @@ export class IndependentAI extends FactionAI {
         const target = findClosestTarget(ship, primaryThreats);
 
         if (!target) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position, broadcasting distress signals.`, isPlayerSource: false, color: 'border-gray-400' });
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, broadcasting distress signals.`, isPlayerSource: false, color: 'border-gray-400' });
             return;
         }
         
@@ -103,7 +92,7 @@ export class IndependentAI extends FactionAI {
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
          actions.triggerDesperationAnimation({ source: ship, type: 'escape', outcome: 'success' });
-         actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `"${ship.name}" makes an emergency jump to escape!`, isPlayerSource: false, color: 'border-yellow-400' });
+         actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `"${ship.name}" makes an emergency jump to escape!`, isPlayerSource: false, color: 'border-yellow-400' });
          gameState.currentSector.entities = gameState.currentSector.entities.filter(e => e.id !== ship.id);
     }
 }

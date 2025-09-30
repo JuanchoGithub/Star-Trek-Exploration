@@ -1,9 +1,11 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState } from '../types';
+import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState, ProjectileWeapon } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { uniqueId } from '../game/utils/ai';
 import { generatePhasedTurn, TurnStep } from '../game/turn/turnManager';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { canTargetEntity } from '../game/utils/combat';
 
 export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorState | null, scenarioMode: ScenarioMode) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -32,7 +34,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             return ship;
         });
 
-        newSector.entities.push(...simShips);
+        newSector.entities = initialSector.entities.filter(e => e.type !== 'ship').concat(simShips);
         
         const initialState: GameState = {
             player: {
@@ -64,7 +66,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
     useEffect(() => {
         if (gameState && gameState.combatEffects.length > 0) {
             const maxDelay = Math.max(0, ...gameState.combatEffects.map(e => e.delay));
-            const totalAnimationTime = maxDelay + 500;
+            const totalAnimationTime = maxDelay + 750;
             const timer = setTimeout(() => {
                 setGameState(prev => prev ? { ...prev, combatEffects: [] } : null);
             }, totalAnimationTime);
@@ -108,7 +110,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             setGameState(tempState);
             if (step.newNavigationTarget !== undefined) setNavigationTarget(step.newNavigationTarget);
             if (step.newSelectedTargetId !== undefined) setSelectedTargetId(step.newSelectedTargetId);
-            if (scenarioMode === 'spectate') await new Promise(resolve => setTimeout(resolve, 200));
+            if (scenarioMode === 'spectate' || scenarioMode === 'dogfight') await new Promise(resolve => setTimeout(resolve, 200));
         }
         
         const finalState = tempState;
@@ -125,41 +127,37 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
     const onSelectTarget = useCallback((id: string | null) => setSelectedTargetId(id), []);
     const onSetNavigationTarget = useCallback((pos: Position | null) => setNavigationTarget(pos), []);
     
-    const onFirePhasers = useCallback((targetId: string) => {
-        if (isTurnResolving || playerTurnActions.phaserTargetId) return;
-        setPlayerTurnActions(prev => ({ ...prev, phaserTargetId: targetId }));
-        const playerShip = gameState?.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
-        const target = gameState?.currentSector.entities.find(e => e.id === targetId);
-        if (playerShip && target) {
-            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Targeting ${target.name} with phasers.`, isPlayerSource: true, color: 'border-blue-400' });
-        }
-    }, [isTurnResolving, playerTurnActions, gameState, addLog]);
+    const onFireWeapon = useCallback((weaponId: string, targetId: string) => {
+        if (!gameState || isTurnResolving || playerTurnActions.hasTakenMajorAction) return;
 
-    const onLaunchTorpedo = useCallback((targetId: string) => {
-        if (isTurnResolving || playerTurnActions.torpedoTargetId) return;
-    
-        const playerShip = gameState?.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
-        if (!playerShip) return;
+        const playerShip = gameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+        if (!playerShip || playerShip.isStunned) return;
 
-        const shipStats = shipClasses[playerShip.shipModel][playerShip.shipClass];
-        if (shipStats.torpedoType === 'None') return;
-    
-        const torpedoData = torpedoStats[shipStats.torpedoType];
-    
-        if (playerShip.torpedoes.current <= 0) {
-            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot launch ${torpedoData.name}: All tubes are empty.`, isPlayerSource: true, color: 'border-blue-400' });
-            return;
-        }
-    
-        const target = gameState?.currentSector.entities.find(e => e.id === targetId);
-        if (!target || target.type !== 'ship') {
-            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot launch torpedo: Invalid target.`, isPlayerSource: true, color: 'border-blue-400' });
+        const weapon = playerShip.weapons.find(w => w.id === weaponId);
+        if (!weapon) return;
+
+        const target = gameState.currentSector.entities.find(e => e.id === targetId);
+        if (!target) return;
+
+        const targetingCheck = canTargetEntity(playerShip, target, gameState.currentSector);
+        if (!targetingCheck.canTarget) {
+            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot fire: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
             return;
         }
 
-        setPlayerTurnActions(prev => ({ ...prev, torpedoTargetId: targetId }));
-        addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Acquiring torpedo lock on ${target.name}.`, isPlayerSource: true, color: 'border-blue-400' });
-    }, [isTurnResolving, playerTurnActions, gameState, addLog]);
+        if (weapon.type === 'projectile') {
+            const projectileWeapon = weapon as ProjectileWeapon;
+            const ammo = playerShip.ammo[projectileWeapon.ammoType];
+            if (!ammo || ammo.current <= 0) {
+                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot fire ${weapon.name}: No ammunition remaining.`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
+                return;
+            }
+        }
+
+        setPlayerTurnActions(prev => ({ ...prev, firedWeaponId: weaponId, weaponTargetId: targetId, hasTakenMajorAction: true }));
+        addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Targeting ${target.name} with ${weapon.name}.`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
+
+    }, [gameState, isTurnResolving, playerTurnActions, addLog]);
 
     const onSelectSubsystem = (subsystem: keyof ShipSubsystems | null) => {};
     
@@ -306,11 +304,24 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         }
     }, [replayHistory, historyIndex]);
 
+    const endSimulation = useCallback(() => {
+        setIsRunning(false);
+        setGameState(null);
+        setReplayHistory([]);
+        setHistoryIndex(0);
+        setSelectedTargetId(null);
+        setNavigationTarget(null);
+        setPlayerTurnActions({});
+        setIsTurnResolving(false);
+    }, []);
+
     return {
         gameState,
         isRunning,
+        // FIX: Export setIsRunning to allow the simulator to directly control the playback state.
+        setIsRunning,
         togglePause: () => setIsRunning(prev => !prev),
-        endSimulation: () => setGameState(null),
+        endSimulation,
         setGameState,
         onEndTurn,
         selectedTargetId, onSelectTarget,
@@ -319,7 +330,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         isTurnResolving,
         desperationMoveAnimation: gameState?.desperationMoveAnimations[0] || null,
         targetEntity: gameState?.currentSector.entities.find(e => e.id === selectedTargetId),
-        onFirePhasers, onLaunchTorpedo,
+        onFireWeapon,
         onSelectSubsystem, onEnergyChange, onToggleCloak, onTogglePointDefense,
         onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
         replayHistory,

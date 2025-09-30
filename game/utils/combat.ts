@@ -1,5 +1,4 @@
-
-import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position } from '../../types';
+import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 import { useOneDilithiumCrystal } from './energy';
@@ -55,12 +54,13 @@ export const consumeEnergy = (ship: Ship, amount: number): { success: boolean, l
     }
 };
 
-export const applyPhaserDamage = (
-    target: Ship, damage: number, subsystem: keyof ShipSubsystems | null,
+export const fireBeamWeapon = (
+    target: Ship, weapon: BeamWeapon, subsystem: keyof ShipSubsystems | null,
     sourceShip: Ship, gameState: GameState
-): string[] => {
+): BeamAttackResult => {
     target.lastAttackerPosition = { ...sourceShip.position };
     const wasShieldHit = target.shields > 0;
+    const shieldPercentBeforeHit = wasShieldHit ? Math.round((target.shields) / target.maxShields * 100) : 0;
 
     const PHASER_BEAM_DRAW_TIME = 150; // 20% of 750ms animation
     gameState.combatEffects.push({
@@ -90,11 +90,19 @@ export const applyPhaserDamage = (
     if (target.evasive) hitChance *= 0.6;
     if (sourceShip.id === 'player' && sourceShip.evasive) hitChance *= 0.75;
     
+    const phaserPowerModifier = sourceShip.energyAllocation.weapons / 100;
+    const damageAfterPower = weapon.baseDamage * phaserPowerModifier * sourceShip.energyModifier;
+
     const phaserEfficiency = sourceShip.subsystems.weapons.health / sourceShip.subsystems.weapons.maxHealth;
-    const baseDamage = damage * phaserEfficiency;
-    
-    let effectiveDamage = baseDamage;
+    const baseDamage = damageAfterPower * phaserEfficiency;
+
+    const pointDefenseModifier = sourceShip.pointDefenseEnabled ? 0.6 : 1.0;
+    let effectiveDamage = baseDamage * pointDefenseModifier;
+
     const damageModifiers: string[] = [];
+    if (sourceShip.pointDefenseEnabled) {
+        damageModifiers.push('PD Active x0.6');
+    }
 
     const distance = calculateDistance(sourceShip.position, target.position);
     let effectiveDistance = distance;
@@ -102,7 +110,7 @@ export const applyPhaserDamage = (
         effectiveDistance++;
     }
     
-    const MAX_PHASER_RANGE = 6;
+    const MAX_PHASER_RANGE = weapon.range;
     if (distance > 1) {
         const distanceModifier = Math.max(0.2, 1 - (effectiveDistance - 1) / (MAX_PHASER_RANGE - 1));
         effectiveDamage *= distanceModifier;
@@ -121,50 +129,38 @@ export const applyPhaserDamage = (
         }
     }
     
-    let mainFireLog = `Fires phasers at ${target.name}. Hit chance: ${Math.round(hitChance * 100)}%.`;
-    if (damageModifiers.length > 0) mainFireLog += ` Modifiers: ${damageModifiers.join(', ')}.`;
-
-    if (Math.random() > hitChance) {
-        mainFireLog += " Shot resolved as a >>MISS!<<";
-        return [mainFireLog];
+    const hit = Math.random() < hitChance;
+    if (!hit) {
+        return { hit: false, hitChance, damageModifiers, damageDealt: 0, wasShieldHit: false, shieldPercentBeforeHit: 0, absorbedByShields: 0, leakageDamage: 0, breakthroughDamage: 0, totalPenetratingDamage: 0, finalHullDamage: 0, finalSubsystemDamage: 0, subsystemTargeted: null, targetDestroyed: false, subsystemDestroyed: false, cloakWasDestabilized: false };
     }
 
-    mainFireLog += ` Chance resolved as a >>HIT!<<`;
-    
-    const shieldPercent = target.maxShields > 0 ? target.shields / target.maxShields : 0;
-    const leakageChance = 0.05 + Math.pow(1 - shieldPercent, 2) * 0.95;
+    const damageDealt = Math.round(effectiveDamage);
+
+    const leakageChance = 0.05 + Math.pow(1 - (target.maxShields > 0 ? target.shields / target.maxShields : 0), 2) * 0.95;
     const leakRoll = Math.random();
     
     let leakageDamage = 0;
     let damageHittingShields = effectiveDamage;
 
     if (target.shields > 0 && leakRoll < leakageChance) {
-        // Leakage success
         const leakageAmount = effectiveDamage * leakageChance;
         leakageDamage = Math.max(1, Math.round(leakageAmount));
         damageHittingShields = effectiveDamage - leakageDamage;
-        mainFireLog += `\n--> Shield leakage check: ${Math.round(leakageChance * 100)}% chance... SUCCESS! ${leakageDamage} damage bypassed shields.`;
-    } else if (target.shields > 0) {
-        // Leakage fail
-        mainFireLog += `\n--> Shield leakage check: ${Math.round(leakageChance * 100)}% chance... FAILED. Shields held firm.`;
     }
     
     const absorbedByShields = Math.min(target.shields, damageHittingShields);
-    target.shields = Math.max(0, target.shields - absorbedByShields);
     
-    if (absorbedByShields > 0) {
-        mainFireLog += ` Shields absorbed ${Math.round(absorbedByShields)} damage.`;
-    }
-
+    target.shields = Math.max(0, target.shields - absorbedByShields);
     const breakthroughDamage = damageHittingShields - absorbedByShields;
     const totalPenetratingDamage = leakageDamage + breakthroughDamage;
     
+    let finalSubsystemDamage = 0;
+    let finalHullDamage = 0;
+    let subsystemDestroyed = false;
+    
     if (totalPenetratingDamage > 0) {
-        let finalSubsystemDamage = 0;
-        let finalHullDamage = 0;
-
         if (subsystem && target.subsystems[subsystem]) {
-            const shieldsAreLow = shieldPercent <= 0.2;
+            const shieldsAreLow = (target.maxShields > 0 ? target.shields / target.maxShields : 0) <= 0.2;
             const subsystemDamageMultiplier = shieldsAreLow ? 0.9 : 0.7;
             
             let subsystemPortion = totalPenetratingDamage * subsystemDamageMultiplier;
@@ -189,28 +185,26 @@ export const applyPhaserDamage = (
 
         target.hull = Math.max(0, target.hull - finalHullDamage);
         if (finalSubsystemDamage > 0 && subsystem && target.subsystems[subsystem]) {
-            target.subsystems[subsystem].health = Math.max(0, target.subsystems[subsystem].health - finalSubsystemDamage);
-        }
-        
-        const logParts = [];
-        if (finalHullDamage > 0) logParts.push(`${Math.round(finalHullDamage)} hull`);
-        if (finalSubsystemDamage > 0 && subsystem) logParts.push(`${finalSubsystemDamage} ${subsystem}`);
-
-        if (logParts.length > 0) mainFireLog += ` ${target.name} takes ${logParts.join(' and ')} damage.`;
-        if (subsystem && target.subsystems[subsystem]?.health === 0) mainFireLog += ` CRITICAL HIT: ${target.name}'s ${subsystem} have been disabled!`;
-        if (target.hull <= 0) {
-            mainFireLog += ` --> ${target.name} is destroyed!`;
+            const systemBeforeDamage = target.subsystems[subsystem].health;
+            target.subsystems[subsystem].health = Math.max(0, systemBeforeDamage - finalSubsystemDamage);
+            if(systemBeforeDamage > 0 && target.subsystems[subsystem].health === 0) {
+                subsystemDestroyed = true;
+            }
         }
     }
-
-    if (target.cloakState === 'cloaking') {
+    
+    const cloakWasDestabilized = target.cloakState === 'cloaking';
+    if (cloakWasDestabilized) {
         target.cloakDestabilizedThisTurn = true;
         const instabilityIncrease = 0.15;
-        target.cloakInstability = Math.min(0.8, target.cloakInstability + instabilityIncrease); // Cap instability at 80% to avoid guaranteed failure
-        mainFireLog += ` The impact destabilizes the ${target.name}'s cloaking field!`;
+        target.cloakInstability = Math.min(0.8, target.cloakInstability + instabilityIncrease);
     }
 
-    return [mainFireLog];
+    return {
+        hit: true, hitChance, damageModifiers, damageDealt, wasShieldHit, shieldPercentBeforeHit, absorbedByShields,
+        leakageDamage, breakthroughDamage, totalPenetratingDamage, finalHullDamage, finalSubsystemDamage,
+        subsystemTargeted: subsystem, targetDestroyed: target.hull <= 0, subsystemDestroyed, cloakWasDestabilized
+    };
 };
 
 

@@ -1,5 +1,31 @@
 // FIX: Replaced entire file content with correct type definitions and removed logic.
 // This resolves circular dependency issues and provides strongly-typed interfaces for the application.
+
+// NEW WEAPON SYSTEM TYPES
+export type WeaponType = 'beam' | 'projectile';
+export type WeaponSlot = 'forward' | 'aft' | 'turret';
+export type AmmoType = 'Photon' | 'Quantum' | 'Plasma' | 'HeavyPlasma' | 'HeavyPhoton';
+
+export interface Weapon {
+    id: string;
+    name: string;
+    type: WeaponType;
+    slot: WeaponSlot;
+}
+
+export interface BeamWeapon extends Weapon {
+    type: 'beam';
+    baseDamage: number;
+    range: number;
+}
+
+export interface ProjectileWeapon extends Weapon {
+    type: 'projectile';
+    ammoType: AmmoType;
+    fireRate: number;
+}
+// END NEW WEAPON TYPES
+
 export interface Position {
   x: number;
   y: number;
@@ -56,7 +82,6 @@ export interface Ship extends BaseEntity {
   subsystems: ShipSubsystems;
   energy: { current: number; max: number };
   energyAllocation: { weapons: number; shields: number; engines: number };
-  torpedoes: { current: number; max: number };
   dilithium: { current: number; max: number };
   evasive: boolean;
   retreatingTurn: number | null;
@@ -86,7 +111,11 @@ export interface Ship extends BaseEntity {
   statusEffects: StatusEffect[];
   allegiance?: 'player' | 'ally' | 'enemy' | 'neutral';
   energyModifier: number;
-  // FIX: Added optional 'desperationMove' property to the Ship interface to fix type errors.
+  // @deprecated - will be removed in a future phase
+  // FIX: Corrected syntax error `>>` to `;` which was breaking type parsing for all subsequent properties.
+  torpedoes: { current: number; max: number };
+  weapons: (BeamWeapon | ProjectileWeapon)[];
+  ammo: Partial<Record<AmmoType, { current: number; max: number }>>;
   desperationMove?: {
     type: 'ram' | 'self_destruct' | 'escape' | 'evacuate';
     targetId?: string;
@@ -100,6 +129,10 @@ export interface Ship extends BaseEntity {
   lastKnownPlayerPosition?: Position | null;
   lastAttackerPosition?: Position | null;
   currentTargetId?: string | null;
+  threatInfo?: {
+    total: number;
+    contributors: { sourceId: string; score: number }[];
+  };
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid
@@ -243,13 +276,17 @@ export interface ActiveHail {
 }
 
 export interface PlayerTurnActions {
-    phaserTargetId?: string;
-    torpedoTargetId?: string;
-    hasUsedAwayTeam?: boolean;
-    hasTakenMajorAction?: boolean;
-    isUndocking?: boolean;
-    wantsToCloak?: boolean;
-    wantsToDecloak?: boolean;
+  firedWeaponId?: string;
+  weaponTargetId?: string;
+  // @deprecated
+  phaserTargetId?: string;
+  // @deprecated
+  torpedoTargetId?: string;
+  hasUsedAwayTeam?: boolean;
+  hasTakenMajorAction?: boolean;
+  isUndocking?: boolean;
+  wantsToCloak?: boolean;
+  wantsToDecloak?: boolean;
 }
 
 export interface EventTemplateOption {
@@ -298,14 +335,18 @@ export type CombatEffect = {
     hitType: 'shield' | 'hull';
 };
 
+export type LogCategory = 'movement' | 'combat' | 'targeting' | 'stance' | 'system' | 'special' | 'info';
+
 export interface LogEntry {
   id: string;
   turn: number;
   sourceId: string; // 'player', 'system', or an entity ID
   sourceName: string;
+  sourceFaction?: string; // e.g., 'Federation', 'Klingon'
   message: string;
   color: string; // Tailwind border color class
   isPlayerSource: boolean;
+  category?: LogCategory;
 }
 
 // FIX: Added missing SectorState interface.
@@ -351,6 +392,26 @@ export interface GameState {
   orbitingPlanetId: string | null;
   replayHistory?: GameState[];
   isDocked: boolean;
+  turnEvents?: string[];
+}
+
+export interface BeamAttackResult {
+    hit: boolean;
+    hitChance: number;
+    damageModifiers: string[];
+    damageDealt: number;
+    wasShieldHit: boolean;
+    shieldPercentBeforeHit: number;
+    absorbedByShields: number;
+    leakageDamage: number;
+    breakthroughDamage: number;
+    totalPenetratingDamage: number;
+    finalHullDamage: number;
+    finalSubsystemDamage: number;
+    subsystemTargeted: keyof ShipSubsystems | null;
+    targetDestroyed: boolean;
+    subsystemDestroyed: boolean;
+    cloakWasDestabilized: boolean;
 }
 
 // FIX: Add 'setup' to ScenarioMode type.

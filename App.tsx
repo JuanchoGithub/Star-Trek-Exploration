@@ -102,7 +102,7 @@ const App: React.FC = () => {
         gameState, selectedTargetId, navigationTarget, currentView,
         activeAwayMission, activeHail, targetEntity, playerTurnActions, activeEvent,
         isWarping, isTurnResolving, awayMissionResult, eventResult, desperationMoveAnimation,
-        onEnergyChange, onEndTurn, onFirePhasers, onLaunchTorpedo, onEvasiveManeuvers, 
+        onEnergyChange, onEndTurn, onFireWeapon, onEvasiveManeuvers, 
         onSelectTarget, onSetNavigationTarget, onSetView, onWarp, onDockWithStarbase, 
         onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, 
         onChooseAwayMissionOption, onHailTarget, onCloseHail, onSelectSubsystem, 
@@ -147,6 +147,7 @@ const App: React.FC = () => {
     }, []);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const handleNewGame = useCallback(() => {
         localStorage.removeItem(SAVE_GAME_KEY);
@@ -286,7 +287,7 @@ const App: React.FC = () => {
                                         <div className="w-full h-full aspect-[11/10] relative">
                                             {currentView === 'sector' ? (
                                                 <>
-                                                    <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} />
+                                                    <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} entityRefs={entityRefs} />
                                                     <SectorView 
                                                         entities={sector.entities} 
                                                         playerShip={player.ship}
@@ -297,6 +298,7 @@ const App: React.FC = () => {
                                                         sector={sector}
                                                         themeName={themeName}
                                                         isResizing={isResizing}
+                                                        entityRefs={entityRefs}
                                                     />
                                                 </>
                                             ) : (
@@ -328,7 +330,7 @@ const App: React.FC = () => {
                             <div className="flex-shrink-0" style={!isTouchDevice ? { height: `${bottomPanelHeight}px` } : {}}>
                                 <section className="h-full">
                                     <PlayerHUD
-                                        gameState={gameState} onEndTurn={onEndTurn} onFirePhasers={onFirePhasers} onLaunchTorpedo={onLaunchTorpedo}
+                                        gameState={gameState} onEndTurn={onEndTurn} onFireWeapon={onFireWeapon}
                                         target={targetEntity} isDocked={isDocked} onDockWithStarbase={onDockWithStarbase} onUndock={onUndock}
                                         onScanTarget={onScanTarget}
                                         onInitiateRetreat={onInitiateRetreat} onCancelRetreat={onCancelRetreat} onStartAwayMission={onStartAwayMission}

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CombatEffect, Entity, Ship, TorpedoType } from '../types';
 
 interface CombatFXLayerProps {
     effects: CombatEffect[];
     entities: Entity[];
+    entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
 }
 
 const SECTOR_WIDTH = 11;
@@ -47,12 +48,78 @@ const getExplosionColors = (torpedoType: TorpedoType): [string, string, string] 
     }
 }
 
+const AnimatedPhaserBeam: React.FC<{
+    sourceId: string;
+    targetId: string;
+    entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
+    containerRef: React.RefObject<HTMLDivElement>;
+    phaserClass: string;
+    animationDelay: number;
+    yOffset: number;
+}> = ({ sourceId, targetId, entityRefs, containerRef, phaserClass, animationDelay, yOffset }) => {
+    const [endpoints, setEndpoints] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
-const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
+    useEffect(() => {
+        let animationFrameId: number;
+
+        const updatePosition = () => {
+            const sourceEl = entityRefs.current?.[sourceId];
+            const targetEl = entityRefs.current?.[targetId];
+            const containerEl = containerRef.current;
+
+            if (sourceEl && targetEl && containerEl) {
+                const containerRect = containerEl.getBoundingClientRect();
+                const sourceRect = sourceEl.getBoundingClientRect();
+                const targetRect = targetEl.getBoundingClientRect();
+
+                setEndpoints({
+                    x1: sourceRect.left - containerRect.left + sourceRect.width / 2,
+                    y1: sourceRect.top - containerRect.top + sourceRect.height / 2 + yOffset,
+                    x2: targetRect.left - containerRect.left + targetRect.width / 2,
+                    y2: targetRect.top - containerRect.top + targetRect.height / 2,
+                });
+            }
+            animationFrameId = requestAnimationFrame(updatePosition);
+        };
+
+        const startTimer = setTimeout(() => {
+            animationFrameId = requestAnimationFrame(updatePosition);
+        }, animationDelay);
+        
+        const stopTimer = setTimeout(() => {
+            cancelAnimationFrame(animationFrameId);
+        }, animationDelay + 750); // Stop updating after animation duration
+
+        return () => {
+            clearTimeout(startTimer);
+            clearTimeout(stopTimer);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [sourceId, targetId, entityRefs, containerRef, yOffset, animationDelay]);
+
+    if (!endpoints) {
+        return null;
+    }
+
+    return (
+        <line
+            x1={endpoints.x1}
+            y1={endpoints.y1}
+            x2={endpoints.x2}
+            y2={endpoints.y2}
+            className={phaserClass}
+            style={{ animationDelay: `${animationDelay}ms` }}
+        />
+    );
+};
+
+
+const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entityRefs }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
     const entityMap = new Map<string, Entity>(entities.map(e => [e.id, e]));
 
     return (
-        <div className="absolute inset-0 pointer-events-none z-50">
+        <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
             <svg width="100%" height="100%" className="overflow-visible">
                 {effects.map((effect, index) => {
                     if (effect.type === 'phaser') {
@@ -65,35 +132,26 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities }) => {
                             const sourceShip = source as Ship;
                             const allegiance = sourceShip.id === 'player' ? 'player' : sourceShip.allegiance;
                             switch (allegiance) {
-                                case 'player':
-                                    yOffset = -5; // 5px higher
-                                    break;
-                                case 'ally':
-                                    yOffset = -3; // 3px higher
-                                    break;
-                                case 'enemy':
-                                    yOffset = 5; // 5px lower
-                                    break;
-                                case 'neutral':
-                                    yOffset = 3; // 3px lower
-                                    break;
+                                case 'player': yOffset = -5; break;
+                                case 'ally': yOffset = -3; break;
+                                case 'enemy': yOffset = 5; break;
+                                case 'neutral': yOffset = 3; break;
                             }
                         }
-
-                        const start = getPercentageCoords(source.position);
-                        const end = getPercentageCoords(target.position);
+                        
                         const phaserClass = getPhaserClass(effect.faction);
 
                         return (
-                            <line 
-                                key={`${effect.sourceId}-${effect.targetId}-${index}`} 
-                                x1={start.x} 
-                                y1={`calc(${start.y} + ${yOffset}px)`} 
-                                x2={end.x} 
-                                y2={`calc(${end.y} + ${yOffset}px)`} 
-                                className={phaserClass}
-                                style={{ animationDelay: `${effect.delay}ms` }}
-                            />
+                           <AnimatedPhaserBeam
+                                key={`${effect.sourceId}-${effect.targetId}-${index}`}
+                                sourceId={effect.sourceId}
+                                targetId={effect.targetId}
+                                entityRefs={entityRefs}
+                                containerRef={containerRef}
+                                phaserClass={phaserClass}
+                                animationDelay={effect.delay}
+                                yOffset={yOffset}
+                           />
                         );
                     }
                     if (effect.type === 'point_defense') {

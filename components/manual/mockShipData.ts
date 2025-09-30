@@ -1,4 +1,4 @@
-import type { Ship, ShipModel, ShipRole } from '../../types';
+import type { Ship, ShipModel, ShipRole, AmmoType } from '../../types';
 // FIX: Switched from shipRoleStats to shipClasses for more accurate data lookup.
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 
@@ -14,7 +14,7 @@ const createMockShip = (id: string, model: ShipModel, className: string): Ship =
         cloakingCapable: stats.cloakingCapable,
         position: { x: 0, y: 0 }, hull: stats.maxHull, maxHull: stats.maxHull,
         shields: stats.maxShields, maxShields: stats.maxShields,
-        subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, torpedoes: {} as any, dilithium: {} as any,
+        subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, dilithium: {} as any,
         scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
         lifeSupportReserves: { current: 100, max: 100 },
         cloakState: 'visible',
@@ -31,6 +31,16 @@ const createMockShip = (id: string, model: ShipModel, className: string): Ship =
         statusEffects: [],
         pointDefenseEnabled: false,
         energyModifier: stats.energyModifier,
+        // FIX: Add missing/incorrect properties to satisfy the Ship interface.
+        torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
+        weapons: JSON.parse(JSON.stringify(stats.weapons)),
+        ammo: Object.keys(stats.ammo).reduce((acc, key) => {
+            const ammoType = key as AmmoType;
+            if (stats.ammo[ammoType]) {
+                acc[ammoType] = { current: stats.ammo[ammoType]!.max, max: stats.ammo[ammoType]!.max };
+            }
+            return acc;
+        }, {} as Ship['ammo']),
     };
 };
 

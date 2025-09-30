@@ -1,4 +1,12 @@
-import { ShipRole, ShipModel, ShipSubsystems, TorpedoType } from '../../../types';
+import { ShipRole, ShipModel, ShipSubsystems, TorpedoType, BeamWeapon, ProjectileWeapon, AmmoType } from '../../../types';
+import {
+    WEAPON_PHASER_STANDARD,
+    WEAPON_TORPEDO_PHOTON,
+    WEAPON_TORPEDO_QUANTUM,
+    WEAPON_TORPEDO_PLASMA,
+    WEAPON_TORPEDO_HEAVY_PLASMA,
+    WEAPON_TORPEDO_HEAVY_PHOTON
+} from '../../weapons/weaponRegistry';
 
 // FIX: Exported the ShipClassStats interface to be used for type annotations.
 export interface ShipClassStats {
@@ -12,14 +20,20 @@ export interface ShipClassStats {
     maxShields: number;
     energy: { max: number };
     subsystems: ShipSubsystems;
-    torpedoes: { max: number };
-    torpedoType: TorpedoType | 'None';
     securityTeams: { max: number };
     shuttleCount: number;
     dilithium: { max: number };
     energyModifier: number;
     baseEnergyGeneration: number;
     systemConsumption: Record<keyof ShipSubsystems | 'base', number>;
+
+    // New properties for modular weapons
+    weapons: (BeamWeapon | ProjectileWeapon)[];
+    ammo: Partial<Record<AmmoType, { max: number }>>;
+
+    // @deprecated - will be removed in a future phase
+    torpedoes: { max: number };
+    torpedoType: TorpedoType | 'None';
 }
 
 // Subsystem templates for each faction
@@ -97,31 +111,56 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             name: 'Sovereign-class', role: 'Dreadnought', ...NO_CLOAK, maxHull: 450, maxShields: 120,
             ...calculateDerivedStats(450, 120),
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, shields: {health: 120, maxHealth: 120}}),
-            torpedoes: { max: 20 }, torpedoType: 'Quantum', securityTeams: { max: 8 }, shuttleCount: 6,
+            securityTeams: { max: 8 }, shuttleCount: 6,
+            // @deprecated
+            torpedoes: { max: 20 }, torpedoType: 'Quantum',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_QUANTUM],
+            ammo: { 'Quantum': { max: 20 } },
         },
         'Constitution-class': {
             name: 'Constitution-class', role: 'Cruiser', ...NO_CLOAK, maxHull: 300, maxShields: 100,
             ...calculateDerivedStats(300, 100),
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, computer: {health: 110, maxHealth: 110}}),
-            torpedoes: { max: 10 }, torpedoType: 'Photon', securityTeams: { max: 5 }, shuttleCount: 4,
+            securityTeams: { max: 5 }, shuttleCount: 4,
+            // @deprecated
+            torpedoes: { max: 10 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 10 } },
         },
         'Galaxy-class': {
             name: 'Galaxy-class', role: 'Explorer', ...NO_CLOAK, maxHull: 400, maxShields: 120,
             ...calculateDerivedStats(400, 120),
             subsystems: F({ shields: {health: 140, maxHealth: 140}, pointDefense: {health: 140, maxHealth: 140}, computer: {health: 140, maxHealth: 140}}),
-            torpedoes: { max: 12 }, torpedoType: 'Photon', securityTeams: { max: 6 }, shuttleCount: 8,
+            securityTeams: { max: 6 }, shuttleCount: 8,
+            // @deprecated
+            torpedoes: { max: 12 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 12 } },
         },
         'Intrepid-class': {
             name: 'Intrepid-class', role: 'Scout', ...NO_CLOAK, maxHull: 200, maxShields: 80,
             ...calculateDerivedStats(200, 80),
             subsystems: F({ engines: {health: 120, maxHealth: 120}, pointDefense: {health: 130, maxHealth: 130}}),
-            torpedoes: { max: 6 }, torpedoType: 'Photon', securityTeams: { max: 3 }, shuttleCount: 2,
+            securityTeams: { max: 3 }, shuttleCount: 2,
+            // @deprecated
+            torpedoes: { max: 6 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 6 } },
         },
         'Defiant-class': {
             name: 'Defiant-class', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 50 }, cloakFailureChance: 0.10, maxHull: 250, maxShields: 100,
             ...calculateDerivedStats(250, 100),
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, engines: {health: 120, maxHealth: 120}}),
-            torpedoes: { max: 8 }, torpedoType: 'Quantum', securityTeams: { max: 4 }, shuttleCount: 1,
+            securityTeams: { max: 4 }, shuttleCount: 1,
+            // @deprecated
+            torpedoes: { max: 8 }, torpedoType: 'Quantum',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_QUANTUM],
+            ammo: { 'Quantum': { max: 8 } },
         },
     },
     Klingon: {
@@ -129,25 +168,45 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             name: 'B\'rel-class Bird-of-Prey', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 150, maxShields: 50,
             ...calculateDerivedStats(150, 50),
             subsystems: K({ weapons: {health: 140, maxHealth: 140}, engines: {health: 120, maxHealth: 120}}),
-            torpedoes: { max: 6 }, torpedoType: 'Photon', securityTeams: { max: 4 }, shuttleCount: 0,
+            securityTeams: { max: 4 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 6 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 6 } },
         },
         'K\'t\'inga-class': {
             name: 'K\'t\'inga-class', role: 'Cruiser', ...NO_CLOAK, maxHull: 300, maxShields: 80,
             ...calculateDerivedStats(300, 80),
             subsystems: K({ weapons: {health: 140, maxHealth: 140}}),
-            torpedoes: { max: 10 }, torpedoType: 'Photon', securityTeams: { max: 6 }, shuttleCount: 0,
+            securityTeams: { max: 6 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 10 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 10 } },
         },
         'Vor\'cha-class': {
             name: 'Vor\'cha-class', role: 'Attack Cruiser', cloakingCapable: false, ...NO_CLOAK, maxHull: 350, maxShields: 100,
             ...calculateDerivedStats(350, 100),
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, shields: {health: 100, maxHealth: 100}}),
-            torpedoes: { max: 12 }, torpedoType: 'Photon', securityTeams: { max: 8 }, shuttleCount: 0,
+            securityTeams: { max: 8 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 12 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 12 } },
         },
         'Negh\'Var-class': {
             name: 'Negh\'Var-class', role: 'Battleship', ...NO_CLOAK, maxHull: 500, maxShields: 120,
             ...calculateDerivedStats(500, 120),
             subsystems: K({ weapons: {health: 200, maxHealth: 200}, shields: {health: 120, maxHealth: 120}}),
-            torpedoes: { max: 18 }, torpedoType: 'HeavyPhoton', securityTeams: { max: 10 }, shuttleCount: 0,
+            securityTeams: { max: 10 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 18 }, torpedoType: 'HeavyPhoton',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_HEAVY_PHOTON],
+            ammo: { 'HeavyPhoton': { max: 18 } },
         },
     },
     Romulan: {
@@ -155,19 +214,34 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             name: 'D\'deridex-class', role: 'Warbird', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 400, maxShields: 100,
             ...calculateDerivedStats(400, 100),
             subsystems: R({ weapons: {health: 180, maxHealth: 180}, shields: {health: 110, maxHealth: 110}}),
-            torpedoes: { max: 15 }, torpedoType: 'HeavyPlasma', securityTeams: { max: 7 }, shuttleCount: 0,
+            securityTeams: { max: 7 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 15 }, torpedoType: 'HeavyPlasma',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_HEAVY_PLASMA],
+            ammo: { 'HeavyPlasma': { max: 15 } },
         },
         'Valdore-type': {
             name: 'Valdore-type', role: 'Scout', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 200, maxShields: 80,
             ...calculateDerivedStats(200, 80),
             subsystems: R({ weapons: {health: 120, maxHealth: 120}, engines: {health: 130, maxHealth: 130}}),
-            torpedoes: { max: 8 }, torpedoType: 'Plasma', securityTeams: { max: 3 }, shuttleCount: 0,
+            securityTeams: { max: 3 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 8 }, torpedoType: 'Plasma',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PLASMA],
+            ammo: { 'Plasma': { max: 8 } },
         },
         'Scimitar-class': {
             name: 'Scimitar-class', role: 'Command Ship', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 450, maxShields: 120,
             ...calculateDerivedStats(450, 120),
             subsystems: R({ weapons: {health: 200, maxHealth: 200}, shields: {health: 140, maxHealth: 140}}),
-            torpedoes: { max: 25 }, torpedoType: 'HeavyPlasma', securityTeams: { max: 10 }, shuttleCount: 0,
+            securityTeams: { max: 10 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 25 }, torpedoType: 'HeavyPlasma',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_HEAVY_PLASMA],
+            ammo: { 'HeavyPlasma': { max: 25 } },
         },
     },
     Pirate: {
@@ -175,19 +249,34 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             name: 'Orion Raider', role: 'Raider', ...NO_CLOAK, maxHull: 180, maxShields: 50,
             ...calculateDerivedStats(180, 50),
             subsystems: K({ weapons: {health: 80, maxHealth: 80}, engines: {health: 130, maxHealth: 130}}),
-            torpedoes: { max: 4 }, torpedoType: 'Photon', securityTeams: { max: 2 }, shuttleCount: 0,
+            securityTeams: { max: 2 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 4 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 4 } },
         },
         'Ferengi Marauder': {
             name: 'Ferengi Marauder', role: 'Marauder', ...NO_CLOAK, maxHull: 250, maxShields: 80,
             ...calculateDerivedStats(250, 80),
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, shields: {health: 80, maxHealth: 80}, lifeSupport: {health: 120, maxHealth: 120}}),
-            torpedoes: { max: 8 }, torpedoType: 'Photon', securityTeams: { max: 3 }, shuttleCount: 1,
+            securityTeams: { max: 3 }, shuttleCount: 1,
+            // @deprecated
+            torpedoes: { max: 8 }, torpedoType: 'Photon',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_PHOTON],
+            ammo: { 'Photon': { max: 8 } },
         },
         'Nausicaan Battleship': {
             name: 'Nausicaan Battleship', role: 'Battleship', ...NO_CLOAK, maxHull: 350, maxShields: 100,
             ...calculateDerivedStats(350, 100),
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, engines: {health: 80, maxHealth: 80}}),
-            torpedoes: { max: 12 }, torpedoType: 'HeavyPhoton', securityTeams: { max: 5 }, shuttleCount: 0,
+            securityTeams: { max: 5 }, shuttleCount: 0,
+            // @deprecated
+            torpedoes: { max: 12 }, torpedoType: 'HeavyPhoton',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD, WEAPON_TORPEDO_HEAVY_PHOTON],
+            ammo: { 'HeavyPhoton': { max: 12 } },
         },
     },
     Independent: {
@@ -195,7 +284,12 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             name: 'Civilian Freighter', role: 'Freighter', ...NO_CLOAK, maxHull: 200, maxShields: 40,
             ...calculateDerivedStats(200, 40),
             subsystems: F({ weapons: { health: 40, maxHealth: 40 }, engines: { health: 80, maxHealth: 80 }, lifeSupport: { health: 120, maxHealth: 120 }}),
-            torpedoes: { max: 2 }, torpedoType: 'None', securityTeams: { max: 1 }, shuttleCount: 1,
+            securityTeams: { max: 1 }, shuttleCount: 1,
+            // @deprecated
+            torpedoes: { max: 0 }, torpedoType: 'None',
+            // New weapon system
+            weapons: [WEAPON_PHASER_STANDARD],
+            ammo: {},
         }
     }
 };

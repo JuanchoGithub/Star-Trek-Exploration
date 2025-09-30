@@ -1,13 +1,10 @@
 
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
-// FIX: Added AIStance to import
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn } from './common';
-// FIX: Imported 'calculateDistance' to resolve a reference error.
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
-    // FIX: Corrected method signature to match the abstract class and updated logic to use potentialTargets.
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const generalStance = determineGeneralStance(ship, potentialTargets);
         if (generalStance.stance !== 'Balanced') {
@@ -32,7 +29,6 @@ export class PirateAI extends FactionAI {
         return { stance: 'Balanced', reason: generalStance.reason + ' Maintaining balanced attack pattern.' };
     }
 
-    // FIX: Implemented missing abstract method 'determineSubsystemTarget' to satisfy FactionAI.
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
         // Pirates target transporters to prevent boarding parties, which might capture their loot.
         if (playerShip.subsystems.transporter.health > 0) {
@@ -45,34 +41,31 @@ export class PirateAI extends FactionAI {
         return null; // Target hull as a last resort.
     }
 
-    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): boolean {
+    handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         // Pirates with an unstable cloak will gamble
         if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
             ship.cloakState = 'cloaking';
             ship.cloakTransitionTurnsRemaining = 2;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detects incoming torpedoes! Attempting to engage makeshift cloaking device!` });
-            return true; // Cloaking is a turn-ending action
+            return { turnEndingAction: true, defenseActionTaken: 'Engaging makeshift cloaking device.' };
         }
         
         // Fallback to point defense
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Cloak unavailable! Activating point-defense grid.` });
+            return { turnEndingAction: false, defenseActionTaken: 'Cloak unavailable. Activating point-defense.' };
         }
-        return false;
+        return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    // FIX: Corrected processTurn to accept potentialTargets and pass them to processCommonTurn.
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Stance analysis: ${reason}` });
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions);
+            processRecoveryTurn(ship, actions, gameState.turn);
             return;
         }
 
@@ -98,14 +91,12 @@ export class PirateAI extends FactionAI {
                     break;
             }
             
-            // FIX: Added the missing 'stance' argument to the processCommonTurn call to resolve the "Expected 6 arguments, but got 5" error.
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
         } else {
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
     }
 
-    // FIX: Replaced `getDesperationMove` with `processDesperationMove` and implemented the self-destruct logic.
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
         const adjacentShips = allShips.filter(s => s.id !== ship.id && calculateDistance(ship.position, s.position) <= 1);

@@ -1,10 +1,12 @@
-import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect } from '../../../types';
+import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect, BeamWeapon, ProjectileWeapon } from '../../../types';
 import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
 import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
-import { isPosInNebula } from '../../utils/sector';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../../assets/configs/gameConstants';
+import { findOptimalMove } from '../pathfinding';
+import { generateRecoveryLog, generateStanceLog, generateBeamAttackLog, generateTorpedoLaunchLog } from '../aiLogger';
+import { fireBeamWeapon } from '../../utils/combat';
 
 export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
     const closestTarget = findClosestTarget(ship, potentialTargets);
@@ -54,17 +56,19 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
         
         actions.addLog({ 
             sourceId: ship.id, 
-            sourceName: ship.name, 
+            sourceName: ship.name,
+            sourceFaction: ship.faction,
             message: `Has dispatched a boarding party and taken control of the derelict ${derelictToCapture.name}! Emergency repairs have begun.`, 
             isPlayerSource: false,
             color: ship.logColor,
+            category: 'special',
         });
         return true; // Action taken
     }
     return false; // No action taken
 }
 
-export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
+export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number): void {
     ship.currentTargetId = null;
     // Set energy allocation for recovery
     if (ship.energyAllocation.engines !== 100) {
@@ -92,13 +96,14 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions): void {
 
         if (mostDamagedSystem && maxDamagePercent > 0.01) { // Only repair if there's meaningful damage
             ship.repairTarget = mostDamagedSystem;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Beginning repairs on the damaged ${mostDamagedSystem} system.` });
         } else if (ship.hull < ship.maxHull) {
             ship.repairTarget = 'hull';
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `All systems nominal. Beginning hull repairs.` });
         }
     }
-    // Ship does not move or attack in recovery mode.
+    
+    const logMessage = generateRecoveryLog(ship, turn);
+
+    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource: false, color: ship.logColor, category: 'stance' });
 }
 
 
@@ -108,13 +113,15 @@ export function processCommonTurn(
     gameState: GameState, 
     actions: AIActions,
     subsystemTarget: keyof ShipSubsystems | null,
-    stance: AIStance
+    stance: AIStance,
+    analysisReason: string,
+    defenseActionTaken: string | null
 ) {
-    const target = findClosestTarget(ship, potentialTargets);
-    ship.currentTargetId = target ? target.id : null;
+    const primaryTarget = findClosestTarget(ship, potentialTargets);
+    ship.currentTargetId = primaryTarget ? primaryTarget.id : null;
 
-    if (!target && ship.lastAttackerPosition) {
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Detecting weapon impacts from an unseen source! Attempting to evade!`, isPlayerSource: false, color: ship.logColor });
+    if (!primaryTarget && ship.lastAttackerPosition) {
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Detecting weapon impacts from an unseen source! Attempting to evade!`, isPlayerSource: false, color: ship.logColor, category: 'movement' });
         
         const fleeVector = {
             x: ship.position.x - ship.lastAttackerPosition.x,
@@ -139,34 +146,37 @@ export function processCommonTurn(
     
     ship.lastAttackerPosition = null;
 
-    if (!target) {
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Holding position, no targets in sight.", isPlayerSource: false, color: ship.logColor });
+    if (!primaryTarget) {
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: "Holding position, no targets in sight.", isPlayerSource: false, color: ship.logColor, category: 'info' });
         return;
     }
 
     const { currentSector } = gameState;
-    const distance = calculateDistance(ship.position, target.position);
+    const distance = calculateDistance(ship.position, primaryTarget.position);
     const originalPosition = { ...ship.position };
 
     // --- CLOAK HANDLING & TACTICAL CHOICE ---
     if (ship.cloakState === 'cloaked') {
-        const canLaunchTorpedo = ship.torpedoes.current > 0 && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
+        const canLaunchTorpedo = ship.weapons.some(w => w.type === 'projectile' && ship.ammo[(w as ProjectileWeapon).ammoType] && ship.ammo[(w as ProjectileWeapon).ammoType]!.current > 0) && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
         const isGoodTorpedoRange = distance >= 2 && distance <= 8;
         const willFireTorpedo = canLaunchTorpedo && isGoodTorpedoRange && Math.random() < 0.75;
 
         if (willFireTorpedo) {
-            const shipStats = shipClasses[ship.shipModel][ship.shipClass];
-            if (shipStats.torpedoType !== 'None') {
-                const torpedoData = torpedoStats[shipStats.torpedoType];
-                ship.torpedoes.current--;
+            const projectileWeapon = ship.weapons.find(w => w.type === 'projectile') as ProjectileWeapon | undefined;
+            if (projectileWeapon) {
+                const torpedoData = torpedoStats[projectileWeapon.ammoType];
+                ship.ammo[projectileWeapon.ammoType]!.current--;
+                if (ship.torpedoes.current > 0) ship.torpedoes.current--;
                 const torpedo: TorpedoProjectile = {
                     id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
-                    position: { ...ship.position }, targetId: target.id, sourceId: ship.id, stepsTraveled: 0,
+                    position: { ...ship.position }, targetId: primaryTarget.id, sourceId: ship.id, stepsTraveled: 0,
                     speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
-                    torpedoType: shipStats.torpedoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
+                    torpedoType: projectileWeapon.ammoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
                 };
                 currentSector.entities.push(torpedo);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Fires a ${torpedoData.name} from beneath its cloak!`, isPlayerSource: false, color: ship.logColor });
+                const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name);
+                actions.addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${primaryTarget.name}' [${torpedo.name}]`);
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
             }
             return; // End turn after firing torpedo
         }
@@ -175,125 +185,109 @@ export function processCommonTurn(
         if (shouldDecloak) {
             ship.cloakState = 'decloaking';
             ship.cloakTransitionTurnsRemaining = 2;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Initiates decloaking sequence to engage!`, isPlayerSource: false, color: ship.logColor });
-            // Let the turn continue, but actions will be disabled due to decloaking state
         } else {
             if (distance > 1) {
-                ship.position = moveOneStep(ship.position, target.position);
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, maneuvering for a better position.`, isPlayerSource: false, color: ship.logColor });
-            } else {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Remains cloaked, holding position.`, isPlayerSource: false, color: ship.logColor });
+                ship.position = moveOneStep(ship.position, primaryTarget.position);
             }
         }
     }
 
-    // --- STANDARD AI DECISION MAKING & LOGGING ---
     // Actions are disabled during cloak/decloak transitions
     if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Is vulnerable while its cloaking field is in transition.`, isPlayerSource: false, color: ship.logColor });
         return;
     }
 
-    let moveTarget: Position | null = null;
-    let aiDecisionLog = `Targeting ${target.name} (Dist: ${distance}).`;
-
-    // Movement decision
-    if (stance === 'Aggressive' && distance > 2) {
-        moveTarget = target.position;
-        aiDecisionLog += ' Closing to attack range.';
-    } else if (stance === 'Defensive' && distance < 6) {
-        moveTarget = { 
-            x: ship.position.x + (ship.position.x - target.position.x),
-            y: ship.position.y + (ship.position.y - target.position.y)
-        };
-        aiDecisionLog += ' Attempting to open range.';
-    } else if (stance === 'Balanced' && distance > 3) {
-        moveTarget = target.position;
-        aiDecisionLog += ' Moving to optimal range.';
-    } else {
-        aiDecisionLog += ' Holding position.';
-    }
-    
-    // Targeting decision
-    if (subsystemTarget) {
-        aiDecisionLog += ` Targeting ${subsystemTarget}.`;
-    } else {
-        aiDecisionLog += ' Targeting hull.';
-    }
-    actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: aiDecisionLog, isPlayerSource: false, color: ship.logColor });
-
-    // --- ACTION EXECUTION ---
+    // --- MOVEMENT & LOGGING ---
+    const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+    const moveResult = findOptimalMove(ship, potentialTargets, gameState, allShipsInSector, stance);
+    const moveTarget = moveResult.position;
     
     // Evasive Maneuvers Logic
     if (stance === 'Defensive' && (ship.hull / ship.maxHull) < 0.5) {
         if (!ship.evasive) {
             ship.evasive = true;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Taking evasive maneuvers!`, isPlayerSource: false, color: ship.logColor });
         }
     } else {
         if (ship.evasive) {
             ship.evasive = false;
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Ceasing evasive maneuvers.`, isPlayerSource: false, color: ship.logColor });
         }
     }
 
     // Movement
     if (moveTarget) {
         if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: "Impulse engines are offline, cannot move.", isPlayerSource: false, color: ship.logColor });
+            // Cannot move, log will be handled below
         } else {
-            const nextStep = moveOneStep(ship.position, moveTarget);
-            const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-            const isBlocked = allShipsInSector.some(s => s.id !== ship.id && s.position.x === nextStep.x && s.position.y === nextStep.y);
-            const isValidPosition = nextStep.x >= 0 && nextStep.x < SECTOR_WIDTH && nextStep.y >= 0 && nextStep.y < SECTOR_HEIGHT;
-
-            if (isBlocked) {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Movement blocked by another vessel.`, isPlayerSource: false, color: ship.logColor });
-            } else if (!isValidPosition) {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holds position at the edge of the sector, cannot move further.`, isPlayerSource: false, color: ship.logColor });
-            } else {
-                ship.position = nextStep;
-            }
+            ship.position = moveTarget;
         }
     }
-
+    
     const didMove = ship.position.x !== originalPosition.x || ship.position.y !== originalPosition.y;
+    if (didMove) {
+        actions.addTurnEvent(`MOVE: '${ship.name}' from (${originalPosition.x},${originalPosition.y}) to (${ship.position.x},${ship.position.y})`);
+    } else {
+        actions.addTurnEvent(`HOLD: '${ship.name}' at (${originalPosition.x},${originalPosition.y})`);
+    }
+
+    // --- WEAPON USAGE DETERMINATION ---
+    const beamWeapon = ship.weapons.find(w => w.type === 'beam') as BeamWeapon | undefined;
+    const willFirePhasers = beamWeapon && ship.subsystems.weapons.health > 0 && distance <= beamWeapon.range;
+    
+    const projectileWeapon = ship.weapons.find(w => w.type === 'projectile') as ProjectileWeapon | undefined;
+    const canLaunchTorpedo = projectileWeapon && 
+                             ship.ammo[projectileWeapon.ammoType] && 
+                             ship.ammo[projectileWeapon.ammoType]!.current > 0 &&
+                             (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
+
+    const targetShields = primaryTarget.maxShields > 0 ? primaryTarget.shields / primaryTarget.maxShields : 0;
+    
+    let torpedoLaunchChance = 0;
+    if (stance === 'Aggressive') { torpedoLaunchChance = targetShields > 0.3 ? 0.75 : 0.4; } 
+    else if (stance === 'Balanced') { torpedoLaunchChance = 0.3; }
+    
+    const willLaunchTorpedo = canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance;
+    
+    // --- BUILD & DISPATCH LOG ---
+    const shipsTargetingMe = allShipsInSector.filter(s => s.currentTargetId === ship.id);
+    const moveAction = didMove ? 'MOVING' : 'HOLDING';
+    const moveRationale = ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5 ? 'Impulse Engines Offline!' : moveResult.reason;
+
+    const finalLogMessage = generateStanceLog({
+        ship, stance, analysisReason, target: primaryTarget, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn: gameState.turn, defenseAction: defenseActionTaken
+    });
+  
+    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: finalLogMessage, isPlayerSource: false, color: ship.logColor, category: 'stance' });
+
+
+    // --- ACTION EXECUTION ---
     const phaserDelay = didMove ? 700 : 0;
 
     // Firing Logic
-    if (ship.subsystems.weapons.health > 0 && distance <= 5) {
-        const phaserBaseDamage = 30 * ship.energyModifier;
-        const phaserPowerModifier = ship.energyAllocation.weapons / 100;
-        const finalDamage = phaserBaseDamage * phaserPowerModifier;
-        
-        const combatLogs = actions.applyPhaserDamage(target, finalDamage, subsystemTarget, ship, gameState);
-        gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: phaserDelay });
-        combatLogs.forEach(message => actions.addLog({ sourceId: ship.id, sourceName: ship.name, message, isPlayerSource: false, color: ship.logColor }));
+    if (willFirePhasers && beamWeapon) {
+        const attackResult = fireBeamWeapon(primaryTarget, beamWeapon, subsystemTarget, ship, gameState);
+        actions.addTurnEvent(`FIRE PHASER: '${ship.name}' -> '${primaryTarget.name}' (Hit: ${attackResult.hit})`);
+        gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: primaryTarget.id, faction: ship.faction, delay: phaserDelay });
+        const message = generateBeamAttackLog(ship, primaryTarget, beamWeapon, attackResult);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
     }
     
-    const canLaunchTorpedo = ship.torpedoes.current > 0 && (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
-    const targetShields = target.maxShields > 0 ? target.shields / target.maxShields : 0;
-    
-    let torpedoLaunchChance = 0;
-    if (stance === 'Aggressive') {
-        torpedoLaunchChance = targetShields > 0.3 ? 0.75 : 0.4; // High chance if shields are up
-    } else if (stance === 'Balanced') {
-        torpedoLaunchChance = 0.3;
-    }
-
-    if (canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance) {
-        const shipStats = shipClasses[ship.shipModel][ship.shipClass];
-        if (shipStats.torpedoType === 'None') return;
-        const torpedoData = torpedoStats[shipStats.torpedoType];
-
-        ship.torpedoes.current--;
-        const torpedo: TorpedoProjectile = {
-            id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
-            position: { ...ship.position }, targetId: target.id, sourceId: ship.id, stepsTraveled: 0,
-            speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
-            torpedoType: shipStats.torpedoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
-        };
-        currentSector.entities.push(torpedo);
-        actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Has launched a ${torpedoData.name}!`, isPlayerSource: false, color: ship.logColor });
+    if (willLaunchTorpedo && projectileWeapon) {
+        const torpedoData = torpedoStats[projectileWeapon.ammoType];
+        if (torpedoData) {
+            ship.ammo[projectileWeapon.ammoType]!.current--;
+            if (ship.torpedoes.current > 0) ship.torpedoes.current--;
+            
+            const torpedo: TorpedoProjectile = {
+                id: uniqueId(), name: torpedoData.name, type: 'torpedo_projectile', faction: ship.faction,
+                position: { ...ship.position }, targetId: primaryTarget.id, sourceId: ship.id, stepsTraveled: 0,
+                speed: torpedoData.speed, path: [{ ...ship.position }], scanned: true, turnLaunched: gameState.turn, hull: 1, maxHull: 1,
+                torpedoType: projectileWeapon.ammoType,
+                damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
+            };
+            currentSector.entities.push(torpedo);
+            actions.addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${primaryTarget.name}' [${torpedo.name}]`);
+            const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name);
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
+        }
     }
 }
