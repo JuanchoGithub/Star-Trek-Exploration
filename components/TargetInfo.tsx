@@ -254,11 +254,11 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                             // FIX: Added type guard to safely access subsystem properties.
                                             // This prevents runtime errors when loading older save files where a subsystem
                                             // might be missing or not have the expected properties, which causes a crash.
-                                            if (!subsystem || typeof (subsystem as any).health !== 'number' || typeof (subsystem as any).maxHealth !== 'number') {
+                                            if (!subsystem || typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number') {
                                                 return null;
                                             }
 
-                                            const { health, maxHealth } = subsystem as { health: number; maxHealth: number; };
+                                            const { health, maxHealth } = subsystem;
 
                                             if (maxHealth <= 0) {
                                                 return null;

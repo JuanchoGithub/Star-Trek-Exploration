@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -10,11 +11,11 @@ import { useTheme } from '../hooks/useTheme';
 import ShipStatus from './ShipStatus';
 import { SampleSector } from './manual/SampleSector';
 import { templateInfo } from './manual/templateInfo';
-import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
+import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { createSectorFromTemplate } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
-import { planetNames } from '../../assets/planets/configs/planetNames';
-import { shipNames } from '../../assets/ships/configs/shipNames';
+import { planetNames } from '../assets/planets/configs/planetNames';
+import { shipNames } from '../assets/ships/configs/shipNames';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
@@ -391,7 +392,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
             const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
             
-            const entityMap = new Map(baseState.currentSector.entities.map(e => [e.id, JSON.parse(JSON.stringify(e))]));
+            // FIX: Explicitly type entityMap to prevent values from being inferred as `unknown`.
+            const entityMap: Map<string, Entity> = new Map(baseState.currentSector.entities.map(e => [e.id, JSON.parse(JSON.stringify(e))]));
             if (baseState.player.ship.id) {
                  entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
             }
@@ -407,6 +409,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         const shipId = shipNameToIdMap.get(parsed.shipName);
                         if (shipId) {
                             const shipToMove = entityMap.get(shipId);
+                            // FIX: Now that entityMap is typed, `shipToMove` is of type `Entity | undefined` and has a `position` property.
                             if (shipToMove) shipToMove.position = parsed.to;
                         }
                     } else if (parsed?.type === 'LAUNCH_TORPEDO' && parsed.shipName) {
@@ -436,7 +439,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 }
             }
             
-            const entities = Array.from(entityMap.values());
+            const entities: Entity[] = Array.from(entityMap.values());
             
             let effects: CombatEffect[] = [];
             
