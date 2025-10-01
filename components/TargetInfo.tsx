@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Entity, Ship, ShipSubsystems, Planet } from '../types';
 import { ThemeName } from '../hooks/useTheme';
@@ -259,14 +257,13 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                                 return null;
                                             }
 
-                                            // FIX: Destructure after checking for existence and then perform checks on the destructured variables. This avoids repeated property access on a potentially 'unknown' type and ensures type safety.
-                                            const { health, maxHealth } = subsystem;
-
-                                            if (typeof health !== 'number' || typeof maxHealth !== 'number' || maxHealth <= 0) {
+                                            // FIX: Replaced destructuring with direct property access to fix type inference errors.
+                                            // This ensures that even with older save files, we safely access subsystem data.
+                                            if (typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number' || subsystem.maxHealth <= 0) {
                                                 return null;
                                             }
                                             
-                                            const healthPercentage = (health / maxHealth) * 100;
+                                            const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
                                             
                                             let colorClass = 'text-green-400';
                                             let colorHex = '#4ade80';

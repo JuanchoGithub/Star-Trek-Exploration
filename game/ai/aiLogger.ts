@@ -1,4 +1,5 @@
 
+
 import type { Ship, Position, BeamWeapon, BeamAttackResult, TorpedoProjectile, TorpedoType } from '../../types';
 import type { AIStance } from './FactionAI';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
@@ -122,8 +123,8 @@ export const generateBeamAttackLog = (source: Ship, target: Ship, weapon: BeamWe
     if (result.subsystemTargeted) {
         const subsystem = target.subsystems[result.subsystemTargeted];
         if (subsystem && subsystem.maxHealth > 0) {
-            const healthBefore = subsystem.health + result.finalSubsystemDamage;
-            const damagedPercent = Math.round(100 - (healthBefore / subsystem.maxHealth * 100));
+            const healthBeforeDamage = subsystem.health + result.finalSubsystemDamage;
+            const damagedPercent = Math.round(100 - (healthBeforeDamage / subsystem.maxHealth * 100));
             details += `\n  Targeting <b>${result.subsystemTargeted}</b> (${damagedPercent}% damaged).`;
         } else {
              details += `\n  Targeting <b>${result.subsystemTargeted}</b>.`;
