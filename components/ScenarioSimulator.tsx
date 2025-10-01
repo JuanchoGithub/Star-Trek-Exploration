@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -186,7 +186,14 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
     const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
-    const isSteppingThroughEvents = isPlayOrderMode || mode === 'spectate';
+    const {
+        gameState, selectedTargetId, navigationTarget, playerTurnActions, isTurnResolving, desperationMoveAnimation,
+        isRunning, setIsRunning, togglePause, endSimulation, setGameState,
+        onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
+        replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory, onFireWeapon, onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity, onEnergyChange, onEndTurn, onSelectTarget, onSetNavigationTarget
+    } = useScenarioLogic(setupState.ships, setupState.sector, mode);
+    
+    const isSteppingThroughEvents = (isPlayOrderMode || mode === 'spectate') && !isTurnResolving;
 
     useEffect(() => {
         if (mode === 'setup' && (!setupState.sector || setupState.sector.seed !== setupState.seed)) {
@@ -194,13 +201,6 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             setSetupState(prev => ({ ...prev, sector: newSector }));
         }
     }, [mode, setupState.sectorTemplateId, setupState.seed, setupState.sector]);
-
-    const {
-        gameState, selectedTargetId, navigationTarget, playerTurnActions, isTurnResolving, desperationMoveAnimation,
-        isRunning, setIsRunning, togglePause, endSimulation, setGameState,
-        onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,
-        replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory, onFireWeapon, onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity, onEnergyChange, onEndTurn, onSelectTarget, onSetNavigationTarget
-    } = useScenarioLogic(setupState.ships, setupState.sector, mode);
 
     // Effect to handle auto-playing of turn orders in manual "Play Order" mode
     useEffect(() => {
@@ -380,105 +380,89 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const currentGameState = historyIndex >= 0 && historyIndex < replayHistory.length ? replayHistory[historyIndex] : null;
 
     const { entitiesForDisplay, effectsForDisplay } = useMemo(() => {
-        if (!currentGameState) return { entitiesForDisplay: [], effectsForDisplay: [] };
-
-        if (isSteppingThroughEvents) {
+        if (!currentGameState) { return { entitiesForDisplay: [], effectsForDisplay: [] }; }
+    
+        const isReconstructing = isSteppingThroughEvents && playOrderIndex > -1;
+    
+        if (isReconstructing) {
             const turnEvents = currentGameState.turnEvents || [];
             
+            // This base state can be buggy for historyIndex === 0, but it's never hit as turn 1 has no events to step through.
+            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
+    
             const finalEntities = new Map(currentGameState.currentSector.entities.map(e => [e.id, e]));
             if (currentGameState.player.ship.id) {
                 finalEntities.set(currentGameState.player.ship.id, currentGameState.player.ship);
             }
-
-            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
-            
-            // FIX: Explicitly type entityMap to prevent values from being inferred as `unknown`.
+    
             const entityMap: Map<string, Entity> = new Map(baseState.currentSector.entities.map(e => [e.id, JSON.parse(JSON.stringify(e))]));
             if (baseState.player.ship.id) {
-                 entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
-            }
-
-            const shipNameToIdMap = new Map(Array.from(finalEntities.values()).filter(e => e.type === 'ship').map(s => [(s as Ship).name, s.id]));
-
-            if (playOrderIndex > -1) {
-                for (let i = 0; i <= playOrderIndex; i++) {
-                    const eventStr = turnEvents[i];
-                    const parsed = parseEvent(eventStr);
-                    
-                    if (parsed?.type === 'MOVE_SHIP') {
-                        const shipId = shipNameToIdMap.get(parsed.shipName);
-                        if (shipId) {
-                            const shipToMove = entityMap.get(shipId);
-                            // FIX: Now that entityMap is typed, `shipToMove` is of type `Entity | undefined` and has a `position` property.
-                            if (shipToMove) shipToMove.position = parsed.to;
-                        }
-                    } else if (parsed?.type === 'LAUNCH_TORPEDO' && parsed.shipName) {
-                        const torpedoEntityFromFinalState = finalEntities.get(parsed.torpedoId) as TorpedoProjectile | undefined;
-                        const launchingShipId = shipNameToIdMap.get(parsed.shipName);
-
-                        if (torpedoEntityFromFinalState && launchingShipId) {
-                            const launchingShip = entityMap.get(launchingShipId) as Ship | undefined;
-                            if (launchingShip) {
-                                const newTorpedo: TorpedoProjectile = {
-                                    ...JSON.parse(JSON.stringify(torpedoEntityFromFinalState)),
-                                    position: { ...launchingShip.position },
-                                    path: [{ ...launchingShip.position }],
-                                };
-                                entityMap.set(parsed.torpedoId, newTorpedo);
-                            }
-                        }
-                    } else if (parsed?.type === 'MOVE_TORPEDO') {
-                        const torpedoToMove = entityMap.get(parsed.torpedoId) as TorpedoProjectile | undefined;
-                        if (torpedoToMove) {
-                            torpedoToMove.position = parsed.to;
-                            torpedoToMove.path.push(parsed.to);
-                        }
-                    } else if (parsed?.type === 'HIT_TORPEDO' || parsed?.type === 'INTERCEPT_TORPEDO') {
-                        entityMap.delete(parsed.torpedoId);
-                    }
-                }
+                entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
             }
             
+            const shipNameToIdMap = new Map((Array.from(finalEntities.values()) as Entity[]).filter((e): e is Ship => e.type === 'ship').map(s => [s.name, s.id]));
+    
+            for (let i = 0; i <= playOrderIndex; i++) {
+                const eventStr = turnEvents[i];
+                const parsed = parseEvent(eventStr);
+                
+                if (parsed?.type === 'MOVE_SHIP') {
+                    const shipId = shipNameToIdMap.get(parsed.shipName);
+                    if (shipId) {
+                        const shipToMove = entityMap.get(shipId);
+                        if (shipToMove) shipToMove.position = parsed.to;
+                    }
+                } else if (parsed?.type === 'LAUNCH_TORPEDO' && parsed.shipName) {
+                    const torpedoEntityFromFinalState = finalEntities.get(parsed.torpedoId) as TorpedoProjectile | undefined;
+                    const launchingShipId = shipNameToIdMap.get(parsed.shipName);
+
+                    if (torpedoEntityFromFinalState && launchingShipId) {
+                        const launchingShip = entityMap.get(launchingShipId) as Ship | undefined;
+                        if (launchingShip) {
+                            const newTorpedo: TorpedoProjectile = {
+                                ...JSON.parse(JSON.stringify(torpedoEntityFromFinalState)),
+                                position: { ...launchingShip.position },
+                                path: [{ ...launchingShip.position }],
+                            };
+                            entityMap.set(parsed.torpedoId, newTorpedo);
+                        }
+                    }
+                } else if (parsed?.type === 'MOVE_TORPEDO') {
+                    const torpedoToMove = entityMap.get(parsed.torpedoId) as TorpedoProjectile | undefined;
+                    if (torpedoToMove) {
+                        torpedoToMove.position = parsed.to;
+                        torpedoToMove.path.push(parsed.to);
+                    }
+                } else if (parsed?.type === 'HIT_TORPEDO' || parsed?.type === 'INTERCEPT_TORPEDO') {
+                    entityMap.delete(parsed.torpedoId);
+                }
+            }
+    
             const entities: Entity[] = Array.from(entityMap.values());
             
             let effects: CombatEffect[] = [];
-            
-            if (playOrderIndex > -1) {
-                let effectSliceStart = 0;
+            let effectSliceStart = 0;
 
-                for (let i = 0; i < playOrderIndex; i++) {
-                    const eventStr = turnEvents[i];
-                    if (eventStr.startsWith('FIRE PHASER:')) {
-                        effectSliceStart += 2;
-                    } else if (eventStr.startsWith('PD:')) {
-                        const nextEventStr = turnEvents[i + 1];
-                        const isHit = nextEventStr && nextEventStr.startsWith('INTERCEPTED:');
-                        effectSliceStart += isHit ? 2 : 1;
-                    } else if (eventStr.startsWith('HIT TORPEDO:')) {
-                        effectSliceStart += 1;
-                    }
-                }
+            for (let i = 0; i < playOrderIndex; i++) {
+                const eventStr = turnEvents[i];
+                if (eventStr.startsWith('FIRE PHASER:')) effectSliceStart += 2;
+                else if (eventStr.startsWith('PD:')) effectSliceStart += turnEvents[i + 1]?.startsWith('INTERCEPTED:') ? 2 : 1;
+                else if (eventStr.startsWith('HIT TORPEDO:')) effectSliceStart += 1;
+            }
 
-                const currentEventStr = turnEvents[playOrderIndex];
-                if (currentEventStr) {
-                    if (currentEventStr.startsWith('FIRE PHASER:')) {
-                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 2).map(e => ({ ...e, delay: 0 }));
-                    } else if (currentEventStr.startsWith('PD:')) {
-                        const nextEventStr = turnEvents[playOrderIndex + 1];
-                        const isHit = nextEventStr && nextEventStr.startsWith('INTERCEPTED:');
-                        const numEffects = isHit ? 2 : 1;
-                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + numEffects).map(e => ({ ...e, delay: e.delay || 0 }));
-                    } else if (currentEventStr.startsWith('HIT TORPEDO:')) {
-                        effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 1).map(e => ({ ...e, delay: 0 }));
-                    }
-                }
+            const currentEventStr = turnEvents[playOrderIndex];
+            if (currentEventStr) {
+                if (currentEventStr.startsWith('FIRE PHASER:')) effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 2).map(e => ({ ...e, delay: 0 }));
+                else if (currentEventStr.startsWith('PD:')) effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + (turnEvents[playOrderIndex + 1]?.startsWith('INTERCEPTED:') ? 2 : 1)).map(e => ({ ...e, delay: e.delay || 0 }));
+                else if (currentEventStr.startsWith('HIT TORPEDO:')) effects = currentGameState.combatEffects.slice(effectSliceStart, effectSliceStart + 1).map(e => ({ ...e, delay: 0 }));
             }
             
             return { entitiesForDisplay: entities, effectsForDisplay: effects };
         }
-        
-        return { entitiesForDisplay: currentGameState.currentSector.entities, effectsForDisplay: currentGameState.combatEffects };
-    }, [isSteppingThroughEvents, playOrderIndex, historyIndex, replayHistory, currentGameState, setupState.ships]);
+    
+        // Default case for live resolution, start of turn, and dogfight mode
+        return { entitiesForDisplay: [...currentGameState.currentSector.entities], effectsForDisplay: currentGameState.combatEffects };
+    }, [isSteppingThroughEvents, playOrderIndex, currentGameState, historyIndex, replayHistory, setupState.ships]);
 
 
     if (mode === 'setup') {

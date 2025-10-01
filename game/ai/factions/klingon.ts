@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
@@ -6,6 +5,11 @@ import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (closestTarget && closestTarget.shields <= 0) {
+            return { stance: 'Aggressive', reason: `Target is unshielded! A glorious kill awaits!` };
+        }
+        
         const generalStance = determineGeneralStance(ship, potentialTargets);
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
@@ -15,7 +19,12 @@ export class KlingonAI extends FactionAI {
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
-        // Klingons target weapons to force a close, honorable fight.
+        // If the target is unshielded, a Klingon goes for the kill. Target the hull.
+        if (playerShip.shields <= 0) {
+            return null;
+        }
+        
+        // Otherwise, they target weapons to force a close, honorable fight.
         if (playerShip.subsystems.weapons.health > 0) {
             return 'weapons';
         }

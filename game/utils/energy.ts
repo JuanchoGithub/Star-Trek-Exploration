@@ -109,12 +109,13 @@ export function useOneDilithiumCrystal(ship: Ship): { restoredEnergy: number, lo
     const restoredEnergy = calculateEnergyPerCrystal(ship);
     ship.energy.current = Math.min(ship.energy.max, ship.energy.current + restoredEnergy);
     
-    logs.push(`Consumed one dilithium crystal to restore ${Math.round(restoredEnergy)} energy.`);
+    let mainLog = `Consumed one dilithium crystal to restore ${Math.round(restoredEnergy)} energy, <b>${ship.dilithium.current}</b> of ${ship.dilithium.max} left.`;
 
     const damageLog = applyConsequentialDamage(ship, 1);
     if (damageLog) {
-        logs.push(damageLog);
+        mainLog += `<br/><span class="text-yellow-400"><b>WARNING</b></span>: ${damageLog.substring(9)}`;
     }
+    logs.push(mainLog);
 
     return { restoredEnergy, logs };
 }
@@ -157,12 +158,13 @@ export function handleFullRecharge(ship: Ship, turn: number): string[] {
         const totalEnergyRestored = crystalsToConsume * energyPerCrystal;
         ship.energy.current = Math.min(ship.energy.max, ship.energy.current + totalEnergyRestored);
 
-        logs.push(`Reserve power depleted! Consuming ${crystalsToConsume} dilithium crystal(s) to restore ${Math.round(totalEnergyRestored)} energy.`);
+        let mainLog = `Reserve power depleted! Consuming ${crystalsToConsume} dilithium crystal(s) to restore ${Math.round(totalEnergyRestored)} energy. <b>${ship.dilithium.current}</b> of ${ship.dilithium.max} left.`;
 
         const damageLog = applyConsequentialDamage(ship, crystalsToConsume);
         if (damageLog) {
-            logs.push(damageLog);
+            mainLog += `<br/><span class="text-yellow-400"><b>WARNING</b></span>: ${damageLog.substring(9)}`;
         }
+        logs.push(mainLog);
     }
     
     return logs;
@@ -344,7 +346,7 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState, add
     if (ship.energy.current <= 0) {
         const rechargeLogs = handleFullRecharge(ship, turn);
         rechargeLogs.forEach(message => {
-            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource, color: message.startsWith('WARNING:') ? 'border-orange-500' : (message.startsWith('CRITICAL:') ? 'border-red-600' : logColor), category: 'system' });
+            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource, color: message.includes('WARNING') ? 'border-orange-500' : (message.startsWith('CRITICAL:') ? 'border-red-600' : logColor), category: 'system' });
         });
     }
 

@@ -1,3 +1,4 @@
+
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position, BeamWeapon } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, fireBeamWeapon } from '../utils/combat';
@@ -10,6 +11,8 @@ import { canShipSeeEntity } from '../utils/visibility';
 import { isCommBlackout } from '../utils/sector';
 import { handleBoardingTurn } from '../actions/boarding';
 import { handleShipEndOfTurnSystems } from '../utils/energy';
+import { generatePointDefenseLog } from '../ai/aiLogger';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 
 export interface TurnStep {
     updatedState: GameState;
@@ -190,16 +193,16 @@ function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Functio
         state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: { ...targetTorpedo.position }, faction: ship.faction, delay: 0 });
         
         addTurnEvent(`PD: ${ship.name} fires at [${targetTorpedo.id}]`);
-        let logMessage = `Point-defense grid fires at an incoming ${targetTorpedo.name}! (Hit Chance: ${Math.round(hitChance * 100)}%)...`;
+        
+        const hit = Math.random() < hitChance;
+        const logMessage = generatePointDefenseLog(hit, hitChance, targetTorpedo.name, targetTorpedo.torpedoType);
 
-        if (Math.random() < hitChance) {
+        if (hit) {
             torpedoesDestroyedThisTurn.add(targetTorpedo.id);
-            logMessage += " >> HIT! << Projectile destroyed.";
             addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-green-400', category: 'combat' });
             state.combatEffects.push({ type: 'torpedo_hit', position: { ...targetTorpedo.position }, delay: 100, torpedoType: targetTorpedo.torpedoType });
             addTurnEvent(`INTERCEPTED: [${targetTorpedo.id}]`);
         } else {
-            logMessage += " >> MISS! <<";
             addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-yellow-400', category: 'combat' });
         }
     }
@@ -240,8 +243,8 @@ function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: F
             const originalTorpedoPos = { ...torpedo.position };
             if (calculateDistance(torpedo.position, target.position) <= 0) {
                 const sourceShip = allShips.find(s => s.id === torpedo.sourceId);
-                const damageLogs = applyTorpedoDamage(target, torpedo, sourceShip?.position || null);
-                damageLogs.forEach(message => addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, sourceFaction: torpedo.faction, message, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400', category: 'combat'}));
+                const damageLog = applyTorpedoDamage(target, torpedo, sourceShip || null);
+                addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, sourceFaction: torpedo.faction, message: damageLog, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400', category: 'combat'});
                 state.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: i * (750 / torpedo.speed), torpedoType: torpedo.torpedoType });
                 addTurnEvent(`HIT TORPEDO: [${torpedo.id}] -> ${target.name}`);
                 keepTorpedo = false;

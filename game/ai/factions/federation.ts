@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
@@ -7,6 +6,15 @@ import { determineGeneralStance, processCommonTurn, processRecoveryTurn } from '
 
 export class FederationAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+
+        if (closestTarget && closestTarget.shields <= 0) {
+            // Only go aggressive if not critically damaged yourself
+            if (ship.hull / ship.maxHull > 0.3) {
+                return { stance: 'Aggressive', reason: `Target is unshielded. Moving to disable key systems.` };
+            }
+        }
+        
         const generalStance = determineGeneralStance(ship, potentialTargets);
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
@@ -57,6 +65,11 @@ export class FederationAI extends FactionAI {
                 const subsystemTarget = this.determineSubsystemTarget(ship, target);
 
                 switch (stance) {
+                    case 'Aggressive':
+                        if (ship.energyAllocation.weapons !== 50) {
+                             ship.energyAllocation = { weapons: 50, shields: 25, engines: 25 };
+                        }
+                        break;
                     case 'Defensive':
                         if (ship.energyAllocation.shields !== 60) {
                             ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };

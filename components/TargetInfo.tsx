@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Entity, Ship, ShipSubsystems, Planet } from '../types';
 import { ThemeName } from '../hooks/useTheme';
@@ -248,21 +249,23 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                                 </span>
                                             </div>
                                         </button>
-                                        {(target.type === 'ship' && (target as Ship).subsystems) && (Object.keys((target as Ship).subsystems) as Array<keyof ShipSubsystems>).map((key) => {
-                                            const subsystem = (target as Ship).subsystems[key];
+                                        {/* FIX: Switched from iterating over the target's subsystem keys to iterating over a canonical list of all possible subsystem keys. This provides stronger type safety, preventing errors where the compiler might treat dynamically accessed properties as 'unknown', while still relying on the existing type guard to handle missing subsystems from older save data. */}
+                                        {(target.type === 'ship' && (target as Ship).subsystems) && (Object.keys(subsystemFullNames) as Array<keyof ShipSubsystems>).map((key) => {
+                                            // FIX: Casting to Partial<ShipSubsystems> allows TypeScript to understand that properties might be missing on older save files, resolving the 'unknown' type error. The subsequent guard clause handles the 'undefined' case safely.
+                                            const subsystem = ((target as Ship).subsystems as Partial<ShipSubsystems>)[key];
                                             
-                                            // FIX: Added type guard to safely access subsystem properties.
-                                            // This prevents runtime errors when loading older save files where a subsystem
-                                            // might be missing or not have the expected properties, which causes a crash.
-                                            if (!subsystem || typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number') {
+                                            // This guard handles missing subsystems on older save files
+                                            if (!subsystem) {
                                                 return null;
                                             }
 
+                                            // FIX: Destructure after checking for existence and then perform checks on the destructured variables. This avoids repeated property access on a potentially 'unknown' type and ensures type safety.
                                             const { health, maxHealth } = subsystem;
 
-                                            if (maxHealth <= 0) {
+                                            if (typeof health !== 'number' || typeof maxHealth !== 'number' || maxHealth <= 0) {
                                                 return null;
                                             }
+                                            
                                             const healthPercentage = (health / maxHealth) * 100;
                                             
                                             let colorClass = 'text-green-400';

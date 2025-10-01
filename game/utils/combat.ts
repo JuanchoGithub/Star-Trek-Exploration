@@ -1,7 +1,9 @@
+
 import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 import { useOneDilithiumCrystal } from './energy';
+import { generateTorpedoImpactLog } from '../ai/aiLogger';
 
 export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState): { canTarget: boolean, reason: string } => {
     if (target.type === 'ship' && (target as Ship).cloakState === 'cloaked') {
@@ -130,13 +132,14 @@ export const fireBeamWeapon = (
     }
     
     const hit = Math.random() < hitChance;
+    const leakageChance = 0.05 + Math.pow(1 - (target.maxShields > 0 ? target.shields / target.maxShields : 0), 2) * 0.95;
+
     if (!hit) {
-        return { hit: false, hitChance, damageModifiers, damageDealt: 0, wasShieldHit: false, shieldPercentBeforeHit: 0, absorbedByShields: 0, leakageDamage: 0, breakthroughDamage: 0, totalPenetratingDamage: 0, finalHullDamage: 0, finalSubsystemDamage: 0, subsystemTargeted: null, targetDestroyed: false, subsystemDestroyed: false, cloakWasDestabilized: false };
+        return { hit: false, hitChance, damageModifiers, damageDealt: 0, wasShieldHit: false, shieldPercentBeforeHit: 0, absorbedByShields: 0, leakageDamage: 0, leakageChance, breakthroughDamage: 0, totalPenetratingDamage: 0, finalHullDamage: 0, finalSubsystemDamage: 0, subsystemTargeted: null, targetDestroyed: false, subsystemDestroyed: false, cloakWasDestabilized: false };
     }
 
     const damageDealt = Math.round(effectiveDamage);
 
-    const leakageChance = 0.05 + Math.pow(1 - (target.maxShields > 0 ? target.shields / target.maxShields : 0), 2) * 0.95;
     const leakRoll = Math.random();
     
     let leakageDamage = 0;
@@ -202,24 +205,23 @@ export const fireBeamWeapon = (
 
     return {
         hit: true, hitChance, damageModifiers, damageDealt, wasShieldHit, shieldPercentBeforeHit, absorbedByShields,
-        leakageDamage, breakthroughDamage, totalPenetratingDamage, finalHullDamage, finalSubsystemDamage,
+        leakageDamage, leakageChance, breakthroughDamage, totalPenetratingDamage, finalHullDamage, finalSubsystemDamage,
         subsystemTargeted: subsystem, targetDestroyed: target.hull <= 0, subsystemDestroyed, cloakWasDestabilized
     };
 };
 
 
-export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sourcePosition: Position | null): string[] => {
-    const logs: string[] = [];
-    if (sourcePosition) {
-        target.lastAttackerPosition = { ...sourcePosition };
+export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sourceShip: Ship | null): string => {
+    if (sourceShip) {
+        target.lastAttackerPosition = { ...sourceShip.position };
     }
     let damageToHull = torpedo.damage;
 
-    // Quantum Torpedoes partially bypass shields
+    // --- Calculations ---
+    let bypassDamage = 0;
     if (torpedo.torpedoType === 'Quantum') {
-        const bypassDamage = damageToHull * 0.25;
+        bypassDamage = damageToHull * 0.25;
         target.hull = Math.max(0, target.hull - bypassDamage);
-        logs.push(`Quantum resonance field bypasses shields, dealing ${Math.round(bypassDamage)} direct hull damage!`);
         damageToHull *= 0.75;
     }
     
@@ -229,40 +231,49 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
 
     if (shieldAbsorption > 0) {
         target.shields = Math.max(0, target.shields - shieldAbsorption);
-        let shieldLog = `Shields absorb ${Math.round(shieldAbsorption)} energy, reducing torpedo damage by ${Math.round(absorbedDamageRatio)}`;
-        if (damageToHull <= 0) {
-            shieldLog += `, the full hit was absorbed.`;
-        } else {
-            shieldLog += '.';
-        }
-        logs.push(shieldLog);
     }
     
-    damageToHull = Math.round(damageToHull);
-    if (damageToHull > 0) {
-        target.hull = Math.max(0, target.hull - damageToHull);
-        logs.push(`${target.name} takes ${damageToHull} hull damage from the torpedo impact!`);
+    const finalHullDamage = Math.max(0, Math.round(damageToHull));
+    if (finalHullDamage > 0) {
+        target.hull = Math.max(0, target.hull - finalHullDamage);
     }
 
+    let plasmaDamage, plasmaDuration;
     if (torpedo.specialDamage?.type === 'plasma_burn') {
         target.statusEffects.push({
             type: 'plasma_burn',
             damage: torpedo.specialDamage.damage,
             turnsRemaining: torpedo.specialDamage.duration,
         });
-        logs.push(`The torpedo leaves a plasma fire on the hull, which will burn for several turns!`);
+        plasmaDamage = torpedo.specialDamage.damage;
+        plasmaDuration = torpedo.specialDamage.duration;
     }
 
-    if (target.hull <= 0) {
-        logs.push(`${target.name} is destroyed by the torpedo impact!`);
-    }
-    
+    let newInstability: number | null = null;
     if (target.cloakState === 'cloaking') {
         target.cloakDestabilizedThisTurn = true;
         const instabilityIncrease = 0.25; // Torpedoes are more jarring
         target.cloakInstability = Math.min(0.8, target.cloakInstability + instabilityIncrease);
-        logs.push(`The torpedo impact severely destabilizes the ${target.name}'s cloaking field!`);
+        newInstability = target.cloakInstability;
     }
 
-    return logs;
+    const isDestroyed = target.hull <= 0;
+    
+    const logData = {
+        source: sourceShip,
+        target,
+        torpedo,
+        results: {
+            bypassDamage,
+            shieldAbsorption,
+            absorbedDamageRatio,
+            finalHullDamage,
+            newInstability,
+            isDestroyed,
+            plasmaDamage,
+            plasmaDuration,
+        }
+    };
+    
+    return generateTorpedoImpactLog(logData);
 };

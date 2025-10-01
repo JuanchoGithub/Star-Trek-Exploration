@@ -404,6 +404,7 @@ export interface BeamAttackResult {
     shieldPercentBeforeHit: number;
     absorbedByShields: number;
     leakageDamage: number;
+    leakageChance: number;
     breakthroughDamage: number;
     totalPenetratingDamage: number;
     finalHullDamage: number;

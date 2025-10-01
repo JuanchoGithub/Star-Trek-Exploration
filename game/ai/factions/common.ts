@@ -174,7 +174,7 @@ export function processCommonTurn(
                     torpedoType: projectileWeapon.ammoType, damage: torpedoData.damage, specialDamage: torpedoData.specialDamage,
                 };
                 currentSector.entities.push(torpedo);
-                const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name);
+                const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name, projectileWeapon.ammoType);
                 actions.addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${primaryTarget.name}' [${torpedo.name}]`);
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
             }
@@ -286,7 +286,7 @@ export function processCommonTurn(
             };
             currentSector.entities.push(torpedo);
             actions.addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${primaryTarget.name}' [${torpedo.name}]`);
-            const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name);
+            const message = generateTorpedoLaunchLog(ship, primaryTarget, torpedoData.name, projectileWeapon.ammoType);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
         }
     }

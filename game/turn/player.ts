@@ -43,7 +43,7 @@ export const processPlayerTurn = (
             if (!newNavigationTarget || (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y)) {
                 if (newNavigationTarget) {
                     // FIX: addLog call was missing properties.
-                    addLog({ sourceId: 'player', sourceName: ship.name, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                    addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
                     newNavigationTarget = null;
                 }
                 break;
@@ -55,7 +55,7 @@ export const processPlayerTurn = (
 
             if (isBlocked) {
                 // FIX: addLog call was missing properties.
-                addLog({ sourceId: 'player', sourceName: ship.name, message: 'Path blocked by another vessel. Halting movement for this turn.', isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Path blocked by another vessel. Halting movement for this turn.', isPlayerSource: true, color: 'border-blue-400' });
                 // Do not clear navigation target, just stop for this turn.
                 break; 
             }
@@ -65,7 +65,7 @@ export const processPlayerTurn = (
             // check arrival again after moving one step
             if (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y) {
                  // FIX: addLog call was missing properties.
-                 addLog({ sourceId: 'player', sourceName: ship.name, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                 addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
                  newNavigationTarget = null;
                  break;
             }
@@ -116,7 +116,7 @@ export const processPlayerTurn = (
                     };
                     currentSector.entities.push(torpedo);
                     addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${target.name}' [${torpedo.name}]`);
-                    const message = generatePlayerTorpedoLaunchLog(target, torpedoData.name);
+                    const message = generatePlayerTorpedoLaunchLog(target, torpedoData.name, projectileWeapon.ammoType);
                     addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
                 }
             }

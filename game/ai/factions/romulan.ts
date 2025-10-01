@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
@@ -16,7 +15,10 @@ export class RomulanAI extends FactionAI {
 
         // Romulans are tactical and cautious.
         if (closestTarget.shields <= 0) {
-            return { stance: 'Aggressive', reason: `Target shields are down. Exploiting weakness.` };
+            // Only go aggressive if not too damaged yourself
+            if (ship.hull / ship.maxHull > 0.4) {
+                return { stance: 'Aggressive', reason: `Target is exposed. Moving to disable key systems for intelligence.` };
+            }
         }
         return { stance: 'Balanced', reason: generalStance.reason + ' Adopting standard Romulan balanced doctrine.' };
     }

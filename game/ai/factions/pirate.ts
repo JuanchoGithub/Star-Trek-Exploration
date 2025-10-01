@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn } from './common';
@@ -6,12 +5,20 @@ import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
+        const closestTarget = findClosestTarget(ship, potentialTargets);
+        if (closestTarget && closestTarget.shields <= 0) {
+            // Only go aggressive if not too damaged yourself
+            if (ship.hull / ship.maxHull > 0.4) {
+                return { stance: 'Aggressive', reason: `Target is a vulnerable prize. Moving to disable engines.` };
+            }
+        }
+
         const generalStance = determineGeneralStance(ship, potentialTargets);
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
 
-        const target = findClosestTarget(ship, potentialTargets);
+        const target = closestTarget; // Already found it
         if (!target) {
             return { stance: 'Balanced', reason: 'No targets detected.' };
         }
@@ -30,6 +37,11 @@ export class PirateAI extends FactionAI {
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
+        // If target is unshielded, go for the engines to secure the prize.
+        if (playerShip.shields <= 0) {
+            return 'engines';
+        }
+        
         // Pirates target transporters to prevent boarding parties, which might capture their loot.
         if (playerShip.subsystems.transporter.health > 0) {
             return 'transporter';
