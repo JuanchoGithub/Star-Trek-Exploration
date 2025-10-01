@@ -604,6 +604,19 @@
             opacity: 0;
         }
       }
+
+      /* Looping Phaser for Manual */
+      @keyframes phaser-loop-animation {
+        from { stroke-dashoffset: 200; stroke-width: 4px; opacity: 1; }
+        to { stroke-dashoffset: 0; stroke-width: 2px; opacity: 0.7; }
+      }
+      .phaser-beam.phaser-beam-loop {
+        /* Override the one-shot animation */
+        animation: phaser-loop-animation 1s ease-in-out infinite alternate;
+        stroke-dasharray: 200;
+        stroke-dashoffset: 200;
+      }
+
       @keyframes torpedo-explosion-animation {
         0% { transform: translate(-50%, -50%) scale(0.1); background-color: white; opacity: 1;}
         50% { background-color: var(--color-accent-orange); }

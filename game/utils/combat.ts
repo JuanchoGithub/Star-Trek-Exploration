@@ -1,9 +1,37 @@
 
+
 import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 import { useOneDilithiumCrystal } from './energy';
 import { generateTorpedoImpactLog } from '../ai/aiLogger';
+import { TorpedoType } from '../../types';
+
+export const getTorpedoHitChance = (torpedoType: TorpedoType, distance: number): number => {
+    let baseAccuracy: number;
+
+    switch (distance) {
+        case 1: baseAccuracy = 0.80; break;
+        case 2: baseAccuracy = 0.70; break;
+        case 3: baseAccuracy = 0.50; break;
+        case 4: baseAccuracy = 0.25; break;
+        default: baseAccuracy = 0;
+    }
+
+    if (baseAccuracy === 0) return 0;
+
+    let modifier = 0;
+    switch (torpedoType) {
+        case 'Quantum':     modifier = 0.15; break;
+        case 'Plasma':      modifier = -0.10; break;
+        case 'HeavyPlasma': modifier = -0.15; break;
+        case 'HeavyPhoton': modifier = -0.20; break;
+        default:            modifier = 0; // Photon
+    }
+
+    return Math.max(0, Math.min(1, baseAccuracy + modifier));
+};
+
 
 export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState): { canTarget: boolean, reason: string } => {
     if (target.type === 'ship' && (target as Ship).cloakState === 'cloaked') {
@@ -215,6 +243,29 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
     if (sourceShip) {
         target.lastAttackerPosition = { ...sourceShip.position };
     }
+
+    const distance = calculateDistance(torpedo.position, target.position);
+    const hitChance = getTorpedoHitChance(torpedo.torpedoType, distance);
+    const hit = Math.random() < hitChance;
+
+    if (!hit) {
+        return generateTorpedoImpactLog({
+            source: sourceShip,
+            target,
+            torpedo,
+            results: {
+                hit: false,
+                hitChance,
+                bypassDamage: 0,
+                shieldAbsorption: 0,
+                absorbedDamageRatio: 0,
+                finalHullDamage: 0,
+                newInstability: null,
+                isDestroyed: false,
+            }
+        });
+    }
+
     let damageToHull = torpedo.damage;
 
     // --- Calculations ---
@@ -264,6 +315,8 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
         target,
         torpedo,
         results: {
+            hit: true,
+            hitChance,
             bypassDamage,
             shieldAbsorption,
             absorbedDamageRatio,

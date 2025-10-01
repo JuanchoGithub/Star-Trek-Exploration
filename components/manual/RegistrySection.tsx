@@ -8,7 +8,6 @@ import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../asset
 import { ShipModel, ShipSubsystems, BeamWeapon, ProjectileWeapon } from '../../types';
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
-import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
 import { PirateEscortIcon } from '../../assets/ships/icons';
 import { IndependentFreighterIcon } from '../../assets/ships/icons';
@@ -122,7 +121,7 @@ const EnergyProfile: React.FC<{ stats: ShipClassStats }> = ({ stats }) => {
     const totalPassiveConsumption = consumptionItems.reduce((sum, item) => sum + item.value, 0);
 
     return (
-        <div className="mt-3">
+        <div>
             <h5 className="text-sm font-bold text-accent-yellow mb-2">Energy Profile</h5>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <div>
@@ -198,23 +197,30 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                 </div>
             </div>
 
-            <div className="panel-style p-3 bg-black">
-                <h5 className="text-sm font-bold text-accent-yellow mb-2">Tactical Profile</h5>
-                <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
-                    <StatRating label="Hull Integrity" value={`${hullRating} (${shipClass.maxHull})`} />
-                    <StatRating label="Shield Capacity" value={`${shieldRating} (${shipClass.maxShields})`} />
-                    <StatRating label="Weapon Power" value={weaponRating} />
-                    <StatRating label="Energy Reserves" value={String(shipClass.energy.max)} />
-                    <StatRating label="Dilithium Stores" value={String(shipClass.dilithium.max)} />
-                    <StatRating label="Cloaking Device" value={shipClass.cloakingCapable ? `Yes (${shipClass.cloakEnergyCost.maintain} Pwr/turn)` : 'No'} />
-                    <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
-                    <div className="col-span-full">
-                        <dt className="text-xs font-bold uppercase text-text-disabled">Special Notes</dt>
-                        <dd className="text-sm text-text-primary italic">{tacticalInfo.notes}</dd>
-                    </div>
-                    <WeaponInfo weapons={shipClass.weapons} ammo={shipClass.ammo} />
-                </dl>
-                <EnergyProfile stats={shipClass} />
+            <div className="panel-style p-3 bg-black grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                {/* Left Column: Tactical Profile */}
+                <div>
+                    <h5 className="text-sm font-bold text-accent-yellow mb-2">Tactical Profile</h5>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <StatRating label="Hull Integrity" value={`${hullRating} (${shipClass.maxHull})`} />
+                        <StatRating label="Shield Capacity" value={`${shieldRating} (${shipClass.maxShields})`} />
+                        <StatRating label="Weapon Power" value={weaponRating} />
+                        <StatRating label="Energy Reserves" value={String(shipClass.energy.max)} />
+                        <StatRating label="Dilithium Stores" value={String(shipClass.dilithium.max)} />
+                        <StatRating label="Cloaking Device" value={shipClass.cloakingCapable ? `Yes (${shipClass.cloakEnergyCost.maintain} Pwr/turn)` : 'No'} />
+                        <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
+                        <div className="col-span-full">
+                            <dt className="text-xs font-bold uppercase text-text-disabled">Special Notes</dt>
+                            <dd className="text-sm text-text-primary italic">{tacticalInfo.notes}</dd>
+                        </div>
+                        <WeaponInfo weapons={shipClass.weapons} ammo={shipClass.ammo} />
+                    </dl>
+                </div>
+
+                {/* Right Column: Energy Profile */}
+                <div>
+                    <EnergyProfile stats={shipClass} />
+                </div>
             </div>
         </div>
     )
@@ -277,32 +283,6 @@ export const RegistrySection: React.FC = () => {
             <OtherEntityEntry config={asteroidType} name="Asteroid Field" description="A dense field of rock and ice. While ships can enter these fields for tactical cover or to find shortcuts, they are hazardous environments. Ending a turn inside an asteroid field risks taking damage from micrometeoroid impacts." />
             <OtherEntityEntry config={beaconType} name="Event Beacon" description="An unidentified signal source. Approaching these beacons can trigger unique events, ranging from derelict ships and distress calls to ancient alien artifacts." />
             <OtherEntityEntry config={shuttleType} name="Shuttle" description="Small, short-range auxiliary craft. Used for away missions on gas giants where transporters are ineffective, and as escape pods during emergencies. Lacks weapons or significant defenses." />
-            <OtherEntityEntry 
-                config={torpedoStats.Photon} 
-                name="Photon Torpedo" 
-                description="Standard Federation and Klingon antimatter warhead. It is heavily mitigated by shields but deals significant hull damage if they are down. Can be intercepted by point-defense phasers." 
-            />
-            <OtherEntityEntry 
-                config={torpedoStats.Quantum} 
-                name="Quantum Torpedo" 
-                description="A highly advanced projectile utilizing a zero-point energy warhead. It is faster than standard torpedoes and a portion of its damage bypasses enemy shields. It is also significantly harder for point-defense systems to intercept." 
-            />
-            <OtherEntityEntry 
-                config={torpedoStats.Plasma} 
-                name="Plasma Torpedo" 
-                description="The signature projectile of the Romulan Star Empire. It delivers a moderate initial impact followed by a lingering plasma 'burn' effect that damages the hull directly over several turns, bypassing shields entirely. It is relatively slow-moving." 
-            />
-            <OtherEntityEntry 
-                config={torpedoStats.HeavyPlasma} 
-                name="Heavy Plasma Torpedo" 
-                description="A larger, more potent version of the standard plasma torpedo, typically found on capital ships like the D'deridex Warbird. It has a greater initial impact and a more severe plasma burn effect." 
-            />
-            <OtherEntityEntry 
-                config={torpedoStats.HeavyPhoton} 
-                name="Heavy Photon Torpedo" 
-                description="A brute-force weapon favored by Klingon battleships. It is slow and easy to intercept, but delivers devastating damage if it connects with a depleted shield facing. It offers no special properties beyond sheer destructive power." 
-            />
-
         </div>
     )
 };

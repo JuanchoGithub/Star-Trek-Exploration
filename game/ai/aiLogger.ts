@@ -218,6 +218,8 @@ interface TorpedoImpactLogData {
     target: Ship;
     torpedo: TorpedoProjectile;
     results: {
+        hit: boolean;
+        hitChance: number;
         bypassDamage: number;
         shieldAbsorption: number;
         absorbedDamageRatio: number;
@@ -236,9 +238,16 @@ export const generateTorpedoImpactLog = (data: TorpedoImpactLogData): string => 
     const torpedoColor = torpedoConfig ? torpedoConfig.colorClass : 'text-accent-yellow';
     const targetFactionStyle = getFactionStyle(target.faction);
 
-    let log = `<b class="${targetFactionStyle}">${target.shipClass} ${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span> was hit by a <b class="${torpedoColor}">${torpedo.name}</b>!`;
+    let log = `<b class="${targetFactionStyle}">${target.shipClass} ${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span> is targeted by a <b class="${torpedoColor}">${torpedo.name}</b>!`;
+    log += `\n  Hit Chance: ${Math.round(results.hitChance * 100)}%`;
 
-    log += `\n  Base hit: <b>${torpedo.damage}</b>`;
+    if (!results.hit) {
+        log += `\n  <b class="text-yellow-400">MISS!</b> The torpedo misses its target.`;
+        return log;
+    }
+
+    log += `\n  <b class="text-green-400">IMPACT!</b>`;
+    log += ` Base hit: <b>${torpedo.damage}</b>`;
     
     if (results.shieldAbsorption > 0) {
         log += `\n  Shields absorbed <b>${Math.round(results.shieldAbsorption)}</b> energy, mitigating <b>${Math.round(results.absorbedDamageRatio)}</b> damage.`;

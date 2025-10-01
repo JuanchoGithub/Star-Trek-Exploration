@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Entity, Ship, ShipSubsystems, Planet } from '../types';
 import { ThemeName } from '../hooks/useTheme';
@@ -40,12 +39,15 @@ interface TargetInfoProps {
     onStartAwayMission: (planetId: string) => void;
     onEnterOrbit: (planetId: string) => void;
     isDocked: boolean;
+// FIX: Add the missing onUndock prop to the interface.
+    onUndock: () => void;
 }
 
 const TargetInfo: React.FC<TargetInfoProps> = ({
     target, themeName, selectedSubsystem, onSelectSubsystem, playerShip, hasEnemy, 
     orbitingPlanetId, isTurnResolving, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit,
-    isDocked
+// FIX: Destructure the onUndock prop.
+    isDocked, onUndock
 }) => {
     const [isPickerVisible, setPickerVisible] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -105,217 +107,125 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
     };
     const awayMissionState = getAwayMissionButtonState();
     
-    let targetingButtonText = 'Targeting: Hull';
-    if (target.type === 'ship' && !isUnscannedShip) {
-        const shipTarget = target as Ship;
-        if (selectedSubsystem) {
-            const subsystem = shipTarget.subsystems[selectedSubsystem];
-            if (subsystem && typeof subsystem.health === 'number' && typeof subsystem.maxHealth === 'number') {
-                if (subsystem.maxHealth > 0) {
-                    const healthPercent = Math.round((subsystem.health / subsystem.maxHealth) * 100);
-                    targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (${healthPercent}%)`;
-                } else {
-                    targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (Destroyed)`;
-                }
-            } else {
-                targetingButtonText = `Targeting: ${subsystemFullNames[selectedSubsystem]} (N/A)`;
-            }
-        } else {
-            const healthPercent = Math.round((shipTarget.hull / shipTarget.maxHull) * 100);
-            targetingButtonText = `Targeting: Hull (${healthPercent}%)`;
-        }
+    let targetingButtonText = "Target Subsystem";
+    if (selectedSubsystem) {
+        targetingButtonText = `Targeting: ${subsystemAbbr[selectedSubsystem]}`;
     }
 
     return (
-        <div className="panel-style p-3 flex flex-col h-full">
+        <div className="panel-style p-3 h-full flex flex-col">
             <div className="grid grid-cols-[auto_1fr] gap-3 items-start mb-2 pb-2 border-b border-border-dark flex-shrink-0">
                 <div className="h-24 w-24 flex-shrink-0">
-                     <WireframeDisplay target={target} />
+                    <WireframeDisplay target={target} />
                 </div>
                 <div className="flex flex-col justify-center">
-                    <h3 className="text-lg font-bold text-accent-yellow mb-1 truncate" title={name}>
-                        {isDockedAtStarbase ? `Docked at: ${target.name}` : `Target: ${name}`}
-                    </h3>
-                     {isDockedAtStarbase ? (
-                        <p className="text-sm text-text-secondary italic">Automatic repairs and resupply in progress.</p>
-                     ) : isUnscannedShip ? (
-                        <p className="text-sm text-text-disabled">Scan to reveal details.</p>
-                    ) : (
-                        <>
-                            <p className="text-sm text-text-disabled">{target.faction} {(target as Ship).shipRole}</p>
-                            {target.type === 'ship' && <p className="text-sm text-text-primary">{(target as Ship).shipClass}</p>}
-                        </>
-                    )}
-                    {target.type === 'ship' && !isUnscannedShip && !isDockedAtStarbase && (
-                        <div className="text-sm mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0">
-                            <span className="text-text-secondary">Hull:</span><span>{Math.round((target as Ship).hull)} / {(target as Ship).maxHull}</span>
-                            <span className="text-text-secondary">Shields:</span><span>{Math.round((target as Ship).shields)} / {(target as Ship).maxShields}</span>
-                        </div>
-                     )}
+                    <h3 className="text-lg font-bold text-accent-yellow mb-1 truncate" title={name}>{name}</h3>
+                    {target.type === 'ship' && !isUnscannedShip && <p className="text-sm text-text-disabled">{(target as Ship).shipClass}</p>}
+                    {target.type === 'planet' && <p className="text-sm text-text-disabled">{(target as Planet).planetClass}-Class Planet</p>}
+                    <p className="text-sm text-text-disabled">{target.faction}</p>
                 </div>
             </div>
             
-            {isDockedAtStarbase ? (() => {
-                const hullPercent = (playerShip.hull / playerShip.maxHull) * 100;
-                const dilithiumPercent = (playerShip.dilithium.max > 0 ? playerShip.dilithium.current / playerShip.dilithium.max : 1) * 100;
-                const torpedoPercent = (playerShip.torpedoes.max > 0 ? playerShip.torpedoes.current / playerShip.torpedoes.max : 1) * 100;
-
-                const totalSubHealth = Object.values(playerShip.subsystems).reduce((sum, s) => sum + s.health, 0);
-                const totalSubMaxHealth = Object.values(playerShip.subsystems).reduce((sum, s) => sum + s.maxHealth, 0);
-                const subPercent = (totalSubMaxHealth > 0 ? totalSubHealth / totalSubMaxHealth : 1) * 100;
-
-                const totalWeight = 8;
-                const overallProgress = (
-                    (hullPercent * 3) +
-                    (subPercent * 3) +
-                    (dilithiumPercent * 1) +
-                    (torpedoPercent * 1)
-                ) / totalWeight;
-
-                const progressPercent = Math.min(100, Math.round(overallProgress));
-
-                return (
-                    <div className="flex-grow flex flex-col justify-center items-center p-4 space-y-4">
-                        <h4 className="text-md font-bold text-text-secondary text-center">Overall Repair & Resupply Progress</h4>
-                        <div className="w-full">
-                             <div className="flex justify-between items-baseline mb-1">
-                                <span className="font-bold text-text-secondary">Status</span>
-                                <span className="font-mono text-xl text-accent-green">{progressPercent}% Complete</span>
-                            </div>
-                            <div className="w-full bg-black/30 rounded-full h-4 mt-1 border border-border-dark">
-                                <div 
-                                    className="bg-accent-green h-full rounded-full transition-all duration-500" 
-                                    style={{ width: `${progressPercent}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                        <p className="text-center text-xs text-text-disabled italic mt-2">
-                            {progressPercent < 100 
-                                ? "Repairs and resupply are proceeding automatically. Stand by." 
-                                : "All systems nominal. Ship is fully repaired and resupplied."}
-                        </p>
+            <div className="flex-grow overflow-y-auto pr-2 space-y-2">
+                 {isUnscannedShip && (
+                    <div className="text-center p-4">
+                        <p className="text-text-secondary mb-4">Detailed information unavailable. A targeted scan is required.</p>
+                        <button onClick={onScanTarget} className="w-full btn btn-secondary">Scan Target (5 Pwr)</button>
                     </div>
-                );
-            })() : (
-                <div className="flex-grow flex flex-col justify-end space-y-2 pr-2">
-                    {target.type === 'ship' && (
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={onScanTarget} disabled={target.scanned || isTurnResolving} className="btn btn-accent yellow">Scan</button>
-                            <button onClick={onHailTarget} disabled={isTurnResolving} className="btn btn-accent teal">Hail</button>
+                )}
+                {target.type === 'ship' && target.scanned && (
+                    <>
+                        <div className="grid grid-cols-2 gap-x-4">
+                            <div><span className="text-text-secondary">Hull:</span> <span className="font-bold">{Math.round(target.hull)} / {target.maxHull}</span></div>
+                            <div><span className="text-text-secondary">Shields:</span> <span className="font-bold">{Math.round(target.shields)} / {target.maxShields}</span></div>
                         </div>
-                    )}
-
-                    {target.type === 'planet' && isAdjacent && !isOrbiting && (
-                        <button onClick={() => onEnterOrbit(target.id)} className="w-full btn btn-primary">Enter Orbit</button>
-                    )}
-                    {target.type === 'planet' && isOrbiting && (
-                        <div className="panel-style p-2 bg-bg-paper-lighter">
-                            <h4 className="text-md font-bold text-accent-green mb-2 text-center">Orbital Operations</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={onScanTarget} disabled={target.scanned} className="w-full btn btn-accent yellow">Detailed Scan</button>
-                                <button onClick={() => onStartAwayMission(target.id)} className="w-full btn btn-accent green" disabled={awayMissionState.disabled} title={awayMissionState.text}>
-                                    Away Mission
+                        {isFederation ? (
+                            <div className="relative">
+                                <button ref={buttonRef} onClick={() => setPickerVisible(!isPickerVisible)} className="w-full btn btn-tertiary mt-2">
+                                    {targetingButtonText}
                                 </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {target.type === 'ship' && !isUnscannedShip && (
-                        <div className="relative">
-                            <button
-                                ref={buttonRef}
-                                onClick={() => setPickerVisible(prev => !prev)}
-                                className="w-full btn btn-secondary"
-                            >
-                                {targetingButtonText}
-                            </button>
-                            {isPickerVisible && (
-                                <div ref={pickerRef} className="absolute bottom-full left-0 right-0 mb-2 w-full panel-style p-2 z-40">
-                                    <h4 className="text-xs font-bold text-text-secondary mb-2 text-center uppercase tracking-wider">Select Subsystem Target</h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => handleSelect(null)}
-                                            className={`btn ${!selectedSubsystem ? 'btn-primary' : 'btn-secondary'} col-span-2 w-full text-sm`}
-                                        >
-                                            <div className="flex justify-between items-center w-full">
-                                                <span className="font-bold">HULL</span>
-                                                <span 
-                                                    className={!isFederation ? (themeName === 'klingon' && selectedSubsystem ? 'text-gray-700' : 'text-gray-400') : ''}
-                                                    style={isFederation ? { color: 'inherit' } : undefined}
-                                                >
-                                                    Default
-                                                </span>
-                                            </div>
-                                        </button>
-                                        {/* FIX: Switched from iterating over the target's subsystem keys to iterating over a canonical list of all possible subsystem keys. This provides stronger type safety, preventing errors where the compiler might treat dynamically accessed properties as 'unknown', while still relying on the existing type guard to handle missing subsystems from older save data. */}
-                                        {(target.type === 'ship' && (target as Ship).subsystems) && (Object.keys(subsystemFullNames) as Array<keyof ShipSubsystems>).map((key) => {
-                                            // FIX: Casting to Partial<ShipSubsystems> allows TypeScript to understand that properties might be missing on older save files, resolving the 'unknown' type error.
-                                            // FIX: Explicitly type the 'subsystem' variable to resolve an 'unknown' type inference error when accessing its properties. This ensures type safety when handling potentially incomplete subsystem data from older save files.
-                                            const subsystem: { health: number; maxHealth: number; } | undefined = ((target as Ship).subsystems as Partial<ShipSubsystems>)[key];
-                                            
-                                            // This guard handles missing subsystems on older save files
-                                            if (!subsystem) {
-                                                return null;
-                                            }
-
-                                            // FIX: Replaced destructuring with direct property access to fix type inference errors.
-                                            // This ensures that even with older save files, we safely access subsystem data.
-                                            if (typeof subsystem.health !== 'number' || typeof subsystem.maxHealth !== 'number' || subsystem.maxHealth <= 0) {
-                                                return null;
-                                            }
-                                            
-                                            const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
-                                            
-                                            let colorClass = 'text-green-400';
-                                            let colorHex = '#4ade80';
-                                            if (healthPercentage < 60) { colorClass = 'text-yellow-400'; colorHex = '#facc15'; }
-                                            if (healthPercentage < 25) { colorClass = 'text-red-500'; colorHex = '#ef4444'; }
-
-                                            if (isFederation) {
-                                                colorHex = '#14532d';
-                                                if (healthPercentage < 60) { colorHex = '#b45309'; }
-                                                if (healthPercentage < 25) { colorHex = '#7f1d1d'; }
-                                            } else if (themeName === 'klingon') {
-                                                const typedKey = key as keyof ShipSubsystems;
-                                                const isSelected = selectedSubsystem === typedKey;
-                                                if (isSelected) {
-                                                    colorClass = 'text-yellow-200';
-                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-300'; }
-                                                    if (healthPercentage < 25) { colorClass = 'text-orange-400'; }
-                                                } else {
-                                                    colorClass = 'text-green-800';
-                                                    if (healthPercentage < 60) { colorClass = 'text-yellow-700'; }
-                                                    if (healthPercentage < 25) { colorClass = 'text-red-800'; }
-                                                }
-                                            }
-
+                                {isPickerVisible && (
+                                    <div ref={pickerRef} className="absolute z-10 w-full mt-1 bg-bg-paper-lighter border-2 border-border-main rounded-md p-2 grid grid-cols-2 gap-2">
+                                        <button onClick={() => handleSelect(null)} className={`btn btn-accent red ${!selectedSubsystem ? 'ring-2 ring-white' : ''}`}>Hull</button>
+                                        {(Object.keys(subsystemAbbr) as Array<keyof ShipSubsystems>).map(key => {
+                                            const subsystem = target.subsystems[key];
+                                            const isDisabled = !subsystem || subsystem.health <= 0 || subsystem.maxHealth <= 0;
                                             return (
-                                                <button
-                                                    key={key}
-                                                    onClick={() => handleSelect(key as keyof ShipSubsystems)}
-                                                    className={`btn ${selectedSubsystem === key ? 'btn-primary' : 'btn-secondary'} w-full text-sm`}
-                                                >
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span className="font-bold">{subsystemAbbr[key as keyof ShipSubsystems]}</span>
-                                                        <span
-                                                            className={!isFederation ? colorClass : ''}
-                                                            style={isFederation ? { color: colorHex } : undefined}
-                                                        >
-                                                            {Math.round(healthPercentage)}%
-                                                        </span>
-                                                    </div>
+                                                <button key={key} onClick={() => handleSelect(key)} disabled={isDisabled} className={`btn btn-tertiary ${selectedSubsystem === key ? 'ring-2 ring-white' : ''}`}>
+                                                    {subsystemAbbr[key]}
                                                 </button>
-                                            );
+                                            )
                                         })}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                )}
+                            </div>
+                        ) : (
+                             <DetailSection title="Subsystems">
+                                <div className="grid grid-cols-4 gap-1">
+                                     {(Object.keys(subsystemAbbr) as Array<keyof ShipSubsystems>).map(key => {
+                                         const subsystem: { health: number, maxHealth: number } | undefined = (target as Ship).subsystems[key as keyof ShipSubsystems];
+                                         if (!subsystem || subsystem.maxHealth === 0) return <div key={key} />;
+
+                                         const healthPercentage = (subsystem.health / subsystem.maxHealth) * 100;
+                                         let colorClass = 'bg-accent-green';
+                                         if (healthPercentage < 60) colorClass = 'bg-accent-yellow';
+                                         if (healthPercentage < 25) colorClass = 'bg-accent-red';
+
+                                         return (
+                                             <button 
+                                                key={key}
+                                                onClick={() => onSelectSubsystem(key)}
+                                                className={`p-1 rounded text-center transition-colors ${selectedSubsystem === key ? 'ring-2 ring-white' : 'hover:bg-bg-paper-lighter'}`}
+                                                title={`${subsystemFullNames[key]}: ${Math.round(healthPercentage)}%`}
+                                             >
+                                                 <div className="text-xs font-bold text-text-secondary">{subsystemAbbr[key]}</div>
+                                                 <div className="w-full bg-black h-2 rounded-full mt-1 overflow-hidden">
+                                                     <div className={`${colorClass} h-full`} style={{width: `${healthPercentage}%`}}></div>
+                                                 </div>
+                                             </button>
+                                         );
+                                     })}
+                                 </div>
+                             </DetailSection>
+                        )}
+                        
+                    </>
+                )}
+
+                 {target.type === 'planet' && (
+                    <div className="space-y-2 mt-2">
+                        {!isOrbiting && isAdjacent && !hasEnemy && (
+                            <button onClick={() => onEnterOrbit(target.id)} disabled={isTurnResolving} className="w-full btn btn-secondary">Enter Orbit</button>
+                        )}
+                        {isOrbiting && (
+                             <button onClick={() => onStartAwayMission(target.id)} disabled={awayMissionState.disabled || isTurnResolving} title={awayMissionState.text} className="w-full btn btn-primary">{awayMissionState.text}</button>
+                        )}
+                    </div>
+                 )}
+                 {target.type === 'starbase' && isDockedAtStarbase && (
+                    <div className="text-center p-2">
+                        <h4 className="font-bold text-lg text-green-400">Docked</h4>
+                        <p className="text-sm text-text-secondary">All systems undergoing repair and resupply.</p>
+                         <button onClick={onUndock} disabled={isTurnResolving} className="w-full btn btn-primary mt-4">Undock (Ends Turn)</button>
+                    </div>
+                )}
+            </div>
+
+             {target.type === 'ship' && target.scanned && (
+                <div className="flex-shrink-0 border-t border-border-dark pt-2 mt-2">
+                    <button onClick={onHailTarget} className="w-full btn btn-accent sky text-white">Hail Vessel</button>
                 </div>
             )}
         </div>
     );
 };
+
+const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div>
+        <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary mt-2 mb-1">{title}</h4>
+        {children}
+    </div>
+);
+
 
 export default TargetInfo;

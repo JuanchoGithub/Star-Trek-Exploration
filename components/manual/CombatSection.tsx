@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -41,44 +43,6 @@ const ShieldLeakageExplanation: React.FC = () => (
 );
 
 
-const WeaponDetail: React.FC<{
-    name: string;
-    users: string;
-    range: string;
-    energy: string;
-    damage: string;
-    notes: string;
-    borderColorClass: string;
-    children?: React.ReactNode;
-}> = ({ name, users, range, energy, damage, notes, borderColorClass, children }) => (
-    <div className={`p-3 bg-bg-paper-lighter rounded border-l-4 ${borderColorClass} mb-4`}>
-        <h4 className="text-lg font-bold text-white">{name}</h4>
-        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div>
-                <dt className="font-bold text-text-secondary">Primary Users:</dt>
-                <dd className="text-text-primary">{users}</dd>
-            </div>
-             <div>
-                <dt className="font-bold text-text-secondary">Effective Range:</dt>
-                <dd className="text-text-primary">{range}</dd>
-            </div>
-             <div>
-                <dt className="font-bold text-text-secondary">Energy Cost:</dt>
-                <dd className="text-text-primary">{energy}</dd>
-            </div>
-             <div>
-                <dt className="font-bold text-text-secondary">Damage Profile:</dt>
-                <dd className="text-text-primary">{damage}</dd>
-            </div>
-            <div className="col-span-full">
-                <dt className="font-bold text-text-secondary">Tactical Notes:</dt>
-                <dd className="text-text-primary italic">{notes}</dd>
-            </div>
-            {children && <div className="col-span-full mt-2">{children}</div>}
-        </div>
-    </div>
-);
-
 export const CombatSection: React.FC = () => {
     const phaserFalloffData = [
         { range: 1, modifier: '100%' },
@@ -91,82 +55,36 @@ export const CombatSection: React.FC = () => {
 
     return (
      <div>
-        <SectionHeader>Advanced Combat: Weapon Systems</SectionHeader>
-        <p className="text-text-secondary mb-4">A thorough understanding of your own weapon systems—and those of your potential adversaries—is paramount. This section details the operational parameters of all known energy and projectile weapons in the Typhon Expanse.</p>
+        <SectionHeader>Advanced Combat Mechanics</SectionHeader>
+        <p className="text-text-secondary mb-4">A thorough understanding of weapon mechanics is paramount. For detailed specifications on individual weapon systems, refer to the 'Weapon Systems Registry'.</p>
         
-        <SubHeader>Energy Weapons</SubHeader>
-        <WeaponDetail
-            name="Phasers"
-            borderColorClass="border-accent-red"
-            users="All Factions"
-            range="1-6 hexes"
-            energy="Draws directly from main reactor based on 'Weapons' allocation setting."
-            damage="Variable (Base 30 for player * % Power to Weapons). Modified by range and phaser subsystem health."
-            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. A portion of phaser damage will always leak through shields, with the effect becoming more pronounced as shields weaken. Accuracy is negatively affected by nebulae, evasive maneuvers, and firing at targets inside an asteroid field (-30%)."
-        >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <DamageFalloffTable data={phaserFalloffData} />
-                <ShieldLeakageExplanation />
-            </div>
-        </WeaponDetail>
+        <SubHeader>Energy Weapons (Phasers)</SubHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <DamageFalloffTable data={phaserFalloffData} />
+            <ShieldLeakageExplanation />
+        </div>
         
         <SubHeader>Projectile Weapons (Torpedoes)</SubHeader>
-        <WeaponDetail
-            name="Photon Torpedoes"
-            borderColorClass="border-accent-sky"
-            users="Federation, Klingon, Pirates"
-            range="Sector-wide (Travel time applies)"
-            energy="None (Consumes ammunition)"
-            damage="Base 50. This damage is heavily mitigated by active shields, which can absorb the entire blast if strong enough."
-            notes="Standard antimatter warhead. Targets the hull only and cannot be aimed at subsystems. Can be shot down by point-defense phaser fire or destroyed by colliding with asteroids."
-        />
-        <WeaponDetail
-            name="Quantum Torpedoes"
-            borderColorClass="border-accent-indigo"
-            users="Advanced Federation (Sovereign, Defiant classes)"
-            range="Sector-wide (Faster than Photon Torpedoes)"
-            energy="None (Consumes ammunition)"
-            damage="Base 75. A portion of this damage will bypass shields, striking the hull directly."
-            notes="A zero-point energy warhead that is much more difficult for enemy point-defense systems to intercept. Can be destroyed by colliding with asteroids."
-        />
-         <WeaponDetail
-            name="Plasma Torpedoes"
-            borderColorClass="border-accent-teal"
-            users="Romulan Star Empire"
-            range="Sector-wide (Relatively slow travel time)"
-            energy="None (Consumes ammunition)"
-            damage="Base 30 + Plasma Burn (10 damage per turn for 2 turns). The burn damage bypasses shields entirely."
-            notes="A tactical weapon designed to disable and wear down targets. The initial impact is moderate, but the subsequent plasma fire can be devastating to an unshielded hull. Can be shot down by point-defense phaser fire or destroyed by colliding with asteroids."
-        />
-        <WeaponDetail
-            name="Heavy Plasma Torpedoes"
-            borderColorClass="border-green-400"
-            users="Romulan (D'deridex Warbird)"
-            range="Sector-wide (Slow travel time)"
-            energy="None (Consumes ammunition)"
-            damage="Base 40 + Plasma Burn (15 damage per turn for 2 turns). The burn damage bypasses shields entirely."
-            notes="A larger, more potent version of the standard plasma torpedo. Exceptionally dangerous against vessels with compromised shields. Can be shot down or destroyed by asteroids."
-        />
-        <WeaponDetail
-            name="Heavy Photon Torpedoes"
-            borderColorClass="border-orange-500"
-            users="Klingon Empire (Negh'Var), Pirates (Nausicaan)"
-            range="Sector-wide (Slow travel time)"
-            energy="None (Consumes ammunition)"
-            damage="Base 90. Heavily mitigated by shields."
-            notes="A brute-force weapon favored by Klingons. It is slow and relatively easy to intercept, but will inflict catastrophic damage if it connects with a depleted shield facing. It offers no special properties beyond sheer destructive power."
-        />
-
-        <SubHeader>Defensive Systems</SubHeader>
-        <WeaponDetail
-            name="Laser Point-Defense Grid"
-            borderColorClass="border-accent-yellow"
-            users="All Factions"
-            range="1 hex"
-            energy="20 Reserve Power (Standby), 40 Reserve Power (Active Fire)"
-            damage="Destroys one torpedo projectile."
-            notes="An automated defensive laser system that targets incoming torpedoes at very close range. Its chance to hit is directly proportional to its subsystem health. When active, it diverts significant power from the main phaser arrays, reducing their damage and effective range. The system's targeting computer prioritizes the most dangerous torpedoes first."
-        />
+        <p className="text-text-secondary mb-4">All torpedoes have a chance to miss that increases with distance. The table below shows the base hit chance for a standard Photon Torpedo. Other torpedo types have modifiers applied to this base chance.</p>
+        <table className="w-full max-w-md text-sm text-left border-collapse my-4">
+            <thead className="bg-bg-paper-lighter">
+                <tr>
+                    <th className="p-2 border border-border-dark font-bold">Range (Cells)</th>
+                    <th className="p-2 border border-border-dark font-bold">Photon (Baseline)</th>
+                    <th className="p-2 border border-border-dark font-bold">Quantum (+15%)</th>
+                    <th className="p-2 border border-border-dark font-bold">Plasma (-10%)</th>
+                    <th className="p-2 border border-border-dark font-bold">Heavy Plasma (-15%)</th>
+                    <th className="p-2 border border-border-dark font-bold">Heavy Photon (-20%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">1</td><td className="p-2 border border-border-dark font-mono">80%</td><td className="p-2 border border-border-dark font-mono">95%</td><td className="p-2 border border-border-dark font-mono">70%</td><td className="p-2 border border-border-dark font-mono">65%</td><td className="p-2 border border-border-dark font-mono">60%</td></tr>
+                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">2</td><td className="p-2 border border-border-dark font-mono">70%</td><td className="p-2 border border-border-dark font-mono">85%</td><td className="p-2 border border-border-dark font-mono">60%</td><td className="p-2 border border-border-dark font-mono">55%</td><td className="p-2 border border-border-dark font-mono">50%</td></tr>
+                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">3</td><td className="p-2 border border-border-dark font-mono">50%</td><td className="p-2 border border-border-dark font-mono">65%</td><td className="p-2 border border-border-dark font-mono">40%</td><td className="p-2 border border-border-dark font-mono">35%</td><td className="p-2 border border-border-dark font-mono">30%</td></tr>
+                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">4</td><td className="p-2 border border-border-dark font-mono">25%</td><td className="p-2 border border-border-dark font-mono">40%</td><td className="p-2 border border-border-dark font-mono">15%</td><td className="p-2 border border-border-dark font-mono">10%</td><td className="p-2 border border-border-dark font-mono">5%</td></tr>
+                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">5+</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td></tr>
+            </tbody>
+        </table>
     </div>
     );
 };

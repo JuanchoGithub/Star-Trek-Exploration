@@ -1,3 +1,5 @@
+
+
 export * from './IntroductionSection';
 export * from './UISection';
 export * from './RegistrySection';
@@ -11,3 +13,5 @@ export * from './AnimationsSection';
 export * from './GalaxyGenerationSection';
 export * from './AIBehaviorSection';
 export * from './WeaponRegistrySection';
+export * from './WeaponStatDisplay';
+export * from './PhaserAnimationPreview';
