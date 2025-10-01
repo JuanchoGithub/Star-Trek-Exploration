@@ -249,8 +249,9 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                         </button>
                                         {/* FIX: Switched from iterating over the target's subsystem keys to iterating over a canonical list of all possible subsystem keys. This provides stronger type safety, preventing errors where the compiler might treat dynamically accessed properties as 'unknown', while still relying on the existing type guard to handle missing subsystems from older save data. */}
                                         {(target.type === 'ship' && (target as Ship).subsystems) && (Object.keys(subsystemFullNames) as Array<keyof ShipSubsystems>).map((key) => {
-                                            // FIX: Casting to Partial<ShipSubsystems> allows TypeScript to understand that properties might be missing on older save files, resolving the 'unknown' type error. The subsequent guard clause handles the 'undefined' case safely.
-                                            const subsystem = ((target as Ship).subsystems as Partial<ShipSubsystems>)[key];
+                                            // FIX: Casting to Partial<ShipSubsystems> allows TypeScript to understand that properties might be missing on older save files, resolving the 'unknown' type error.
+                                            // FIX: Explicitly type the 'subsystem' variable to resolve an 'unknown' type inference error when accessing its properties. This ensures type safety when handling potentially incomplete subsystem data from older save files.
+                                            const subsystem: { health: number; maxHealth: number; } | undefined = ((target as Ship).subsystems as Partial<ShipSubsystems>)[key];
                                             
                                             // This guard handles missing subsystems on older save files
                                             if (!subsystem) {
