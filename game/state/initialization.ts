@@ -9,7 +9,7 @@ import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { uniqueId } from '../utils/ai';
 import { seededRandom, cyrb53 } from '../utils/helpers';
-import { WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI } from '../../assets/weapons/weaponRegistry';
+import { WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X } from '../../assets/weapons/weaponRegistry';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -83,11 +83,12 @@ const generateNebulaField = (rand: () => number): Position[] => {
 
 const createEntityFromTemplate = (
     template: any, position: Position, factionOwner: FactionOwner,
-    availableShipNames: Record<string, string[]>, availablePlanetNames: Record<string, string[]>, colorIndex: { current: number }
+    availableShipNames: Record<string, string[]>, availablePlanetNames: Record<string, string[]>, colorIndex: { current: number },
+    rand: () => number
 ): Entity | null => {
     const getUniqueShipName = (faction: string): string => {
         if (availableShipNames[faction]?.length > 0) {
-            return availableShipNames[faction].splice(Math.floor(Math.random() * availableShipNames[faction].length), 1)[0];
+            return availableShipNames[faction].splice(Math.floor(rand() * availableShipNames[faction].length), 1)[0];
         }
         return `${faction} Vessel ${uniqueId().substr(-4)}`;
     };
@@ -96,12 +97,12 @@ const createEntityFromTemplate = (
 
     switch (template.type) {
         case 'ship': {
-            if (chosenFaction === 'None' || chosenFaction === 'Unknown' || chosenFaction === 'Federation') return null;
+            if (chosenFaction === 'None' || chosenFaction === 'Unknown') return null;
             const factionShipClasses = shipClasses[chosenFaction];
             const potentialRoles: ShipRole[] = Array.isArray(template.shipRole) ? template.shipRole : [template.shipRole];
             const validClasses = Object.values(factionShipClasses).filter(c => potentialRoles.includes((c as ShipClassStats).role));
             if (validClasses.length === 0) return null;
-            const stats = validClasses[Math.floor(Math.random() * validClasses.length)] as ShipClassStats;
+            const stats = validClasses[Math.floor(rand() * validClasses.length)] as ShipClassStats;
             
             let allegiance: Ship['allegiance'] = 'neutral';
             if (chosenFaction === 'Klingon' || chosenFaction === 'Romulan' || chosenFaction === 'Pirate') {
@@ -136,19 +137,34 @@ const createEntityFromTemplate = (
                 }, {} as Ship['ammo']),
             } as Ship;
 
-            // Special case for Galaxy-class phaser randomization
-            if (newShip.shipClass === 'Galaxy-class') {
-                const phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
-                const chosenPhaser = phaserOptions[Math.floor(Math.random() * phaserOptions.length)];
-                
-                // Replace the default phaser with the randomly chosen one
-                const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam');
-                if (phaserIndex !== -1) {
-                    newShip.weapons[phaserIndex] = chosenPhaser;
+            if (newShip.shipModel === 'Federation') {
+                let phaserOptions: BeamWeapon[] = [];
+                switch (newShip.shipClass) {
+                    case 'Sovereign-class':
+                        phaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X];
+                        break;
+                    case 'Constitution-class':
+                        phaserOptions = [WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII];
+                        break;
+                    case 'Galaxy-class':
+                        phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
+                        break;
+                    case 'Intrepid-class':
+                        phaserOptions = [WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX];
+                        break;
+                }
+
+                if (phaserOptions.length > 0) {
+                    const chosenPhaser = phaserOptions[Math.floor(rand() * phaserOptions.length)];
+                    
+                    const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam' && w.animationType !== 'pulse');
+                    if (phaserIndex !== -1) {
+                        newShip.weapons[phaserIndex] = chosenPhaser;
+                    }
                 }
             }
 
-            if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
+            if (chosenFaction === 'Pirate' && rand() < 0.10) { // 10% chance
                 newShip.cloakingCapable = true;
                 newShip.customCloakStats = {
                     reliability: 0.60,
@@ -164,12 +180,12 @@ const createEntityFromTemplate = (
             const getPlanetClass = (): PlanetClass => {
                 if (!template.planetClass) return 'M';
                 const options = Array.isArray(template.planetClass) ? template.planetClass : [template.planetClass];
-                return options[Math.floor(Math.random() * options.length)];
+                return options[Math.floor(rand() * options.length)];
             };
             const planetClass = getPlanetClass();
 
             const nameList = availablePlanetNames[planetClass];
-            const name = nameList?.length > 0 ? nameList.splice(Math.floor(Math.random() * nameList.length), 1)[0] : `Planet ${uniqueId()}`;
+            const name = nameList?.length > 0 ? nameList.splice(Math.floor(rand() * nameList.length), 1)[0] : `Planet ${uniqueId()}`;
             return { id: uniqueId(), name, type: 'planet', faction: 'None', position, scanned: false, planetClass, awayMissionCompleted: false };
         }
         case 'starbase': {
@@ -178,7 +194,7 @@ const createEntityFromTemplate = (
             const getStarbaseType = (): StarbaseType => {
                 if (!template.starbaseType) return 'command_station';
                 const options = Array.isArray(template.starbaseType) ? template.starbaseType : [template.starbaseType];
-                return options[Math.floor(Math.random() * options.length)];
+                return options[Math.floor(rand() * options.length)];
             };
             const starbaseType = getStarbaseType();
             const config = starbaseTypes[starbaseType];
@@ -189,7 +205,7 @@ const createEntityFromTemplate = (
             }
 
             return {
-                 id: uniqueId(), name: `${config.namePrefix[0]} ${Math.floor(Math.random() * 100) + 1}`, type: 'starbase',
+                 id: uniqueId(), name: `${config.namePrefix[0]} ${Math.floor(rand() * 100) + 1}`, type: 'starbase',
                  faction: chosenFaction, position, scanned: false, hull: config.maxHull, maxHull: config.maxHull, starbaseType
              };
         }
@@ -198,7 +214,7 @@ const createEntityFromTemplate = (
             const getEventType = (): EventBeacon['eventType'] => {
                 if (!template.eventType) return 'derelict_ship';
                 const options = Array.isArray(template.eventType) ? template.eventType : [template.eventType];
-                return options[Math.floor(Math.random() * options.length)];
+                return options[Math.floor(rand() * options.length)];
             };
             const eventType = getEventType();
             return { id: uniqueId(), name: 'Unidentified Signal', type: 'event_beacon', eventType, faction: 'Unknown', position, scanned: false, isResolved: false };
@@ -288,7 +304,7 @@ export const createSectorFromTemplate = (
     otherTemplates.forEach((et: any) => {
         const count = Math.floor(rand() * (et.count[1] - et.count[0] + 1)) + et.count[0];
         for (let i = 0; i < count; i++) {
-            const newEntity = createEntityFromTemplate(et, getUniquePosition(), factionOwner, availableShipNames, availablePlanetNames, colorIndex);
+            const newEntity = createEntityFromTemplate(et, getUniquePosition(), factionOwner, availableShipNames, availablePlanetNames, colorIndex, rand);
             if (newEntity) newEntities.push(newEntity);
         }
     });
@@ -308,6 +324,15 @@ export const createSectorFromTemplate = (
 
 export const createInitialGameState = (): GameState => {
   const playerStats = shipClasses.Federation['Sovereign-class'];
+
+  const playerPhaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X];
+  const chosenPlayerPhaser = playerPhaserOptions[Math.floor(Math.random() * playerPhaserOptions.length)];
+  const playerWeapons = JSON.parse(JSON.stringify(playerStats.weapons));
+  const playerPhaserIndex = playerWeapons.findIndex((w: BeamWeapon) => w.type === 'beam' && w.animationType !== 'pulse');
+  if (playerPhaserIndex !== -1) {
+      playerWeapons[playerPhaserIndex] = chosenPlayerPhaser;
+  }
+
   const playerShip: Ship = {
     id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', 
     shipClass: playerStats.name, shipRole: playerStats.role, cloakingCapable: playerStats.cloakingCapable,
@@ -329,7 +354,7 @@ export const createInitialGameState = (): GameState => {
     // @deprecated
     torpedoes: { current: playerStats.torpedoes.max, max: playerStats.torpedoes.max },
     // New weapon system
-    weapons: JSON.parse(JSON.stringify(playerStats.weapons)),
+    weapons: playerWeapons,
     ammo: Object.keys(playerStats.ammo).reduce((acc, key) => {
         acc[key as AmmoType] = { current: playerStats.ammo[key as AmmoType]!.max, max: playerStats.ammo[key as AmmoType]!.max };
         return acc;

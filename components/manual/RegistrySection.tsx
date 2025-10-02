@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -23,23 +24,23 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; }> 
     // Federation
     'Sovereign-class': {
         description: 'The pinnacle of Starfleet engineering. This powerful dreadnought serves as a flagship, boasting formidable weaponry, advanced systems, and an exceptionally durable hull. The U.S.S. Endeavour is of this class.',
-        notes: 'Armed with powerful Type X phasers and Quantum Torpedoes. Features a high-capacity shuttlebay for extensive away missions.',
+        notes: 'Armed with powerful Type VIII, IX, or X phasers (Range: 7-8) and Quantum Torpedoes. Features a high-capacity shuttlebay for extensive away missions.',
     },
     'Constitution-class': {
         description: 'A legendary class of heavy cruiser designed for long-range exploration and defense. It represents a perfect balance between scientific capability and combat readiness.',
-        notes: 'Features a balanced loadout of Type VI phasers and standard photon torpedoes.',
+        notes: 'Features a balanced loadout of Type V, VI, or VII phasers (Range: 6-7) and standard photon torpedoes.',
     },
     'Galaxy-class': {
         description: 'A massive explorer-type vessel, designed for multi-generational missions into deep space. While not a dedicated warship, its immense size allows for incredibly powerful shields and robust systems, making it a defensive powerhouse.',
-        notes: 'Typically armed with Type IV to Type VI phaser arrays and photon torpedoes. Can perform saucer separation in extreme emergencies.',
+        notes: 'Typically armed with Type IV, V, or VI phaser arrays (Range: 5-6) and photon torpedoes. Can perform saucer separation in extreme emergencies.',
     },
     'Intrepid-class': {
         description: 'A small, swift scout ship equipped with the latest sensor technology. It is one of the fastest and most maneuverable ships in the fleet, ideal for reconnaissance and rapid response.',
-        notes: 'Armed with advanced Type VIII phaser arrays. Lacks heavy armor but possesses advanced sensor suites.',
+        notes: 'Armed with advanced Type VII, VIII, or IX phaser arrays (Range: 7-8). Lacks heavy armor but possesses advanced sensor suites.',
     },
     'Defiant-class': {
         description: 'Originally designed to fight the Borg, this escort is little more than an engine with weapons attached. It is exceptionally powerful for its size but lacks amenities for long-term missions.',
-        notes: 'Features high-output Pulse Phaser Cannons and Quantum Torpedoes. Possesses a rare, treaty-permitted cloaking device.',
+        notes: 'Features high-output Pulse Phaser Cannons (Range: 4) and Quantum Torpedoes. Possesses a rare, treaty-permitted cloaking device.',
     },
     // Klingon
     'B\'rel-class Bird-of-Prey': {

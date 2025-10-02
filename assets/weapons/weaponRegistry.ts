@@ -21,7 +21,9 @@ export const WEAPON_PHASER_TYPE_II = createPhaser(2, 'Type II Phaser', 15, 4, 2)
 export const WEAPON_PHASER_TYPE_IV = createPhaser(4, 'Type IV Phaser', 25, 5, 3);
 export const WEAPON_PHASER_TYPE_V = createPhaser(5, 'Type V Phaser', 30, 6, 4);
 export const WEAPON_PHASER_TYPE_VI = createPhaser(6, 'Type VI Phaser', 35, 6, 5);
+export const WEAPON_PHASER_TYPE_VII = createPhaser(7, 'Type VII Phaser', 40, 7, 6);
 export const WEAPON_PHASER_TYPE_VIII = createPhaser(8, 'Type VIII Phaser', 45, 7, 6);
+export const WEAPON_PHASER_TYPE_IX = createPhaser(9, 'Type IX Phaser', 52, 8, 7);
 export const WEAPON_PHASER_TYPE_X = createPhaser(10, 'Type X Phaser', 60, 8, 8);
 
 // Legacy Standard Phaser is now Type V

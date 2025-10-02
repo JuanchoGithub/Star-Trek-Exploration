@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
-import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile } from '../types';
+import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
 import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
@@ -20,6 +20,7 @@ import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
 import PlaybackControls from './PlaybackControls';
+import { WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X } from '../assets/weapons/weaponRegistry';
 
 type Tool = {
     type: 'add_ship';
@@ -86,6 +87,34 @@ const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'],
     } else if (allegiance === 'enemy') {
         newShip.logColor = 'border-red-400';
     }
+
+    if (newShip.shipModel === 'Federation') {
+        let phaserOptions: BeamWeapon[] = [];
+        switch (newShip.shipClass) {
+            case 'Sovereign-class':
+                phaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X];
+                break;
+            case 'Constitution-class':
+                phaserOptions = [WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII];
+                break;
+            case 'Galaxy-class':
+                phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
+                break;
+            case 'Intrepid-class':
+                phaserOptions = [WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX];
+                break;
+        }
+
+        if (phaserOptions.length > 0) {
+            const chosenPhaser = phaserOptions[Math.floor(Math.random() * phaserOptions.length)];
+            
+            const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam' && w.animationType !== 'pulse');
+            if (phaserIndex !== -1) {
+                newShip.weapons[phaserIndex] = chosenPhaser;
+            }
+        }
+    }
+
     return newShip;
 };
 
