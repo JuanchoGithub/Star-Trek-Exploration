@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -11,11 +11,11 @@ import { useTheme } from '../hooks/useTheme';
 import ShipStatus from './ShipStatus';
 import { SampleSector } from './manual/SampleSector';
 import { templateInfo } from './manual/templateInfo';
-import { shipVisuals } from '../assets/ships/configs/shipVisuals';
+import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { createSectorFromTemplate } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
-import { planetNames } from '../assets/planets/configs/planetNames';
-import { shipNames } from '../assets/ships/configs/shipNames';
+import { planetNames } from '../../assets/planets/configs/planetNames';
+import { shipNames } from '../../assets/ships/configs/shipNames';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
@@ -183,6 +183,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const [isPlayOrderMode, setIsPlayOrderMode] = useState(false);
     const [playOrderIndex, setPlayOrderIndex] = useState(-1);
     const [isOrderPlaying, setIsOrderPlaying] = useState(false);
+    const [isDeployedShipsCollapsed, setIsDeployedShipsCollapsed] = useState(true);
     const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
     const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
@@ -298,7 +299,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
         } else if (tool?.type === 'remove_ship') {
             if (existingShipAtPos) {
-                setSetupState(prev => ({ ...prev, ships: prev.ships.filter(s => s.id !== existingShipAtPos.id) }));
+                handleRemoveShip(existingShipAtPos.id);
             }
         }
     }, [mode, tool, setupState.ships, availableNames]);
@@ -315,6 +316,22 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             return { ...prev, ships: updatedShips };
         });
     }, []);
+    
+    const handleRemoveShip = useCallback((shipId: string) => {
+        const shipToRemove = setupState.ships.find(s => s.id === shipId);
+        if (!shipToRemove) return;
+
+        setSetupState(p => ({...p, ships: p.ships.filter(s => s.id !== shipId)}));
+
+        // Add name back to pool if it's a pre-defined one
+        const originalNameList = shipNames[shipToRemove.shipModel];
+        if (originalNameList && originalNameList.includes(shipToRemove.name)) {
+            setAvailableNames(prev => ({
+                ...prev,
+                [shipToRemove.shipModel]: [...(prev[shipToRemove.shipModel] || []), shipToRemove.name]
+            }));
+        }
+    }, [setupState.ships]);
     
     const handleRefreshSeed = useCallback(() => {
         setSetupState(prev => ({ ...prev, seed: `sim_${Date.now()}` }));
@@ -573,15 +590,37 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             </div>
                         </div>
                         <div className="panel-style p-3 flex-shrink-0">
-                             <h2 className="text-lg font-bold text-secondary-light mb-2">Deployed Ships ({setupState.ships.length})</h2>
-                              <div className="max-h-32 overflow-y-auto text-sm">
-                                {setupState.ships.map(s => (
-                                    <div key={s.id} className="flex justify-between items-center">
-                                        <span className="truncate">{s.name} ({s.allegiance})</span>
-                                        <button onClick={() => setSetupState(p => ({...p, ships: p.ships.filter(ship => ship.id !== s.id)}))} className="text-red-500 font-bold ml-2">X</button>
-                                    </div>
-                                ))}
-                            </div>
+                            <button
+                                onClick={() => setIsDeployedShipsCollapsed(prev => !prev)}
+                                className="w-full flex justify-between items-center text-lg font-bold text-secondary-light"
+                                aria-expanded={!isDeployedShipsCollapsed}
+                                aria-controls="deployed-ships-list"
+                            >
+                                <span>Deployed Ships ({setupState.ships.length})</span>
+                                <svg className={`w-5 h-5 transition-transform duration-200 ${isDeployedShipsCollapsed ? '-rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {!isDeployedShipsCollapsed && (
+                                <div id="deployed-ships-list" className="max-h-32 overflow-y-auto text-sm mt-2 border-t border-border-dark pt-2">
+                                    {setupState.ships.length === 0 ? (
+                                        <p className="text-text-disabled italic text-center">No ships deployed.</p>
+                                    ) : (
+                                        setupState.ships.map(s => (
+                                            <div key={s.id} className="flex justify-between items-center p-1 hover:bg-bg-paper-lighter rounded">
+                                                <span className="truncate">{s.name} ({s.allegiance})</span>
+                                                <button
+                                                    onClick={() => handleRemoveShip(s.id)}
+                                                    className="text-red-500 font-bold ml-2 px-2"
+                                                    aria-label={`Remove ${s.name}`}
+                                                >
+                                                    X
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col gap-2">
                             <button onClick={() => handleStart('spectate')} className="w-full btn btn-primary">Start Spectate</button>
