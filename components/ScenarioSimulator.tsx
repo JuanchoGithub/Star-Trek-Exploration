@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
