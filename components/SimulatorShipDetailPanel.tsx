@@ -1,6 +1,5 @@
-
 import React from 'react';
-import type { Entity, GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../types';
+import type { Entity, GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, ProjectileWeapon } from '../../types';
 import WireframeDisplay from './WireframeDisplay';
 import { ThemeName } from '../hooks/useTheme';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
@@ -281,6 +280,20 @@ const ShipDetailPanel: React.FC<ShipDetailPanelProps> = ({ selectedEntity, theme
                         <DetailSection title="General">
                             <DetailItem label="Class" value={ship.shipClass} />
                             <DetailItem label="Position" value={`(${ship.position.x}, ${ship.position.y})`} />
+                        </DetailSection>
+
+                        <DetailSection title="Weapon Systems">
+                            {ship.weapons.map(w => (
+                                <DetailItem 
+                                    key={w.id} 
+                                    label={w.name} 
+                                    value={
+                                        w.type === 'beam' 
+                                        ? `Dmg: ${(w as BeamWeapon).baseDamage}, Rng: ${(w as BeamWeapon).range}` 
+                                        : `Ammo: ${ship.ammo[(w as ProjectileWeapon).ammoType]?.current || 0}/${ship.ammo[(w as ProjectileWeapon).ammoType]?.max || 0}`
+                                    } 
+                                />
+                            ))}
                         </DetailSection>
 
                         <DetailSection title="Status">

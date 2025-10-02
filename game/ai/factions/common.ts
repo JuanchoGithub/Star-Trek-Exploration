@@ -266,7 +266,15 @@ export function processCommonTurn(
     if (willFirePhasers && beamWeapon) {
         const attackResult = fireBeamWeapon(primaryTarget, beamWeapon, subsystemTarget, ship, gameState);
         actions.addTurnEvent(`FIRE PHASER: '${ship.name}' -> '${primaryTarget.name}' (Hit: ${attackResult.hit})`);
-        gameState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: primaryTarget.id, faction: ship.faction, delay: phaserDelay });
+        gameState.combatEffects.push({
+            type: 'phaser',
+            sourceId: ship.id,
+            targetId: primaryTarget.id,
+            faction: ship.faction,
+            delay: phaserDelay,
+            thickness: beamWeapon.thickness,
+            animationType: beamWeapon.animationType,
+        });
         const message = generateBeamAttackLog(ship, primaryTarget, beamWeapon, attackResult);
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
     }

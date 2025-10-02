@@ -2,7 +2,12 @@
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 import { 
-    WEAPON_PHASER_STANDARD, 
+    WEAPON_PHASER_TYPE_IV,
+    WEAPON_PHASER_TYPE_V,
+    WEAPON_PHASER_TYPE_VI,
+    WEAPON_PHASER_TYPE_VIII,
+    WEAPON_PHASER_TYPE_X,
+    WEAPON_PULSE_PHASER,
     WEAPON_TORPEDO_PHOTON, 
     WEAPON_TORPEDO_QUANTUM,
     WEAPON_TORPEDO_PLASMA,
@@ -13,7 +18,6 @@ import { BeamWeapon, ProjectileWeapon } from '../../types';
 import { WeaponStatDisplay } from './WeaponStatDisplay';
 import { getTorpedoHitChance } from '../../game/utils/combat';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
-import { PhaserAnimationPreview } from './PhaserAnimationPreview';
 
 const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div className="flex justify-between items-center text-sm">
@@ -26,15 +30,16 @@ const WeaponDetail: React.FC<{ weapon: BeamWeapon | ProjectileWeapon, notes: str
     const isBeam = weapon.type === 'beam';
     const isProjectile = weapon.type === 'projectile';
     const projectileWeapon = isProjectile ? (weapon as ProjectileWeapon) : null;
-    const torpedoConfig = projectileWeapon ? torpedoStats[projectileWeapon.ammoType] : null;
-    const TorpedoIcon = torpedoConfig ? torpedoConfig.icon : null;
+    const torpedoConfig = isProjectile ? torpedoStats[projectileWeapon.ammoType] : null;
 
+    const Icon = weapon.icon;
+    const iconColor = isProjectile && torpedoConfig ? torpedoConfig.colorClass : 'text-accent-red';
     const borderColorClass = isBeam ? 'border-accent-red' : 'border-accent-sky';
 
     return (
         <div className={`p-3 bg-bg-paper-lighter rounded border-l-4 ${borderColorClass} mb-4`}>
             <h4 className="text-lg font-bold text-white flex items-center gap-3">
-                {TorpedoIcon && <TorpedoIcon className={`w-8 h-8 ${torpedoConfig?.colorClass}`} />}
+                <Icon className={`w-8 h-8 ${iconColor}`} />
                 {weapon.name}
             </h4>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -54,15 +59,6 @@ const WeaponDetail: React.FC<{ weapon: BeamWeapon | ProjectileWeapon, notes: str
                             phaserRange={(weapon as BeamWeapon).range}
                             phaserBaseDamage={(weapon as BeamWeapon).baseDamage}
                         />
-                         <div className="col-span-full space-y-2">
-                            <dt className="text-xs font-bold uppercase text-text-disabled">Visual Profiles by Faction</dt>
-                            <dd className="grid grid-cols-2 gap-2">
-                                <PhaserAnimationPreview faction="federation" />
-                                <PhaserAnimationPreview faction="klingon" />
-                                <PhaserAnimationPreview faction="romulan" />
-                                <PhaserAnimationPreview faction="pirate" />
-                            </dd>
-                        </div>
                     </>
                 ) : (
                     <>
@@ -106,19 +102,90 @@ const SystemDetail: React.FC<{ name: string, type: string, range: string, notes:
     </div>
 );
 
+const phaserTypes = [
+    { weapon: WEAPON_PHASER_TYPE_IV, users: "Federation Scout Vessels" },
+    { weapon: WEAPON_PHASER_TYPE_V, users: "Standard Cruisers, Raiders" },
+    { weapon: WEAPON_PHASER_TYPE_VI, users: "Upgraded Federation Cruisers" },
+    { weapon: WEAPON_PHASER_TYPE_VIII, users: "Advanced Federation Escorts" },
+    { weapon: WEAPON_PHASER_TYPE_X, users: "Federation Dreadnoughts" },
+];
+
+const phaserFalloffData = [
+    { range: 1, modifier: '100%' }, { range: 2, modifier: '80%' }, { range: 3, modifier: '60%' },
+    { range: 4, modifier: '40%' }, { range: 5, modifier: '20%' }, { range: 6, modifier: '20%' }
+];
 
 export const WeaponRegistrySection: React.FC = () => (
     <div>
         <SectionHeader>Weapon Systems Registry</SectionHeader>
         <p className="text-text-secondary mb-4">
-            This section provides detailed specifications for all standard-issue Starfleet and known alien weapon systems encountered in the Typhon Expanse. For detailed combat mechanics like damage falloff and hit chances, see the 'Advanced Combat Mechanics' section.
+            This section provides detailed specifications for all standard-issue Starfleet and known alien weapon systems encountered in the Typhon Expanse.
         </p>
 
-        <SubHeader>Energy Weapons</SubHeader>
+        <SubHeader>Standard Phaser Arrays</SubHeader>
+        <p className="text-text-secondary mb-2">
+            Phasers are the primary energy weapon of most Alpha Quadrant powers. Their damage is directly proportional to the power allocated to the Weapons subsystem and decreases over distance.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+            <div>
+                <h4 className="font-bold text-accent-yellow">Damage Falloff</h4>
+                <p className="text-xs text-text-secondary mb-1">Damage decreases at range. Minimum damage is 20%.</p>
+                <div className="flex border border-border-dark">
+                    {phaserFalloffData.map(({ range, modifier }) => (
+                        <div key={range} className="flex-1 text-center border-r border-border-dark last:border-r-0 p-1">
+                            <div className="text-xs text-text-disabled">Rng {range}</div>
+                            <div className="font-bold text-accent-red">{modifier}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div>
+                 <h4 className="font-bold text-accent-yellow">Power Scaling</h4>
+                 <p className="text-xs text-text-secondary mb-1">Damage scales with power allocated to weapons.</p>
+                 <div className="w-full bg-black h-8 rounded-sm border border-border-dark p-0.5">
+                    <div className="h-full bg-gradient-to-r from-red-900 to-accent-red" style={{ width: `100%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs text-text-disabled mt-1 px-1">
+                    <span>0% Power (0% Dmg)</span>
+                    <span>100% Power (100% Dmg)</span>
+                </div>
+            </div>
+        </div>
+
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-bg-paper-lighter">
+                    <tr>
+                        <th className="p-2 border border-border-dark font-bold">Mark</th>
+                        <th className="p-2 border border-border-dark font-bold text-center">Base Damage</th>
+                        <th className="p-2 border border-border-dark font-bold text-center">Max Range</th>
+                        <th className="p-2 border border-border-dark font-bold">Beam Profile</th>
+                        <th className="p-2 border border-border-dark font-bold">Primary Users</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {phaserTypes.map(({ weapon, users }) => (
+                        <tr key={weapon.id} className="bg-bg-paper even:bg-black/20">
+                            <td className="p-2 border border-border-dark font-bold">{weapon.name}</td>
+                            <td className="p-2 border border-border-dark font-mono text-center">{weapon.baseDamage}</td>
+                            <td className="p-2 border border-border-dark font-mono text-center">{weapon.range}</td>
+                            <td className="p-2 border border-border-dark" style={{ minWidth: '100px' }}>
+                                <div className="w-full h-4 bg-black/50 flex items-center rounded-sm">
+                                    <div className="bg-accent-red" style={{ height: `${Math.max(1, weapon.thickness / 2)}px`, width: '100%', boxShadow: `0 0 ${weapon.thickness}px var(--color-accent-red)` }}></div>
+                                </div>
+                            </td>
+                            <td className="p-2 border border-border-dark">{users}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        
+        <SubHeader>Specialized Energy Weapons</SubHeader>
         <WeaponDetail 
-            weapon={WEAPON_PHASER_STANDARD} 
-            users="All Factions"
-            notes="The standard energy weapon. Can be precisely targeted at enemy subsystems. A portion of phaser damage will always leak through shields, with the effect becoming more pronounced as shields weaken. Accuracy is negatively affected by nebulae, evasive maneuvers, and firing at targets inside an asteroid field (-30%)."
+            weapon={WEAPON_PULSE_PHASER}
+            users="Federation Escorts (Defiant)"
+            notes="Fires rapid, high-energy bolts instead of a continuous beam. It has a shorter range but delivers a powerful punch, making it devastating in close-quarters combat."
         />
         
         <SubHeader>Projectile Launchers</SubHeader>

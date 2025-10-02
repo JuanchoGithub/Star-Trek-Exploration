@@ -583,38 +583,61 @@
         /* Draw phase: 0-20% */
         0% {
             stroke-dashoffset: 2000;
-            stroke-width: 3px;
             opacity: 1;
         }
         20% {
             stroke-dashoffset: 0;
-            stroke-width: 4px;
             opacity: 1;
         }
         /* Hold/Flash phase: 20-50% */
         50% {
             stroke-dashoffset: 0;
-            stroke-width: 3px;
             opacity: 1;
         }
         /* Fade phase: 50-100% */
         100% {
             stroke-dashoffset: 0;
-            stroke-width: 1px;
             opacity: 0;
         }
       }
 
+      /* New Pulse Phaser Bolt Style */
+      .pulse-phaser-bolt {
+        position: absolute; /* This needs to be here for the animation to work */
+        width: 12px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      .pulse-phaser-bolt.federation {
+        background-color: var(--color-accent-yellow);
+        box-shadow: 0 0 8px var(--color-accent-yellow-dark), 0 0 4px var(--color-accent-yellow);
+      }
+      
       /* Looping Phaser for Manual */
       @keyframes phaser-loop-animation {
-        from { stroke-dashoffset: 200; stroke-width: 4px; opacity: 1; }
-        to { stroke-dashoffset: 0; stroke-width: 2px; opacity: 0.7; }
+        from { stroke-dashoffset: 200; opacity: 1; }
+        to { stroke-dashoffset: 0; opacity: 0.7; }
       }
       .phaser-beam.phaser-beam-loop {
         /* Override the one-shot animation */
         animation: phaser-loop-animation 1s ease-in-out infinite alternate;
         stroke-dasharray: 200;
         stroke-dashoffset: 200;
+      }
+      /* Looping Pulse Phaser for Manual */
+      @keyframes pulse-bolt-loop-animation {
+        from {
+          opacity: 1;
+          transform: translateX(0px) scale(1) translateY(-50%);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(200px) scale(0.5) translateY(-50%);
+        }
+      }
+      .pulse-phaser-bolt-loop {
+        position: absolute;
+        animation: pulse-bolt-loop-animation 1.2s ease-in infinite;
       }
 
       @keyframes torpedo-explosion-animation {

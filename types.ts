@@ -1,6 +1,8 @@
 // FIX: Replaced entire file content with correct type definitions and removed logic.
 // This resolves circular dependency issues and provides strongly-typed interfaces for the application.
 
+import React from 'react';
+
 // NEW WEAPON SYSTEM TYPES
 export type WeaponType = 'beam' | 'projectile';
 export type WeaponSlot = 'forward' | 'aft' | 'turret';
@@ -11,12 +13,15 @@ export interface Weapon {
     name: string;
     type: WeaponType;
     slot: WeaponSlot;
+    icon: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
 export interface BeamWeapon extends Weapon {
     type: 'beam';
     baseDamage: number;
     range: number;
+    thickness: number;
+    animationType: 'beam' | 'pulse';
 }
 
 export interface ProjectileWeapon extends Weapon {
@@ -317,6 +322,8 @@ export type CombatEffect = {
     targetId: string;
     faction: string;
     delay: number; // in milliseconds
+    thickness: number;
+    animationType: 'beam' | 'pulse';
 } | {
     type: 'torpedo_hit';
     position: Position;

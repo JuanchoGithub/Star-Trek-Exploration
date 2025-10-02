@@ -16,15 +16,6 @@ const getPercentageCoords = (gridPos: { x: number; y: number }) => {
     return { x: `${x}%`, y: `${y}%` };
 };
 
-const getPhaserClass = (faction: string): string => {
-    const factionClass = faction.toLowerCase();
-    const validFactions = ['federation', 'klingon', 'romulan', 'pirate'];
-    if (validFactions.includes(factionClass)) {
-        return `phaser-beam ${factionClass}`;
-    }
-    return 'phaser-beam federation'; // Default to federation red for others
-};
-
 const getPointDefenseClass = (faction: string): string => {
     const factionClass = faction.toLowerCase();
     const validFactions = ['federation', 'klingon', 'romulan', 'pirate'];
@@ -56,7 +47,8 @@ const AnimatedPhaserBeam: React.FC<{
     phaserClass: string;
     animationDelay: number;
     yOffset: number;
-}> = ({ sourceId, targetId, entityRefs, containerRef, phaserClass, animationDelay, yOffset }) => {
+    thickness: number;
+}> = ({ sourceId, targetId, entityRefs, containerRef, phaserClass, animationDelay, yOffset, thickness }) => {
     const [endpoints, setEndpoints] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
     useEffect(() => {
@@ -108,8 +100,94 @@ const AnimatedPhaserBeam: React.FC<{
             x2={endpoints.x2}
             y2={endpoints.y2}
             className={phaserClass}
+            strokeWidth={thickness}
             style={{ animationDelay: `${animationDelay}ms` }}
         />
+    );
+};
+
+const AnimatedPulsePhaser: React.FC<{
+    sourceId: string;
+    targetId: string;
+    entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
+    containerRef: React.RefObject<HTMLDivElement>;
+    faction: string;
+    delay: number;
+}> = ({ sourceId, targetId, entityRefs, containerRef, faction, delay }) => {
+    const [animation, setAnimation] = useState<{ name: string; keyframes: string; angle: number } | null>(null);
+
+    const TRAVEL_DURATION = 300; // ms
+    const STAGGER = 100; // ms
+    const BOLT_COUNT = 3;
+
+    useEffect(() => {
+        const startTimer = setTimeout(() => {
+            const sourceEl = entityRefs.current?.[sourceId];
+            const targetEl = entityRefs.current?.[targetId];
+            const containerEl = containerRef.current;
+
+            if (!sourceEl || !targetEl || !containerEl) return;
+
+            const containerRect = containerEl.getBoundingClientRect();
+            const sourceRect = sourceEl.getBoundingClientRect();
+            const targetRect = targetEl.getBoundingClientRect();
+
+            const x1 = sourceRect.left - containerRect.left + sourceRect.width / 2;
+            const y1 = sourceRect.top - containerRect.top + sourceRect.height / 2;
+            const x2 = targetRect.left - containerRect.left + targetRect.width / 2;
+            const y2 = targetRect.top - containerRect.top + targetRect.height / 2;
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            const animationName = `pulse-fire-${Math.random().toString(36).substr(2, 9)}`;
+            const keyframes = `
+                @keyframes ${animationName} {
+                    0% {
+                        left: ${x1}px;
+                        top: ${y1}px;
+                        opacity: 1;
+                    }
+                    99% {
+                        left: ${x2}px;
+                        top: ${y2}px;
+                        opacity: 1;
+                    }
+                    100% {
+                        left: ${x2}px;
+                        top: ${y2}px;
+                        opacity: 0;
+                    }
+                }
+            `;
+            
+            setAnimation({ name: animationName, keyframes, angle });
+            
+        }, delay);
+        return () => clearTimeout(startTimer);
+    }, [sourceId, targetId, entityRefs, containerRef, delay]);
+
+    if (!animation) return null;
+
+    const factionClass = `pulse-phaser-bolt ${faction.toLowerCase()}`;
+
+    return (
+        <>
+            <style>{animation.keyframes}</style>
+            {Array.from({ length: BOLT_COUNT }).map((_, i) => (
+                <div
+                    key={i}
+                    className={factionClass}
+                    style={{
+                        transform: `rotate(${animation.angle}deg)`,
+                        animationName: animation.name,
+                        animationDuration: `${TRAVEL_DURATION}ms`,
+                        animationTimingFunction: 'linear',
+                        animationDelay: `${i * STAGGER}ms`,
+                        animationFillMode: 'forwards',
+                        opacity: 0,
+                    }}
+                />
+            ))}
+        </>
     );
 };
 
@@ -122,7 +200,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
         <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
             <svg width="100%" height="100%" className="overflow-visible">
                 {effects.map((effect, index) => {
-                    if (effect.type === 'phaser') {
+                    if (effect.type === 'phaser' && effect.animationType === 'beam') {
                         const source = entityMap.get(effect.sourceId);
                         const target = entityMap.get(effect.targetId);
                         if (!source || !target) return null;
@@ -139,7 +217,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                             }
                         }
                         
-                        const phaserClass = getPhaserClass(effect.faction);
+                        const phaserClass = `phaser-beam ${effect.faction.toLowerCase()}`;
 
                         return (
                            <AnimatedPhaserBeam
@@ -151,6 +229,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                                 phaserClass={phaserClass}
                                 animationDelay={effect.delay}
                                 yOffset={yOffset}
+                                thickness={effect.thickness}
                            />
                         );
                     }
@@ -192,6 +271,23 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
             </svg>
             {/* Non-SVG effects like explosions go here */}
             {effects.map((effect, index) => {
+                if (effect.type === 'phaser' && effect.animationType === 'pulse') {
+                    const source = entityMap.get(effect.sourceId);
+                    const target = entityMap.get(effect.targetId);
+                    if (!source || !target) return null;
+
+                    return (
+                        <AnimatedPulsePhaser
+                            key={`${effect.sourceId}-${effect.targetId}-${index}`}
+                            sourceId={effect.sourceId}
+                            targetId={effect.targetId}
+                            entityRefs={entityRefs}
+                            containerRef={containerRef}
+                            faction={effect.faction}
+                            delay={effect.delay}
+                        />
+                    );
+                }
                  if (effect.type === 'torpedo_hit') {
                     const coords = getPercentageCoords(effect.position);
                     const [color1, color2, color3] = getExplosionColors(effect.torpedoType);

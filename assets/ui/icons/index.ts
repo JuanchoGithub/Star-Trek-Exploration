@@ -11,6 +11,7 @@ export * from './SecurityIcon';
 export * from './ShieldIcon';
 export * from './ShuttleIcon';
 export * from './PhaserIcon';
+export * from './PulsePhaserIcon';
 export * from './TorpedoIcon';
 export * from './TransporterIcon';
 export * from './WeaponIcon';

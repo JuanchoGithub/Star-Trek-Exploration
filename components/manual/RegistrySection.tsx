@@ -23,23 +23,23 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; }> 
     // Federation
     'Sovereign-class': {
         description: 'The pinnacle of Starfleet engineering. This powerful dreadnought serves as a flagship, boasting formidable weaponry, advanced systems, and an exceptionally durable hull. The U.S.S. Endeavour is of this class.',
-        notes: 'Equipped with Quantum Torpedoes and a high-capacity shuttlebay for extensive away missions.',
+        notes: 'Armed with powerful Type X phasers and Quantum Torpedoes. Features a high-capacity shuttlebay for extensive away missions.',
     },
     'Constitution-class': {
         description: 'A legendary class of heavy cruiser designed for long-range exploration and defense. It represents a perfect balance between scientific capability and combat readiness.',
-        notes: 'A true multi-role vessel, capable in almost any situation.',
+        notes: 'Features a balanced loadout of Type VI phasers and standard photon torpedoes.',
     },
     'Galaxy-class': {
         description: 'A massive explorer-type vessel, designed for multi-generational missions into deep space. While not a dedicated warship, its immense size allows for incredibly powerful shields and robust systems, making it a defensive powerhouse.',
-        notes: 'Can perform saucer separation in extreme emergencies, though this feature is not implemented in this simulation.',
+        notes: 'Typically armed with Type IV to Type VI phaser arrays and photon torpedoes. Can perform saucer separation in extreme emergencies.',
     },
     'Intrepid-class': {
         description: 'A small, swift scout ship equipped with the latest sensor technology. It is one of the fastest and most maneuverable ships in the fleet, ideal for reconnaissance and rapid response.',
-        notes: 'Equipped with bio-neural gel packs for enhanced performance, but lacks heavy armor.',
+        notes: 'Armed with advanced Type VIII phaser arrays. Lacks heavy armor but possesses advanced sensor suites.',
     },
     'Defiant-class': {
         description: 'Originally designed to fight the Borg, this escort is little more than an engine with weapons attached. It is exceptionally powerful for its size but lacks amenities for long-term missions.',
-        notes: 'Possesses a rare, treaty-permitted cloaking device, making it an excellent anti-cloak platform. Use in non-Federation space may cause diplomatic incidents.',
+        notes: 'Features high-output Pulse Phaser Cannons and Quantum Torpedoes. Possesses a rare, treaty-permitted cloaking device.',
     },
     // Klingon
     'B\'rel-class Bird-of-Prey': {

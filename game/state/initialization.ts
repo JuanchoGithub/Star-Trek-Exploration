@@ -9,6 +9,7 @@ import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { uniqueId } from '../utils/ai';
 import { seededRandom, cyrb53 } from '../utils/helpers';
+import { WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI } from '../../assets/weapons/weaponRegistry';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -134,6 +135,18 @@ const createEntityFromTemplate = (
                     return acc;
                 }, {} as Ship['ammo']),
             } as Ship;
+
+            // Special case for Galaxy-class phaser randomization
+            if (newShip.shipClass === 'Galaxy-class') {
+                const phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
+                const chosenPhaser = phaserOptions[Math.floor(Math.random() * phaserOptions.length)];
+                
+                // Replace the default phaser with the randomly chosen one
+                const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam');
+                if (phaserIndex !== -1) {
+                    newShip.weapons[phaserIndex] = chosenPhaser;
+                }
+            }
 
             if (chosenFaction === 'Pirate' && Math.random() < 0.10) { // 10% chance
                 newShip.cloakingCapable = true;
@@ -368,4 +381,4 @@ export const createInitialGameState = (): GameState => {
     replayHistory: [],
     isDocked: false,
   };
-};
+}

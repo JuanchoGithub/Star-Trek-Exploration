@@ -82,9 +82,18 @@ export const processPlayerTurn = (
 
         if (weapon && target) {
             if (weapon.type === 'beam') {
-                const attackResult = fireBeamWeapon(target, weapon as BeamWeapon, player.targeting?.subsystem || null, ship, nextState);
-                nextState.combatEffects.push({ type: 'phaser', sourceId: ship.id, targetId: target.id, faction: ship.faction, delay: phaserDelay });
-                const message = generateBeamAttackLog(ship, target, weapon as BeamWeapon, attackResult);
+                const beamWeapon = weapon as BeamWeapon;
+                const attackResult = fireBeamWeapon(target, beamWeapon, player.targeting?.subsystem || null, ship, nextState);
+                nextState.combatEffects.push({ 
+                    type: 'phaser', 
+                    sourceId: ship.id, 
+                    targetId: target.id, 
+                    faction: ship.faction, 
+                    delay: phaserDelay,
+                    thickness: beamWeapon.thickness,
+                    animationType: beamWeapon.animationType,
+                });
+                const message = generateBeamAttackLog(ship, target, beamWeapon, attackResult);
                 addLog({ sourceId: 'player', sourceName: ship.name, message, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
             } else if (weapon.type === 'projectile') {
                 const projectileWeapon = weapon as ProjectileWeapon;
