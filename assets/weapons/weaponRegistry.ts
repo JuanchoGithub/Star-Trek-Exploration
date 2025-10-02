@@ -1,6 +1,9 @@
+
 import type { BeamWeapon, ProjectileWeapon, AmmoType } from '../../types';
 import { PhaserIcon, PulsePhaserIcon } from '../ui/icons';
 import { torpedoStats } from '../projectiles/configs/torpedoTypes';
+import { KlingonPulseDisruptorIcon, KlingonDisruptorIcon } from '../ui/icons/klingon';
+import { RomulanDisruptorIcon, RomulanPulseDisruptorIcon } from '../ui/icons/romulan';
 
 // Helper to create Phaser types
 const createPhaser = (type: number | string, name: string, damage: number, range: number, thickness: number): BeamWeapon => ({
@@ -39,6 +42,68 @@ export const WEAPON_PULSE_PHASER: BeamWeapon = {
     baseDamage: 40,
     range: 4,
     thickness: 6,
+    animationType: 'pulse',
+};
+
+// Helper to create Disruptor types
+const createKlingonDisruptor = (type: string, name: string, damage: number, range: number, thickness: number): BeamWeapon => ({
+    id: `disruptor_${type.toLowerCase()}`,
+    name,
+    type: 'beam',
+    slot: 'forward',
+    icon: KlingonDisruptorIcon,
+    baseDamage: damage,
+    range,
+    thickness,
+    animationType: 'beam',
+});
+
+// Klingon Disruptor Types
+export const WEAPON_DISRUPTOR_LIGHT = createKlingonDisruptor('Light', 'Light Disruptor', 35, 5, 5);
+export const WEAPON_DISRUPTOR_MEDIUM = createKlingonDisruptor('Medium', 'Medium Disruptor', 45, 6, 6);
+export const WEAPON_DISRUPTOR_HEAVY = createKlingonDisruptor('Heavy', 'Heavy Disruptor', 55, 6, 7);
+
+
+// Klingon Pulse Disruptors
+export const WEAPON_PULSE_DISRUPTOR: BeamWeapon = {
+    id: 'pulse_disruptor_cannon',
+    name: 'Pulse Disruptor Cannon',
+    type: 'beam',
+    slot: 'forward',
+    icon: KlingonPulseDisruptorIcon,
+    baseDamage: 65,
+    range: 4,
+    thickness: 8,
+    animationType: 'pulse',
+};
+
+// Helper to create Romulan Disruptor types
+const createRomulanDisruptor = (type: string, name: string, damage: number, range: number, thickness: number): BeamWeapon => ({
+    id: `romulan_disruptor_${type.toLowerCase()}`,
+    name,
+    type: 'beam',
+    slot: 'forward',
+    icon: RomulanDisruptorIcon,
+    baseDamage: damage,
+    range,
+    thickness,
+    animationType: 'beam',
+});
+
+// Romulan Disruptor Types (More accuracy/range, less raw damage)
+export const WEAPON_DISRUPTOR_ROMULAN_LIGHT = createRomulanDisruptor('Light', 'Romulan Light Disruptor', 30, 6, 4);
+export const WEAPON_DISRUPTOR_ROMULAN_MEDIUM = createRomulanDisruptor('Medium', 'Romulan Medium Disruptor', 40, 7, 5);
+
+// Romulan Pulse Disruptor (Scimitar)
+export const WEAPON_PULSE_DISRUPTOR_ROMULAN: BeamWeapon = {
+    id: 'romulan_pulse_disruptor',
+    name: 'Romulan Pulse Disruptor',
+    type: 'beam',
+    slot: 'forward',
+    icon: RomulanPulseDisruptorIcon,
+    baseDamage: 60,
+    range: 5,
+    thickness: 7,
     animationType: 'pulse',
 };
 

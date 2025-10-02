@@ -10,7 +10,13 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const PlasmaTorpedoWireframe: React.FC = () => (
     <WireframeSVG>
-        <path d="M 10 45 L 60 45 C 80 45 90 50 90 50 C 90 50 80 55 60 55 L 10 55 L 30 50 Z" />
-        <circle cx="50" cy="50" r="10" strokeDasharray="4 4" />
+        {/* Outer containment field */}
+        <circle cx="50" cy="50" r="40" />
+        {/* Swirling plasma core */}
+        <path d="M 50 20 A 30 30 0 0 1 80 50" />
+        <path d="M 50 20 A 30 30 0 0 0 20 50" />
+        <path d="M 50 80 A 30 30 0 0 1 20 50" />
+        <path d="M 50 80 A 30 30 0 0 0 80 50" />
+        <circle cx="50" cy="50" r="15" strokeDasharray="4 4" />
     </WireframeSVG>
 );

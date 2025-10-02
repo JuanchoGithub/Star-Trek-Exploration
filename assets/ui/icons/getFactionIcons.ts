@@ -1,3 +1,4 @@
+
 import { ThemeName } from '../../../themes';
 
 // Federation (default)
@@ -32,7 +33,7 @@ import { RomulanShieldIcon } from './romulan/RomulanShieldIcon';
 import { RomulanEngineIcon } from './romulan/RomulanEngineIcon';
 import { RomulanTorpedoIcon } from './romulan/RomulanTorpedoIcon';
 import { RomulanSecurityIcon } from './romulan/RomulanSecurityIcon';
-import { DisruptorIcon } from './romulan/DisruptorIcon';
+import { RomulanDisruptorIcon } from './romulan/RomulanDisruptorIcon';
 // FIX: Changed import path to be more specific and avoid module resolution issues.
 import { RomulanLogoIcon } from './romulan/RomulanLogoIcon';
 
@@ -73,7 +74,7 @@ const romulanIcons = {
     EngineIcon: RomulanEngineIcon,
     TorpedoIcon: RomulanTorpedoIcon,
     SecurityIcon: RomulanSecurityIcon,
-    StrikeTeamIcon: DisruptorIcon,
+    StrikeTeamIcon: RomulanDisruptorIcon,
     HailIcon: RomulanLogoIcon,
 };
 

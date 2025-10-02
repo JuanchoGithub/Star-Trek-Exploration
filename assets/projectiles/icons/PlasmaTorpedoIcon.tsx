@@ -4,12 +4,23 @@ import { BaseIcon } from '../../ui/icons/BaseIcon';
 export const PlasmaTorpedoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <BaseIcon {...props} viewBox="0 0 24 24">
         <defs>
-            <radialGradient id="plasmaGradient">
-                <stop offset="0%" stopColor="white" />
-                <stop offset="50%" stopColor="#6EE7B7" />
-                <stop offset="100%" stopColor="#10B981" />
+            <radialGradient id="plasmaGlowGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stopColor="white" stopOpacity="1"/>
+                <stop offset="60%" stopColor="#67E8F9" stopOpacity="0.8"/> {/* Lighter cyan */}
+                <stop offset="100%" stopColor="#0D9488" stopOpacity="0"/> {/* Darker teal */}
             </radialGradient>
+            <filter id="plasmaGlowFilter">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+            </filter>
         </defs>
-        <path d="M 2 9 L 14 9 C 18 9 22 10.5 22 12 C 22 13.5 18 15 14 15 L 2 15 L 7 12 Z" fill="url(#plasmaGradient)" />
+        
+        {/* Outer blurry glow */}
+        <circle cx="12" cy="12" r="11" fill="url(#plasmaGlowGradient)" filter="url(#plasmaGlowFilter)" />
+        
+        {/* Main energy ball */}
+        <circle cx="12" cy="12" r="9" fill="url(#plasmaGlowGradient)" />
+        
+        {/* Core */}
+        <circle cx="12" cy="12" r="4" fill="white" />
     </BaseIcon>
 );

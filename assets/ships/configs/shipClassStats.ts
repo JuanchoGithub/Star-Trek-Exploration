@@ -1,3 +1,4 @@
+
 import { ShipRole, ShipModel, ShipSubsystems, TorpedoType, BeamWeapon, ProjectileWeapon, AmmoType } from '../../../types';
 import {
     WEAPON_PHASER_TYPE_V,
@@ -9,7 +10,14 @@ import {
     WEAPON_TORPEDO_QUANTUM,
     WEAPON_TORPEDO_PLASMA,
     WEAPON_TORPEDO_HEAVY_PLASMA,
-    WEAPON_TORPEDO_HEAVY_PHOTON
+    WEAPON_TORPEDO_HEAVY_PHOTON,
+    WEAPON_PULSE_DISRUPTOR,
+    WEAPON_DISRUPTOR_LIGHT,
+    WEAPON_DISRUPTOR_MEDIUM,
+    WEAPON_DISRUPTOR_HEAVY,
+    WEAPON_DISRUPTOR_ROMULAN_LIGHT,
+    WEAPON_DISRUPTOR_ROMULAN_MEDIUM,
+    WEAPON_PULSE_DISRUPTOR_ROMULAN
 } from '../../weapons/weaponRegistry';
 
 // FIX: Exported the ShipClassStats interface to be used for type annotations.
@@ -176,7 +184,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 6 }, torpedoType: 'Photon',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PHOTON],
+            weapons: [WEAPON_DISRUPTOR_LIGHT, WEAPON_TORPEDO_PHOTON],
             ammo: { 'Photon': { max: 6 } },
         },
         'K\'t\'inga-class': {
@@ -187,7 +195,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 10 }, torpedoType: 'Photon',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PHOTON],
+            weapons: [WEAPON_DISRUPTOR_MEDIUM, WEAPON_TORPEDO_PHOTON],
             ammo: { 'Photon': { max: 10 } },
         },
         'Vor\'cha-class': {
@@ -198,7 +206,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 12 }, torpedoType: 'Photon',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PHOTON],
+            weapons: [WEAPON_DISRUPTOR_HEAVY, WEAPON_TORPEDO_PHOTON],
             ammo: { 'Photon': { max: 12 } },
         },
         'Negh\'Var-class': {
@@ -209,7 +217,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 18 }, torpedoType: 'HeavyPhoton',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_HEAVY_PHOTON],
+            weapons: [WEAPON_PULSE_DISRUPTOR, WEAPON_TORPEDO_HEAVY_PHOTON],
             ammo: { 'HeavyPhoton': { max: 18 } },
         },
     },
@@ -222,7 +230,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 15 }, torpedoType: 'HeavyPlasma',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_HEAVY_PLASMA],
+            weapons: [WEAPON_DISRUPTOR_ROMULAN_MEDIUM, WEAPON_TORPEDO_HEAVY_PLASMA],
             ammo: { 'HeavyPlasma': { max: 15 } },
         },
         'Valdore-type': {
@@ -233,7 +241,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 8 }, torpedoType: 'Plasma',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PLASMA],
+            weapons: [WEAPON_DISRUPTOR_ROMULAN_LIGHT, WEAPON_TORPEDO_PLASMA],
             ammo: { 'Plasma': { max: 8 } },
         },
         'Scimitar-class': {
@@ -244,7 +252,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // @deprecated
             torpedoes: { max: 25 }, torpedoType: 'HeavyPlasma',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_HEAVY_PLASMA],
+            weapons: [WEAPON_PULSE_DISRUPTOR_ROMULAN, WEAPON_TORPEDO_HEAVY_PLASMA],
             ammo: { 'HeavyPlasma': { max: 25 } },
         },
     },

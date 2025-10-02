@@ -5,3 +5,5 @@ export * from './KlingonTorpedoIcon';
 export * from './KlingonSecurityIcon';
 export * from './BatlethIcon';
 export * from './KlingonLogoIcon';
+export * from './KlingonPulseDisruptorIcon';
+export * from './KlingonDisruptorIcon';

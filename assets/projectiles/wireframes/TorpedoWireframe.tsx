@@ -10,7 +10,9 @@ const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export const TorpedoWireframe: React.FC = () => (
     <WireframeSVG>
-        <path d="M 10 45 L 60 45 C 80 45 90 50 90 50 C 90 50 80 55 60 55 L 10 55 L 30 50 Z" />
-        <line x1="10" y1="50" x2="70" y2="50" />
+        <circle cx="50" cy="50" r="30" />
+        <line x1="50" y1="10" x2="50" y2="90" />
+        <line x1="10" y1="50" x2="90" y2="50" />
+        <circle cx="50" cy="50" r="40" strokeDasharray="5 5" />
     </WireframeSVG>
 );

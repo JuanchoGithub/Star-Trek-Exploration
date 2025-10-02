@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 // Props definition
@@ -14,6 +13,7 @@ interface WeaponStatDisplayProps {
     phaserBaseDamage?: number;
     // For torpedo accuracy falloff
     torpedoAccuracy?: { range: number; chance: number }[];
+    projectileBaseDamage?: number;
 }
 
 
@@ -41,19 +41,23 @@ const PhaserRangeDisplay: React.FC<{ range: number, baseDamage: number }> = ({ r
     );
 };
 
-// Torpedo Accuracy Visualization
-const TorpedoAccuracyDisplay: React.FC<{ accuracyData: { range: number; chance: number }[] }> = ({ accuracyData }) => {
+// Torpedo Accuracy & Damage Visualization
+const ProjectileDamageDisplay: React.FC<{ accuracyData: { range: number; chance: number }[], baseDamage: number }> = ({ accuracyData, baseDamage }) => {
     return (
         <div className="flex flex-col">
             <div className="flex border border-border-dark">
-                {accuracyData.map(({ range, chance }) => (
-                     <div key={range} className="flex-1 text-center border-r border-border-dark last:border-r-0 p-1" style={{ opacity: Math.max(0.2, chance / 100) }}>
-                        <div className="text-xs text-text-disabled">Rng {range}</div>
-                        <div className="font-bold text-accent-sky">{chance}%</div>
-                    </div>
-                ))}
+                {accuracyData.map(({ range, chance }) => {
+                    const expectedDamage = Math.round(baseDamage * (chance / 100));
+                    return (
+                        <div key={range} className="flex-1 text-center border-r border-border-dark last:border-r-0 p-1" style={{ opacity: Math.max(0.2, chance / 100) }}>
+                            <div className="text-xs text-text-disabled">Rng {range}</div>
+                            <div className="font-bold text-accent-sky">{chance}%</div>
+                            <div className="text-xs text-accent-orange font-mono">({expectedDamage})</div>
+                        </div>
+                    );
+                })}
             </div>
-            <div className="text-xs text-text-disabled text-center mt-1">Hit Chance % at Range (Hexes)</div>
+            <div className="text-xs text-text-disabled text-center mt-1">Hit Chance % (Expected Damage) at Range</div>
         </div>
     );
 };
@@ -79,13 +83,13 @@ export const WeaponStatDisplay: React.FC<WeaponStatDisplayProps> = ({
     label,
     value, maxValue, unit, colorClass,
     phaserRange, phaserBaseDamage,
-    torpedoAccuracy
+    torpedoAccuracy, projectileBaseDamage
 }) => {
     let content;
     if (phaserRange && phaserBaseDamage) {
         content = <PhaserRangeDisplay range={phaserRange} baseDamage={phaserBaseDamage} />;
-    } else if (torpedoAccuracy) {
-        content = <TorpedoAccuracyDisplay accuracyData={torpedoAccuracy} />;
+    } else if (torpedoAccuracy && projectileBaseDamage) {
+        content = <ProjectileDamageDisplay accuracyData={torpedoAccuracy} baseDamage={projectileBaseDamage} />;
     } else if (value !== undefined && maxValue !== undefined) {
         content = <SimpleBarDisplay value={value} maxValue={maxValue} unit={unit} colorClass={colorClass || 'bg-primary-main'} />;
     }

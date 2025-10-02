@@ -4,12 +4,21 @@ import { BaseIcon } from '../../ui/icons/BaseIcon';
 export const TorpedoProjectileIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <BaseIcon {...props} viewBox="0 0 24 24">
         <defs>
-            <radialGradient id="torpedoGradient">
+            <radialGradient id="photonTorpedoGlow">
                 <stop offset="0%" stopColor="white" />
-                <stop offset="50%" stopColor="#FFD700" />
-                <stop offset="100%" stopColor="#FFA500" />
+                <stop offset="50%" stopColor="rgba(255, 204, 0, 0.9)" />
+                <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
             </radialGradient>
         </defs>
-        <path d="M 2 9 L 14 9 C 18 9 22 10.5 22 12 C 22 13.5 18 15 14 15 L 2 15 L 7 12 Z" fill="url(#torpedoGradient)" />
+        {/* Outer glow */}
+        <circle cx="12" cy="12" r="12" fill="url(#photonTorpedoGlow)" />
+        {/* Core ball */}
+        <circle cx="12" cy="12" r="6" fill="#fb923c" />
+        <circle cx="12" cy="12" r="3" fill="white" />
+        {/* Star flare */}
+        <g opacity="0.7" transform="rotate(45 12 12)">
+            <path d="M12 4 L12 20" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M4 12 L20 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+        </g>
     </BaseIcon>
 );

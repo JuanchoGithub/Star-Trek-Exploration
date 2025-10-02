@@ -1,5 +1,4 @@
 
-
 import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
@@ -106,6 +105,11 @@ export const fireBeamWeapon = (
 
     let hitChance = 0.9;
     
+    // Klingon Disruptors are less accurate than phasers. Romulan disruptors are not penalized.
+    if (weapon.name.toLowerCase().includes('disruptor') && !weapon.name.toLowerCase().includes('romulan')) {
+        hitChance *= 0.95;
+    }
+
     const isTargetInNebula = isPosInNebula(target.position, gameState.currentSector);
     if (isTargetInNebula) {
         hitChance *= 0.75;

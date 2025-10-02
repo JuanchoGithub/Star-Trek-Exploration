@@ -8,11 +8,18 @@ import {
     WEAPON_PHASER_TYPE_VIII,
     WEAPON_PHASER_TYPE_X,
     WEAPON_PULSE_PHASER,
+    WEAPON_PULSE_DISRUPTOR,
     WEAPON_TORPEDO_PHOTON, 
     WEAPON_TORPEDO_QUANTUM,
     WEAPON_TORPEDO_PLASMA,
     WEAPON_TORPEDO_HEAVY_PLASMA,
-    WEAPON_TORPEDO_HEAVY_PHOTON
+    WEAPON_TORPEDO_HEAVY_PHOTON,
+    WEAPON_DISRUPTOR_LIGHT,
+    WEAPON_DISRUPTOR_MEDIUM,
+    WEAPON_DISRUPTOR_HEAVY,
+    WEAPON_DISRUPTOR_ROMULAN_LIGHT,
+    WEAPON_DISRUPTOR_ROMULAN_MEDIUM,
+    WEAPON_PULSE_DISRUPTOR_ROMULAN
 } from '../../assets/weapons/weaponRegistry';
 import { BeamWeapon, ProjectileWeapon } from '../../types';
 import { WeaponStatDisplay } from './WeaponStatDisplay';
@@ -33,8 +40,8 @@ const WeaponDetail: React.FC<{ weapon: BeamWeapon | ProjectileWeapon, notes: str
     const torpedoConfig = isProjectile ? torpedoStats[projectileWeapon.ammoType] : null;
 
     const Icon = weapon.icon;
-    const iconColor = isProjectile && torpedoConfig ? torpedoConfig.colorClass : 'text-accent-red';
-    const borderColorClass = isBeam ? 'border-accent-red' : 'border-accent-sky';
+    const iconColor = isProjectile && torpedoConfig ? torpedoConfig.colorClass : (weapon.name.toLowerCase().includes('disruptor') ? 'text-accent-green' : 'text-accent-red');
+    const borderColorClass = isBeam ? (weapon.name.toLowerCase().includes('disruptor') ? 'border-accent-green' : 'border-accent-red') : 'border-accent-sky';
 
     return (
         <div className={`p-3 bg-bg-paper-lighter rounded border-l-4 ${borderColorClass} mb-4`}>
@@ -61,23 +68,16 @@ const WeaponDetail: React.FC<{ weapon: BeamWeapon | ProjectileWeapon, notes: str
                         />
                     </>
                 ) : (
-                    <>
-                        <WeaponStatDisplay 
-                            label="Warhead Damage"
-                            value={torpedoStats[(weapon as ProjectileWeapon).ammoType].damage}
-                            maxValue={100}
-                            colorClass="bg-accent-orange"
-                        />
-                        <WeaponStatDisplay 
-                            label="Accuracy Falloff"
-                            torpedoAccuracy={[
-                                { range: 1, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 1) * 100) },
-                                { range: 2, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 2) * 100) },
-                                { range: 3, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 3) * 100) },
-                                { range: 4, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 4) * 100) },
-                            ]}
-                        />
-                    </>
+                    <WeaponStatDisplay 
+                        label="Effective Damage by Range"
+                        projectileBaseDamage={torpedoStats[(weapon as ProjectileWeapon).ammoType].damage}
+                        torpedoAccuracy={[
+                            { range: 1, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 1) * 100) },
+                            { range: 2, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 2) * 100) },
+                            { range: 3, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 3) * 100) },
+                            { range: 4, chance: Math.round(getTorpedoHitChance((weapon as ProjectileWeapon).ammoType, 4) * 100) },
+                        ]}
+                    />
                 )}
                  <div className="col-span-full">
                     <dt className="font-bold text-text-secondary">Tactical Notes:</dt>
@@ -114,6 +114,38 @@ const phaserFalloffData = [
     { range: 1, modifier: '100%' }, { range: 2, modifier: '80%' }, { range: 3, modifier: '60%' },
     { range: 4, modifier: '40%' }, { range: 5, modifier: '20%' }, { range: 6, modifier: '20%' }
 ];
+
+const disruptorTypesKlingon = [
+    { weapon: WEAPON_DISRUPTOR_LIGHT, users: "Klingon Scouts (B'rel)" },
+    { weapon: WEAPON_DISRUPTOR_MEDIUM, users: "Klingon Cruisers (K't'inga)" },
+    { weapon: WEAPON_DISRUPTOR_HEAVY, users: "Klingon Attack Cruisers (Vor'cha)" },
+];
+
+const disruptorTypesRomulan = [
+    { weapon: WEAPON_DISRUPTOR_ROMULAN_LIGHT, users: "Romulan Scouts (Valdore)" },
+    { weapon: WEAPON_DISRUPTOR_ROMULAN_MEDIUM, users: "Romulan Warbirds (D'deridex)" },
+];
+
+
+const DamageFalloffCells: React.FC<{ weapon: BeamWeapon }> = ({ weapon }) => {
+    const falloff = [1, 0.8, 0.6, 0.4, 0.2, 0.2, 0.2, 0.2];
+    const segments = Array.from({ length: weapon.range });
+
+    return (
+        <div className="flex border border-border-dark" style={{ minWidth: `${weapon.range * 40}px` }}>
+            {segments.map((_, i) => {
+                const modifier = falloff[i] || falloff[falloff.length - 1];
+                const damage = Math.round(weapon.baseDamage * modifier);
+                return (
+                    <div key={i} className="flex-1 text-center border-r border-border-dark last:border-r-0 p-1 bg-black/20" style={{ opacity: Math.max(0.3, modifier) }}>
+                        <div className="text-xs text-text-disabled">{i + 1}</div>
+                        <div className="font-bold text-accent-green">{damage}</div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
 
 export const WeaponRegistrySection: React.FC = () => (
     <div>
@@ -187,6 +219,82 @@ export const WeaponRegistrySection: React.FC = () => (
             users="Federation Escorts (Defiant)"
             notes="Fires rapid, high-energy bolts instead of a continuous beam. It has a shorter range but delivers a powerful punch, making it devastating in close-quarters combat."
         />
+        <WeaponDetail 
+            weapon={WEAPON_PULSE_DISRUPTOR}
+            users="Klingon Battleships (Negh'Var)"
+            notes="A heavy, short-range cannon that fires discrete, high-energy plasma bolts. It is devastating at close range, but its significant power draw makes sustained fire difficult."
+        />
+        <WeaponDetail 
+            weapon={WEAPON_PULSE_DISRUPTOR_ROMULAN}
+            users="Romulan Command Ships (Scimitar)"
+            notes="A powerful pulse weapon designed for surgical strikes from cloak. It has better range than its Klingon counterpart but slightly less raw power, reflecting the Romulan preference for precision."
+        />
+
+        <SubHeader>Klingon Disruptor Cannons</SubHeader>
+        <p className="text-text-secondary mb-2">
+            The standard energy weapon of the Klingon Empire. Disruptors function by tearing matter apart at a molecular level. They are generally considered more powerful but less precise than Federation phasers, and follow the same damage falloff rules.
+        </p>
+        <div className="overflow-x-auto my-4">
+            <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-bg-paper-lighter">
+                    <tr>
+                        <th className="p-2 border border-border-dark font-bold">Type</th>
+                        <th className="p-2 border border-border-dark font-bold">Damage by Range (Hex)</th>
+                        <th className="p-2 border border-border-dark font-bold">Beam Profile</th>
+                        <th className="p-2 border border-border-dark font-bold">Primary Users</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {disruptorTypesKlingon.map(({ weapon, users }) => (
+                        <tr key={weapon.id} className="bg-bg-paper even:bg-black/20">
+                            <td className="p-2 border border-border-dark align-middle font-bold">{weapon.name}</td>
+                            <td className="p-2 border border-border-dark align-middle">
+                                <DamageFalloffCells weapon={weapon} />
+                            </td>
+                            <td className="p-2 border border-border-dark align-middle" style={{ minWidth: '100px' }}>
+                                <div className="w-full h-4 bg-black/50 flex items-center rounded-sm">
+                                    <div className="bg-accent-green" style={{ height: `${Math.max(1, weapon.thickness / 2)}px`, width: '100%', boxShadow: `0 0 ${weapon.thickness}px var(--color-accent-green)` }}></div>
+                                </div>
+                            </td>
+                            <td className="p-2 border border-border-dark align-middle">{users}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+
+        <SubHeader>Romulan Disruptor Beams</SubHeader>
+        <p className="text-text-secondary mb-2">
+           Romulan disruptor technology favors precision and range over the brute force of Klingon designs. While their base damage is lower, their superior range allows them to control engagements, making them ideal for sniper tactics from cloak. They are not penalized for accuracy like their Klingon counterparts.
+        </p>
+        <div className="overflow-x-auto my-4">
+            <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-bg-paper-lighter">
+                    <tr>
+                        <th className="p-2 border border-border-dark font-bold">Type</th>
+                        <th className="p-2 border border-border-dark font-bold">Damage by Range (Hex)</th>
+                        <th className="p-2 border border-border-dark font-bold">Beam Profile</th>
+                        <th className="p-2 border border-border-dark font-bold">Primary Users</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {disruptorTypesRomulan.map(({ weapon, users }) => (
+                        <tr key={weapon.id} className="bg-bg-paper even:bg-black/20">
+                            <td className="p-2 border border-border-dark align-middle font-bold">{weapon.name}</td>
+                            <td className="p-2 border border-border-dark align-middle">
+                                <DamageFalloffCells weapon={weapon} />
+                            </td>
+                            <td className="p-2 border border-border-dark align-middle" style={{ minWidth: '100px' }}>
+                                <div className="w-full h-4 bg-black/50 flex items-center rounded-sm">
+                                    <div className="bg-accent-green" style={{ height: `${Math.max(1, weapon.thickness / 2)}px`, width: '100%', boxShadow: `0 0 ${weapon.thickness}px var(--color-accent-green)` }}></div>
+                                </div>
+                            </td>
+                            <td className="p-2 border border-border-dark align-middle">{users}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
         
         <SubHeader>Projectile Launchers</SubHeader>
         <WeaponDetail 
