@@ -274,10 +274,10 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, shields: {health: 80, maxHealth: 80}, lifeSupport: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 3 }, shuttleCount: 1,
             // @deprecated
-            torpedoes: { max: 8 }, torpedoType: 'Photon',
+            torpedoes: { max: 8 }, torpedoType: 'Plasma',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PHOTON],
-            ammo: { 'Photon': { max: 8 } },
+            weapons: [WEAPON_PULSE_DISRUPTOR, WEAPON_TORPEDO_PLASMA],
+            ammo: { 'Plasma': { max: 8 } },
         },
         'Nausicaan Battleship': {
             name: 'Nausicaan Battleship', role: 'Battleship', ...NO_CLOAK, maxHull: 350, maxShields: 100,
@@ -285,10 +285,10 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, engines: {health: 80, maxHealth: 80}}),
             securityTeams: { max: 5 }, shuttleCount: 0,
             // @deprecated
-            torpedoes: { max: 12 }, torpedoType: 'HeavyPhoton',
+            torpedoes: { max: 0 }, torpedoType: 'None',
             // New weapon system
-            weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_HEAVY_PHOTON],
-            ammo: { 'HeavyPhoton': { max: 12 } },
+            weapons: [WEAPON_PULSE_PHASER],
+            ammo: {},
         },
     },
     Independent: {

@@ -1,3 +1,5 @@
+
+
 import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField, BeamWeapon, ProjectileWeapon, AmmoType } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
@@ -9,7 +11,19 @@ import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
 import { uniqueId } from '../utils/ai';
 import { seededRandom, cyrb53 } from '../utils/helpers';
-import { WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X } from '../../assets/weapons/weaponRegistry';
+import { 
+    WEAPON_PHASER_TYPE_IV, 
+    WEAPON_PHASER_TYPE_V, 
+    WEAPON_PHASER_TYPE_VI, 
+    WEAPON_PHASER_TYPE_VII, 
+    WEAPON_PHASER_TYPE_VIII, 
+    WEAPON_PHASER_TYPE_IX, 
+    WEAPON_PHASER_TYPE_X,
+    WEAPON_DISRUPTOR_LIGHT,
+    WEAPON_DISRUPTOR_ROMULAN_LIGHT,
+    WEAPON_TORPEDO_PHOTON,
+    WEAPON_TORPEDO_PLASMA
+} from '../../assets/weapons/weaponRegistry';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -136,6 +150,37 @@ const createEntityFromTemplate = (
                     return acc;
                 }, {} as Ship['ammo']),
             } as Ship;
+
+            if (newShip.shipModel === 'Pirate' && newShip.shipClass === 'Orion Raider') {
+                // Randomly assign energy weapon from a pool of lower-tier weapons
+                const energyWeapons = [
+                    WEAPON_PHASER_TYPE_IV,
+                    WEAPON_PHASER_TYPE_V,
+                    WEAPON_DISRUPTOR_LIGHT,
+                    WEAPON_DISRUPTOR_ROMULAN_LIGHT,
+                ];
+                const chosenEnergyWeapon = energyWeapons[Math.floor(rand() * energyWeapons.length)];
+            
+                // Randomly assign torpedo launcher
+                const torpedoLaunchers = [
+                    WEAPON_TORPEDO_PHOTON,
+                    WEAPON_TORPEDO_PLASMA,
+                ];
+                const chosenTorpedoLauncher = torpedoLaunchers[Math.floor(rand() * torpedoLaunchers.length)];
+            
+                newShip.weapons = [chosenEnergyWeapon, chosenTorpedoLauncher];
+                
+                // Set ammo for the chosen torpedo type
+                newShip.ammo = {
+                    [chosenTorpedoLauncher.ammoType]: { max: 4, current: 4 },
+                };
+                
+                // Update deprecated fields as well for consistency
+                newShip.torpedoes.max = 4;
+                newShip.torpedoes.current = 4;
+                // FIX: Property 'torpedoType' does not exist on type 'Ship'.
+                // newShip.torpedoType = chosenTorpedoLauncher.ammoType;
+            }
 
             if (newShip.shipModel === 'Federation') {
                 let phaserOptions: BeamWeapon[] = [];
