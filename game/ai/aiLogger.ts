@@ -1,8 +1,8 @@
 
-
 import type { Ship, Position, BeamWeapon, BeamAttackResult, TorpedoProjectile, TorpedoType } from '../../types';
 import type { AIStance } from './FactionAI';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
+import { PathfindingResult } from '../pathfinding';
 
 export interface StanceLogData {
     ship: Ship;
@@ -15,27 +15,62 @@ export interface StanceLogData {
     moveRationale: string;
     turn: number;
     defenseAction?: string | null;
+    pathfindingDetails?: PathfindingResult;
+}
+
+const formatPathfindingDetails = (details: PathfindingResult, stance: AIStance): string => {
+    if (!details.chosenMove) {
+        return '';
+    }
+
+    const isBalanced = stance === 'Balanced';
+
+    let content = '<div class="mt-2 text-xs space-y-1">';
+    
+    details.topCandidates.forEach(candidate => {
+        const isChosen = candidate.position.x === details.chosenMove!.position.x && candidate.position.y === details.chosenMove!.position.y;
+        const rowClass = isChosen ? 'bg-yellow-900/50 font-bold p-1 rounded' : 'bg-bg-paper-lighter/50 p-1 rounded';
+
+        content += `<div class="${rowClass} flex flex-wrap gap-x-3 gap-y-1 items-center">
+            <span class="font-mono"><b>Pos:</b> (${candidate.position.x},${candidate.position.y})</span>
+            <span class="font-mono" title="Threat Score"><b>Thr:</b> ${candidate.threatComponent.toFixed(1)}</span>
+            <span class="font-mono" title="Centrality Score"><b>Ctr:</b> ${candidate.centralityComponent.toFixed(1)}</span>
+            <span class="font-mono" title="Cover Score"><b>Cvr:</b> ${candidate.coverComponent.toFixed(1)}</span>`;
+        if (isBalanced) {
+            content += `<span class="font-mono" title="Range Score"><b>Rng:</b> ${(candidate.rangeComponent ?? 0).toFixed(1)}</span>`;
+        }
+        content += `<span class="font-mono ml-auto"><b>Total: ${candidate.finalScore.toFixed(1)}</b></span></div>`;
+    });
+
+    content += '</div>';
+    return content;
 }
 
 export const generateStanceLog = (data: StanceLogData): string => {
-    const { ship, stance, analysisReason, target, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn, defenseAction } = data;
+    const { ship, stance, analysisReason, target, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn, defenseAction, pathfindingDetails } = data;
 
     const stanceColor = stance === 'Aggressive' ? 'text-red-500' : stance === 'Defensive' ? 'text-cyan-400' : 'text-yellow-400';
     const moveActionColor = moveAction === 'MOVING' ? 'text-green-400' : 'text-yellow-400';
 
+    let pathfindingHtml = '';
+    if (pathfindingDetails) {
+        pathfindingHtml = formatPathfindingDetails(pathfindingDetails, stance);
+    }
+
     const logMessage = `
     <div class="${ship.logColor.replace('border-', 'text-')} font-bold">${ship.name} Turn Analysis (T${turn}):</div>
-    <div class="text-sm space-y-1 pl-2">
+    <div class="text-sm pl-2">
       <div class="font-bold">Threat Assessment:</div>
       <div>&nbsp;&nbsp;Target: ${target ? `<b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span>` : '<b>None</b>'}</div>
       <div>&nbsp;&nbsp;Targeted By: ${shipsTargetingMe.length > 0 ? `<b>${shipsTargetingMe.length} ship(s)</b>` : '<b>None</b>'} <span class="text-text-disabled">(Threat: ${ship.threatInfo?.total.toFixed(2) || '0.00'})</span></div>
       ${defenseAction ? `<div>&nbsp;&nbsp;Defense: <b class="text-orange-400">${defenseAction}</b></div>` : ''}
-      <div class="font-bold">Tactical Decision:</div>
+      <div class="font-bold mt-1">Tactical Decision:</div>
       <div>&nbsp;&nbsp;Stance: <b class="${stanceColor}">${stance}</b> <i class="text-text-disabled">(${analysisReason})</i></div>
       <div>&nbsp;&nbsp;Power: <span class="text-red-400">W:${ship.energyAllocation.weapons}%</span> <span class="text-cyan-400">S:${ship.energyAllocation.shields}%</span> <span class="text-green-400">E:${ship.energyAllocation.engines}%</span></div>
-      <div class="font-bold">Maneuver Execution:</div>
+      <div class="font-bold mt-1">Maneuver Execution:</div>
       <div>&nbsp;&nbsp;Action: <b class="${moveActionColor}">${moveAction}</b> from (${originalPosition.x},${originalPosition.y}) to (${ship.position.x},${ship.position.y})</div>
       <div>&nbsp;&nbsp;Rationale: <i>${moveRationale}</i></div>
+      ${pathfindingHtml}
     </div>
     `.replace(/\n/g, '').replace(/  +/g, ' ');
 
@@ -50,13 +85,13 @@ export const generateRecoveryLog = (ship: Ship, turn: number): string => {
     
     const logMessage = `
     <div class="${ship.logColor.replace('border-', 'text-')} font-bold">${ship.name} Turn Analysis (T${turn}):</div>
-    <div class="text-sm space-y-1 pl-2">
+    <div class="text-sm pl-2">
       <div class="font-bold">Threat Assessment:</div>
       <div>&nbsp;&nbsp;Target: <b>None</b></div>
-      <div class="font-bold">Tactical Decision:</div>
+      <div class="font-bold mt-1">Tactical Decision:</div>
       <div>&nbsp;&nbsp;Stance: <b class="text-blue-400">Recovery</b> <i class="text-text-disabled">(No threats detected)</i></div>
       <div>&nbsp;&nbsp;Power: <span class="text-red-400">W:${ship.energyAllocation.weapons}%</span> <span class="text-cyan-400">S:${ship.energyAllocation.shields}%</span> <span class="text-green-400">E:${ship.energyAllocation.engines}%</span></div>
-      <div class="font-bold">Maneuver Execution:</div>
+      <div class="font-bold mt-1">Maneuver Execution:</div>
       <div>&nbsp;&nbsp;Action: <b class="text-yellow-400">HOLDING</b> at (${ship.position.x},${ship.position.y})</div>
       <div>&nbsp;&nbsp;Rationale: <i>${repairTargetText}</i></div>
     </div>
@@ -86,14 +121,14 @@ export const generateFleeLog = (data: FleeLogData): string => {
 
     const logMessage = `
     <div class="text-yellow-400 font-bold">${ship.name} Turn Analysis (T${turn}):</div>
-     <div class="text-sm space-y-1 pl-2">
+     <div class="text-sm pl-2">
       <div class="font-bold">Threat Assessment:</div>
       <div>&nbsp;&nbsp;Primary Threat: <b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span></div>
        ${defenseAction ? `<div>&nbsp;&nbsp;Defense: <b class="text-orange-400">${defenseAction}</b></div>` : ''}
-      <div class="font-bold">Tactical Decision:</div>
+      <div class="font-bold mt-1">Tactical Decision:</div>
       <div>&nbsp;&nbsp;Stance: <b class="${stanceColor}">${stance}</b> <i class="text-text-disabled">(${analysisReason})</i></div>
       <div>&nbsp;&nbsp;Power: <span class="text-red-400">W:${ship.energyAllocation.weapons}%</span> <span class="text-cyan-400">S:${ship.energyAllocation.shields}%</span> <span class="text-green-400">E:${ship.energyAllocation.engines}%</span></div>
-      <div class="font-bold">Maneuver Execution:</div>
+      <div class="font-bold mt-1">Maneuver Execution:</div>
       <div>&nbsp;&nbsp;Action: <b class="${moveActionColor}">${moveAction}</b> from (${originalPosition.x},${originalPosition.y}) to (${ship.position.x},${ship.position.y})</div>
       <div>&nbsp;&nbsp;Rationale: <i>${moveRationale}</i></div>
     </div>

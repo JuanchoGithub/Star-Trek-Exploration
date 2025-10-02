@@ -1,7 +1,7 @@
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
-import { findClosestTarget } from '../../utils/ai';
+import { findClosestTarget, calculateOptimalEngagementRange } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
@@ -65,6 +65,7 @@ export class RomulanAI extends FactionAI {
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {
             const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            const optimalRange = calculateOptimalEngagementRange(ship, target);
 
             switch (stance) {
                 case 'Aggressive':
@@ -84,7 +85,7 @@ export class RomulanAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, optimalRange);
         } else {
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }

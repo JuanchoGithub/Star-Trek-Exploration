@@ -5,6 +5,30 @@ import { calculateDistance } from '../utils/ai';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../assets/configs/gameConstants';
 import { isPosInNebula, isDeepNebula } from '../utils/sector';
 
+// Exported interfaces for use in logger
+export interface MoveScoreDetails {
+    position: Position;
+    threatScore: number;
+    centralityScore: number;
+    coverScore: number;
+    rangeScore?: number;
+    finalScore: number;
+    // Component values for logging
+    threatComponent: number;
+    centralityComponent: number;
+    coverComponent: number;
+    rangeComponent?: number;
+}
+
+export interface PathfindingResult {
+    chosenMove: {
+        position: Position;
+        details: MoveScoreDetails;
+    } | null;
+    topCandidates: MoveScoreDetails[];
+    reason: string; // Top-level reason for no move or the chosen move's high-level logic
+}
+
 /**
  * Finds the most advantageous adjacent cell for a ship to move to based on its current tactical stance.
  * This function uses a sophisticated scoring system that evaluates:
@@ -24,8 +48,9 @@ export function findOptimalMove(
     potentialTargets: Ship[],
     gameState: GameState,
     allShipsInSector: Ship[],
-    stance: AIStance
-): { position: Position | null; reason: string; threatScore: number } {
+    stance: AIStance,
+    optimalRangeOverride?: number
+): PathfindingResult {
     const { currentSector } = gameState;
     const occupiedPositions = new Set(allShipsInSector.filter(s => s.id !== ship.id).map(s => `${s.position.x},${s.position.y}`));
 
@@ -44,7 +69,7 @@ export function findOptimalMove(
     );
 
     if (validCandidates.length === 0) {
-        return { position: null, reason: `All movement vectors are blocked. Holding position.`, threatScore: 0 };
+        return { chosenMove: null, topCandidates: [], reason: `All movement vectors are blocked. Holding position.` };
     }
 
     const coverPositions = new Set([
@@ -52,10 +77,9 @@ export function findOptimalMove(
         ...currentSector.entities.filter(e => e.type === 'asteroid_field').map(e => `${e.position.x},${e.position.y}`)
     ]);
 
-    let bestMove: { position: Position; score: number; reason: string; threatScore: number } | null = null;
+    const candidateDetails: MoveScoreDetails[] = [];
 
     for (const candidate of validCandidates) {
-        let score = 0;
         let reasons: string[] = [];
 
         // 1. Threat Score: Lower is better for Defensive, higher for Aggressive. Calculated from all enemies.
@@ -86,47 +110,79 @@ export function findOptimalMove(
 
         // 4. Combine scores based on stance
         const threatWeight = 50;
-        const centralityWeight = 0.5;
+        const defensiveCentralityWeight = 0.5;
+        const aggressiveCentralityWeight = 0.1;
+        const balancedCentralityWeight = 0.2; // A small weight to act as a tie-breaker
         const coverWeight = 1.5;
 
+        let threatComponent = 0;
+        let centralityComponent = 0;
+        let coverComponent = coverScore * coverWeight;
+        let rangeComponent: number | undefined = undefined;
+        let finalScore = 0;
+
         if (stance === 'Defensive') {
-            // Minimize threat, maximize centrality and cover.
-            score = (-threatScore * threatWeight) + (centralityScore * centralityWeight) + (coverScore * coverWeight);
+            threatComponent = -threatScore * threatWeight;
+            centralityComponent = centralityScore * defensiveCentralityWeight;
+            finalScore = threatComponent + centralityComponent + coverComponent;
         } else if (stance === 'Aggressive') {
-            // Maximize threat (get closer), but still value centrality and cover to avoid foolish charges.
-            score = (threatScore * threatWeight) - (centralityScore * 0.1) + (coverScore * coverWeight);
+            threatComponent = threatScore * threatWeight;
+            centralityComponent = centralityScore * aggressiveCentralityWeight; // Reward for moving to center
+            finalScore = threatComponent + centralityComponent + coverComponent;
         } else { // Balanced
-             const optimalRange = 4;
+             const optimalRange = optimalRangeOverride ?? 4;
              let distToClosest = 0;
              if (potentialTargets.length > 0) {
-// FIX: Corrected logic to calculate distance to the nearest target from the candidate position, resolving a type error and a "not defined" error.
                  distToClosest = Math.min(...potentialTargets.map(t => calculateDistance(candidate, t.position)));
              }
-             const rangeScore = -Math.abs(distToClosest - optimalRange) * 5;
-             score = rangeScore + (centralityScore * centralityWeight) + (coverScore * coverWeight);
+             const rangeScore = -Math.abs(distToClosest - optimalRange);
+             rangeComponent = rangeScore * 5;
+             centralityComponent = centralityScore * balancedCentralityWeight; // Re-introduce centrality with a low weight
+             finalScore = rangeComponent + coverComponent + centralityComponent;
         }
 
-        if (!bestMove || score > bestMove.score) {
-            // Construct a descriptive reason for the log
-            let reasonStr = '';
-            if (stance === 'Defensive') {
-                if (reasons.includes('deep cover')) reasonStr = 'Prioritizing move to deep nebula for concealment.';
-                else if (reasons.includes('cover')) reasonStr = 'Moving into nearby cover.';
-                else reasonStr = 'Seeking open space to prevent being boxed in.';
-            } else if (stance === 'Aggressive') {
-                if (reasons.includes('cover')) reasonStr = 'Advancing on target via available cover.';
-                else reasonStr = 'Closing to optimal attack range.';
-            } else { // Balanced
-                 reasonStr = 'Maneuvering to a balanced engagement distance.';
-            }
-
-            bestMove = { position: candidate, score, reason: reasonStr, threatScore };
-        }
-    }
-    
-    if (bestMove) {
-        return { position: bestMove.position, reason: bestMove.reason, threatScore: parseFloat(bestMove.threatScore.toFixed(2)) };
+        candidateDetails.push({
+            position: candidate,
+            threatScore,
+            centralityScore,
+            coverScore,
+            rangeScore: rangeComponent !== undefined ? -Math.abs(calculateDistance(candidate, potentialTargets[0]?.position || candidate) - (optimalRangeOverride ?? 4)) : undefined,
+            finalScore,
+            threatComponent,
+            centralityComponent,
+            coverComponent,
+            rangeComponent,
+        });
     }
 
-    return { position: null, reason: 'Could not determine optimal maneuver. Holding position.', threatScore: 0 };
+    if (candidateDetails.length === 0) {
+        return { chosenMove: null, topCandidates: [], reason: 'No valid moves found.' };
+    }
+
+    candidateDetails.sort((a, b) => b.finalScore - a.finalScore);
+
+    const bestMoveDetails = candidateDetails[0];
+    const topCandidates = candidateDetails.slice(0, 4);
+
+    let reasonStr = '';
+    if (stance === 'Defensive') {
+        if (bestMoveDetails.coverComponent > Math.abs(bestMoveDetails.threatComponent) && bestMoveDetails.coverScore > 0) reasonStr = 'Prioritizing move to cover.';
+        else if (bestMoveDetails.centralityComponent > Math.abs(bestMoveDetails.threatComponent)) reasonStr = 'Seeking open space to prevent being boxed in.';
+        else reasonStr = 'Maximizing distance from threats.';
+    } else if (stance === 'Aggressive') {
+        if (bestMoveDetails.coverComponent > bestMoveDetails.threatComponent && bestMoveDetails.coverScore > 0) reasonStr = 'Advancing on target via available cover.';
+        else reasonStr = 'Closing to optimal attack range.';
+    } else { // Balanced
+         if (bestMoveDetails.coverScore > 0 && Math.abs(bestMoveDetails.coverComponent) > Math.abs(bestMoveDetails.rangeComponent || 0)) reasonStr = 'Moving to utilize available cover.';
+         else reasonStr = 'Maneuvering to optimal engagement distance.';
+    }
+
+    return {
+        chosenMove: {
+            position: bestMoveDetails.position,
+            details: bestMoveDetails,
+        },
+        topCandidates,
+        reason: reasonStr
+    };
 }

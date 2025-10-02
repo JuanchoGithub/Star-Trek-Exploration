@@ -1,6 +1,6 @@
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { findClosestTarget, moveOneStep, uniqueId, calculateDistance } from '../../utils/ai';
+import { findClosestTarget, moveOneStep, uniqueId, calculateDistance, calculateOptimalEngagementRange } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
 import { determineGeneralStance, processCommonTurn, processRecoveryTurn } from './common';
 
@@ -63,6 +63,7 @@ export class FederationAI extends FactionAI {
             const target = findClosestTarget(ship, potentialTargets);
             if (target) {
                 const subsystemTarget = this.determineSubsystemTarget(ship, target);
+                const optimalRange = calculateOptimalEngagementRange(ship, target);
 
                 switch (stance) {
                     case 'Aggressive':
@@ -83,7 +84,7 @@ export class FederationAI extends FactionAI {
                         break;
                 }
                 
-                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
+                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, optimalRange);
             }
         } else { // Original non-hostile (ally/neutral) logic
             const { currentSector } = gameState;

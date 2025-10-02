@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect, BeamWeapon, ProjectileWeapon } from '../../../types';
 import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
@@ -115,7 +116,8 @@ export function processCommonTurn(
     subsystemTarget: keyof ShipSubsystems | null,
     stance: AIStance,
     analysisReason: string,
-    defenseActionTaken: string | null
+    defenseActionTaken: string | null,
+    optimalRangeOverride?: number
 ) {
     const primaryTarget = findClosestTarget(ship, potentialTargets);
     ship.currentTargetId = primaryTarget ? primaryTarget.id : null;
@@ -199,8 +201,8 @@ export function processCommonTurn(
 
     // --- MOVEMENT & LOGGING ---
     const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-    const moveResult = findOptimalMove(ship, potentialTargets, gameState, allShipsInSector, stance);
-    const moveTarget = moveResult.position;
+    const moveResult = findOptimalMove(ship, potentialTargets, gameState, allShipsInSector, stance, optimalRangeOverride);
+    const moveTarget = moveResult.chosenMove?.position;
     
     // Evasive Maneuvers Logic
     if (stance === 'Defensive' && (ship.hull / ship.maxHull) < 0.5) {
@@ -253,7 +255,8 @@ export function processCommonTurn(
     const moveRationale = ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5 ? 'Impulse Engines Offline!' : moveResult.reason;
 
     const finalLogMessage = generateStanceLog({
-        ship, stance, analysisReason, target: primaryTarget, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn: gameState.turn, defenseAction: defenseActionTaken
+        ship, stance, analysisReason, target: primaryTarget, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn: gameState.turn, defenseAction: defenseActionTaken,
+        pathfindingDetails: moveResult
     });
   
     actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: finalLogMessage, isPlayerSource: false, color: ship.logColor, category: 'stance' });

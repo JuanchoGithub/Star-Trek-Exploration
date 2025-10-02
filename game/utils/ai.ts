@@ -1,4 +1,4 @@
-import type { Position, Ship } from '../../types';
+import type { Position, Ship, BeamWeapon } from '../../types';
 
 export const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -61,4 +61,60 @@ export const calculateThreatInfo = (
         total: parseFloat(total.toFixed(2)),
         contributors: contributors.slice(0, 3).map(c => ({...c, score: parseFloat(c.score.toFixed(2))}))
     };
+};
+
+export const getPhaserEffectiveness = (distance: number, range: number): number => {
+    if (distance <= 0 || range <= 1) return 1.0;
+    // The -1 for range and distance accounts for range 1 being 100%
+    return Math.max(0.2, 1 - (distance - 1) / (range - 1));
+};
+
+export const calculateOptimalEngagementRange = (aiShip: Ship, targetShip: Ship): number => {
+    const getPrimaryPhaserRange = (ship: Ship): number => {
+        const beamWeapons = ship.weapons.filter(w => w.type === 'beam') as BeamWeapon[];
+        if (beamWeapons.length === 0) return 0;
+        return Math.max(...beamWeapons.map(w => w.range));
+    };
+
+    if (!targetShip.scanned) {
+        return 4; // Fallback to default safe range if target is not scanned
+    }
+
+    const aiShipMaxRange = getPrimaryPhaserRange(aiShip);
+    const targetShipMaxRange = getPrimaryPhaserRange(targetShip);
+
+    if (aiShipMaxRange <= 1 || targetShipMaxRange <= 1) {
+        return 3; // Fallback if one ship has no phasers or only range 1 phasers
+    }
+
+    // Case A: Out-ranging the enemy
+    if (aiShipMaxRange > targetShipMaxRange) {
+        let bestRange = -1;
+        let maxEffectivenessAtBestRange = -1;
+
+        // Iterate through possible engagement ranges
+        for (let r = 1; r <= aiShipMaxRange; r++) {
+            const myEffectiveness = getPhaserEffectiveness(r, aiShipMaxRange);
+            const enemyEffectiveness = getPhaserEffectiveness(r, targetShipMaxRange);
+
+            // Check if the "stand-off" conditions are met
+            if (enemyEffectiveness <= 0.2 && myEffectiveness >= 0.4) {
+                // We want the range that maximizes our damage, which is the closest valid range
+                if (bestRange === -1 || r < bestRange) {
+                    bestRange = r;
+                    maxEffectivenessAtBestRange = myEffectiveness;
+                }
+            }
+        }
+        // If a "sweet spot" is found, use it. Otherwise, fight just at the enemy's max range.
+        return bestRange !== -1 ? bestRange : targetShipMaxRange;
+    } 
+    // Case B: Out-ranged by the enemy
+    else if (aiShipMaxRange < targetShipMaxRange) {
+        return 2; // Close the distance to brawl
+    } 
+    // Case C: Matched range
+    else {
+        return 3; // Tactical compromise to balance offense and defense
+    }
 };

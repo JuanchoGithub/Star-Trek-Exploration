@@ -1,12 +1,28 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
 export const AIBehaviorSection: React.FC = () => (
     <div>
-        <SectionHeader>Appendix B: AI Doctrine Analysis (Revision 1.7)</SectionHeader>
+        <SectionHeader>Appendix B: AI Doctrine Analysis (Revision 1.8)</SectionHeader>
         <p className="text-red-400 font-bold tracking-widest text-sm">CLASSIFICATION: STARFLEET INTELLIGENCE - EYES ONLY</p>
         <p className="text-text-secondary my-4">This document provides a tactical overview of the current command logic ("Artificial Intelligence") governing non-player vessels in this simulation. The recent introduction of a phased turn system has allowed for a significant increase in AI tactical sophistication. Understanding these behavioral patterns is critical for predicting and countering enemy actions.</p>
+
+        <SubHeader>Weapon-Aware Pathfinding (Federation &amp; Romulan)</SubHeader>
+        <p className="text-text-secondary mb-2">
+            The standard 'Balanced' stance for Federation and Romulan captains has been upgraded with a dynamic engagement logic core. These AIs no longer adhere to a fixed optimal range. Instead, they perform a comparative analysis of their primary phaser system against their current target's primary phaser system at the start of their turn.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong className="text-accent-yellow">Stand-off Tactic (Out-ranging):</strong> If the AI ship possesses a longer-range phaser than its target, it will attempt to maintain a "stand-off" distance. It calculates the optimal range where its own phaser effectiveness is at least 40% while the enemy's is 20% or less. This allows them to "kite" shorter-ranged opponents.
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Closing Tactic (Out-ranged):</strong> If the AI ship is out-ranged by its target, it recognizes it cannot win a long-range duel. It will immediately attempt to close the distance to a close brawling range of 2 cells to bring its own weapons into their highest damage bracket.
+            </li>
+             <li>
+                <strong className="text-accent-yellow">Matched Range:</strong> If both ships have phasers of equal range, the AI will seek to engage at a tactically-sound range of 3 cells, balancing its own damage output against the risk of incoming fire.
+            </li>
+        </ul>
+
 
         <SubHeader>Core AI Capabilities</SubHeader>
         <p className="text-text-secondary mb-2">
@@ -94,28 +110,5 @@ export const AIBehaviorSection: React.FC = () => (
                 <strong className="text-accent-yellow">Special Case - Pirate Makeshift Cloak:</strong> Pirate cloaks are highly volatile. Each turn they are active, they have a chance to backfire, dealing significant damage to a random subsystem, or even cause the ship to self-destruct catastrophically.
             </li>
         </ul>
-
-        <SubHeader>Future AI Enhancements (Developer Notes)</SubHeader>
-        <p className="text-text-secondary mb-2">
-            Starfleet Command's wargaming division is actively developing more sophisticated AI logic. Captains should be prepared for future encounters with vessels exhibiting some or all of the following capabilities:
-        </p>
-        <div className="space-y-3">
-             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-accent-yellow">1. Role-Based Squadron Tactics</h4>
-                <p className="text-sm text-text-secondary">Future AI will exhibit behavior based on ship role. Escorts like the Defiant-class may actively screen larger vessels like a Galaxy-class, prioritizing the interception of incoming torpedoes. Scout ships will attempt to stay at long range, using their superior sensors to provide targeting data for the rest of the fleet via the C3 network.</p>
-            </div>
-            <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-accent-yellow">2. Coordinated Fire & Alpha Strikes</h4>
-                <p className="text-sm text-text-secondary">AI squadrons will learn to coordinate their attacks. Expect to see multiple ships launching torpedoes simultaneously to overwhelm your point-defense grid, or focusing all their phaser fire on a single, vulnerable shield facing to punch through your defenses.</p>
-            </div>
-             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-accent-yellow">3. Tactical Repositioning & Environmental Exploitation</h4>
-                <p className="text-sm text-text-secondary">AI will begin to use the environment with intent. A damaged ship may retreat into a nebula to mask its escape. A Romulan Warbird may lure you into an asteroid field, using the cover to decloak and fire at point-blank range. Expect to see "feigned retreats" designed to draw you into tactical disadvantages.</p>
-            </div>
-             <div className="p-3 bg-bg-paper-lighter rounded">
-                <h4 className="font-bold text-accent-yellow">4. Dynamic Morale & Player Adaptation</h4>
-                <p className="text-sm text-text-secondary">Future AI will track a 'morale' value. Destroying a squadron's command ship or eliminating a wingman in a single volley may cause remaining ships to break formation and attempt to flee. Furthermore, the AI will begin to learn from your behavior, noting your preferred subsystem targets and adjusting its own repair and power-allocation priorities to counter your strategy.</p>
-            </div>
-        </div>
     </div>
 );
