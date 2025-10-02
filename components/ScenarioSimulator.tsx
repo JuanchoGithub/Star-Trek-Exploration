@@ -1,9 +1,10 @@
 
+
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -428,14 +429,18 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { entitiesForDisplay, effectsForDisplay } = useMemo(() => {
         if (!currentGameState) { return { entitiesForDisplay: [], effectsForDisplay: [] }; }
     
+        const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
         const isReconstructing = isSteppingThroughEvents && playOrderIndex > -1;
+
+        // If we are at the very beginning of a turn's event playback, we should show the state from the end of the *previous* turn.
+        // This holds the final positions from the last turn and prevents both the "jump-to-end" and "snap-back" bugs.
+        if (isSteppingThroughEvents && playOrderIndex === -1) {
+            return { entitiesForDisplay: [...baseState.currentSector.entities], effectsForDisplay: [] };
+        }
     
         if (isReconstructing) {
             const turnEvents = currentGameState.turnEvents || [];
             
-            // This base state can be buggy for historyIndex === 0, but it's never hit as turn 1 has no events to step through.
-            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
-    
             const finalEntities = new Map(currentGameState.currentSector.entities.map(e => [e.id, e]));
             if (currentGameState.player.ship.id) {
                 finalEntities.set(currentGameState.player.ship.id, currentGameState.player.ship);
@@ -506,7 +511,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             return { entitiesForDisplay: entities, effectsForDisplay: effects };
         }
     
-        // Default case for live resolution, start of turn, and dogfight mode
+        // Default case: show the final state for the current turn if not reconstructing events.
         return { entitiesForDisplay: [...currentGameState.currentSector.entities], effectsForDisplay: currentGameState.combatEffects };
     }, [isSteppingThroughEvents, playOrderIndex, currentGameState, historyIndex, replayHistory, setupState.ships]);
 
