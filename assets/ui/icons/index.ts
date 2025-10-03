@@ -6,7 +6,6 @@ export * from './EngineIcon';
 export * from './EngineeringIcon';
 export * from './NavigationTargetIcon';
 export * from './RetreatIcon';
-export * from './ScanIcon';
 export * from './ScienceIcon';
 export * from './SecurityIcon';
 export * from './ShieldIcon';

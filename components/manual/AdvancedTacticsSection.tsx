@@ -48,7 +48,8 @@ const CloakingMechanicsTable: React.FC = () => (
 
 export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ themeName }) => {
     const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, CloakIcon } = getFactionIcons(themeName);
-    const { ScanIcon: FederationScanIcon } = getFactionIcons('federation');
+    // FIX: Replaced non-existent 'ScanIcon' with 'ScienceIcon' to resolve the error.
+    const { ScienceIcon: FederationScanIcon } = getFactionIcons('federation');
     
     return (
         <div>

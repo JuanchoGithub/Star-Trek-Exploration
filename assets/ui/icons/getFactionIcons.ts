@@ -11,7 +11,6 @@ import { ScienceIcon } from './ScienceIcon';
 import { EngineeringIcon } from './EngineeringIcon';
 import { TransporterIcon } from './TransporterIcon';
 import { DilithiumIcon } from './DilithiumIcon';
-import { ScanIcon } from './ScanIcon';
 import { RetreatIcon } from './RetreatIcon';
 import { StarfleetLogoIcon } from './StarfleetLogoIcon';
 import { ShuttleIcon } from './ShuttleIcon';
@@ -47,7 +46,6 @@ const federationIcons = {
     EngineeringIcon,
     TransporterIcon,
     DilithiumIcon,
-    ScanIcon,
     RetreatIcon,
     CloakIcon,
     HailIcon: StarfleetLogoIcon,
