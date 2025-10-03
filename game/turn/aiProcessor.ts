@@ -1,5 +1,4 @@
 
-
 import type { GameState, Ship } from '../../types';
 import { AIDirector } from '../ai/AIDirector';
 import type { AIActions } from '../ai/FactionAI';
@@ -9,10 +8,12 @@ import { findClosestTarget, calculateDistance } from '../utils/ai';
 
 export function processAITurns(
     gameState: GameState,
+    initialState: GameState, // Pass the state before any mutations this turn
     actions: AIActions,
     actedShipIds: Set<string>,
     allShipsInSector: Ship[],
-    mode: 'game' | 'dogfight' | 'spectate'
+    mode: 'game' | 'dogfight' | 'spectate',
+    claimedCellsThisTurn: Set<string>
 ) {
     const aiShips = (mode === 'spectate')
         ? allShipsInSector
@@ -20,9 +21,21 @@ export function processAITurns(
             ? allShipsInSector.filter(s => s.id !== 'player')
             : allShipsInSector.filter(s => s.allegiance !== 'player'); // dogfight
 
-    for (const ship of aiShips) {
+    const allegianceOrder: Record<Required<Ship>['allegiance'], number> = { player: 0, ally: 1, neutral: 2, enemy: 3 };
+    const sortedAiShips = aiShips.sort((a, b) => {
+        const aAllegiance = a.allegiance || 'neutral';
+        const bAllegiance = b.allegiance || 'neutral';
+        return allegianceOrder[aAllegiance] - allegianceOrder[bAllegiance];
+    });
+
+    for (const ship of sortedAiShips) {
         if (actedShipIds.has(ship.id)) continue;
-        if (ship.hull <= 0 || ship.isDerelict || ship.captureInfo) continue;
+        if (ship.hull <= 0 || ship.isDerelict || ship.captureInfo) {
+            // If a ship is destroyed or captured, it cannot move, so its position is now claimed.
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+            continue;
+        }
+
 
         const factionAI = AIDirector.getAIForFaction(ship.faction);
 
@@ -38,11 +51,31 @@ export function processAITurns(
             // Neutrals see everyone as a potential threat to flee from, but do not engage.
             allPossibleOpponents = allShipsInSector.filter(s => (s.allegiance === 'enemy' || s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
         }
+        
+        const shipInInitialState = (initialState.currentSector.entities.find(e => e.id === ship.id) || initialState.player.ship) as Ship;
+        const previousTargetId = shipInInitialState?.currentTargetId;
 
         const potentialTargets = allPossibleOpponents.filter(target => {
-            if (target.cloakState === 'cloaked') return false;
+            if (target.cloakState === 'cloaked' || target.cloakState === 'cloaking') return false;
             return canShipSeeEntity(target, ship, gameState.currentSector);
         });
+
+        // Check if the previous target is now hidden
+        if (previousTargetId) {
+            const isTargetNowHidden = !potentialTargets.some(t => t.id === previousTargetId);
+            if (isTargetNowHidden) {
+                const hiddenEnemy = allShipsInSector.find(s => s.id === previousTargetId);
+                if (hiddenEnemy) {
+                    if (!ship.hiddenEnemies) ship.hiddenEnemies = [];
+                    // Avoid adding duplicates
+                    if (!ship.hiddenEnemies.some(he => he.shipId === hiddenEnemy.id)) {
+                        ship.hiddenEnemies.push({ shipId: hiddenEnemy.id, lastKnownPosition: { ...hiddenEnemy.position } });
+                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Lost sensor lock on ${hiddenEnemy.name}. Logging last known coordinates.`, isPlayerSource: false, color: ship.logColor, category: 'info' });
+                    }
+                }
+            }
+        }
+
 
         const isDistressed = ship.hull / ship.maxHull < 0.3; // Distress at < 30% hull
         const closestEnemy = findClosestTarget(ship, potentialTargets);
@@ -71,11 +104,11 @@ export function processAITurns(
                 });
                 factionAI.processDesperationMove(ship, gameState, actions);
             } else {
-                factionAI.processTurn(ship, gameState, actions, potentialTargets);
+                factionAI.processTurn(ship, gameState, actions, potentialTargets, claimedCellsThisTurn, allShipsInSector);
             }
 
         } else {
-            factionAI.processTurn(ship, gameState, actions, potentialTargets);
+            factionAI.processTurn(ship, gameState, actions, potentialTargets, claimedCellsThisTurn, allShipsInSector);
         }
     }
 }

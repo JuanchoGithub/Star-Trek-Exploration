@@ -1,13 +1,25 @@
+
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance, calculateOptimalEngagementRange } from '../../utils/ai';
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { determineGeneralStance, processCommonTurn, processRecoveryTurn } from './common';
+import { determineGeneralStance, processCommonTurn, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
 
 export class FederationAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const closestTarget = findClosestTarget(ship, potentialTargets);
 
+        // Federation specific override for Preparing
+        if (ship.repairTarget === null) { // only check to switch if not actively repairing something specific
+            const healthPercent = ship.hull / ship.maxHull;
+            if (healthPercent >= 0.8) {
+                 const generalStance = determineGeneralStance(ship, potentialTargets);
+                 if(generalStance.stance === 'Preparing') {
+                     return { stance: 'Seeking', reason: `Repairs complete. Commencing search.` };
+                 }
+            }
+        }
+        
         if (closestTarget && closestTarget.shields <= 0) {
             // Only go aggressive if not critically damaged yourself
             if (ship.hull / ship.maxHull > 0.3) {
@@ -47,11 +59,23 @@ export class FederationAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions, gameState.turn);
+            processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Preparing') {
+            processPreparingTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Seeking') {
+            processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            return;
+        }
+        if (stance === 'Prowling') {
+            processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
             return;
         }
 
@@ -84,7 +108,7 @@ export class FederationAI extends FactionAI {
                         break;
                 }
                 
-                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, optimalRange);
+                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
             }
         } else { // Original non-hostile (ally/neutral) logic
             const { currentSector } = gameState;
@@ -93,13 +117,21 @@ export class FederationAI extends FactionAI {
             if (shuttles.length > 0) {
                 const closestShuttle = findClosestTarget(ship, shuttles as any);
                 if (closestShuttle) {
-                    ship.position = moveOneStep(ship.position, closestShuttle.position);
-                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, category: 'movement' });
+                    const nextPosition = moveOneStep(ship.position, closestShuttle.position);
+                    const posKey = `${nextPosition.x},${nextPosition.y}`;
+                    if (!claimedCellsThisTurn.has(posKey)) {
+                        ship.position = nextPosition;
+                        claimedCellsThisTurn.add(posKey);
+                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, category: 'movement' });
+                    } else {
+                        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to shuttles is blocked. Holding position.`, isPlayerSource: false, category: 'movement' });
+                    }
                     return;
                 }
-            } else {
-                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position.`, isPlayerSource: false, category: 'movement' });
             }
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position.`, isPlayerSource: false, category: 'movement' });
         }
     }
 

@@ -1,6 +1,7 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn } from './common';
+import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
 import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class PirateAI extends FactionAI {
@@ -14,6 +15,16 @@ export class PirateAI extends FactionAI {
         }
 
         const generalStance = determineGeneralStance(ship, potentialTargets);
+        // Pirate Specific override: give up easily
+        if (generalStance.stance === 'Seeking' && ship.hiddenEnemies && ship.hiddenEnemies.length > 2) {
+             if (Math.random() < 0.5) { // 50% chance to just give up if there are too many to hunt
+                ship.hiddenEnemies = [];
+                ship.seekingTarget = null;
+                ship.prowling = false;
+                return { stance: 'Recovery', reason: `This hunt is no longer profitable. Abandoning search.` };
+             }
+        }
+
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
@@ -69,15 +80,28 @@ export class PirateAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions, gameState.turn);
+            processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Preparing') {
+            processPreparingTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Seeking') {
+            processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            return;
+        }
+        if (stance === 'Prowling') {
+            processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
             return;
         }
 
@@ -103,8 +127,9 @@ export class PirateAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
         } else {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
     }

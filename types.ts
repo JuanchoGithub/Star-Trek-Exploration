@@ -138,6 +138,9 @@ export interface Ship extends BaseEntity {
     total: number;
     contributors: { sourceId: string; score: number }[];
   };
+  hiddenEnemies?: { shipId: string, lastKnownPosition: Position }[];
+  seekingTarget?: { shipId: string, lastKnownPosition: Position } | null;
+  prowling?: boolean;
 }
 
 export type PlanetClass = 'M' | 'J' | 'L' | 'D'; // M: Earth-like, J: Gas Giant, L: Barren/Marginal, D: Rock/Asteroid

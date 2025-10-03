@@ -14,6 +14,10 @@ export class IndependentAI extends FactionAI {
         const closestTarget = findClosestTarget(ship, primaryThreats);
 
         if (!closestTarget) {
+            // If there's a memory of a threat, continue to be defensive
+            if (ship.hiddenEnemies && ship.hiddenEnemies.length > 0) {
+                return { stance: 'Defensive', reason: 'Threat no longer visible, but maintaining evasive posture based on last known contact.' };
+            }
             return { stance: 'Recovery', reason: `No threats nearby. Resuming normal operations.` };
         }
         return { stance: 'Defensive', reason: `Threat detected (${closestTarget.name}). Attempting to flee.` };
@@ -23,7 +27,6 @@ export class IndependentAI extends FactionAI {
         return 'engines'; // Target engines to aid escape
     }
 
-    // FIX: Updated method signature and return type to match the base FactionAI class.
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {
         if (ship.subsystems.pointDefense.health > 0 && !ship.pointDefenseEnabled) {
             ship.pointDefenseEnabled = true;
@@ -41,20 +44,35 @@ export class IndependentAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
         
         if (stance === 'Recovery') {
-            // FIX: Added missing 'gameState.turn' argument.
-            processRecoveryTurn(ship, actions, gameState.turn);
+            ship.hiddenEnemies = []; // Clear threat memory when recovering
+            processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;
         }
 
         const enemyTargets = potentialTargets.filter(t => t.allegiance === 'enemy');
         const primaryThreats = enemyTargets.length > 0 ? enemyTargets : potentialTargets;
-        const target = findClosestTarget(ship, primaryThreats);
+        let target = findClosestTarget(ship, primaryThreats);
+        let threatPosition = target?.position;
 
-        if (!target) {
+        // If no visible target, but we remember a hidden one, flee from its last known position
+        if (!target && ship.hiddenEnemies && ship.hiddenEnemies.length > 0) {
+            // Find the closest last known position to flee from
+            let closestHiddenDist = Infinity;
+            for (const hidden of ship.hiddenEnemies) {
+                const dist = Math.hypot(ship.position.x - hidden.lastKnownPosition.x, ship.position.y - hidden.lastKnownPosition.y);
+                if (dist < closestHiddenDist) {
+                    closestHiddenDist = dist;
+                    threatPosition = hidden.lastKnownPosition;
+                }
+            }
+        }
+
+        if (!threatPosition) {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position, broadcasting distress signals.`, isPlayerSource: false, color: 'border-gray-400' });
             return;
         }
@@ -66,8 +84,8 @@ export class IndependentAI extends FactionAI {
         // Fleeing logic
         const originalPosition = { ...ship.position };
         const fleeTarget = {
-            x: ship.position.x + (ship.position.x - target.position.x),
-            y: ship.position.y + (ship.position.y - target.position.y),
+            x: ship.position.x + (ship.position.x - threatPosition.x),
+            y: ship.position.y + (ship.position.y - threatPosition.y),
         };
 
         let fleePosition = moveOneStep(ship.position, fleeTarget);
@@ -76,22 +94,23 @@ export class IndependentAI extends FactionAI {
         fleePosition.x = Math.max(0, Math.min(SECTOR_WIDTH - 1, fleePosition.x));
         fleePosition.y = Math.max(0, Math.min(SECTOR_HEIGHT - 1, fleePosition.y));
         
-        const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-        const isBlocked = allShipsInSector.some(s => s.id !== ship.id && s.position.x === fleePosition.x && s.position.y === fleePosition.y);
-        const didMove = !isBlocked && (fleePosition.x !== originalPosition.x || fleePosition.y !== originalPosition.y);
+        const posKey = `${fleePosition.x},${fleePosition.y}`;
+        const isBlocked = claimedCellsThisTurn.has(posKey);
         
-        const moveAction = didMove ? 'MOVING' : 'HOLDING';
+        let didMove = false;
         let moveRationale: string;
 
         if (isBlocked) {
             moveRationale = 'Path blocked by another vessel.';
-        } else if (!didMove) {
-            moveRationale = 'Cannot move further away from threat.';
         } else {
             ship.position = fleePosition;
+            didMove = (fleePosition.x !== originalPosition.x || fleePosition.y !== originalPosition.y);
             moveRationale = 'Maximizing distance from threat.';
         }
 
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+
+        const moveAction = didMove ? 'MOVING' : 'HOLDING';
         const shipsTargetingMe = allShipsInSector.filter(s => s.currentTargetId === ship.id);
 
         const logMessage = generateFleeLog({

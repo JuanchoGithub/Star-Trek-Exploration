@@ -1,6 +1,7 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
-import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
+import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
 import { findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
@@ -11,6 +12,13 @@ export class KlingonAI extends FactionAI {
         }
         
         const generalStance = determineGeneralStance(ship, potentialTargets);
+        // Klingon Specific override for Preparing
+        if (generalStance.stance === 'Preparing') {
+            const healthPercent = ship.hull / ship.maxHull;
+            if (healthPercent >= 0.5) { // Klingons are impatient, start seeking at 50% health
+                return { stance: 'Seeking', reason: `Repairs are sufficient. The hunt begins!` };
+            }
+        }
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
@@ -40,15 +48,28 @@ export class KlingonAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions, gameState.turn);
+            processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Preparing') {
+            processPreparingTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Seeking') {
+            processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            return;
+        }
+        if (stance === 'Prowling') {
+            processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
             return;
         }
 
@@ -79,8 +100,9 @@ export class KlingonAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
         } else {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
     }

@@ -2,11 +2,11 @@
 import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position, BeamWeapon } from '../../types';
 import { AIActions, AIStance } from '../ai/FactionAI';
 import { applyTorpedoDamage, fireBeamWeapon } from '../utils/combat';
-// FIX: Imported 'calculateThreatInfo' to resolve a "Cannot find name" error.
 import { calculateDistance, moveOneStep, uniqueId, findClosestTarget, calculateThreatInfo } from '../utils/ai';
 import { AIDirector } from '../ai/AIDirector';
 import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
 import { processPlayerTurn } from './player';
+import { processAITurns } from './aiProcessor';
 import { canShipSeeEntity } from '../utils/visibility';
 import { isCommBlackout } from '../utils/sector';
 import { handleBoardingTurn } from '../actions/boarding';
@@ -94,56 +94,37 @@ export const generatePhasedTurn = (
         addTurnEvent,
     };
 
-    const shipsInOrder = getShipsInTurnOrder(currentState, config.mode);
     const allShipsInSector = () => (config.mode === 'game')
         ? [currentState.player.ship, ...currentState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
         : currentState.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
     
+    const actedShipIds = new Set<string>();
+
     // --- PLAYER TURN ---
-    if (config.mode === 'game') {
+    if (config.mode === 'game' || config.mode === 'dogfight') {
         const playerResult = processPlayerTurn(currentState, config.playerTurnActions, currentNavTarget, currentSelectedId, addLog, addTurnEvent);
         currentNavTarget = playerResult.newNavigationTarget;
         currentSelectedId = playerResult.newSelectedTargetId;
+        actedShipIds.add(currentState.player.ship.id);
     }
     addStep(0); // Add step after player actions resolve
 
-    // --- AI TURNS ---
-    for (const ship of shipsInOrder) {
-        if (ship.id === 'player') continue; // Player already acted
-
-        let shipInState = allShipsInSector().find(s => s.id === ship.id);
-        if (!shipInState || shipInState.hull <= 0 || shipInState.isDerelict || shipInState.captureInfo) continue;
-        
-        const factionAI = AIDirector.getAIForFaction(shipInState.faction);
-        
-        let allPossibleOpponents: Ship[] = [];
-        if (shipInState.allegiance === 'enemy') {
-            allPossibleOpponents = allShipsInSector().filter(s => (s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
-        } else if (shipInState.allegiance === 'player' || shipInState.allegiance === 'ally') {
-            allPossibleOpponents = allShipsInSector().filter(s => s.allegiance === 'enemy' && s.hull > 0);
-        } else if (shipInState.allegiance === 'neutral') {
-            allPossibleOpponents = allShipsInSector().filter(s => (s.allegiance === 'enemy' || s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
-        }
-
-        const alliesWithComms = allShipsInSector().filter(s => 
-            s.allegiance === shipInState!.allegiance && 
-            s.hull > 0 &&
-            (s.id === shipInState!.id || !isCommBlackout(s.position, currentState.currentSector))
-        );
-
-        const potentialTargets = allPossibleOpponents.filter(target => {
-            if (target.cloakState === 'cloaked' || target.cloakState === 'cloaking') return false;
-
-            const isVisibleToAnyAlly = alliesWithComms.some(ally => 
-                canShipSeeEntity(target, ally, currentState.currentSector)
-            );
-
-            return isVisibleToAnyAlly;
-        });
-
-        factionAI.processTurn(shipInState, currentState, actions, potentialTargets);
-        addStep(0);
+    // --- MOVEMENT & COMBAT RESOLUTION ---
+    const claimedCellsThisTurn = new Set<string>();
+    // Add player's final position
+    if (currentState.player.ship.id) {
+        claimedCellsThisTurn.add(`${currentState.player.ship.position.x},${currentState.player.ship.position.y}`);
     }
+    // Add positions of non-ship entities
+    currentState.currentSector.entities.forEach(e => {
+        if (e.type !== 'ship' && e.type !== 'torpedo_projectile') {
+            claimedCellsThisTurn.add(`${e.position.x},${e.position.y}`);
+        }
+    });
+
+    // --- AI TURNS ---
+    processAITurns(currentState, initialState, actions, actedShipIds, allShipsInSector(), config.mode, claimedCellsThisTurn);
+    addStep(0);
     
     // --- POINT DEFENSE PHASE ---
     _handlePointDefense(currentState, allShipsInSector(), addLog, addTurnEvent);

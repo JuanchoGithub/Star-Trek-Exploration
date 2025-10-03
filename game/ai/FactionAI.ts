@@ -1,3 +1,4 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, BeamAttackResult } from '../../types';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
@@ -8,7 +9,7 @@ export interface AIActions {
     addTurnEvent: (event: string) => void;
 }
 
-export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced' | 'Recovery';
+export type AIStance = 'Aggressive' | 'Defensive' | 'Balanced' | 'Recovery' | 'Preparing' | 'Seeking' | 'Prowling';
 
 // Abstract base class for all faction-specific AI.
 export abstract class FactionAI {
@@ -22,12 +23,13 @@ export abstract class FactionAI {
     abstract handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null };
     
     // NEW abstract method for the main turn logic
-    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void;
+    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void;
 
     // The main turn processing method, now in the base class to enforce order of operations.
-    public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[]): void {
+    public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         // A ship in transition cannot take any actions. The log for this is now generated at the end of turn.
         if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return;
         }
 
@@ -39,6 +41,7 @@ export abstract class FactionAI {
             defenseActionTaken = defenseResult.defenseActionTaken;
             if (defenseResult.turnEndingAction) {
                 // The defensive action (e.g., cloaking) uses the whole turn.
+                claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
                 return; 
             }
         } else {
@@ -50,7 +53,7 @@ export abstract class FactionAI {
         }
         
         // Execute the main logic for the turn
-        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets, defenseActionTaken);
+        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
     }
     
     // This method will execute the desperation move.

@@ -8,10 +8,28 @@ import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../../assets/configs/gameConstan
 import { findOptimalMove } from '../pathfinding';
 import { generateRecoveryLog, generateStanceLog, generateBeamAttackLog, generateTorpedoLaunchLog } from '../aiLogger';
 import { fireBeamWeapon } from '../../utils/combat';
+import { isDeepNebula } from '../../utils/sector';
 
 export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
     const closestTarget = findClosestTarget(ship, potentialTargets);
-    if (!closestTarget || calculateDistance(ship.position, closestTarget.position) > 10) {
+
+    // FIX: Added logic to handle cases where there are no visible targets.
+    // No visible targets
+    if (!closestTarget) {
+        // If there are known hidden enemies, prepare for re-engagement
+        if (ship.hiddenEnemies && ship.hiddenEnemies.length > 0) {
+            const healthPercent = ship.hull / ship.maxHull;
+            if (healthPercent < 0.8) {
+                 return { stance: 'Preparing', reason: `Threat has vanished. Hull is at ${Math.round(healthPercent*100)}%. Repairing before re-engaging.` };
+            }
+            // If healthy, decide whether to seek or prowl
+            if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0 && Math.random() < 0.7) {
+                return { stance: 'Prowling', reason: `Threat has vanished. Engaging cloak to hunt.` };
+            }
+            return { stance: 'Seeking', reason: `Threat has vanished. Moving to last known coordinates to re-acquire.` };
+        }
+
+        // No visible targets AND no hidden enemies. Recover or idle.
         if (ship.hull < ship.maxHull || Object.values(ship.subsystems).some(s => s.health < s.maxHealth) || ship.energy.current < ship.energy.max * 0.9) {
              return { stance: 'Recovery', reason: `No threats nearby. Ship hull is at ${Math.round(ship.hull / ship.maxHull * 100)}% and energy is at ${Math.round(ship.energy.current / ship.energy.max * 100)}%. Entering recovery mode.` };
         }
@@ -69,7 +87,7 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
     return false; // No action taken
 }
 
-export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number): void {
+export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number, claimedCellsThisTurn: Set<string>): void {
     ship.currentTargetId = null;
     // Set energy allocation for recovery
     if (ship.energyAllocation.engines !== 100) {
@@ -102,11 +120,131 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number
         }
     }
     
+    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
     const logMessage = generateRecoveryLog(ship, turn);
 
     actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource: false, color: ship.logColor, category: 'stance' });
 }
 
+// FIX: Added missing exported functions
+export function processPreparingTurn(ship: Ship, actions: AIActions, turn: number, claimedCellsThisTurn: Set<string>): void {
+    // Similar to recovery, but with the intent of re-engaging. Maximize engines for power.
+    if (ship.energyAllocation.engines !== 100) {
+        ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
+    }
+
+    // Set repair target if not already set, prioritizing critical systems
+    if (!ship.repairTarget) {
+        const subsystemsToRepair: (keyof ShipSubsystems)[] = [
+            'lifeSupport', 'engines', 'weapons', 'shields', 'pointDefense', 'computer', 'transporter', 'shuttlecraft'
+        ];
+        let mostDamagedSystem: keyof ShipSubsystems | null = null;
+        let maxDamagePercent = 0;
+
+        for (const key of subsystemsToRepair) {
+            const system = ship.subsystems[key];
+            if (system && system.maxHealth > 0) {
+                const damagePercent = 1 - (system.health / system.maxHealth);
+                if (damagePercent > maxDamagePercent) {
+                    maxDamagePercent = damagePercent;
+                    mostDamagedSystem = key;
+                }
+            }
+        }
+
+        if (mostDamagedSystem && maxDamagePercent > 0.01) {
+            ship.repairTarget = mostDamagedSystem;
+        } else if (ship.hull < ship.maxHull) {
+            ship.repairTarget = 'hull';
+        }
+    }
+    
+    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position to repair and recharge before hunting for the vanished enemy.`, isPlayerSource: false, color: ship.logColor, category: 'stance' });
+}
+
+export function processSeekingTurn(ship: Ship, gameState: GameState, actions: AIActions, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+    if (!ship.hiddenEnemies || ship.hiddenEnemies.length === 0) {
+        ship.seekingTarget = null;
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Lost all contacts. Resuming patrol patterns.`, isPlayerSource: false, color: ship.logColor, category: 'movement' });
+        return;
+    }
+
+    // If not already seeking a specific target, pick the closest one.
+    if (!ship.seekingTarget) {
+        let closestDist = Infinity;
+        let closestHidden: { shipId: string, lastKnownPosition: Position } | null = null;
+        for (const hidden of ship.hiddenEnemies) {
+            const dist = calculateDistance(ship.position, hidden.lastKnownPosition);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestHidden = hidden;
+            }
+        }
+        ship.seekingTarget = closestHidden;
+    }
+
+    if (!ship.seekingTarget) { // Should not happen if hiddenEnemies has items, but a good guard.
+         claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+         actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Error in seeking logic. Resuming patrol.`, isPlayerSource: false, color: ship.logColor, category: 'system' });
+        return;
+    }
+
+    const targetPos = ship.seekingTarget.lastKnownPosition;
+    const distance = calculateDistance(ship.position, targetPos);
+
+    if (distance <= 0) {
+        // We are at the last known position. Remove it from memory.
+        ship.hiddenEnemies = ship.hiddenEnemies.filter(he => he.shipId !== ship.seekingTarget?.shipId);
+        ship.seekingTarget = null;
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Arrived at last known coordinates. No sign of the enemy. Continuing search.`, isPlayerSource: false, color: ship.logColor, category: 'movement' });
+    } else {
+        // Move towards the target
+        const nextPosition = moveOneStep(ship.position, targetPos);
+        const posKey = `${nextPosition.x},${nextPosition.y}`;
+        
+        if (claimedCellsThisTurn.has(posKey)) {
+             // Collision logic
+            const isDeep = isDeepNebula(nextPosition, gameState.currentSector);
+            if (isDeep) {
+                const blockerShip = allShipsInSector.find(s => s.position.x === nextPosition.x && s.position.y === nextPosition.y);
+                if (blockerShip) {
+                    const baseDamagePercent = 0.1 + Math.random() * 0.15;
+                    const moverMass = ship.maxHull;
+                    const blockerMass = blockerShip.maxHull;
+                    const totalMass = moverMass + blockerMass;
+                    const damageToMover = Math.round(baseDamagePercent * moverMass * (blockerMass / totalMass) * 2);
+                    const damageToBlocker = Math.round(baseDamagePercent * blockerMass * (moverMass / totalMass) * 2);
+
+                    ship.hull = Math.max(0, ship.hull - damageToMover);
+                    blockerShip.hull = Math.max(0, blockerShip.hull - damageToBlocker);
+
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Collision in deep nebula between ${ship.name} and ${blockerShip.name}! ${ship.name} takes ${damageToMover} damage, ${blockerShip.name} takes ${damageToBlocker} damage. ${ship.name}'s movement is blocked.`, isPlayerSource: false, color: 'border-orange-500', category: 'special' });
+                }
+            } else {
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to (${nextPosition.x},${nextPosition.y}) is blocked! Holding position.`, isPlayerSource: false, color: 'border-yellow-400', category: 'movement' });
+            }
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+        } else {
+            ship.position = nextPosition;
+            claimedCellsThisTurn.add(posKey);
+            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to intercept at last known coordinates (${targetPos.x}, ${targetPos.y}).`, isPlayerSource: false, color: ship.logColor, category: 'movement' });
+        }
+    }
+}
+
+export function processProwlingTurn(ship: Ship, gameState: GameState, actions: AIActions, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+    // If not cloaking or cloaked, something went wrong, revert to seeking.
+    if (ship.cloakState === 'visible' || ship.cloakState === 'decloaking') {
+        processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+        return;
+    }
+
+    // Prowling is just seeking while cloaked.
+    processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+}
 
 export function processCommonTurn(
     ship: Ship, 
@@ -117,6 +255,8 @@ export function processCommonTurn(
     stance: AIStance,
     analysisReason: string,
     defenseActionTaken: string | null,
+    claimedCellsThisTurn: Set<string>,
+    allShipsInSector: Ship[],
     optimalRangeOverride?: number
 ) {
     const primaryTarget = findClosestTarget(ship, potentialTargets);
@@ -149,6 +289,7 @@ export function processCommonTurn(
     ship.lastAttackerPosition = null;
 
     if (!primaryTarget) {
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: "Holding position, no targets in sight.", isPlayerSource: false, color: ship.logColor, category: 'info' });
         return;
     }
@@ -180,6 +321,7 @@ export function processCommonTurn(
                 actions.addTurnEvent(`LAUNCH TORPEDO: [${torpedo.id}] '${ship.name}' -> '${primaryTarget.name}' [${torpedo.name}]`);
                 actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource: false, color: ship.logColor, category: 'combat' });
             }
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return; // End turn after firing torpedo
         }
         
@@ -192,17 +334,18 @@ export function processCommonTurn(
                 ship.position = moveOneStep(ship.position, primaryTarget.position);
             }
         }
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
     }
 
     // Actions are disabled during cloak/decloak transitions
     if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
+        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
         return;
     }
 
     // --- MOVEMENT & LOGGING ---
-    const allShipsInSector = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
     const moveResult = findOptimalMove(ship, potentialTargets, gameState, allShipsInSector, stance, optimalRangeOverride);
-    const moveTarget = moveResult.chosenMove?.position;
+    const intendedPosition = moveResult.chosenMove?.position;
     
     // Evasive Maneuvers Logic
     if (stance === 'Defensive' && (ship.hull / ship.maxHull) < 0.5) {
@@ -216,15 +359,43 @@ export function processCommonTurn(
     }
 
     // Movement
-    if (moveTarget) {
+    let didMove = false;
+    if (intendedPosition) {
         if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
-            // Cannot move, log will be handled below
+            // Cannot move
         } else {
-            ship.position = moveTarget;
+            const posKey = `${intendedPosition.x},${intendedPosition.y}`;
+            if (claimedCellsThisTurn.has(posKey)) {
+                // Collision!
+                const isDeep = isDeepNebula(intendedPosition, gameState.currentSector);
+                if (isDeep) {
+                    const blockerShip = allShipsInSector.find(s => s.position.x === intendedPosition.x && s.position.y === intendedPosition.y);
+                    if (blockerShip) {
+                        const baseDamagePercent = 0.1 + Math.random() * 0.15;
+                        const moverMass = ship.maxHull;
+                        const blockerMass = blockerShip.maxHull;
+                        const totalMass = moverMass + blockerMass;
+                        const damageToMover = Math.round(baseDamagePercent * moverMass * (blockerMass / totalMass) * 2);
+                        const damageToBlocker = Math.round(baseDamagePercent * blockerMass * (moverMass / totalMass) * 2);
+
+                        ship.hull = Math.max(0, ship.hull - damageToMover);
+                        blockerShip.hull = Math.max(0, blockerShip.hull - damageToBlocker);
+
+                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Collision in deep nebula between ${ship.name} and ${blockerShip.name}! ${ship.name} takes ${damageToMover} damage, ${blockerShip.name} takes ${damageToBlocker} damage. ${ship.name}'s movement is blocked.`, isPlayerSource: false, color: 'border-orange-500', category: 'special' });
+                    }
+                } else {
+                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to (${intendedPosition.x},${intendedPosition.y}) is blocked! Holding position.`, isPlayerSource: false, color: 'border-yellow-400', category: 'movement' });
+                }
+            } else {
+                // No collision
+                ship.position = intendedPosition;
+                didMove = true;
+            }
         }
     }
+
+    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
     
-    const didMove = ship.position.x !== originalPosition.x || ship.position.y !== originalPosition.y;
     if (didMove) {
         actions.addTurnEvent(`MOVE: '${ship.name}' from (${originalPosition.x},${originalPosition.y}) to (${ship.position.x},${ship.position.y})`);
     } else {

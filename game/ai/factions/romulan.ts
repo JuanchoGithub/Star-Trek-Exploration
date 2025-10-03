@@ -1,11 +1,24 @@
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
-import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn } from './common';
+import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
 import { findClosestTarget, calculateOptimalEngagementRange } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
         const generalStance = determineGeneralStance(ship, potentialTargets);
+
+        // Romulan Specific override for Preparing
+        if (generalStance.stance === 'Preparing') {
+            const healthPercent = ship.hull / ship.maxHull;
+            if (healthPercent < 0.8) {
+                // Stay in Preparing state until healthier
+                return { stance: 'Preparing', reason: `Hull below optimal levels. Continuing preparations.`};
+            } else {
+                return { stance: 'Seeking', reason: `Ship is combat ready. Commencing search.`};
+            }
+        }
+
         if (generalStance.stance !== 'Balanced') {
             return generalStance;
         }
@@ -46,17 +59,39 @@ export class RomulanAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return; // Turn spent capturing
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
         if (stance === 'Recovery') {
-            processRecoveryTurn(ship, actions, gameState.turn);
+            processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;
         }
+        if (stance === 'Preparing') {
+            processPreparingTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
+            return;
+        }
+        if (stance === 'Seeking') {
+            // Romulan specific: Attempt to cloak while seeking
+            if (ship.cloakingCapable && ship.cloakState === 'visible' && ship.cloakCooldown <= 0) {
+                ship.cloakState = 'cloaking';
+                ship.cloakTransitionTurnsRemaining = 2;
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Engaging cloak to approach the last known coordinates of the enemy.`, isPlayerSource: false, color: ship.logColor, category: 'special' });
+                claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                return; // End turn after initiating cloak
+            }
+            processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            return;
+        }
+        if (stance === 'Prowling') {
+            processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            return;
+        }
+
 
         if (ship.repairTarget) {
             ship.repairTarget = null;
@@ -85,8 +120,9 @@ export class RomulanAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, optimalRange);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
         } else {
+             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });
         }
     }
