@@ -14,4 +14,3 @@ export * from './GalaxyGenerationSection';
 export * from './AIBehaviorSection';
 export * from './WeaponRegistrySection';
 export * from './WeaponStatDisplay';
-export * from './PhaserAnimationPreview';
