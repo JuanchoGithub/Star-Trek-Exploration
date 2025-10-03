@@ -1,4 +1,5 @@
 
+
 export * from './BaseIcon';
 export * from './DilithiumIcon';
 export * from './EngineIcon';
@@ -20,4 +21,3 @@ export * from './CloakIcon';
 // FIX: Export icons from subdirectories to make them available for import.
 export * from './klingon';
 export * from './romulan';
-export * from './BookIcon';
