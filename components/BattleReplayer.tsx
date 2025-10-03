@@ -4,7 +4,7 @@ import { ThemeName } from '../hooks/useTheme';
 import SectorView from './SectorView';
 import CombatFXLayer from './CombatFXLayer';
 import ReplayStatusPanel from './ReplayStatusPanel';
-import ReplayShipDetailPanel from './ReplayShipDetailPanel';
+import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import LogPanel from './LogPanel';
 import PlaybackControls from './PlaybackControls';
 
@@ -99,7 +99,7 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                     <aside className="relative flex flex-col gap-2 min-h-0">
                        <div className="flex-grow min-h-0 overflow-y-auto space-y-2 pr-2">
                             <ReplayStatusPanel gameState={currentGameState} themeName={themeName} />
-                            <ReplayShipDetailPanel selectedEntity={selectedEntity} themeName={themeName} turn={currentTurnForDisplay} gameState={currentGameState} />
+                            <SimulatorShipDetailPanel selectedEntity={selectedEntity} themeName={themeName} turn={currentTurnForDisplay} gameState={currentGameState} />
                         </div>
                        <div className="flex-shrink-0 panel-style p-2">
                             <button onClick={() => setIsLogExpanded(true)} className="btn btn-primary w-full">

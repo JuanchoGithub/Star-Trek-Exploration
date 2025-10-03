@@ -1,8 +1,8 @@
 // FIX: Removed invalid "--- START OF FILE components/QuadrantView.tsx ---" header.
 import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
-// FIX: PlayerShipIcon is not directly exported. It's an alias for FederationExplorerIcon.
-import { FederationExplorerIcon as PlayerShipIcon } from '../assets/ships/icons';
+// FIX: Corrected import to use GalaxyIcon, which is exported and represents an explorer-type vessel, instead of the non-existent FederationExplorerIcon.
+import { GalaxyIcon as PlayerShipIcon } from '../assets/ships/icons';
 import { ThemeName } from '../hooks/useTheme';
 
 // Seeded PRNG helpers from useGameLogic

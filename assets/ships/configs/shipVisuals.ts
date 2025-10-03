@@ -2,7 +2,7 @@ import React from 'react';
 import type { ShipModel } from '../../../types';
 
 import { 
-    FederationExplorerIcon, FederationCruiserIcon, FederationEscortIcon, FederationFreighterIcon, FederationDreadnoughtIcon, IntrepidIcon, DefiantIcon, GalaxyIcon
+    FederationCruiserIcon, FederationDreadnoughtIcon, IntrepidIcon, DefiantIcon, GalaxyIcon
 } from '../icons/federation';
 import { 
     BirdOfPreyIcon, KtingaIcon, VorchaIcon, NeghvarIcon
@@ -15,17 +15,15 @@ import {
     OrionRaiderIcon, FerengiMarauderIcon, NausicaanBattleshipIcon
 } from '../icons/pirate';
 import {
-    IndependentFreighterIcon, IndependentExplorerIcon
+    IndependentFreighterIcon
 } from '../icons/independent';
 import { UnknownShipIcon } from '../icons';
 
 import {
-    FederationExplorerWireframe, FederationCruiserWireframe, FederationEscortWireframe, FederationFreighterWireframe, FederationDreadnoughtWireframe,
-    FederationExplorerSaucerWireframe, FederationExplorerEngineeringWireframe,
+    FederationCruiserWireframe, FederationDreadnoughtWireframe,
+    // FIX: Removed imports for non-existent Explorer separation wireframes.
     FederationCruiserSaucerWireframe, FederationCruiserEngineeringWireframe,
-    FederationEscortSaucerWireframe, FederationEscortEngineeringWireframe,
     FederationDreadnoughtSaucerWireframe, FederationDreadnoughtEngineeringWireframe,
-    FederationFreighterSaucerWireframe, FederationFreighterEngineeringWireframe,
     IntrepidWireframe, DefiantWireframe, GalaxyWireframe,
 } from '../wireframes/federation';
 import {
@@ -38,7 +36,7 @@ import {
     OrionRaiderWireframe, FerengiMarauderWireframe, NausicaanBattleshipWireframe,
 } from '../wireframes/pirate';
 import {
-    IndependentFreighterWireframe, IndependentExplorerWireframe
+    IndependentFreighterWireframe
 } from '../wireframes/independent';
 import { UnknownShipWireframe } from '../wireframes';
 
@@ -76,8 +74,9 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
                 icon: GalaxyIcon, 
                 wireframe: GalaxyWireframe, 
                 colorClass: 'text-blue-400',
-                saucerWireframe: FederationExplorerSaucerWireframe,
-                engineeringWireframe: FederationExplorerEngineeringWireframe,
+                // FIX: Replaced non-existent Explorer wireframes with Cruiser wireframes as a fallback.
+                saucerWireframe: FederationCruiserSaucerWireframe,
+                engineeringWireframe: FederationCruiserEngineeringWireframe,
             },
             'Intrepid-class': { 
                 icon: IntrepidIcon, 
