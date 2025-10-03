@@ -12,7 +12,7 @@ import ShipStatus from './ShipStatus';
 import { SampleSector } from './manual/SampleSector';
 import { templateInfo } from './manual/templateInfo';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
-import { createSectorFromTemplate } from '../game/state/initialization';
+import { createSectorFromTemplate, createShip } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
 import { planetNames } from '../assets/planets/configs/planetNames';
 import { shipNames } from '../assets/ships/configs/shipNames';
@@ -52,69 +52,13 @@ const createSectorForSim = (templateId: string, seed: string): SectorState => {
 };
 
 const createShipForSim = (shipClass: ShipClassStats, faction: Ship['shipModel'], allegiance: Ship['allegiance'], position: {x:number, y:number}, name: string): Ship => {
-    const newShip: Ship = {
-        id: uniqueId(), name, type: 'ship', shipModel: faction,
-        shipClass: shipClass.name, shipRole: shipClass.role, faction: faction, position, hull: shipClass.maxHull,
-        maxHull: shipClass.maxHull, shields: 0, maxShields: shipClass.maxShields,
-        energy: { current: shipClass.energy.max, max: shipClass.energy.max },
-        energyAllocation: { weapons: 34, shields: 33, engines: 33 },
-        torpedoes: { current: shipClass.torpedoes.max, max: shipClass.torpedoes.max },
-        weapons: JSON.parse(JSON.stringify(shipClass.weapons)),
-        ammo: Object.keys(shipClass.ammo).reduce((acc, key) => {
-            const ammoType = key as AmmoType;
-            if (shipClass.ammo[ammoType]) {
-                acc[ammoType] = { current: shipClass.ammo[ammoType]!.max, max: shipClass.ammo[ammoType]!.max };
-            }
-            return acc;
-        }, {} as Ship['ammo']),
-        subsystems: JSON.parse(JSON.stringify(shipClass.subsystems)),
-        securityTeams: { current: shipClass.securityTeams.max, max: shipClass.securityTeams.max },
-        dilithium: { current: shipClass.dilithium.max, max: shipClass.dilithium.max }, scanned: true, evasive: false, retreatingTurn: null,
-        crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: 'border-gray-400',
-        lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0,
-        isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null,
-        isDerelict: false, captureInfo: null, pointDefenseEnabled: false, statusEffects: [],
-        allegiance, cloakingCapable: shipClass.cloakingCapable,
-        energyModifier: shipClass.energyModifier,
-        shieldReactivationTurn: null,
-        cloakInstability: 0,
-        cloakDestabilizedThisTurn: false,
-        cloakTransitionTurnsRemaining: null,
-        lastAttackerPosition: null,
-    };
+    const newShip = createShip(shipClass, faction, position, allegiance, name);
+    newShip.scanned = true;
     if (allegiance === 'player' || allegiance === 'ally') {
         newShip.logColor = 'border-blue-400';
     } else if (allegiance === 'enemy') {
         newShip.logColor = 'border-red-400';
     }
-
-    if (newShip.shipModel === 'Federation') {
-        let phaserOptions: BeamWeapon[] = [];
-        switch (newShip.shipClass) {
-            case 'Sovereign-class':
-                phaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X];
-                break;
-            case 'Constitution-class':
-                phaserOptions = [WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII];
-                break;
-            case 'Galaxy-class':
-                phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
-                break;
-            case 'Intrepid-class':
-                phaserOptions = [WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX];
-                break;
-        }
-
-        if (phaserOptions.length > 0) {
-            const chosenPhaser = phaserOptions[Math.floor(Math.random() * phaserOptions.length)];
-            
-            const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam' && w.animationType !== 'pulse');
-            if (phaserIndex !== -1) {
-                newShip.weapons[phaserIndex] = chosenPhaser;
-            }
-        }
-    }
-
     return newShip;
 };
 

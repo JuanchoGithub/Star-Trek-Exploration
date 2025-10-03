@@ -1,7 +1,7 @@
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { planetTypes } from '../../assets/planets/configs/planetTypes';
-import { NavigationTargetIcon } from '../../assets/ui/icons';
+import { NavigationTargetIcon, ScienceIcon } from '../../assets/ui/icons';
 import { SectionHeader, SubHeader } from './shared';
 
 export const UISection: React.FC = () => {
@@ -29,24 +29,31 @@ export const UISection: React.FC = () => {
                 </ul>
             </div>
             <SubHeader>Right Column: Ship Systems Status</SubHeader>
-            <p className="text-text-secondary">This column gives you a detailed, real-time overview of the U.S.S. Endeavour's status.</p>
+            <p className="text-text-secondary">This column gives you a detailed, real-time overview of the U.S.S. Endeavour's status. It contains several key sections, which are explained in full detail below.</p>
              <div className="mt-4 p-2 border border-border-dark rounded">
-                <div className="font-bold mb-2">1. Primary Status Bars</div>
+                <div className="font-bold mb-2">1. Primary Readouts & Resources</div>
                  <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                     <li><strong>Hull:</strong> Your ship's structural integrity. If this reaches zero, the Endeavour is destroyed.</li>
-                     <li><strong>Shields:</strong> Your main defense. Only active during Red Alert. Regenerates each turn based on power to shields.</li>
-                     <li><strong>Reserve Power:</strong> Used for combat actions and system upkeep during Red Alert. Recharges when not in combat.</li>
-                     <li><strong>Dilithium:</strong> A critical resource used for warping between quadrants and as an emergency power backup.</li>
+                     <li><strong>Core Status:</strong> Hull, Shields, Reserve Power, and Crew Morale.</li>
+                     <li><strong>Finite Resources:</strong> Dilithium for warping, Torpedoes for heavy combat, and Security teams for away missions.</li>
                  </ul>
                  <div className="font-bold mb-2 mt-4">2. Tactical Toggles</div>
                  <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
-                     <li><strong>Red Alert:</strong> Raises shields for combat. Drains reserve power each turn.</li>
-                     <li><strong>Evasive:</strong> Increases chance to evade attacks but costs more power. Requires Red Alert.</li>
-                     <li><strong>Damage Control:</strong> Assign your engineering crew to slowly repair the Hull or a damaged subsystem. This consumes power each turn.</li>
+                     <li><strong>Red Alert:</strong> Raises shields for combat.</li>
+                     <li><strong>Evasive:</strong> Increases chance to evade attacks (Requires Red Alert).</li>
+                     <li><strong>Cloak:</strong> Engages the cloaking device, if equipped.</li>
+                     <li><strong>Point-Defense:</strong> Activates automated lasers to intercept torpedoes.</li>
                  </ul>
-                 <div className="font-bold mb-2 mt-4">3. Energy Allocation</div>
-                 <p>Perhaps the most critical system. Distribute 100% of your main reactor's power between Weapons, Shields, and Engines. This directly impacts phaser damage, shield regeneration rate, and a passive evasion bonus.</p>
+                 <div className="font-bold mb-2 mt-4">3. Damage Control & Energy Allocation</div>
+                 <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2">
+                    <li><strong>Damage Control Assignment:</strong> Use this section to select a damaged subsystem or the hull for your repair teams to focus on.</li>
+                    <li><strong>Energy Allocation:</strong> Distribute main reactor power between Weapons, Shields, and Engines to dynamically adjust your ship's performance.</li>
+                 </ul>
              </div>
+            <SubHeader>Mobile & Touch Interface (PADDs)</SubHeader>
+            <p className="text-text-secondary">When operating on smaller, touch-enabled devices such as a PADD, the bridge interface adapts to a single-column layout to maximize screen space for the tactical view.</p>
+            <div className="mt-4 p-2 border border-border-dark rounded">
+                <p className="text-sm text-text-secondary">In this configuration, the right-hand "Ship Systems Status" column is hidden. To access it, tap the floating circular button labeled with a <ScienceIcon className="w-4 h-4 inline-block" /> systems icon, located in the bottom-right corner of your screen. This will open the full Ship Systems panel in a slide-out overlay from the right, providing access to all status readouts, tactical toggles, damage control, and energy allocation as normal.</p>
+            </div>
             <SubHeader>Dissecting the Ship Systems Status Panel</SubHeader>
             <p className="text-text-secondary mb-4">The right-hand panel provides a comprehensive, at-a-glance overview of the Endeavour's operational status. Mastering this display is key to effective command.</p>
             <div className="mt-4 p-2 border border-border-dark rounded space-y-4">

@@ -1,5 +1,4 @@
-
-import { ShipRole, ShipModel, ShipSubsystems, TorpedoType, BeamWeapon, ProjectileWeapon, AmmoType } from '../../../types';
+import { ShipRole, ShipModel, ShipSubsystems, TorpedoType, BeamWeapon, ProjectileWeapon, AmmoType, Ship } from '../../../types';
 import {
     WEAPON_PHASER_TYPE_V,
     WEAPON_PHASER_TYPE_VI,
@@ -24,7 +23,8 @@ import {
 export interface ShipClassStats {
     name: string;
     role: ShipRole;
-    cloakingCapable: boolean;
+    cloakChance?: number;
+    customCloakStats?: Ship['customCloakStats'];
     cloakEnergyCost: { initial: number; maintain: number };
     cloakFailureChance: number;
 
@@ -85,7 +85,7 @@ const R = (subsystems: Partial<ShipSubsystems>): ShipSubsystems => ({
     ...subsystems
 });
 
-const NO_CLOAK = { cloakingCapable: false, cloakEnergyCost: { initial: 0, maintain: 0 }, cloakFailureChance: 0 };
+const NO_CLOAK = { cloakEnergyCost: { initial: 0, maintain: 0 }, cloakFailureChance: 0 };
 
 const baselineConsumption: Record<keyof ShipSubsystems | 'base', number> = {
     weapons: 5, shields: 3, engines: 0, lifeSupport: 3, computer: 2,
@@ -164,7 +164,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ammo: { 'Photon': { max: 6 } },
         },
         'Defiant-class': {
-            name: 'Defiant-class', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 50 }, cloakFailureChance: 0.10, maxHull: 250, maxShields: 100,
+            name: 'Defiant-class', role: 'Escort', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 50 }, cloakFailureChance: 0.10, maxHull: 250, maxShields: 100,
             ...calculateDerivedStats(250, 100),
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, engines: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 4 }, shuttleCount: 1,
@@ -177,7 +177,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
     },
     Klingon: {
         'B\'rel-class Bird-of-Prey': {
-            name: 'B\'rel-class Bird-of-Prey', role: 'Escort', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 150, maxShields: 50,
+            name: 'B\'rel-class Bird-of-Prey', role: 'Escort', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 150, maxShields: 50,
             ...calculateDerivedStats(150, 50),
             subsystems: K({ weapons: {health: 140, maxHealth: 140}, engines: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 4 }, shuttleCount: 0,
@@ -199,7 +199,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ammo: { 'Photon': { max: 10 } },
         },
         'Vor\'cha-class': {
-            name: 'Vor\'cha-class', role: 'Attack Cruiser', cloakingCapable: false, ...NO_CLOAK, maxHull: 350, maxShields: 100,
+            name: 'Vor\'cha-class', role: 'Attack Cruiser', cloakChance: 0.8, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 350, maxShields: 100,
             ...calculateDerivedStats(350, 100),
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, shields: {health: 100, maxHealth: 100}}),
             securityTeams: { max: 8 }, shuttleCount: 0,
@@ -223,7 +223,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
     },
     Romulan: {
         'D\'deridex-class': {
-            name: 'D\'deridex-class', role: 'Warbird', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 400, maxShields: 100,
+            name: 'D\'deridex-class', role: 'Warbird', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 400, maxShields: 100,
             ...calculateDerivedStats(400, 100),
             subsystems: R({ weapons: {health: 180, maxHealth: 180}, shields: {health: 110, maxHealth: 110}}),
             securityTeams: { max: 7 }, shuttleCount: 0,
@@ -234,7 +234,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ammo: { 'HeavyPlasma': { max: 15 } },
         },
         'Valdore-type': {
-            name: 'Valdore-type', role: 'Scout', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 200, maxShields: 80,
+            name: 'Valdore-type', role: 'Scout', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 200, maxShields: 80,
             ...calculateDerivedStats(200, 80),
             subsystems: R({ weapons: {health: 120, maxHealth: 120}, engines: {health: 130, maxHealth: 130}}),
             securityTeams: { max: 3 }, shuttleCount: 0,
@@ -245,7 +245,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ammo: { 'Plasma': { max: 8 } },
         },
         'Scimitar-class': {
-            name: 'Scimitar-class', role: 'Command Ship', cloakingCapable: true, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 450, maxShields: 120,
+            name: 'Scimitar-class', role: 'Command Ship', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 450, maxShields: 120,
             ...calculateDerivedStats(450, 120),
             subsystems: R({ weapons: {health: 200, maxHealth: 200}, shields: {health: 140, maxHealth: 140}}),
             securityTeams: { max: 10 }, shuttleCount: 0,
@@ -258,7 +258,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
     },
     Pirate: {
         'Orion Raider': {
-            name: 'Orion Raider', role: 'Raider', ...NO_CLOAK, maxHull: 180, maxShields: 50,
+            name: 'Orion Raider', role: 'Raider', cloakChance: 0.1, ...NO_CLOAK, maxHull: 180, maxShields: 50,
             ...calculateDerivedStats(180, 50),
             subsystems: K({ weapons: {health: 80, maxHealth: 80}, engines: {health: 130, maxHealth: 130}}),
             securityTeams: { max: 2 }, shuttleCount: 0,
@@ -267,9 +267,10 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // New weapon system
             weapons: [WEAPON_PHASER_TYPE_V, WEAPON_TORPEDO_PHOTON],
             ammo: { 'Photon': { max: 4 } },
+            customCloakStats: { reliability: 0.60, powerCost: 70, subsystemDamageChance: 0.07, explosionChance: 0.001 },
         },
         'Ferengi Marauder': {
-            name: 'Ferengi Marauder', role: 'Marauder', ...NO_CLOAK, maxHull: 250, maxShields: 80,
+            name: 'Ferengi Marauder', role: 'Marauder', cloakChance: 0.1, ...NO_CLOAK, maxHull: 250, maxShields: 80,
             ...calculateDerivedStats(250, 80),
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, shields: {health: 80, maxHealth: 80}, lifeSupport: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 3 }, shuttleCount: 1,
@@ -278,9 +279,10 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // New weapon system
             weapons: [WEAPON_PULSE_DISRUPTOR, WEAPON_TORPEDO_PLASMA],
             ammo: { 'Plasma': { max: 8 } },
+            customCloakStats: { reliability: 0.60, powerCost: 70, subsystemDamageChance: 0.07, explosionChance: 0.001 },
         },
         'Nausicaan Battleship': {
-            name: 'Nausicaan Battleship', role: 'Battleship', ...NO_CLOAK, maxHull: 350, maxShields: 100,
+            name: 'Nausicaan Battleship', role: 'Battleship', cloakChance: 0.05, ...NO_CLOAK, maxHull: 350, maxShields: 100,
             ...calculateDerivedStats(350, 100),
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, engines: {health: 80, maxHealth: 80}}),
             securityTeams: { max: 5 }, shuttleCount: 0,
@@ -289,6 +291,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             // New weapon system
             weapons: [WEAPON_PULSE_PHASER],
             ammo: {},
+            customCloakStats: { reliability: 0.60, powerCost: 70, subsystemDamageChance: 0.07, explosionChance: 0.001 },
         },
     },
     Independent: {

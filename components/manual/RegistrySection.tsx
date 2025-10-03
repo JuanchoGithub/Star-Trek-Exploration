@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -53,8 +51,8 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; }> 
         notes: 'Relies on brute force and heavy forward disruptor cannons.',
     },
     'Vor\'cha-class': {
-        description: "A modern Klingon attack cruiser that balances firepower, durability, and maneuverability. Some variants are equipped with cloaking devices, making them a versatile and unpredictable mid-game threat.",
-        notes: 'Often serves as a command ship for smaller battle groups.',
+        description: "A modern Klingon attack cruiser that balances firepower, durability, and maneuverability, making it a versatile and unpredictable mid-game threat.",
+        notes: 'Intelligence reports indicate that approximately 80% of Vor\'cha-class vessels are equipped with a cloaking device, making them a significant ambush threat. Often serves as a command ship for smaller battle groups.',
     },
     'Negh\'Var-class': {
         description: 'The largest and most powerful warship in the Klingon fleet. A true battleship, it is slow but immensely powerful, capable of withstanding incredible punishment while delivering devastating barrages.',
@@ -188,6 +186,15 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
     const shieldRating = getQualitativeRating(shipClass.maxShields, [60, 90, 110, 130]);
     const hullRating = getQualitativeRating(shipClass.maxHull, [200, 300, 400, 500]);
 
+    let cloakDisplayValue = 'No';
+    if (shipClass.cloakChance) {
+        if (shipClass.cloakChance === 1.0) {
+            cloakDisplayValue = `Yes (${shipClass.cloakEnergyCost.maintain} Pwr/turn)`;
+        } else {
+            cloakDisplayValue = `${shipClass.cloakChance * 100}% Chance`;
+        }
+    }
+
     return (
         <div className="mb-6 p-3 bg-bg-paper-lighter rounded">
             <div className="flex items-start gap-4 mb-3">
@@ -209,7 +216,7 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                         <StatRating label="Weapon Power" value={weaponRating} />
                         <StatRating label="Energy Reserves" value={String(shipClass.energy.max)} />
                         <StatRating label="Dilithium Stores" value={String(shipClass.dilithium.max)} />
-                        <StatRating label="Cloaking Device" value={shipClass.cloakingCapable ? `Yes (${shipClass.cloakEnergyCost.maintain} Pwr/turn)` : 'No'} />
+                        <StatRating label="Cloaking Device" value={cloakDisplayValue} />
                         <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
                         <div className="col-span-full">
                             <dt className="text-xs font-bold uppercase text-text-disabled">Special Notes</dt>

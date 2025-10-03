@@ -11,7 +11,8 @@ const createMockShip = (id: string, model: ShipModel, className: string): Ship =
     return {
         id, name, type: 'ship', shipModel: model, shipRole: stats.role, faction: model,
         shipClass: stats.name,
-        cloakingCapable: stats.cloakingCapable,
+        // FIX: The ShipClassStats interface uses `cloakChance`, not `cloakingCapable`.
+        cloakingCapable: !!stats.cloakChance,
         position: { x: 0, y: 0 }, hull: stats.maxHull, maxHull: stats.maxHull,
         shields: stats.maxShields, maxShields: stats.maxShields,
         subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, dilithium: {} as any,

@@ -1,5 +1,3 @@
-
-
 import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField, BeamWeapon, ProjectileWeapon, AmmoType } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
@@ -24,6 +22,7 @@ import {
     WEAPON_TORPEDO_PHOTON,
     WEAPON_TORPEDO_PLASMA
 } from '../../assets/weapons/weaponRegistry';
+import { factionDefaults } from '../../assets/ships/configs/factionDefaults';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -95,6 +94,77 @@ const generateNebulaField = (rand: () => number): Position[] => {
     });
 };
 
+export const createShip = (
+    baseStats: ShipClassStats,
+    faction: Ship['shipModel'],
+    position: Position,
+    allegiance: Ship['allegiance'],
+    name: string,
+    rand: () => number = Math.random
+): Ship => {
+    const newShip: Ship = {
+        id: uniqueId(), name, type: 'ship', shipModel: faction,
+        shipClass: baseStats.name, shipRole: baseStats.role,
+        // Cloaking capability is determined by random chance based on the class stats.
+        cloakingCapable: !!baseStats.cloakChance && rand() < baseStats.cloakChance,
+        faction: faction, position, allegiance, hull: baseStats.maxHull, maxHull: baseStats.maxHull, shields: 0, maxShields: baseStats.maxShields,
+        energy: { current: baseStats.energy.max, max: baseStats.energy.max }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
+        subsystems: JSON.parse(JSON.stringify(baseStats.subsystems)), securityTeams: { current: baseStats.securityTeams.max, max: baseStats.securityTeams.max },
+        dilithium: { current: baseStats.dilithium.max, max: baseStats.dilithium.max }, scanned: false, evasive: false, retreatingTurn: null,
+        crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: 'border-gray-400',
+        lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
+        cloakInstability: 0, cloakDestabilizedThisTurn: false,
+        cloakTransitionTurnsRemaining: null,
+        isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
+        statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: baseStats.energyModifier,
+        lastAttackerPosition: null,
+        // @deprecated
+        torpedoes: { current: baseStats.torpedoes.max, max: baseStats.torpedoes.max },
+        // New weapon system
+        weapons: JSON.parse(JSON.stringify(baseStats.weapons)),
+        ammo: Object.keys(baseStats.ammo).reduce((acc, key) => {
+            acc[key as AmmoType] = { current: baseStats.ammo[key as AmmoType]!.max, max: baseStats.ammo[key as AmmoType]!.max };
+            return acc;
+        }, {} as Ship['ammo']),
+    };
+
+    // --- PROBABILISTIC AND SPECIAL LOGIC ---
+    
+    // If a cloak was added via chance, check for custom stats (for pirates)
+    if (newShip.cloakingCapable && baseStats.customCloakStats) {
+        newShip.customCloakStats = { ...baseStats.customCloakStats };
+    }
+
+    // Pirate Raider Random Loadout
+    if (newShip.shipModel === 'Pirate' && newShip.shipClass === 'Orion Raider') {
+        const energyWeapons = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_DISRUPTOR_LIGHT, WEAPON_DISRUPTOR_ROMULAN_LIGHT];
+        const chosenEnergyWeapon = energyWeapons[Math.floor(rand() * energyWeapons.length)];
+        const torpedoLaunchers = [WEAPON_TORPEDO_PHOTON, WEAPON_TORPEDO_PLASMA];
+        const chosenTorpedoLauncher = torpedoLaunchers[Math.floor(rand() * torpedoLaunchers.length)];
+        newShip.weapons = [chosenEnergyWeapon, chosenTorpedoLauncher];
+        newShip.ammo = { [chosenTorpedoLauncher.ammoType]: { max: 4, current: 4 } };
+        newShip.torpedoes = { max: 4, current: 4 };
+    }
+
+    // Federation Random Phaser Loadout
+    if (newShip.shipModel === 'Federation') {
+        let phaserOptions: BeamWeapon[] = [];
+        switch (newShip.shipClass) {
+            case 'Sovereign-class': phaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X]; break;
+            case 'Constitution-class': phaserOptions = [WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII]; break;
+            case 'Galaxy-class': phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI]; break;
+            case 'Intrepid-class': phaserOptions = [WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX]; break;
+        }
+        if (phaserOptions.length > 0) {
+            const chosenPhaser = phaserOptions[Math.floor(rand() * phaserOptions.length)];
+            const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam' && w.animationType !== 'pulse');
+            if (phaserIndex !== -1) newShip.weapons[phaserIndex] = chosenPhaser;
+        }
+    }
+
+    return newShip;
+};
+
 const createEntityFromTemplate = (
     template: any, position: Position, factionOwner: FactionOwner,
     availableShipNames: Record<string, string[]>, availablePlanetNames: Record<string, string[]>, colorIndex: { current: number },
@@ -123,102 +193,10 @@ const createEntityFromTemplate = (
                 allegiance = 'enemy';
             } else if (chosenFaction === 'Federation') {
                 allegiance = 'ally';
-            } else if (chosenFaction === 'Independent') {
-                allegiance = 'neutral';
             }
-
-            const newShip = {
-                id: uniqueId(), name: getUniqueShipName(chosenFaction), type: 'ship', shipModel: chosenFaction,
-                shipClass: stats.name, shipRole: stats.role, cloakingCapable: stats.cloakingCapable,
-                faction: chosenFaction, position, allegiance, hull: stats.maxHull, maxHull: stats.maxHull, shields: 0, maxShields: stats.maxShields,
-                energy: { current: stats.energy.max, max: stats.energy.max }, energyAllocation: { weapons: 50, shields: 50, engines: 0 },
-                subsystems: JSON.parse(JSON.stringify(stats.subsystems)), securityTeams: { current: stats.securityTeams.max, max: stats.securityTeams.max },
-                dilithium: { current: stats.dilithium.max, max: stats.dilithium.max }, scanned: false, evasive: false, retreatingTurn: null,
-                crewMorale: { current: 100, max: 100 }, repairTarget: null, logColor: ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length],
-                lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
-                cloakInstability: 0, cloakDestabilizedThisTurn: false,
-                cloakTransitionTurnsRemaining: null,
-                isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
-                statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: stats.energyModifier,
-                lastAttackerPosition: null,
-                // @deprecated
-                torpedoes: { current: stats.torpedoes.max, max: stats.torpedoes.max },
-                // New weapon system
-                weapons: JSON.parse(JSON.stringify(stats.weapons)),
-                ammo: Object.keys(stats.ammo).reduce((acc, key) => {
-                    acc[key as AmmoType] = { current: stats.ammo[key as AmmoType]!.max, max: stats.ammo[key as AmmoType]!.max };
-                    return acc;
-                }, {} as Ship['ammo']),
-            } as Ship;
-
-            if (newShip.shipModel === 'Pirate' && newShip.shipClass === 'Orion Raider') {
-                // Randomly assign energy weapon from a pool of lower-tier weapons
-                const energyWeapons = [
-                    WEAPON_PHASER_TYPE_IV,
-                    WEAPON_PHASER_TYPE_V,
-                    WEAPON_DISRUPTOR_LIGHT,
-                    WEAPON_DISRUPTOR_ROMULAN_LIGHT,
-                ];
-                const chosenEnergyWeapon = energyWeapons[Math.floor(rand() * energyWeapons.length)];
             
-                // Randomly assign torpedo launcher
-                const torpedoLaunchers = [
-                    WEAPON_TORPEDO_PHOTON,
-                    WEAPON_TORPEDO_PLASMA,
-                ];
-                const chosenTorpedoLauncher = torpedoLaunchers[Math.floor(rand() * torpedoLaunchers.length)];
-            
-                newShip.weapons = [chosenEnergyWeapon, chosenTorpedoLauncher];
-                
-                // Set ammo for the chosen torpedo type
-                newShip.ammo = {
-                    [chosenTorpedoLauncher.ammoType]: { max: 4, current: 4 },
-                };
-                
-                // Update deprecated fields as well for consistency
-                newShip.torpedoes.max = 4;
-                newShip.torpedoes.current = 4;
-                // FIX: Property 'torpedoType' does not exist on type 'Ship'.
-                // newShip.torpedoType = chosenTorpedoLauncher.ammoType;
-            }
-
-            if (newShip.shipModel === 'Federation') {
-                let phaserOptions: BeamWeapon[] = [];
-                switch (newShip.shipClass) {
-                    case 'Sovereign-class':
-                        phaserOptions = [WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX, WEAPON_PHASER_TYPE_X];
-                        break;
-                    case 'Constitution-class':
-                        phaserOptions = [WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI, WEAPON_PHASER_TYPE_VII];
-                        break;
-                    case 'Galaxy-class':
-                        phaserOptions = [WEAPON_PHASER_TYPE_IV, WEAPON_PHASER_TYPE_V, WEAPON_PHASER_TYPE_VI];
-                        break;
-                    case 'Intrepid-class':
-                        phaserOptions = [WEAPON_PHASER_TYPE_VII, WEAPON_PHASER_TYPE_VIII, WEAPON_PHASER_TYPE_IX];
-                        break;
-                }
-
-                if (phaserOptions.length > 0) {
-                    const chosenPhaser = phaserOptions[Math.floor(rand() * phaserOptions.length)];
-                    
-                    const phaserIndex = newShip.weapons.findIndex(w => w.type === 'beam' && w.animationType !== 'pulse');
-                    if (phaserIndex !== -1) {
-                        newShip.weapons[phaserIndex] = chosenPhaser;
-                    }
-                }
-            }
-
-            if (chosenFaction === 'Pirate' && rand() < 0.10) { // 10% chance
-                newShip.cloakingCapable = true;
-                newShip.customCloakStats = {
-                    reliability: 0.60,
-                    powerCost: 70,
-                    subsystemDamageChance: 0.07,
-                    explosionChance: 0.001,
-                };
-            }
-
+            const newShip = createShip(stats, chosenFaction, position, allegiance, getUniqueShipName(chosenFaction), rand);
+            newShip.logColor = ENEMY_LOG_COLORS[colorIndex.current++ % ENEMY_LOG_COLORS.length];
             return newShip;
         }
         case 'planet': {
@@ -268,7 +246,6 @@ const createEntityFromTemplate = (
     return null;
 };
 
-// FIX: Export the 'createSectorFromTemplate' function to make it available for import in other modules.
 export const createSectorFromTemplate = (
     template: SectorTemplate, factionOwner: FactionOwner, 
     availablePlanetNames: Record<string, string[]>,
@@ -380,7 +357,7 @@ export const createInitialGameState = (): GameState => {
 
   const playerShip: Ship = {
     id: 'player', name: 'U.S.S. Endeavour', type: 'ship', shipModel: 'Federation', 
-    shipClass: playerStats.name, shipRole: playerStats.role, cloakingCapable: playerStats.cloakingCapable,
+    shipClass: playerStats.name, shipRole: playerStats.role, cloakingCapable: !!playerStats.cloakChance && Math.random() < playerStats.cloakChance,
     faction: 'Federation', position: { x: Math.floor(SECTOR_WIDTH / 2), y: SECTOR_HEIGHT - 2 },
     allegiance: 'player',
     hull: playerStats.maxHull, maxHull: playerStats.maxHull, shields: 0, maxShields: playerStats.maxShields,
@@ -391,7 +368,6 @@ export const createInitialGameState = (): GameState => {
     crewMorale: { current: 100, max: 100 }, securityTeams: { current: playerStats.securityTeams.max, max: playerStats.securityTeams.max }, repairTarget: null,
     logColor: PLAYER_LOG_COLOR, lifeSupportReserves: { current: 100, max: 100 }, cloakState: 'visible', cloakCooldown: 0, shieldReactivationTurn: null,
     cloakInstability: 0, cloakDestabilizedThisTurn: false,
-    // FIX: Add missing 'cloakTransitionTurnsRemaining' property to conform to the Ship interface.
     cloakTransitionTurnsRemaining: null,
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
     energyModifier: playerStats.energyModifier,
