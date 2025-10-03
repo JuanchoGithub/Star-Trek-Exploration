@@ -204,23 +204,23 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             selectedTargetId
         };
     
-        const turnSteps: TurnStep[] = generatePhasedTurn(gameState, turnConfig);
-    
-        // Snapshot of the state *before* any turn steps are processed for history
-        const stateSnapshot = { ...gameState };
-        delete stateSnapshot.replayHistory;
-        const history = [...(gameState.replayHistory || [])];
-        history.push(JSON.parse(JSON.stringify(stateSnapshot)));
-        if (history.length > 100) {
-            history.shift();
+        // Create the new history array for THIS turn. It includes a snapshot of the state at the START of this turn.
+        const stateSnapshotForHistory = JSON.parse(JSON.stringify(gameState));
+        // CRITICAL FIX: The snapshot being saved to history should not itself contain the entire history.
+        // This was causing the state object to grow exponentially, leading to performance degradation and state corruption.
+        delete stateSnapshotForHistory.replayHistory;
+        
+        const newHistory = [...(gameState.replayHistory || []), stateSnapshotForHistory];
+        if (newHistory.length > 20) {
+            newHistory.shift();
         }
         
-        // The first step should have the updated history
-        if(turnSteps.length > 0) {
-            turnSteps[0].updatedState.replayHistory = history;
-        }
-
+        // Generate steps based on current state. The generator no longer needs to know about history directly.
+        const turnSteps: TurnStep[] = generatePhasedTurn(gameState, turnConfig);
+        
         for (const step of turnSteps) {
+            // Attach the complete, correct history array to each step's state right before setting it.
+            step.updatedState.replayHistory = newHistory;
             setGameState(step.updatedState);
     
             if (step.newNavigationTarget !== undefined) {

@@ -45,6 +45,9 @@ export const generatePhasedTurn = (
     initialState: GameState,
     config: TurnConfig,
 ): TurnStep[] => {
+    // Create a pristine, read-only snapshot of the start-of-turn state RIGHT NOW. This is crucial.
+    const startOfTurnSnapshot = JSON.parse(JSON.stringify(initialState));
+
     const steps: TurnStep[] = [];
     let currentState: GameState = JSON.parse(JSON.stringify(initialState));
     currentState.combatEffects = []; // Ensure a clean slate for effects each turn.
@@ -77,8 +80,10 @@ export const generatePhasedTurn = (
         });
         logQueue = [];
 
+        const stepState = JSON.parse(JSON.stringify(currentState));
+        
         steps.push({
-            updatedState: JSON.parse(JSON.stringify(currentState)),
+            updatedState: stepState,
             delay: delay,
             newNavigationTarget: currentNavTarget,
             newSelectedTargetId: currentSelectedId,
@@ -123,7 +128,7 @@ export const generatePhasedTurn = (
     });
 
     // --- AI TURNS ---
-    processAITurns(currentState, initialState, actions, actedShipIds, allShipsInSector(), config.mode, claimedCellsThisTurn);
+    processAITurns(currentState, startOfTurnSnapshot, actions, actedShipIds, allShipsInSector(), config.mode, claimedCellsThisTurn);
     addStep(0);
     
     // --- POINT DEFENSE PHASE ---
