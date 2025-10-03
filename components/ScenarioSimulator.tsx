@@ -209,6 +209,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     });
     const [showSectorSelector, setShowSectorSelector] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
+    const [logViewMode, setLogViewMode] = useState<'log' | 'order'>('log');
     const [playOrderIndex, setPlayOrderIndex] = useState(-1);
     const [isDeployedShipsCollapsed, setIsDeployedShipsCollapsed] = useState(true);
     const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
@@ -736,11 +737,18 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             ) : null}
                             <div className={`flex-grow min-h-0 ${targetEntity ? 'basis-1/2' : ''}`}>
                                 <LogPanel
-                                    logs={currentGameState.logs}
+                                    logs={logViewMode === 'log' ? currentGameState.logs : []}
                                     allShips={currentGameState.currentSector.entities.filter(e => e.type === 'ship') as Ship[]}
                                     isSpectateMode={true}
                                     turn={currentGameState.turn}
+                                    playOrderEvents={logViewMode === 'order' ? (currentGameState.turnEvents || []) : undefined}
+                                    playOrderIndex={playOrderIndex}
                                 />
+                            </div>
+                            <div className="flex-shrink-0 panel-style p-2">
+                                <button onClick={() => setLogViewMode(prev => prev === 'log' ? 'order' : 'log')} className="btn btn-primary w-full">
+                                    {logViewMode === 'log' ? `Show Execution Order (Turn ${currentGameState.turn})` : 'Show Full Combat Log'}
+                                </button>
                             </div>
                         </aside>
                     </>
