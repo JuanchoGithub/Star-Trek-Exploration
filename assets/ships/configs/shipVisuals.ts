@@ -74,9 +74,6 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
                 icon: GalaxyIcon, 
                 wireframe: GalaxyWireframe, 
                 colorClass: 'text-blue-400',
-                // FIX: Replaced non-existent Explorer wireframes with Cruiser wireframes as a fallback.
-                saucerWireframe: FederationCruiserSaucerWireframe,
-                engineeringWireframe: FederationCruiserEngineeringWireframe,
             },
             'Intrepid-class': { 
                 icon: IntrepidIcon, 
