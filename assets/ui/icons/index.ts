@@ -1,8 +1,8 @@
+
 export * from './BaseIcon';
 export * from './DilithiumIcon';
 export * from './EngineIcon';
 export * from './EngineeringIcon';
-export * from './HailIcon';
 export * from './NavigationTargetIcon';
 export * from './RetreatIcon';
 export * from './ScanIcon';
@@ -15,7 +15,6 @@ export * from './PulsePhaserIcon';
 export * from './TorpedoIcon';
 export * from './TransporterIcon';
 export * from './WeaponIcon';
-export * from './FactionIcons';
 export * from './StarfleetLogoIcon';
 export * from './CloakIcon';
 // FIX: Export icons from subdirectories to make them available for import.

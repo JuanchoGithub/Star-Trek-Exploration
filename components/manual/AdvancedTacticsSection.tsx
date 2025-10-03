@@ -2,7 +2,8 @@ import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
 import { SectionHeader, SubHeader } from './shared';
-import { PirateEscortIcon } from '../../assets/ships/icons';
+// FIX: Replaced non-existent PirateEscortIcon with OrionRaiderIcon.
+import { OrionRaiderIcon } from '../../assets/ships/icons';
 
 interface AdvancedTacticsSectionProps {
     themeName: ThemeName;
@@ -159,7 +160,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 <CloakingMechanicsTable />
                 
                 <div className="mt-4">
-                    <DetailBox title="Special Case: Pirate Makeshift Cloak" icon={<PirateEscortIcon className="w-6 h-6"/>} borderColorClass="border-orange-500">
+                    <DetailBox title="Special Case: Pirate Makeshift Cloak" icon={<OrionRaiderIcon className="w-6 h-6"/>} borderColorClass="border-orange-500">
                         <p>Intelligence has confirmed that some pirate factions have managed to jury-rig cloaking devices onto their vessels. These systems are highly volatile and should be considered as much a threat to their user as to their target.</p>
                         <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
                             <li>Base Reliability: <span className="text-white">60%</span></li>

@@ -7,8 +7,9 @@ import {
 import { 
     BirdOfPreyIcon, KtingaIcon, VorchaIcon, NeghvarIcon
 } from '../icons/klingon';
+// FIX: Removed non-existent 'RomulanEscortIcon' from import.
 import { 
-    RomulanEscortIcon, DderidexIcon, ValdoreIcon, ScimitarIcon
+    DderidexIcon, ValdoreIcon, ScimitarIcon
 } from '../icons/romulan';
 import {
     OrionRaiderIcon, FerengiMarauderIcon, NausicaanBattleshipIcon

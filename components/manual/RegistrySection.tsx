@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -10,7 +11,7 @@ import { ShipModel, ShipSubsystems, BeamWeapon, ProjectileWeapon } from '../../t
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
 import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
-import { PirateEscortIcon } from '../../assets/ships/icons';
+// FIX: Removed import for non-existent PirateEscortIcon.
 import { IndependentFreighterIcon } from '../../assets/ships/icons';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
