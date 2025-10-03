@@ -103,26 +103,34 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             navigationTarget,
             selectedTargetId
         });
-
-        let tempState = gameState;
-        for (const step of turnSteps) {
-            tempState = step.updatedState;
-            setGameState(tempState);
-            if (step.newNavigationTarget !== undefined) setNavigationTarget(step.newNavigationTarget);
-            if (step.newSelectedTargetId !== undefined) setSelectedTargetId(step.newSelectedTargetId);
-            if (scenarioMode === 'spectate' || scenarioMode === 'dogfight') await new Promise(resolve => setTimeout(resolve, 200));
-        }
         
-        const finalState = tempState;
-        const newHistory = [...currentHistory, finalState];
-        if (newHistory.length > 101) newHistory.shift();
+        if (scenarioMode === 'spectate') {
+            const finalState = turnSteps.length > 0 ? turnSteps[turnSteps.length - 1].updatedState : stateForTurn;
+            const newHistory = [...currentHistory, finalState];
+            if (newHistory.length > 101) newHistory.shift();
 
-        setReplayHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
+            setReplayHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+            setGameState(finalState);
+        } else {
+            let tempState = gameState;
+            for (const step of turnSteps) {
+                tempState = step.updatedState;
+                setGameState(tempState);
+                if (step.newNavigationTarget !== undefined) setNavigationTarget(step.newNavigationTarget);
+                if (step.newSelectedTargetId !== undefined) setSelectedTargetId(step.newSelectedTargetId);
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            const finalState = tempState;
+            const newHistory = [...currentHistory, finalState];
+            if (newHistory.length > 101) newHistory.shift();
+            setReplayHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+        }
 
         setPlayerTurnActions({});
         setIsTurnResolving(false);
-    }, [isTurnResolving, gameState, playerTurnActions, navigationTarget, selectedTargetId, scenarioMode, replayHistory, historyIndex]);
+    }, [isTurnResolving, gameState, replayHistory, historyIndex, scenarioMode, playerTurnActions, navigationTarget, selectedTargetId]);
     
     const onSelectTarget = useCallback((id: string | null) => setSelectedTargetId(id), []);
     const onSetNavigationTarget = useCallback((pos: Position | null) => setNavigationTarget(pos), []);

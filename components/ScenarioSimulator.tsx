@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
@@ -210,9 +209,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     });
     const [showSectorSelector, setShowSectorSelector] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
-    const [isPlayOrderMode, setIsPlayOrderMode] = useState(false);
     const [playOrderIndex, setPlayOrderIndex] = useState(-1);
-    const [isOrderPlaying, setIsOrderPlaying] = useState(false);
     const [isDeployedShipsCollapsed, setIsDeployedShipsCollapsed] = useState(true);
     const [availableNames, setAvailableNames] = useState<Record<ShipModel, string[]>>(() => JSON.parse(JSON.stringify(shipNames)));
     const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -224,7 +221,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         replayHistory, historyIndex, goToHistoryTurn, resumeFromHistory, onFireWeapon, onSelectSubsystem, onToggleCloak, onTogglePointDefense, targetEntity, onEnergyChange, onEndTurn, onSelectTarget, onSetNavigationTarget
     } = useScenarioLogic(setupState.ships, setupState.sector, mode);
     
-    const isSteppingThroughEvents = (isPlayOrderMode || mode === 'spectate') && !isTurnResolving;
+    const isSteppingThroughEvents = mode === 'spectate' && !isTurnResolving;
 
     useEffect(() => {
         if (mode === 'setup' && (!setupState.sector || setupState.sector.seed !== setupState.seed)) {
@@ -233,47 +230,20 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         }
     }, [mode, setupState.sectorTemplateId, setupState.seed, setupState.sector]);
 
-    // Effect to handle auto-playing of turn orders in manual "Play Order" mode
-    useEffect(() => {
-        if (isPlayOrderMode && isOrderPlaying && gameState) {
-            const eventCount = gameState.turnEvents?.length || 0;
-            if (playOrderIndex >= eventCount - 1) {
-                setIsOrderPlaying(false); // Stop at the end
-                return;
-            }
-
-            const nextEventIndex = playOrderIndex + 1;
-            const nextEvent = gameState.turnEvents?.[nextEventIndex];
-            let delay = 300;
-            if (nextEvent && (nextEvent.startsWith('REGEN:') || nextEvent.startsWith('ENERGY:'))) {
-                delay = 30;
-            }
-
-            const timer = setTimeout(() => {
-                setPlayOrderIndex(prev => prev + 1);
-            }, delay);
-
-            return () => clearTimeout(timer);
-        }
-    }, [isPlayOrderMode, isOrderPlaying, playOrderIndex, gameState]);
-
-    // Effect to handle auto-playing of turn orders in "Spectate" mode
     useEffect(() => {
         if (mode === 'spectate' && isRunning && !isTurnResolving && gameState) {
             const eventCount = gameState.turnEvents?.length || 0;
 
-            // If at the end of a turn's events, start the next turn
             if (playOrderIndex >= eventCount - 1) {
                 const nextTurnTimer = setTimeout(() => {
                     if (!isTurnResolving) {
-                        setPlayOrderIndex(-1); // Reset index for new turn
+                        setPlayOrderIndex(-1);
                         onEndTurn();
                     }
-                }, 500); // Pause between turns
+                }, 500);
                 return () => clearTimeout(nextTurnTimer);
             }
 
-            // Otherwise, play the next event
             const nextEventIndex = playOrderIndex + 1;
             const nextEvent = gameState.turnEvents?.[nextEventIndex];
             let delay = 300;
@@ -288,7 +258,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             return () => clearTimeout(timer);
         }
     }, [mode, isRunning, isTurnResolving, gameState, playOrderIndex, onEndTurn]);
-
+    
     const handleCellClick = useCallback((pos: { x: number; y: number }) => {
         if (mode !== 'setup') return;
         
@@ -375,70 +345,52 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         endSimulation();
         setMode('setup');
         setAvailableNames(JSON.parse(JSON.stringify(shipNames)));
-        setIsPlayOrderMode(false);
         setPlayOrderIndex(-1);
-        setIsOrderPlaying(false);
     };
     
     const handleStep = useCallback((direction: number) => {
+        setIsRunning(false);
+        setPlayOrderIndex(-1);
+    
         const atEnd = historyIndex >= replayHistory.length - 1;
-        if (mode === 'spectate' && direction > 0 && atEnd && !isTurnResolving) {
-            setPlayOrderIndex(-1);
+        if (direction > 0 && atEnd && !isTurnResolving) {
             onEndTurn();
         } else {
             const newIndex = historyIndex + direction;
             if (newIndex >= 0 && newIndex < replayHistory.length) {
-                setPlayOrderIndex(-1); // Reset event index when changing turns
                 goToHistoryTurn(newIndex);
             }
         }
-    }, [mode, goToHistoryTurn, historyIndex, replayHistory.length, onEndTurn, isTurnResolving]);
+    }, [historyIndex, replayHistory.length, isTurnResolving, onEndTurn, goToHistoryTurn]);
 
-    const handleTogglePlayOrder = () => {
-        setIsPlayOrderMode(true);
-        setIsRunning(false); // Pause auto-play of turns
+    const handleSliderChange = useCallback((index: number) => {
+        setIsRunning(false);
         setPlayOrderIndex(-1);
-        setIsOrderPlaying(false);
-    };
-    const handleExitPlayOrder = () => {
-        setIsPlayOrderMode(false);
-        setPlayOrderIndex(-1);
-        setIsOrderPlaying(false);
-    };
-    const handleStepOrder = (direction: number) => {
-        setIsOrderPlaying(false); // Stop playing when manually stepping
-        setPlayOrderIndex(prev => {
-            const eventCount = gameState?.turnEvents?.length || 0;
-            const newIndex = prev + direction;
-            return Math.max(-1, Math.min(eventCount - 1, newIndex));
-        });
-    };
+        goToHistoryTurn(index);
+    }, [goToHistoryTurn]);
 
-    const handleToggleOrderPlay = () => {
-        setIsOrderPlaying(prev => {
-            const eventCount = gameState?.turnEvents?.length || 0;
-            if (!prev && playOrderIndex >= eventCount - 1) {
-                setPlayOrderIndex(-1);
-            }
-            return !prev;
-        });
-    };
-    
     const currentGameState = historyIndex >= 0 && historyIndex < replayHistory.length ? replayHistory[historyIndex] : null;
 
     const { entitiesForDisplay, effectsForDisplay } = useMemo(() => {
         if (!currentGameState) { return { entitiesForDisplay: [], effectsForDisplay: [] }; }
+
+        if (isTurnResolving) {
+            const previousState = replayHistory[historyIndex - 1];
+            if (previousState) {
+                return { entitiesForDisplay: [...previousState.currentSector.entities], effectsForDisplay: [] };
+            }
+            return { entitiesForDisplay: [...setupState.ships, ...currentGameState.currentSector.entities.filter(e => e.type !== 'ship')], effectsForDisplay: [] };
+        }
     
-        const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
         const isReconstructing = isSteppingThroughEvents && playOrderIndex > -1;
 
-        // If we are at the very beginning of a turn's event playback, we should show the state from the end of the *previous* turn.
-        // This holds the final positions from the last turn and prevents both the "jump-to-end" and "snap-back" bugs.
         if (isSteppingThroughEvents && playOrderIndex === -1) {
+            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
             return { entitiesForDisplay: [...baseState.currentSector.entities], effectsForDisplay: [] };
         }
     
         if (isReconstructing) {
+            const baseState = historyIndex > 0 ? replayHistory[historyIndex - 1] : { ...currentGameState, currentSector: { ...currentGameState.currentSector, entities: setupState.ships }};
             const turnEvents = currentGameState.turnEvents || [];
             
             const finalEntities = new Map(currentGameState.currentSector.entities.map(e => [e.id, e]));
@@ -511,9 +463,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             return { entitiesForDisplay: entities, effectsForDisplay: effects };
         }
     
-        // Default case: show the final state for the current turn if not reconstructing events.
         return { entitiesForDisplay: [...currentGameState.currentSector.entities], effectsForDisplay: currentGameState.combatEffects };
-    }, [isSteppingThroughEvents, playOrderIndex, currentGameState, historyIndex, replayHistory, setupState.ships]);
+    }, [isSteppingThroughEvents, playOrderIndex, currentGameState, historyIndex, replayHistory, setupState.ships, isTurnResolving]);
 
 
     if (mode === 'setup') {
@@ -773,31 +724,21 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 isTurnResolving={isTurnResolving}
                                 onTogglePlay={togglePause}
                                 onStep={handleStep}
-                                onSliderChange={goToHistoryTurn}
+                                onSliderChange={handleSliderChange}
                                 allowStepPastEnd={true}
-                                isPlayOrderMode={isPlayOrderMode}
-                                onTogglePlayOrder={handleTogglePlayOrder}
-                                onExitPlayOrder={handleExitPlayOrder}
-                                onStepOrder={handleStepOrder}
-                                turnEventsCount={currentGameState.turnEvents?.length || 0}
-                                playOrderIndex={playOrderIndex}
-                                isOrderPlaying={isOrderPlaying}
-                                onToggleOrderPlay={handleToggleOrderPlay}
                             />
                         </div>
                         <aside className="flex flex-col gap-2 min-h-0">
-                             {targetEntity && !isPlayOrderMode ? (
+                             {targetEntity ? (
                                 <div className="basis-1/2 flex-shrink min-h-0">
                                     <SimulatorShipDetailPanel selectedEntity={targetEntity} themeName={themeName} turn={currentGameState.turn} gameState={currentGameState} />
                                 </div>
                             ) : null}
-                            <div className={`flex-grow min-h-0 ${targetEntity && !isPlayOrderMode ? 'basis-1/2' : ''}`}>
+                            <div className={`flex-grow min-h-0 ${targetEntity ? 'basis-1/2' : ''}`}>
                                 <LogPanel
                                     logs={currentGameState.logs}
                                     allShips={currentGameState.currentSector.entities.filter(e => e.type === 'ship') as Ship[]}
                                     isSpectateMode={true}
-                                    playOrderEvents={isPlayOrderMode ? currentGameState.turnEvents : undefined}
-                                    playOrderIndex={isPlayOrderMode ? playOrderIndex : undefined}
                                     turn={currentGameState.turn}
                                 />
                             </div>

@@ -345,7 +345,6 @@ export function processCommonTurn(
 
     // --- MOVEMENT & LOGGING ---
     const moveResult = findOptimalMove(ship, potentialTargets, gameState, allShipsInSector, stance, optimalRangeOverride);
-    const intendedPosition = moveResult.chosenMove?.position;
     
     // Evasive Maneuvers Logic
     if (stance === 'Defensive' && (ship.hull / ship.maxHull) < 0.5) {
@@ -360,40 +359,30 @@ export function processCommonTurn(
 
     // Movement
     let didMove = false;
-    if (intendedPosition) {
-        if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
-            // Cannot move
-        } else {
-            const posKey = `${intendedPosition.x},${intendedPosition.y}`;
-            if (claimedCellsThisTurn.has(posKey)) {
-                // Collision!
-                const isDeep = isDeepNebula(intendedPosition, gameState.currentSector);
-                if (isDeep) {
-                    const blockerShip = allShipsInSector.find(s => s.position.x === intendedPosition.x && s.position.y === intendedPosition.y);
-                    if (blockerShip) {
-                        const baseDamagePercent = 0.1 + Math.random() * 0.15;
-                        const moverMass = ship.maxHull;
-                        const blockerMass = blockerShip.maxHull;
-                        const totalMass = moverMass + blockerMass;
-                        const damageToMover = Math.round(baseDamagePercent * moverMass * (blockerMass / totalMass) * 2);
-                        const damageToBlocker = Math.round(baseDamagePercent * blockerMass * (moverMass / totalMass) * 2);
+    let moveRationale = moveResult.reason; // Start with the ideal reason
 
-                        ship.hull = Math.max(0, ship.hull - damageToMover);
-                        blockerShip.hull = Math.max(0, blockerShip.hull - damageToBlocker);
-
-                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Collision in deep nebula between ${ship.name} and ${blockerShip.name}! ${ship.name} takes ${damageToMover} damage, ${blockerShip.name} takes ${damageToBlocker} damage. ${ship.name}'s movement is blocked.`, isPlayerSource: false, color: 'border-orange-500', category: 'special' });
-                    }
-                } else {
-                    actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to (${intendedPosition.x},${intendedPosition.y}) is blocked! Holding position.`, isPlayerSource: false, color: 'border-yellow-400', category: 'movement' });
-                }
-            } else {
-                // No collision
-                ship.position = intendedPosition;
-                didMove = true;
+    if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
+        moveRationale = 'Impulse Engines Offline!';
+    } else {
+        let finalMovePosition: Position | null = null;
+        for (const candidate of moveResult.topCandidates) {
+            const posKey = `${candidate.position.x},${candidate.position.y}`;
+            if (!claimedCellsThisTurn.has(posKey)) {
+                finalMovePosition = candidate.position;
+                break; // Found a valid move
             }
         }
-    }
 
+        if (finalMovePosition) {
+            ship.position = finalMovePosition;
+            didMove = true;
+        } else if (moveResult.topCandidates.length > 0) { // Check if there were candidates at all
+            moveRationale = 'All optimal movement vectors are blocked.';
+        } else {
+            moveRationale = 'No valid moves available.';
+        }
+    }
+    
     claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
     
     if (didMove) {
@@ -423,7 +412,6 @@ export function processCommonTurn(
     // --- BUILD & DISPATCH LOG ---
     const shipsTargetingMe = allShipsInSector.filter(s => s.currentTargetId === ship.id);
     const moveAction = didMove ? 'MOVING' : 'HOLDING';
-    const moveRationale = ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5 ? 'Impulse Engines Offline!' : moveResult.reason;
 
     const finalLogMessage = generateStanceLog({
         ship, stance, analysisReason, target: primaryTarget, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn: gameState.turn, defenseAction: defenseActionTaken,
