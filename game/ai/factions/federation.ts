@@ -1,9 +1,9 @@
-
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance, calculateOptimalEngagementRange } from '../../utils/ai';
+// FIX: Corrected import path for shipRoleStats.
 import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
-import { determineGeneralStance, processCommonTurn, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
+import { determineGeneralStance, processCommonTurn, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn, tryCaptureDerelict } from './common';
 
 export class FederationAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
@@ -62,6 +62,15 @@ export class FederationAI extends FactionAI {
     executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
+        if (stance === 'Balanced') {
+            if (Math.random() < 0.3) {
+                if (tryCaptureDerelict(ship, gameState, actions)) {
+                    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                    return; // Turn spent capturing
+                }
+            }
+        }
+
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;
@@ -82,56 +91,60 @@ export class FederationAI extends FactionAI {
         if (ship.repairTarget) {
             ship.repairTarget = null;
         }
+        
+        const target = findClosestTarget(ship, potentialTargets);
+        if (target) {
+            const subsystemTarget = this.determineSubsystemTarget(ship, target);
+            const optimalRange = calculateOptimalEngagementRange(ship, target);
 
-        if (potentialTargets.length > 0) {
-            const target = findClosestTarget(ship, potentialTargets);
-            if (target) {
-                const subsystemTarget = this.determineSubsystemTarget(ship, target);
-                const optimalRange = calculateOptimalEngagementRange(ship, target);
-
-                switch (stance) {
-                    case 'Aggressive':
-                        if (ship.energyAllocation.weapons !== 50) {
-                             ship.energyAllocation = { weapons: 50, shields: 25, engines: 25 };
-                        }
-                        break;
-                    case 'Defensive':
-                        if (ship.energyAllocation.shields !== 60) {
-                            ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
-                        }
-                        break;
-                    case 'Balanced':
-                    default:
-                        if (ship.energyAllocation.weapons !== 34) {
-                            ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
-                        }
-                        break;
-                }
-                
-                processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
-            }
-        } else { // Original non-hostile (ally/neutral) logic
-            const { currentSector } = gameState;
-            const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
-
-            if (shuttles.length > 0) {
-                const closestShuttle = findClosestTarget(ship, shuttles as any);
-                if (closestShuttle) {
-                    const nextPosition = moveOneStep(ship.position, closestShuttle.position);
-                    const posKey = `${nextPosition.x},${nextPosition.y}`;
-                    if (!claimedCellsThisTurn.has(posKey)) {
-                        ship.position = nextPosition;
-                        claimedCellsThisTurn.add(posKey);
-                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, category: 'movement' });
-                    } else {
-                        claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
-                        actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to shuttles is blocked. Holding position.`, isPlayerSource: false, category: 'movement' });
+            switch (stance) {
+                case 'Aggressive':
+                    if (ship.energyAllocation.weapons !== 50) {
+                            ship.energyAllocation = { weapons: 50, shields: 25, engines: 25 };
                     }
-                    return;
-                }
+                    break;
+                case 'Defensive':
+                    if (ship.energyAllocation.shields !== 60) {
+                        ship.energyAllocation = { weapons: 20, shields: 60, engines: 20 };
+                    }
+                    break;
+                case 'Balanced':
+                default:
+                    if (ship.energyAllocation.weapons !== 34) {
+                        ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
+                    }
+                    break;
             }
-            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
-            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position.`, isPlayerSource: false, category: 'movement' });
+            
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
+        } else {
+             // This case handles when a stance is aggressive but no targets are currently visible (e.g. they cloaked)
+            if (ship.hiddenEnemies && ship.hiddenEnemies.length > 0) {
+                processSeekingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
+            } else {
+                // Fallback to original non-hostile logic if no enemies were ever detected
+                const { currentSector } = gameState;
+                const shuttles = currentSector.entities.filter(e => e.type === 'shuttle' && e.faction === 'Federation');
+
+                if (shuttles.length > 0) {
+                    const closestShuttle = findClosestTarget(ship, shuttles as any);
+                    if (closestShuttle) {
+                        const nextPosition = moveOneStep(ship.position, closestShuttle.position);
+                        const posKey = `${nextPosition.x},${nextPosition.y}`;
+                        if (!claimedCellsThisTurn.has(posKey)) {
+                            ship.position = nextPosition;
+                            claimedCellsThisTurn.add(posKey);
+                            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Moving to rescue escape shuttles.`, isPlayerSource: false, category: 'movement' });
+                        } else {
+                            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                            actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Path to shuttles is blocked. Holding position.`, isPlayerSource: false, category: 'movement' });
+                        }
+                        return;
+                    }
+                }
+                claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Holding position.`, isPlayerSource: false, category: 'movement' });
+            }
         }
     }
 

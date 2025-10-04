@@ -16,6 +16,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Empty Space',
         weight: 200,
         allowedFactions: ['None', 'Federation', 'Klingon', 'Romulan'],
+        depth: [1, 4],
         entityTemplates: [
             { type: 'planet', faction: 'None', count: [1, 2], planetClass: ['D', 'L', 'J'] },
         ],
@@ -27,6 +28,7 @@ export const sectorTemplates: SectorTemplate[] = [
         weight: 150,
         // FIX: 'Pirate' is not a valid FactionOwner for a sector. Pirates can appear in 'None' or 'Klingon' space.
         allowedFactions: ['None', 'Klingon'],
+        depth: [1, 4],
         entityTemplates: [
             { type: 'asteroid_field', faction: 'None', count: [2, 4] },
             { type: 'planet', faction: 'None', count: [0, 1], planetClass: ['D'] },
@@ -38,6 +40,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Trade Route',
         weight: 100,
         allowedFactions: ['None', 'Federation'],
+        depth: [1, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Independent', count: [1, 3], shipRole: 'Freighter' },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['M', 'L'] },
@@ -48,6 +51,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Trade Hub',
         weight: 50,
         allowedFactions: ['None', 'Federation'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'starbase', faction: 'Inherit', count: [1, 1], starbaseType: 'trading_outpost' },
             { type: 'ship', faction: 'Independent', count: [2, 4], shipRole: 'Freighter' },
@@ -59,6 +63,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Unstable Nebula',
         weight: 80,
         allowedFactions: ['None', 'Romulan'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'planet', faction: 'None', count: [1, 2], planetClass: ['J', 'D'] },
              { type: 'event_beacon', faction: 'Unknown', count: [0, 1], eventType: 'derelict_ship' },
@@ -74,6 +79,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Border Patrol',
         weight: 100,
         allowedFactions: ['Federation'],
+        depth: [1, 1],
         entityTemplates: [
             { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Escort', 'Cruiser', 'Scout'] },
             { type: 'planet', faction: 'None', count: [1, 2] },
@@ -84,6 +90,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Science Expedition',
         weight: 80,
         allowedFactions: ['Federation'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [0, 1], starbaseType: 'science_station' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Explorer' },
@@ -96,6 +103,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Starbase Sector',
         weight: 60,
         allowedFactions: ['Federation'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: ['command_station', 'trading_outpost'] },
             { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer', 'Cruiser', 'Scout'] },
@@ -108,6 +116,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Colonization Effort',
         weight: 50,
         allowedFactions: ['Federation'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Explorer' },
             { type: 'ship', faction: 'Independent', count: [2, 3], shipRole: 'Freighter' },
@@ -119,6 +128,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Listening Post',
         weight: 30,
         allowedFactions: ['Federation'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [0, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Escort' },
@@ -136,6 +146,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Border Picket',
         weight: 100,
         allowedFactions: ['Klingon'],
+        depth: [1, 1],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [2, 3], shipRole: ['Escort'] },
             { type: 'planet', faction: 'None', count: [1, 2], planetClass: ['L', 'D'] },
@@ -146,6 +157,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Hunting Ground',
         weight: 70,
         allowedFactions: ['Klingon'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: ['Cruiser', 'Attack Cruiser'] },
             { type: 'asteroid_field', faction: 'None', count: [1, 3] },
@@ -158,6 +170,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Outpost',
         weight: 50,
         allowedFactions: ['Klingon'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'starbase', faction: 'Klingon', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Klingon', count: [1, 3], shipRole: ['Cruiser', 'Escort'] },
@@ -169,6 +182,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Ship Graveyard',
         weight: 25,
         allowedFactions: ['Klingon'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'event_beacon', faction: 'Unknown', count: [1, 2], eventType: 'derelict_ship' },
             { type: 'ship', faction: 'Klingon', count: [0, 1], shipRole: 'Escort' },
@@ -181,6 +195,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon War Council',
         weight: 15,
         allowedFactions: ['Klingon'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort', 'Attack Cruiser'] },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['L'] },
@@ -195,6 +210,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Border Patrol',
         weight: 100,
         allowedFactions: ['Romulan'],
+        depth: [1, 1],
         entityTemplates: [
             { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Scout'] },
             { type: 'planet', faction: 'None', count: [1, 2] },
@@ -206,6 +222,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Listening Post',
         weight: 70,
         allowedFactions: ['Romulan'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [0, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Warbird' },
@@ -218,6 +235,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Staging Ground',
         weight: 40,
         allowedFactions: ['Romulan'],
+        depth: [2, 3],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Warbird', 'Scout'] },
@@ -229,6 +247,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Tal Shiar Operations',
         weight: 20,
         allowedFactions: ['Romulan'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Romulan', count: [2, 2], shipRole: ['Warbird', 'Command Ship'] },
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'ancient_probe' },
@@ -240,9 +259,11 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Plasma Minefield',
         weight: 15,
         allowedFactions: ['Romulan'],
+        depth: [1, 2],
         entityTemplates: [
             { type: 'ship', faction: 'Romulan', count: [1, 2], shipRole: ['Scout'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 4] },
+            { type: 'mine', faction: 'Romulan', count: [3, 5] },
         ],
         hasNebulaChance: 0.9,
     },
@@ -255,6 +276,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Pirate Ambush Point',
         weight: 60,
         allowedFactions: ['None'],
+        depth: [1, 3],
         entityTemplates: [
             { type: 'ship', faction: 'Pirate', count: [2, 3], shipRole: 'Raider' },
             { type: 'asteroid_field', faction: 'None', count: [2, 2] },
@@ -266,6 +288,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Pirate Hideout',
         weight: 30,
         allowedFactions: ['None'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Pirate', count: [2, 4], shipRole: ['Raider', 'Marauder'] },
             { type: 'asteroid_field', faction: 'None', count: [3, 4] },
@@ -277,6 +300,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Smuggler\'s Run',
         weight: 70,
         allowedFactions: ['None'],
+        depth: [1, 3],
         entityTemplates: [
             { type: 'ship', faction: 'Independent', count: [1, 2], shipRole: 'Freighter' },
             { type: 'ship', faction: 'Pirate', count: [0, 1], shipRole: 'Raider' },
@@ -289,6 +313,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Ancient Battlefield',
         weight: 25,
         allowedFactions: ['None'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'event_beacon', faction: 'Unknown', count: [1, 3], eventType: ['derelict_ship'] },
             { type: 'asteroid_field', faction: 'None', count: [1, 2] },
@@ -299,6 +324,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Scientific Anomaly',
         weight: 40,
         allowedFactions: ['None', 'Federation'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'planet', faction: 'None', count: [1, 2], planetClass: ['J', 'L'] },
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'ancient_probe' },
@@ -314,6 +340,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Task Force',
         weight: 8,
         allowedFactions: ['Federation'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Dreadnought' },
             { type: 'ship', faction: 'Federation', count: [2, 3], shipRole: ['Cruiser', 'Escort'] },
@@ -324,6 +351,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Pirate Stronghold',
         weight: 12,
         allowedFactions: ['None'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Pirate', count: [1, 1], shipRole: 'Battleship' },
             { type: 'ship', faction: 'Pirate', count: [2, 3], shipRole: ['Marauder', 'Raider'] },
@@ -337,6 +365,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Civil War Skirmish',
         weight: 10,
         allowedFactions: ['Klingon'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [2, 2], shipRole: 'Cruiser' },
             { type: 'ship', faction: 'Klingon', count: [2, 2], shipRole: 'Escort' },
@@ -347,6 +376,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Secret Base',
         weight: 10,
         allowedFactions: ['None'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'starbase', faction: 'Romulan', count: [1, 1], starbaseType: 'military_outpost' },
             { type: 'ship', faction: 'Romulan', count: [2, 3], shipRole: ['Warbird', 'Scout'] },
@@ -359,6 +389,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Deep Space Relay',
         weight: 10,
         allowedFactions: ['Federation'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: 'deep_space_sensor' },
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Explorer' },
@@ -369,6 +400,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Abandoned Outpost',
         weight: 8,
         allowedFactions: ['None', 'Federation', 'Klingon', 'Romulan'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'distress_call' },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['L', 'D'] },
@@ -379,6 +411,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Crystalline Entity Field',
         weight: 5,
         allowedFactions: ['None'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'planet', faction: 'None', count: [2, 3], planetClass: 'D' },
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1] }
@@ -390,6 +423,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Temporal Anomaly',
         weight: 3,
         allowedFactions: ['None', 'Federation'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1] },
             { type: 'ship', faction: 'Federation', count: [0, 1], shipRole: 'Explorer' },
@@ -401,6 +435,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Dyson Sphere Fragment',
         weight: 1,
         allowedFactions: ['None'],
+        depth: [4, 4],
         entityTemplates: [
             { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'ancient_probe' },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: 'D' }
@@ -415,6 +450,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Deep Space Science Station',
         weight: 20,
         allowedFactions: ['Federation'],
+        depth: [3, 4],
         entityTemplates: [
             { type: 'starbase', faction: 'Federation', count: [1, 1], starbaseType: 'science_station' },
             { type: 'ship', faction: 'Federation', count: [1, 2], shipRole: ['Explorer'] },
@@ -427,6 +463,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Homeland Defense Fleet',
         weight: 20,
         allowedFactions: ['Klingon'],
+        depth: [4, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [3, 4], shipRole: ['Cruiser', 'Escort', 'Attack Cruiser', 'Battleship'] },
             { type: 'starbase', faction: 'Klingon', count: [1, 1], starbaseType: 'military_outpost' },
@@ -437,6 +474,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Fleet Maneuvers',
         weight: 20,
         allowedFactions: ['Romulan'],
+        depth: [4, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Romulan', count: [3, 5], shipRole: ['Warbird', 'Scout', 'Command Ship'] },
         ],
@@ -449,6 +487,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Debris Field',
         weight: 90,
         allowedFactions: ['None', 'Klingon', 'Romulan'],
+        depth: [1, 4],
         entityTemplates: [
             { type: 'asteroid_field', faction: 'None', count: [1, 3] },
             { type: 'event_beacon', faction: 'Unknown', count: [0, 1], eventType: ['derelict_ship'] },
@@ -459,6 +498,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Federation Convoy',
         weight: 40,
         allowedFactions: ['Federation'],
+        depth: [1, 3],
         entityTemplates: [
             { type: 'ship', faction: 'Federation', count: [1, 1], shipRole: 'Escort' },
             { type: 'ship', faction: 'Independent', count: [2, 3], shipRole: 'Freighter' },
@@ -469,6 +509,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Klingon Mining Operation',
         weight: 35,
         allowedFactions: ['Klingon'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'ship', faction: 'Klingon', count: [1, 2], shipRole: 'Escort' },
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: ['D'] },
@@ -480,6 +521,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Romulan Spy Network',
         weight: 30,
         allowedFactions: ['None', 'Federation'], // They spy everywhere
+        depth: [1, 3],
         entityTemplates: [
             { type: 'ship', faction: 'Romulan', count: [1, 1], shipRole: 'Scout' },
             { type: 'ship', faction: 'Independent', count: [1, 2], shipRole: 'Freighter' },
@@ -491,16 +533,18 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Ion Storm',
         weight: 50,
         allowedFactions: ['None', 'Romulan'],
+        depth: [2, 4],
         entityTemplates: [
             { type: 'planet', faction: 'None', count: [1, 1], planetClass: 'J' },
         ],
-        hasNebulaChance: 1.0,
+        hasIonStormChance: 1.0,
     },
     {
         id: 'rare-generation-ship',
         name: 'Generation Ship',
         weight: 4,
         allowedFactions: ['None'],
+        depth: [3, 4],
         entityTemplates: [
              { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: ['distress_call'] },
              { type: 'ship', faction: 'Independent', count: [1, 1], shipRole: 'Freighter' },
@@ -511,6 +555,7 @@ export const sectorTemplates: SectorTemplate[] = [
         name: 'Doomsday Machine Aftermath',
         weight: 1,
         allowedFactions: ['None'],
+        depth: [4, 4],
         entityTemplates: [
              { type: 'planet', faction: 'None', count: [3, 4], planetClass: 'D' },
              { type: 'event_beacon', faction: 'Unknown', count: [1, 1], eventType: 'derelict_ship' }

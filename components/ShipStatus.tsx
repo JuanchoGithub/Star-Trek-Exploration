@@ -3,6 +3,7 @@ import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../type
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import EnergyAllocator from './EnergyAllocator';
+import { isPosInIonStorm, isPosInNebula } from '../game/utils/sector';
 
 interface ShipStatusProps {
     gameState: GameState;
@@ -102,6 +103,11 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
         return acc;
     }, {} as Record<string, number>);
 
+    const inIonStorm = isPosInIonStorm(ship.position, currentSector);
+    const inNebula = isPosInNebula(ship.position, currentSector);
+    const inAsteroidField = currentSector.entities.some(e => e.type === 'asteroid_field' && e.position.x === ship.position.x && e.position.y === ship.position.y);
+
+
   return (
     <div className="panel-style p-3 flex flex-col h-full">
       <h3 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">Ship Status</h3>
@@ -165,6 +171,28 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
                 />
             </div>
         </div>
+        
+        <div className="mt-3">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary">Environment</h4>
+            <div className="flex flex-col gap-1 mt-1">
+                <ReadOnlyStatusIndicator 
+                    label="In Ion Storm"
+                    status={inIonStorm ? 'YES' : 'NO'}
+                    colorClass={inIonStorm ? 'text-accent-yellow bg-yellow-900 bg-opacity-50 animate-pulse' : 'text-text-disabled'}
+                />
+                <ReadOnlyStatusIndicator 
+                    label="In Nebula"
+                    status={inNebula ? 'YES' : 'NO'}
+                    colorClass={inNebula ? 'text-purple-400 bg-purple-900 bg-opacity-50' : 'text-text-disabled'}
+                />
+                <ReadOnlyStatusIndicator 
+                    label="In Asteroids"
+                    status={inAsteroidField ? 'YES' : 'NO'}
+                    colorClass={inAsteroidField ? 'text-gray-400 bg-gray-700 bg-opacity-50' : 'text-text-disabled'}
+                />
+            </div>
+        </div>
+
 
         <div className="mt-3">
             <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary">Threat Analysis</h4>

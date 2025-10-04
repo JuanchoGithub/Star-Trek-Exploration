@@ -1,22 +1,21 @@
 
-import type { GameState, PlayerTurnActions, Ship, LogEntry, TorpedoProjectile, ShipSubsystems, CombatEffect, Position, BeamWeapon } from '../../types';
-import { AIActions, AIStance } from '../ai/FactionAI';
-import { applyTorpedoDamage, fireBeamWeapon } from '../utils/combat';
-import { calculateDistance, moveOneStep, uniqueId, findClosestTarget, calculateThreatInfo } from '../utils/ai';
-import { AIDirector } from '../ai/AIDirector';
-import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
+import type { GameState, PlayerTurnActions, Position, Ship, TorpedoProjectile, Mine, AmmoType } from '../../types';
 import { processPlayerTurn } from './player';
 import { processAITurns } from './aiProcessor';
-import { canShipSeeEntity } from '../utils/visibility';
-import { isCommBlackout } from '../utils/sector';
+import { handleShipEndOfTurnSystems, applyResourceChange } from '../utils/energy';
+import { applyTorpedoDamage, applyMineDamage } from '../utils/combat';
+// FIX: Imported 'handleBoardingTurn' to process derelict capture over multiple turns.
 import { handleBoardingTurn } from '../actions/boarding';
-import { handleShipEndOfTurnSystems } from '../utils/energy';
-import { generatePointDefenseLog } from '../ai/aiLogger';
+// FIX: Imported 'moveOneStep' to calculate torpedo movement.
+import { calculateDistance, uniqueId, moveOneStep } from '../utils/ai';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
+import { isPosInIonStorm, isPosInNebula } from '../utils/sector';
+import { SECTOR_HEIGHT, SECTOR_WIDTH } from '../../assets/configs/gameConstants';
+import type { LogEntry } from '../../types';
 
 export interface TurnStep {
     updatedState: GameState;
-    newNavigationTarget?: { x: number; y: number } | null;
+    newNavigationTarget?: Position | null;
     newSelectedTargetId?: string | null;
     delay: number;
 }
@@ -24,273 +23,301 @@ export interface TurnStep {
 interface TurnConfig {
     mode: 'game' | 'dogfight' | 'spectate';
     playerTurnActions: PlayerTurnActions;
-    navigationTarget: { x: number; y: number } | null;
+    navigationTarget: Position | null;
     selectedTargetId: string | null;
 }
 
-const getShipsInTurnOrder = (state: GameState, mode: 'game' | 'dogfight' | 'spectate'): Ship[] => {
-    const allShips = (mode === 'game')
-        ? [state.player.ship, ...state.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
-        : state.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
+export function generatePhasedTurn(initialState: GameState, config: TurnConfig): TurnStep[] {
+    const turnSteps: TurnStep[] = [];
+    const turnEvents: string[] = [];
+    const addTurnEvent = (event: string) => turnEvents.push(event);
 
-    return [...allShips].sort((a, b) => {
-        const allegianceOrder: Record<Required<Ship>['allegiance'], number> = { player: 0, ally: 1, neutral: 2, enemy: 3 };
-        const aAllegiance = a.id === 'player' ? 'player' : a.allegiance;
-        const bAllegiance = b.id === 'player' ? 'player' : b.allegiance;
-        return allegianceOrder[aAllegiance!] - allegianceOrder[bAllegiance!];
-    });
-};
+    let nextState: GameState = JSON.parse(JSON.stringify(initialState));
+    nextState.combatEffects = [];
+    nextState.desperationMoveAnimations = [];
 
-export const generatePhasedTurn = (
-    initialState: GameState,
-    config: TurnConfig,
-): TurnStep[] => {
-    // Create a pristine, read-only snapshot of the start-of-turn state RIGHT NOW. This is crucial.
-    const startOfTurnSnapshot = JSON.parse(JSON.stringify(initialState));
-
-    const steps: TurnStep[] = [];
-    let currentState: GameState = JSON.parse(JSON.stringify(initialState));
-    currentState.combatEffects = []; // Ensure a clean slate for effects each turn.
-    currentState.turnEvents = []; // Initialize for the new turn
-    let logQueue: Omit<LogEntry, 'id' | 'turn'>[] = [];
-    
-    let currentNavTarget = config.navigationTarget;
-    let currentSelectedId = config.selectedTargetId;
-
-    const addLog = (logData: Omit<LogEntry, 'id' | 'turn'>) => logQueue.push(logData);
-
-    const addTurnEvent = (event: string) => {
-        if (!currentState.turnEvents) {
-            currentState.turnEvents = [];
-        }
-        currentState.turnEvents.push(event);
+    const addLog = (logData: Omit<LogEntry, 'id' | 'turn'>) => {
+        const newLog: LogEntry = {
+            id: uniqueId(),
+            turn: nextState.turn,
+            ...logData
+        };
+        nextState.logs.push(newLog);
     };
 
-    const addStep = (delay: number) => {
-        if (steps.length === 0) {
-            currentState.turn++;
-        }
-        
-        logQueue.forEach(log => {
-            currentState.logs.push({
-                id: uniqueId(),
-                turn: currentState.turn,
-                ...log
-            });
-        });
-        logQueue = [];
-
-        const stepState = JSON.parse(JSON.stringify(currentState));
-        
-        steps.push({
-            updatedState: stepState,
-            delay: delay,
-            newNavigationTarget: currentNavTarget,
-            newSelectedTargetId: currentSelectedId,
-        });
-    };
-
-    const actions: AIActions = {
-        addLog: (log) => addLog({ ...log, isPlayerSource: false, color: log.color || 'border-gray-500' }),
-        fireBeamWeapon,
-        triggerDesperationAnimation: (animation) => {
-            currentState.desperationMoveAnimations.push(animation);
+    const actions = {
+        addLog,
+        fireBeamWeapon: (target: Ship, weapon: any, subsystem: any, source: Ship, state: GameState) => {
+            // This is a stub. The real firing logic is in processCommonTurn.
+            // But we need to provide it to the AI.
+            return null as any; 
+        },
+        triggerDesperationAnimation: (animation: any) => {
+            nextState.desperationMoveAnimations.push(animation);
         },
         addTurnEvent,
     };
 
-    const allShipsInSector = () => (config.mode === 'game')
-        ? [currentState.player.ship, ...currentState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[]
-        : currentState.currentSector.entities.filter(e => e.type === 'ship') as Ship[];
-    
+    // --- Phase 1: Player Actions (if applicable) ---
+    let newNavTarget = config.navigationTarget;
+    let newSelectedTargetId = config.selectedTargetId;
     const actedShipIds = new Set<string>();
-
-    // --- PLAYER TURN ---
+    
     if (config.mode === 'game' || config.mode === 'dogfight') {
-        const playerResult = processPlayerTurn(currentState, config.playerTurnActions, currentNavTarget, currentSelectedId, addLog, addTurnEvent);
-        currentNavTarget = playerResult.newNavigationTarget;
-        currentSelectedId = playerResult.newSelectedTargetId;
-        actedShipIds.add(currentState.player.ship.id);
-    }
-    addStep(0); // Add step after player actions resolve
+        const playerShip = (config.mode === 'game')
+            ? nextState.player.ship
+            : nextState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
 
-    // --- MOVEMENT & COMBAT RESOLUTION ---
+        if (playerShip) {
+            const playerResult = processPlayerTurn(nextState, config.playerTurnActions, config.navigationTarget, config.selectedTargetId, addLog, addTurnEvent);
+            newNavTarget = playerResult.newNavigationTarget;
+            newSelectedTargetId = playerResult.newSelectedTargetId;
+            actedShipIds.add(playerShip.id);
+        }
+    }
+    
+    turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), newNavigationTarget: newNavTarget, newSelectedTargetId: newSelectedTargetId, delay: 100 });
+
+    // --- Phase 2: AI Actions ---
+    const allShips = [...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+    if (nextState.player.ship && nextState.player.ship.id) {
+        if (!allShips.some(s => s.id === nextState.player.ship.id)) {
+            allShips.push(nextState.player.ship);
+        }
+    }
     const claimedCellsThisTurn = new Set<string>();
-    // Add player's final position
-    if (currentState.player.ship.id) {
-        claimedCellsThisTurn.add(`${currentState.player.ship.position.x},${currentState.player.ship.position.y}`);
-    }
-    // Add positions of non-ship entities
-    currentState.currentSector.entities.forEach(e => {
-        if (e.type !== 'ship' && e.type !== 'torpedo_projectile') {
-            claimedCellsThisTurn.add(`${e.position.x},${e.position.y}`);
-        }
-    });
-
-    // --- AI TURNS ---
-    processAITurns(currentState, startOfTurnSnapshot, actions, actedShipIds, allShipsInSector(), config.mode, claimedCellsThisTurn);
-    addStep(0);
     
-    // --- POINT DEFENSE PHASE ---
-    _handlePointDefense(currentState, allShipsInSector(), addLog, addTurnEvent);
-    addStep(300);
-
-    // --- PROJECTILE MOVEMENT PHASE ---
-    _handleProjectileMovement(currentState, allShipsInSector(), addLog, addTurnEvent);
-    addStep(750);
-
-    // --- END OF TURN PHASE ---
-    _handleEndOfTurn(currentState, allShipsInSector(), addLog, addTurnEvent);
-    addStep(0);
-    
-    return steps;
-};
-
-
-// Helper Functions
-
-function _handlePointDefense(state: GameState, allShips: Ship[], addLog: Function, addTurnEvent: (event: string) => void) {
-    const shipsWithPD = allShips.filter(s => s.pointDefenseEnabled && s.subsystems.pointDefense.health > 0 && s.hull > 0);
-    if (shipsWithPD.length === 0) return;
-
-    let allTorpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
-    if (allTorpedoes.length === 0) return;
-    
-    const torpedoesDestroyedThisTurn = new Set<string>();
-
-    for (const ship of shipsWithPD) {
-        const hostileTorpedoes = allTorpedoes.filter(t => {
-            if (torpedoesDestroyedThisTurn.has(t.id)) return false;
-            const source = allShips.find(s => s.id === t.sourceId);
-            const sourceAllegiance = source?.id === 'player' ? 'player' : source?.allegiance;
-            const shipAllegiance = ship.id === 'player' ? 'player' : ship.allegiance;
-            return sourceAllegiance !== shipAllegiance;
-        });
-
-        const nearbyTorpedoes = hostileTorpedoes.filter(t => calculateDistance(ship.position, t.position) <= 1);
-        if (nearbyTorpedoes.length === 0) continue;
-
-        nearbyTorpedoes.sort((a, b) => b.damage - a.damage); // Prioritize most dangerous
-        const targetTorpedo = nearbyTorpedoes[0];
-        
-        const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
-        const isPlayerSource = ship.id === 'player';
-
-        state.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: { ...targetTorpedo.position }, faction: ship.faction, delay: 0 });
-        
-        addTurnEvent(`PD: ${ship.name} fires at [${targetTorpedo.id}]`);
-        
-        const hit = Math.random() < hitChance;
-        const logMessage = generatePointDefenseLog(hit, hitChance, targetTorpedo.name, targetTorpedo.torpedoType);
-
-        if (hit) {
-            torpedoesDestroyedThisTurn.add(targetTorpedo.id);
-            addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-green-400', category: 'combat' });
-            state.combatEffects.push({ type: 'torpedo_hit', position: { ...targetTorpedo.position }, delay: 100, torpedoType: targetTorpedo.torpedoType });
-            addTurnEvent(`INTERCEPTED: [${targetTorpedo.id}]`);
-        } else {
-            addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: 'border-yellow-400', category: 'combat' });
-        }
+    // Player claims their final spot first.
+    const finalPlayerShip = allShips.find(s => s.id === 'player' || s.allegiance === 'player');
+    if (finalPlayerShip) {
+        claimedCellsThisTurn.add(`${finalPlayerShip.position.x},${finalPlayerShip.position.y}`);
     }
     
-    if (torpedoesDestroyedThisTurn.size > 0) {
-        state.currentSector.entities = state.currentSector.entities.filter(e => !torpedoesDestroyedThisTurn.has(e.id));
-    }
-}
+    processAITurns(nextState, initialState, actions, actedShipIds, allShips, config.mode, claimedCellsThisTurn);
+    turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 100 });
 
 
-function _handleProjectileMovement(state: GameState, allShips: Ship[], addLog: Function, addTurnEvent: (event: string) => void) {
-    const torpedoes = state.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
-    if (torpedoes.length === 0) return;
+    // --- Phase 3: Torpedo Movement & Point Defense ---
+    const torpedoes = nextState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    const pointDefenseTargets: { ship: Ship, torpedo: TorpedoProjectile }[] = [];
 
-    const entitiesToKeep = state.currentSector.entities.filter(e => e.type !== 'torpedo_projectile');
-    const newTorpedoes: TorpedoProjectile[] = [];
-
-    for (const torpedo of torpedoes) {
-        const target = allShips.find(e => e.id === torpedo.targetId);
-
-        if (!target || target.hull <= 0 || target.cloakState === 'cloaked') {
-            if (target && target.cloakState === 'cloaked') {
-                addLog({ 
-                    sourceId: torpedo.sourceId, 
-                    sourceName: torpedo.name,
-                    sourceFaction: torpedo.faction,
-                    message: `The ${torpedo.name} loses its lock as the ${target.name} activates its cloaking field! The projectile continues into deep space.`, 
-                    isPlayerSource: torpedo.sourceId === 'player', 
-                    color: 'border-yellow-400',
-                    category: 'combat'
-                });
-            }
-            continue; // Skips the torpedo, effectively removing it.
-        }
-
-        let keepTorpedo = true;
-        for (let i = 0; i < torpedo.speed; i++) {
-            const originalTorpedoPos = { ...torpedo.position };
-            if (calculateDistance(torpedo.position, target.position) <= 0) {
-                const sourceShip = allShips.find(s => s.id === torpedo.sourceId);
-                const damageLog = applyTorpedoDamage(target, torpedo, sourceShip || null);
-                addLog({ sourceId: torpedo.sourceId, sourceName: torpedo.name, sourceFaction: torpedo.faction, message: damageLog, isPlayerSource: torpedo.sourceId === 'player', color: 'border-orange-400', category: 'combat'});
-                state.combatEffects.push({ type: 'torpedo_hit', position: target.position, delay: i * (750 / torpedo.speed), torpedoType: torpedo.torpedoType });
-                addTurnEvent(`HIT TORPEDO: [${torpedo.id}] -> ${target.name}`);
-                keepTorpedo = false;
-                break;
-            }
-            torpedo.position = moveOneStep(torpedo.position, target.position);
-            addTurnEvent(`MOVE TORPEDO: [${torpedo.id}] from (${originalTorpedoPos.x},${originalTorpedoPos.y}) to (${torpedo.position.x},${torpedo.position.y})`);
-            torpedo.path.push({ ...torpedo.position });
-        }
-        if (keepTorpedo) {
-            newTorpedoes.push(torpedo);
-        }
-    }
-    state.currentSector.entities = [...entitiesToKeep, ...newTorpedoes];
-}
-
-function _handleEndOfTurn(state: GameState, allShips: Ship[], addLog: (log: Omit<LogEntry, 'id' | 'turn'>) => void, addTurnEvent: (event: string) => void) {
     allShips.forEach(ship => {
-        if (ship.hull <= 0) {
-            ship.threatInfo = { total: 0, contributors: [] }; // Clear threat info for dead ships
-            return;
-        }
-
-        // Boarding / Capture Logic must run before other system checks
-        if (ship.captureInfo?.turnsToRepair) {
-            const result = handleBoardingTurn(ship, state);
-            if (result.logs.length > 0) {
-                const captor = allShips.find(s => s.id === ship.captureInfo?.captorId);
-                const isPlayerCapture = captor ? (captor.id === 'player' || captor.allegiance === 'ally') : (ship.captureInfo?.captorId === 'player');
-                
-                result.logs.forEach(logInfo => {
-                     addLog({
-                        sourceId: captor?.id || 'system',
-                        sourceName: captor?.name || 'Salvage Team',
-                        sourceFaction: captor?.faction,
-                        message: logInfo.message,
-                        isPlayerSource: isPlayerCapture,
-                        color: logInfo.color,
-                        category: logInfo.category,
-                    });
-                });
-            }
-            // If the ship is still under repair, skip all other end-of-turn logic for it
-            if (!result.isComplete) {
-                return;
+        if (ship.pointDefenseEnabled && ship.subsystems.pointDefense.health > 0) {
+            const incoming = torpedoes.filter(t => t.targetId === ship.id && calculateDistance(ship.position, t.position) <= 1);
+            if (incoming.length > 0) {
+                // Prioritize most dangerous torpedo
+                incoming.sort((a, b) => b.damage - a.damage);
+                pointDefenseTargets.push({ ship, torpedo: incoming[0] });
             }
         }
-
-        // Handle all other end-of-turn system processes (repairs, energy, effects, etc.)
-        const systemLogs = handleShipEndOfTurnSystems(ship, state, addTurnEvent);
-        systemLogs.forEach(log => addLog(log));
-
-        // Calculate and update threat info for the next turn's display
-        let potentialThreats: Ship[] = [];
-        const shipAllegiance = ship.id === 'player' ? 'player' : ship.allegiance;
-        if (shipAllegiance === 'player' || shipAllegiance === 'ally') {
-            potentialThreats = allShips.filter(s => s.allegiance === 'enemy' && s.hull > 0);
-        } else if (shipAllegiance === 'enemy') {
-            potentialThreats = allShips.filter(s => (s.allegiance === 'player' || s.allegiance === 'ally') && s.hull > 0);
-        }
-        ship.threatInfo = calculateThreatInfo(ship, potentialThreats);
     });
+
+    if (pointDefenseTargets.length > 0) {
+        pointDefenseTargets.forEach(({ ship, torpedo }) => {
+            addTurnEvent(`PD: '${ship.name}' -> [${torpedo.id}]`);
+            const hitChance = ship.subsystems.pointDefense.health / ship.subsystems.pointDefense.maxHealth;
+            if (Math.random() < hitChance) {
+                addTurnEvent(`INTERCEPTED: [${torpedo.id}]`);
+                nextState.currentSector.entities = nextState.currentSector.entities.filter(e => e.id !== torpedo.id);
+                nextState.combatEffects.push({ type: 'point_defense', sourceId: ship.id, targetPosition: torpedo.position, faction: ship.faction, delay: 0 });
+            }
+        });
+        turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 400 });
+    }
+
+    const remainingTorpedoes = nextState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    if (remainingTorpedoes.length > 0) {
+        for (let i = 0; i < Math.max(...remainingTorpedoes.map(t => t.speed)); i++) {
+            remainingTorpedoes.forEach(torpedo => {
+                if (i >= torpedo.speed) return;
+                const target = allShips.find(s => s.id === torpedo.targetId);
+                if (target) {
+                    const from = { ...torpedo.position };
+                    torpedo.position = moveOneStep(torpedo.position, target.position);
+                    torpedo.path.push({ ...torpedo.position });
+                    addTurnEvent(`MOVE TORPEDO: [${torpedo.id}] from (${from.x},${from.y}) to (${torpedo.position.x},${torpedo.position.y})`);
+                }
+            });
+        }
+        turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 400 });
+    }
+
+
+    // --- Phase 4: Combat Resolution (Torpedo Hits) ---
+    const finalTorpedoes = nextState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
+    const torpedoHits: {torpedo: TorpedoProjectile, target: Ship}[] = [];
+
+    finalTorpedoes.forEach(torpedo => {
+        const target = allShips.find(s => s.id === torpedo.targetId);
+        if (target && calculateDistance(torpedo.position, target.position) <= 0) {
+            torpedoHits.push({ torpedo, target });
+        }
+    });
+
+    if (torpedoHits.length > 0) {
+        torpedoHits.forEach(({ torpedo, target }) => {
+            const sourceShip = allShips.find(s => s.id === torpedo.sourceId);
+            const logMessage = applyTorpedoDamage(target, torpedo, sourceShip || null);
+            addLog({ sourceId: sourceShip?.id || 'unknown', sourceName: sourceShip?.name || 'Unknown', sourceFaction: sourceShip?.faction, message: logMessage, color: sourceShip?.logColor || 'border-gray-500', isPlayerSource: false, category: 'combat' });
+            nextState.combatEffects.push({ type: 'torpedo_hit', position: { ...target.position }, delay: 0, torpedoType: torpedo.torpedoType });
+            addTurnEvent(`HIT TORPEDO: [${torpedo.id}] -> '${target.name}'`);
+        });
+        nextState.currentSector.entities = nextState.currentSector.entities.filter(e => !torpedoHits.some(hit => hit.torpedo.id === e.id));
+        turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 800 });
+    }
+    
+    // --- Phase 5: Mine Detonation ---
+    const mines = nextState.currentSector.entities.filter(e => e.type === 'mine');
+    if (mines.length > 0) {
+        const shipsToUpdate = allShips.filter(s => s.hull > 0);
+        shipsToUpdate.forEach(ship => {
+            const mine = mines.find(m => m.position.x === ship.position.x && m.position.y === ship.position.y);
+            if (mine) {
+                const logMessage = applyMineDamage(ship, mine as any);
+                addLog({ sourceId: mine.id, sourceName: mine.name, sourceFaction: mine.faction, message: logMessage, color: 'border-orange-500', isPlayerSource: false, category: 'combat' });
+                nextState.combatEffects.push({ type: 'torpedo_hit', position: { ...ship.position }, delay: 0, torpedoType: (mine as any).torpedoType });
+                nextState.currentSector.entities = nextState.currentSector.entities.filter(e => e.id !== mine.id);
+            }
+        });
+        turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 800 });
+    }
+
+
+    // --- Phase 6: End of Turn Systems & Retreat ---
+    const shipsAfterCombat = [...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
+    if (nextState.player.ship && nextState.player.ship.id) {
+        const playerInList = shipsAfterCombat.some(s => s.id === nextState.player.ship.id);
+        if (!playerInList) {
+            shipsAfterCombat.push(nextState.player.ship);
+        }
+    }
+    
+    shipsAfterCombat.forEach(ship => {
+        if (ship.hull <= 0) return;
+        
+        // ION STORM EFFECTS
+        if (isPosInIonStorm(ship.position, nextState.currentSector)) {
+            const effects = [
+                { name: 'hull_damage', chance: 0.10, details: '5% Hull Damage' },
+                { name: 'shields_offline', chance: 0.05, details: 'Shields Offline (2 Turns)' },
+                { name: 'shield_damage', chance: 0.15, details: '10% Shield System Damage' },
+                { name: 'weapons_offline', chance: 0.07, details: 'Weapons Offline (2 Turns)' },
+                { name: 'energy_depleted', chance: 0.07, details: 'Reserve Power Depleted' },
+                { name: 'engines_offline', chance: 0.23, details: 'Impulse Engines Disabled (1 Turn)' },
+                { name: 'phaser_damage_down', chance: 0.55, details: 'Phaser Damage Reduced (2 Turns)' },
+                { name: 'torpedo_misfire', chance: 0.70, details: 'Torpedo Misfire' },
+            ];
+
+            const successfulChecks = [];
+            let logDetails = 'Ion Storm Discharge Analysis:';
+
+            for (const effect of effects) {
+                const roll = Math.random();
+                const success = roll < effect.chance;
+                logDetails += `\n  - ${effect.details}: Roll ${roll.toFixed(2)} vs ${effect.chance} -> ${success ? '<b class="text-green-400">PASS</b>' : '<span class="text-red-400">FAIL</span>'}`;
+                if (success) {
+                    successfulChecks.push(effect);
+                }
+            }
+
+            if (successfulChecks.length > 0) {
+                const chosenEffect = successfulChecks[Math.floor(Math.random() * successfulChecks.length)];
+                logDetails += `\n<b class="text-yellow-400">Random Discharge Selected: ${chosenEffect.details}</b>`;
+                
+                let effectLog = '';
+                switch (chosenEffect.name) {
+                    case 'hull_damage':
+                        const hullDamage = Math.round(ship.maxHull * 0.05);
+                        ship.hull = Math.max(0, ship.hull - hullDamage);
+                        effectLog = `The ship is battered by ionic stress, taking ${hullDamage} hull damage.`;
+                        break;
+                    case 'shields_offline':
+                        ship.shields = 0;
+                        ship.shieldReactivationTurn = nextState.turn + 2;
+                        effectLog = `The shield emitters are overloaded and go offline! Recalibrating for 2 turns.`;
+                        break;
+                    case 'shield_damage':
+                        const shieldSysDamage = Math.round(ship.subsystems.shields.maxHealth * 0.10);
+                        ship.subsystems.shields.health = Math.max(0, ship.subsystems.shields.health - shieldSysDamage);
+                        effectLog = `Shield generators take ${shieldSysDamage} damage from a power surge.`;
+                        break;
+                    case 'weapons_offline':
+                        ship.weaponFailureTurn = nextState.turn + 2;
+                        effectLog = `Weapon control systems are short-circuited! Weapons offline for 2 turns.`;
+                        break;
+                    case 'energy_depleted':
+                        ship.energy.current = 0;
+                        effectLog = `The ship's reserve power is completely drained by a massive discharge!`;
+                        break;
+                    case 'engines_offline':
+                        ship.engineFailureTurn = nextState.turn + 1;
+                        effectLog = `Impulse engines are disabled by the storm! Movement will be impossible next turn.`;
+                        break;
+                    case 'phaser_damage_down':
+                        const existingShock = ship.statusEffects.find(e => e.type === 'ion_shock');
+                        if (existingShock) {
+                            existingShock.turnsRemaining = 2;
+                        } else {
+                            ship.statusEffects.push({ type: 'ion_shock', phaserDamageModifier: 0.3, turnsRemaining: 2 });
+                        }
+                        effectLog = `Phaser emitters are ionized! Damage reduced by 70% for 2 turns.`;
+                        break;
+                    case 'torpedo_misfire':
+                        if (ship.torpedoes.current > 0) {
+                            ship.torpedoes.current--;
+                            
+                            const ammoTypesWithAmmo = Object.keys(ship.ammo).filter(key => ship.ammo[key as AmmoType]!.current > 0) as AmmoType[];
+                            if(ammoTypesWithAmmo.length > 0) {
+                                const randomAmmoType = ammoTypesWithAmmo[Math.floor(Math.random() * ammoTypesWithAmmo.length)];
+                                ship.ammo[randomAmmoType]!.current--;
+                            }
+        
+                            const misfireDamage = 25;
+                            ship.hull = Math.max(0, ship.hull - misfireDamage);
+                            effectLog = `A torpedo casing in the launch bay is detonated by the storm! The ship takes ${misfireDamage} hull damage.`;
+                        } else {
+                            effectLog = `An energy surge hits the torpedo bay, but it is empty.`;
+                        }
+                        break;
+                }
+                logDetails += `\n<b class="text-orange-400">Result: ${effectLog}</b>`;
+
+            } else {
+                logDetails += '\n<i class="text-gray-400">The ship weathered the storm this turn with no new system failures.</i>';
+            }
+            
+            addLog({
+                sourceId: ship.id, 
+                sourceName: ship.name, 
+                sourceFaction: ship.faction,
+                message: logDetails, 
+                isPlayerSource: false, 
+                color: ship.logColor,
+                category: 'system'
+            });
+        }
+        
+        // Boarding progression
+        if (ship.captureInfo) {
+            const boardingResult = handleBoardingTurn(ship, nextState);
+            boardingResult.logs.forEach(log => {
+                addLog({ sourceId: ship.captureInfo?.captorId || 'system', sourceName: 'Salvage Team', sourceFaction: ship.faction, message: log.message, isPlayerSource: false, color: log.color, category: log.category });
+            });
+        }
+
+        const systemLogs = handleShipEndOfTurnSystems(ship, nextState, addTurnEvent);
+        systemLogs.forEach(log => addLog(log));
+    });
+    
+    // Retreat check
+    if (nextState.player.ship.retreatingTurn === nextState.turn) {
+        nextState.isRetreatingWarp = true;
+        addLog({ sourceId: 'player', sourceName: nextState.player.ship.name, sourceFaction: 'Federation', message: 'Emergency warp engaged!', isPlayerSource: true, color: 'border-blue-400', category: 'special' });
+    }
+
+    nextState.turn++;
+    nextState.turnEvents = turnEvents;
+    turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 100 });
+
+    return turnSteps;
 }

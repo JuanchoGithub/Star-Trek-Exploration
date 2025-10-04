@@ -1,10 +1,10 @@
 import React from 'react';
-import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../types';
-import { ThemeName } from '../hooks/useTheme';
-import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
-import { shipClasses } from '../assets/ships/configs/shipClassStats';
-import { canTargetEntity } from '../game/utils/combat';
-import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../../types';
+import { ThemeName } from '../../hooks/useTheme';
+import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
+import { canTargetEntity } from '../../game/utils/combat';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;
@@ -109,7 +109,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const isCloakingOrDecloaking = playerShip.cloakState === 'cloaking' || playerShip.cloakState === 'decloaking';
   const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction || isCloakingOrDecloaking;
 
-  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector) : { canTarget: false, reason: 'No target selected.' };
+  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector, currentTurn) : { canTarget: false, reason: 'No target selected.' };
   const cannotTargetReason = !targetingCheck.canTarget ? targetingCheck.reason : '';
   
   const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];

@@ -84,8 +84,6 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                                 onStartAwayMission={onStartAwayMission}
                                 onEnterOrbit={onEnterOrbit}
                                 isDocked={isDocked}
-// FIX: Pass the onUndock prop to the TargetInfo component.
-                                onUndock={onUndock}
                             />
                         ) : (
                             <div className="panel-style p-3 flex flex-col justify-center text-center h-full">

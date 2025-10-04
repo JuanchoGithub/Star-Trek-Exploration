@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
@@ -344,8 +343,10 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             }
     
             const entityMap: Map<string, Entity> = new Map(baseState.currentSector.entities.map(e => [e.id, JSON.parse(JSON.stringify(e))]));
-            if (baseState.player.ship.id) {
-                entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
+            if (baseState.player.ship && baseState.player.ship.id) {
+                if (!entityMap.has(baseState.player.ship.id)) {
+                    entityMap.set(baseState.player.ship.id, JSON.parse(JSON.stringify(baseState.player.ship)));
+                }
             }
             
             const shipNameToIdMap = new Map((Array.from(finalEntities.values()) as Entity[]).filter((e): e is Ship => e.type === 'ship').map(s => [s.name, s.id]));

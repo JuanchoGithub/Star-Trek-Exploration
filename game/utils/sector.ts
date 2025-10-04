@@ -36,6 +36,27 @@ export const isDeepNebula = (pos: Position, sector: SectorState): boolean => {
     return neighbors.every(n => nebulaCellSet.has(posToString(n)));
 };
 
+export const isPosInIonStorm = (pos: Position, sector: SectorState): boolean => {
+    if (!sector.ionStormCells || sector.ionStormCells.length === 0) return false;
+    const ionStormCellSet = new Set(sector.ionStormCells.map(posToString));
+    return ionStormCellSet.has(posToString(pos));
+};
+
+export const isDeepIonStorm = (pos: Position, sector: SectorState): boolean => {
+    if (!sector.ionStormCells || sector.ionStormCells.length === 0) return false;
+
+    const ionStormCellSet = new Set(sector.ionStormCells.map(posToString));
+    
+    if (!ionStormCellSet.has(posToString(pos))) {
+        return false;
+    }
+    
+    const neighbors = getNeighboringPositions(pos, 1);
+    if (neighbors.length !== 8) return false; 
+    
+    return neighbors.every(n => ionStormCellSet.has(posToString(n)));
+};
+
 export const isCommBlackout = (pos: Position, sector: SectorState): boolean => {
     if (!isPosInNebula(pos, sector)) return false;
     const nebulaCellSet = new Set(sector.nebulaCells.map(posToString));

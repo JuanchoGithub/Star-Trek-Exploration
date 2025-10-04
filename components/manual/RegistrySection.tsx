@@ -69,7 +69,7 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; }> 
     },
     'Scimitar-class': {
         description: 'A terrifyingly powerful command ship. While slow and ponderous, its overwhelming shields, incredible firepower, and advanced cloak make it a true flagship.',
-        notes: 'Complex power systems may cause a delay between decloaking and firing main weapons. Can fire while cloaked, a unique and deadly ability.',
+        notes: 'Complex power systems may cause a delay between decloaking and firing main weapons. Intelligence reports on its ability to fire while cloaked are conflicting; current analysis indicates this feature is not operationally active.',
     },
     // Pirate
     'Orion Raider': {

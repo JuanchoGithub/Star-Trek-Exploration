@@ -1134,6 +1134,75 @@
           animation: deep-nebula-pulse 5s ease-in-out infinite;
       }
 
+      /* Ion Storm Styles */
+      @keyframes ion-storm-swirl {
+        0% {
+          background-position: 0% 50%;
+          opacity: 0.4;
+          filter: brightness(1.0);
+        }
+        48% {
+          opacity: 0.6;
+        }
+        50% {
+          background-position: 100% 50%;
+          opacity: 0.2;
+          filter: brightness(2.0) saturate(2.0);
+        }
+        52% {
+          opacity: 0.6;
+        }
+        100% {
+          background-position: 0% 50%;
+          opacity: 0.4;
+          filter: brightness(1.0);
+        }
+      }
+      .ion-storm-background {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 40% 60%, var(--color-accent-teal), transparent 70%),
+                    radial-gradient(ellipse at 70% 30%, var(--color-accent-green), transparent 70%),
+                    radial-gradient(ellipse at 20% 20%, var(--color-accent-yellow), transparent 70%);
+        background-size: 250% 250%;
+        animation: ion-storm-swirl 8s ease-in-out infinite;
+      }
+      .ion-storm-cell {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background: radial-gradient(ellipse at center, 
+              rgba(255, 255, 255, 0.3) 0%,
+              rgba(163, 230, 53, 0.2) 50%, /* lime-green */
+              rgba(20, 184, 166, 0.1) 100%); /* teal */
+          opacity: 0.7;
+          pointer-events: none;
+          z-index: 5;
+          animation: ion-storm-cell-swirl 7s ease-in-out infinite alternate;
+      }
+      @keyframes ion-storm-cell-swirl {
+          from {
+              background-position: 0% 50%;
+              filter: brightness(0.8) contrast(1.2);
+          }
+          to {
+              background-position: 100% 50%;
+              filter: brightness(1.2) contrast(1.0);
+          }
+      }
+      .deep-ion-storm-overlay {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(163, 230, 53, 0.4); /* lime-green with opacity */
+          box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.6);
+          z-index: 6;
+          pointer-events: none;
+          animation: deep-nebula-pulse 2s ease-in-out infinite; /* reuse deep nebula pulse */
+      }
+
       @keyframes deep-nebula-pulse {
           0%, 100% {
               opacity: 0.7;

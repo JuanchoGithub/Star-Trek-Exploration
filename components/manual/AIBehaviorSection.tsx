@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -21,6 +22,25 @@ export const AIBehaviorSection: React.FC = () => (
              <li>
                 <strong className="text-accent-yellow">Matched Range:</strong> If both ships have phasers of equal range, the AI will seek to engage at a tactically-sound range of 3 cells, balancing its own damage output against the risk of incoming fire.
             </li>
+            <li>
+                <strong className="text-accent-yellow">Centrality Preference:</strong> In addition to weapon ranges, all AI pathfinding includes a "centrality score." This gives AI ships a subtle but constant preference for moving towards the center of the map, as this maximizes their future maneuverability. Captains may find that attempting to "box in" an enemy ship against the sector border is an effective tactic because it works against the AI's inherent positional preference.
+            </li>
+        </ul>
+
+        <SubHeader>Lost Contact Doctrine</SubHeader>
+        <p className="text-text-secondary mb-2">
+            When an AI vessel loses sensor contact with its target (e.g., the target cloaks or enters a deep nebula), it will not simply remain idle. It will transition to a hunting state based on its capabilities and tactical situation.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong className="text-accent-yellow">Seeking Stance:</strong> The default behavior upon losing a target. The AI ship will cease firing and plot a course to the target's last known position in an attempt to re-acquire sensor lock.
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Prowling Stance:</strong> A tactic employed by cloaking-capable vessels. Instead of immediately seeking, the ship will first engage its cloak before proceeding to the target's last known position. This allows it to hunt for the lost target while remaining concealed itself.
+            </li>
+             <li>
+                <strong className="text-accent-yellow">Preparing Stance:</strong> If a ship has taken damage, it may prioritize repairs before beginning its search, anticipating a potential re-engagement.
+            </li>
         </ul>
 
 
@@ -36,7 +56,11 @@ export const AIBehaviorSection: React.FC = () => (
                 </ul>
             </li>
             <li>
-                <strong className="text-accent-yellow">Derelict Capture &amp; Salvage:</strong> AI ships are now opportunistic. If an AI vessel is adjacent to a derelict ship at the start of its turn, it will dispatch a boarding party to capture it. This process takes 4 turns, after which the derelict vessel will be restored to minimal functionality and will join the capturing faction's fleet.
+                <strong className="text-accent-yellow">Derelict Capture &amp; Salvage:</strong> AI ships are now opportunistic. If an AI vessel is adjacent to a derelict ship, it may attempt to capture it. This process takes 4 turns, after which the derelict will join the capturing faction's fleet. However, the decision to capture depends on the AI's doctrine:
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Klingon &amp; Pirate:</strong> Will *always* attempt to capture an adjacent derelict, viewing it as a prize of war or salvage.</li>
+                    <li><strong>Federation &amp; Romulan:</strong> Will only consider capturing if they are not under immediate threat (in a 'Balanced' stance). Even then, they will only commit to a capture operation about 30% of the time, weighing the tactical advantage against their primary mission objectives.</li>
+                </ul>
             </li>
              <li>
                 <strong className="text-accent-yellow">Intelligent Point-Defense Grid:</strong> Hostile vessels no longer keep their LPD systems active at all times. They will now toggle the system based on immediate threats.
@@ -58,7 +82,7 @@ export const AIBehaviorSection: React.FC = () => (
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Klingons:</strong> Will prioritize targeting your <span className="text-white">Weapon Systems</span>.</li>
                     <li><strong>Romulans:</strong> Will prioritize targeting your <span className="text-white">Engine Systems</span>.</li>
-                    <li><strong>Pirates:</strong> Will prioritize targeting your <span className="text-white">Transporter Systems</span> to prevent capture.</li>
+                    <li><strong>Pirates:</strong> Prioritize targeting <span className="text-white">Engines</span> if your shields are down to prevent escape. Otherwise, they will target your <span className="text-white">Transporter Systems</span> to prevent your security teams from boarding.</li>
                 </ul>
             </li>
             <li>
@@ -69,15 +93,7 @@ export const AIBehaviorSection: React.FC = () => (
                 </ul>
             </li>
             <li>
-                <strong className="text-accent-yellow">Dynamic Energy Management:</strong> Hostile vessels will re-allocate power based on their doctrine and the battle's state.
-                <div className="pl-6 mt-2 text-sm">
-                    <p><strong>- Klingons:</strong> Will use an <span className="text-red-400">Aggressive</span> stance (74% WPN) unless critically damaged (&lt;25% hull), then switch to <span className="text-cyan-400">Defensive</span> (60% SHD).</p>
-                    <p><strong>- Romulans:</strong> Will use a <span className="text-yellow-400">Balanced</span> stance. They switch to <span className="text-red-400">Aggressive</span> (70% WPN) if the player's shields are down, and <span className="text-cyan-400">Defensive</span> (70% SHD) if their own hull is below 50%.</p>
-                    <p><strong>- Pirates:</strong> Will use a <span className="text-yellow-400">Balanced</span> stance (50% WPN/50% SHD). They become <span className="text-red-400">Aggressive</span> (70% WPN) if the player's hull is below 40%, and <span className="text-cyan-400">Defensive</span> (80% SHD) if their own hull is below 60%.</p>
-                </div>
-            </li>
-             <li>
-                <strong>Desperation Moves:</strong> When a vessel's hull integrity drops below 5%, they will initiate a faction-specific "last stand" maneuver.
+                <strong className="text-accent-yellow">Desperation Moves:</strong> When a vessel's hull integrity drops below 30%, they have a scaling chance to initiate a faction-specific "last stand" maneuver.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Klingons:</strong> Will attempt to ram the player's ship.</li>
                     <li><strong>Romulans:</strong> Will attempt a risky, unstable warp jump to escape.</li>
@@ -86,6 +102,23 @@ export const AIBehaviorSection: React.FC = () => (
                  </ul>
             </li>
         </ul>
+
+        <SubHeader>Dynamic Energy Management &amp; Stance Logic</SubHeader>
+        <p className="text-text-secondary mb-2">Hostile vessels will re-allocate power based on their doctrine and the battle's state.</p>
+        <h4 className="font-bold text-accent-yellow mt-4">Core Stance Triggers (Universal Logic)</h4>
+        <p className="text-text-secondary mb-2">Before applying faction-specific doctrines, all AI ships share a set of universal triggers for adopting a tactical stance. Understanding these baseline responses is key to predicting enemy behavior.</p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li><strong className="text-cyan-400">Defensive:</strong> An AI will prioritize survival and adopt a Defensive stance if its hull drops below 25% or its shields drop below 15%.</li>
+            <li><strong className="text-red-400">Aggressive:</strong> An AI will press the attack if it detects a clear advantage, such as the target's shields being depleted (&lt;= 5%) and its hull being below 70%. It may also become aggressive during a stalemate if both its own and its target's shields are high (&gt; 80%).</li>
+            <li><strong className="text-yellow-400">Balanced:</strong> If no special conditions are met, the ship will adopt a Balanced stance, weighing offense and defense equally.</li>
+        </ul>
+        <h4 className="font-bold text-accent-yellow mt-4">Factional Overrides & Power Allocation</h4>
+        <p className="text-text-secondary mb-2">While all AIs follow the core triggers, each faction has a preferred default stance and unique power allocation profiles:</p>
+        <div className="pl-6 mt-2 text-sm">
+            <p><strong>- Klingons:</strong> Default to an <span className="text-red-400">Aggressive</span> stance. (Power: 74% WPN, 13% SHD, 13% ENG)</p>
+            <p><strong>- Romulans:</strong> Default to a <span className="text-yellow-400">Balanced</span> stance. (Power: 34% WPN, 33% SHD, 33% ENG)</p>
+            <p><strong>- Pirates:</strong> Default to a <span className="text-yellow-400">Balanced</span> stance. They will become <span className="text-red-400">Aggressive</span> if the player's hull is below 40%, and switch to <span className="text-cyan-400">Defensive</span> if their own hull is below 60%. (Power: 50% WPN, 50% SHD, 0% ENG)</p>
+        </div>
 
         <SubHeader>Advanced Cloaking Doctrine (Revision 1.7)</SubHeader>
         <p className="text-text-secondary mb-2">Stealth technology is a dynamic state requiring constant power and subject to failure under pressure.</p>

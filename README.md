@@ -22,6 +22,38 @@ For a complete guide to gameplay mechanics, ship registries, tactical doctrines,
 
 # Simulation Changelog
 
+## Version 2.1 - The "Strategic Depth" Update
+*Release Date: Stardate 49752.1, 14:00 (September 28, 2025)*
+
+A major update to the galaxy generation system, introducing a "strategic depth" mechanic that creates a more logical and varied distribution of encounters across the quadrant.
+
+### Summary of User Directives
+> "The galaxy generation logic...divides the map into four static quadrants... There is no concept of 'depth'... As a result, these deep-space templates will never be selected... implement the depth concept, the zone where factions touch is the shallowest, and the further away from other factions, the deepest"
+
+### Summary of Implemented Changes
+*   **New "Sector Depth" System:** Each sector in the quadrant now has a calculated "depth" from 1 (border sector) to 4 (deep space/homeland). This is determined by its distance from the nearest foreign border.
+*   **Depth-Based Template Spawning:** All sector templates have been assigned a valid depth range for spawning. The galaxy generator now filters templates based on a sector's calculated depth.
+*   **Activated Deep-Space Encounters:** Previously dormant templates for major fleet concentrations and rare deep-space anomalies (e.g., "Klingon Homeland Defense Fleet", "Dyson Sphere Fragment") are now active in the simulation and will appear in their appropriate deep-space locations.
+*   **Player's Manual Update:** The 'Galaxy Generation' section of the manual has been updated to fully document the new sector depth system, providing captains with the intelligence needed to anticipate regional threats and opportunities.
+
+## Version 2.0 - The "Book of Knowledge" Update
+*Release Date: Stardate 49745.3, 11:00 (September 27, 2025)*
+
+A major documentation and intelligence update, focused on aligning the Starfleet Player's Manual with the true, code-level mechanics of the simulation. This revision corrects inaccuracies and reveals previously undocumented tactical systems.
+
+### Summary of Declassified Intelligence (Newly Documented Features)
+*   **Derelict Capture Protocols:** The manual now includes a full section on the multi-turn process for capturing derelict vessels, including resource costs and outcomes.
+*   **Consequential Damage Models:** The risks associated with emergency dilithium use (a 25% chance of subsystem damage per crystal) are now fully documented.
+*   **Combat Mechanic Specifications:**
+    *   **Shield Absorption Ratios:** The previously classified 4:1 shield absorption ratio against torpedo damage is now included in the combat manual.
+    *   **Phaser Accuracy Modifiers:** The manual now details the base 90% accuracy of phasers and lists all known modifiers, including penalties for evasive maneuvers and specific weapon types (e.g., Klingon Disruptors).
+*   **Advanced AI Doctrines:** The "Seeking" and "Prowling" behaviors exhibited by AI when a target is lost are now detailed in the AI appendix.
+
+### Summary of Manual Corrections (Alignment with Operational Code)
+*   **Saucer Separation:** Clarified that the saucer separation animation for Federation vessels is a visual representation of the "abandon ship" action and does not mechanically split the vessel into two separate entities.
+*   **Environmental Hazards:** Corrected the description of "Ion Storm" sectors to reflect that they are currently benign environmental effects with no impact on ship systems.
+*   **Scimitar-class Capabilities:** The tactical registry has been updated to reflect that the Scimitar, despite intelligence reports, is currently unable to fire its weapons while cloaked, conforming to standard fleet-wide combat logic.
+
 ## Version 1.7 - AI & Cloaking Overhaul
 *Release Date: Stardate 49740.1, 09:00 (September 26, 2025)*
 

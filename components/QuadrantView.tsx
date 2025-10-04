@@ -1,6 +1,6 @@
 // FIX: Removed invalid "--- START OF FILE components/QuadrantView.tsx ---" header.
 import React, { useState, useMemo } from 'react';
-import type { SectorState, FactionOwner, QuadrantPosition } from '../types';
+import type { SectorState, FactionOwner, QuadrantPosition, Ship } from '../types';
 // FIX: Corrected import to use GalaxyIcon, which is exported and represents an explorer-type vessel, instead of the non-existent FederationExplorerIcon.
 import { GalaxyIcon as PlayerShipIcon } from '../assets/ships/icons';
 import { ThemeName } from '../hooks/useTheme';
@@ -152,15 +152,19 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
     playerPosition: { qx: number; qy: number };
+    playerShip: Ship;
     onWarp: (pos: { qx: number; qy: number }) => void;
     onScanQuadrant: (pos: QuadrantPosition) => void;
     isInCombat: boolean;
     themeName: ThemeName;
 }
 
-const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, onWarp, onScanQuadrant, isInCombat, themeName }) => {
+const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, playerShip, onWarp, onScanQuadrant, isInCombat, themeName }) => {
     const quadrantSize = { width: 8, height: 8 };
     const [contextMenu, setContextMenu] = useState<{ qx: number; qy: number } | null>(null);
+
+    const warpEngineHealthPercent = (playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth);
+    const maxWarpDistance = Math.floor(1 + 0.09 * (warpEngineHealthPercent * 100));
 
     const getFactionDisplay = (faction: FactionOwner) => {
         switch (faction) {
@@ -189,8 +193,10 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                     const qx = index % quadrantSize.width;
                     const qy = Math.floor(index / quadrantSize.width);
                     const isPlayerHere = playerPosition.qx === qx && playerPosition.qy === qy;
-                    const isAdjacent = !isPlayerHere && (Math.abs(playerPosition.qx - qx) + Math.abs(playerPosition.qy - qy) === 1);
                     
+                    const distance = Math.max(Math.abs(playerPosition.qx - qx), Math.abs(playerPosition.qy - qy));
+                    const isWarpable = !isPlayerHere && distance > 0 && distance <= maxWarpDistance;
+
                     const isVisited = sector.visited;
                     const isScanned = sector.isScanned;
 
@@ -230,10 +236,13 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                     }
                     
                     let hoverClass = '';
+                    let cellTitle = title;
                     if (isPlayerHere) {
                         borderClass = 'border-accent-yellow ring-2 ring-accent-yellow';
-                    } else if (isAdjacent) {
+                    } else if (isWarpable) {
                         hoverClass = 'hover:bg-accent-yellow hover:bg-opacity-20 cursor-pointer';
+                    } else if (!isVisited && !isScanned && distance > maxWarpDistance) {
+                        cellTitle += ` - Out of Warp Range (Max: ${maxWarpDistance})`;
                     }
 
                     const cellClasses = [
@@ -250,12 +259,12 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             key={`sector-${qx}-${qy}`}
                             className={cellClasses}
                             onClick={(e) => {
-                                if (isAdjacent) {
+                                if (isWarpable) {
                                     e.stopPropagation();
                                     setContextMenu({ qx, qy });
                                 }
                             }}
-                            title={title}
+                            title={cellTitle}
                         >
                             <div className="relative z-10 flex flex-col items-center justify-center text-center">
                                 {content}
@@ -279,7 +288,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             onClick={() => { onWarp(contextMenu); setContextMenu(null); }} 
                             className="btn btn-primary text-xs w-full"
                             disabled={isInCombat}
-                            title={isInCombat ? "Cannot warp during Red Alert" : "Engage Warp Drive"}
+                            title={isInCombat ? "Cannot warp during Red Alert" : `Engage Warp Drive (Cost: ${Math.max(Math.abs(playerPosition.qx - contextMenu.qx), Math.abs(playerPosition.qy - contextMenu.qy))} Dilithium)`}
                         >
                             Warp
                         </button>

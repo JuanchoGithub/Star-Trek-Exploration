@@ -55,7 +55,7 @@ export interface ShipSubsystems {
 interface BaseEntity {
   id: string;
   name: string;
-  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'torpedo_projectile' | 'shuttle';
+  type: 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'torpedo_projectile' | 'shuttle' | 'mine';
   faction: string;
   position: Position;
   scanned: boolean;
@@ -70,6 +70,10 @@ export type CloakState = 'visible' | 'cloaking' | 'cloaked' | 'decloaking';
 export type StatusEffect = {
     type: 'plasma_burn';
     damage: number;
+    turnsRemaining: number;
+} | {
+    type: 'ion_shock';
+    phaserDamageModifier: number;
     turnsRemaining: number;
 };
 
@@ -104,6 +108,7 @@ export interface Ship extends BaseEntity {
   isStunned: boolean; // Skips next turn if true
   engineFailureTurn: number | null;
   lifeSupportFailureTurn: number | null;
+  weaponFailureTurn: number | null;
   isDerelict: boolean;
   captureInfo: {
     captorId: string;
@@ -196,7 +201,19 @@ export interface TorpedoProjectile extends BaseEntity {
     };
 }
 
-export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile | Shuttle;
+export interface Mine extends BaseEntity {
+  type: 'mine';
+  torpedoType: TorpedoType;
+  damage: number;
+  specialDamage?: {
+      type: 'plasma_burn';
+      damage: number;
+      duration: number;
+  };
+  visibleTo: ShipModel[];
+}
+
+export type Entity = Ship | Planet | Starbase | AsteroidField | EventBeacon | TorpedoProjectile | Shuttle | Mine;
 
 export type FactionOwner = 'Federation' | 'Klingon' | 'Romulan' | 'None';
 
@@ -365,6 +382,7 @@ export interface SectorState {
   visited: boolean;
   hasNebula: boolean;
   nebulaCells: Position[];
+  ionStormCells: Position[];
   factionOwner: FactionOwner;
   isScanned: boolean;
   seed: string;
@@ -430,7 +448,7 @@ export type ScenarioMode = 'spectate' | 'dogfight' | 'setup';
 
 // ---- New types for the template system ----
 
-export type EntityTemplateType = 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon';
+export type EntityTemplateType = 'ship' | 'planet' | 'starbase' | 'asteroid_field' | 'event_beacon' | 'mine';
 
 export interface EntityTemplate {
     type: EntityTemplateType;
@@ -448,6 +466,8 @@ export interface SectorTemplate {
     name: string;
     weight: number; // Higher is more common
     allowedFactions: FactionOwner[]; // Factions this can spawn in
+    depth: [number, number]; // Min and max depth for spawning
     entityTemplates: EntityTemplate[];
     hasNebulaChance?: number; // 0 to 1
+    hasIonStormChance?: number; // 0 to 1
 }

@@ -1,3 +1,4 @@
+
 import type { Ship, ShipSubsystems, ResourceType, GameState, LogEntry } from '../../types';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 import { isPosInNebula } from './sector';
@@ -327,6 +328,16 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState, add
                     if (ship.customCloakStats) {
                         maintainCost = ship.customCloakStats.powerCost;
                     }
+                    
+                    const isInNebula = isPosInNebula(ship.position, gameState.currentSector);
+                    const isInAsteroids = gameState.currentSector.entities.some(e => e.type === 'asteroid_field' && e.position.x === ship.position.x && e.position.y === ship.position.y);
+                    
+                    if (isInNebula) {
+                        maintainCost *= 1.30; // 30% increase
+                    } else if (isInAsteroids) {
+                        maintainCost *= 1.15; // 15% increase
+                    }
+
                     consumption += maintainCost * stats.energyModifier;
                 }
             }

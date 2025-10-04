@@ -1,4 +1,4 @@
-import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField, BeamWeapon, ProjectileWeapon, AmmoType } from '../../types';
+import type { GameState, Ship, BridgeOfficer, LogEntry, SectorState, Entity, FactionOwner, Position, StarbaseType, ShipRole, PlanetClass, EventBeacon, SectorTemplate, AsteroidField, BeamWeapon, ProjectileWeapon, AmmoType, Mine } from '../../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT, QUADRANT_SIZE } from '../../assets/configs/gameConstants';
 import { PLAYER_LOG_COLOR, SYSTEM_LOG_COLOR, ENEMY_LOG_COLORS } from '../../assets/configs/logColors';
 import { shipClasses, type ShipClassStats } from '../../assets/ships/configs/shipClassStats';
@@ -23,6 +23,7 @@ import {
     WEAPON_TORPEDO_PLASMA
 } from '../../assets/weapons/weaponRegistry';
 import { factionDefaults } from '../../assets/ships/configs/factionDefaults';
+import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 
 const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['factionOwner'] => {
     const midX = QUADRANT_SIZE / 2;
@@ -31,6 +32,21 @@ const getFactionOwner = (qx: number, qy: number): GameState['currentSector']['fa
     if (qx >= midX && qy < midY) return 'Romulan';
     if (qx < midX && qy >= midY) return 'Federation';
     return 'None';
+};
+
+const calculateSectorDepth = (qx: number, qy: number): number => {
+    const midX = QUADRANT_SIZE / 2; // 4
+    const midY = QUADRANT_SIZE / 2; // 4
+
+    if (qx < midX && qy < midY) { // Klingon
+        return Math.min(midX - qx, midY - qy);
+    } else if (qx >= midX && qy < midY) { // Romulan
+        return Math.min(qx - (midX - 1), midY - qy);
+    } else if (qx < midX && qy >= midY) { // Federation
+        return Math.min(midX - qx, qy - (midY - 1));
+    } else { // None
+        return Math.min(qx - (midX - 1), qy - (midY - 1));
+    }
 };
 
 const generateNebulaField = (rand: () => number): Position[] => {
@@ -94,6 +110,75 @@ const generateNebulaField = (rand: () => number): Position[] => {
     });
 };
 
+const generateIonStormField = (rand: () => number): Position[] => {
+    const cells = new Set<string>();
+    const percentage = 0.35 + rand() * 0.35; // 35% to 70%
+    const targetCellCount = Math.floor(SECTOR_WIDTH * SECTOR_HEIGHT * percentage);
+
+    if (targetCellCount === 0) return [];
+
+    // Use more seeds for more paths
+    const seeds: Position[] = [];
+    for (let i = 0; i < 5; i++) {
+        seeds.push({
+            x: Math.floor(rand() * SECTOR_WIDTH),
+            y: Math.floor(rand() * SECTOR_HEIGHT),
+        });
+    }
+
+    const queue: Position[] = [...seeds];
+    seeds.forEach(p => cells.add(`${p.x},${p.y}`));
+
+    while (cells.size < targetCellCount && queue.length > 0) {
+        const current = queue.shift()!;
+        
+        // Include diagonals for more erratic paths
+        const neighbors = [
+            { x: current.x + 1, y: current.y },
+            { x: current.x - 1, y: current.y },
+            { x: current.x, y: current.y + 1 },
+            { x: current.x, y: current.y - 1 },
+            { x: current.x + 1, y: current.y + 1 },
+            { x: current.x - 1, y: current.y - 1 },
+            { x: current.x + 1, y: current.y - 1 },
+            { x: current.x - 1, y: current.y + 1 },
+        ].sort(() => rand() - 0.5);
+
+        for (const neighbor of neighbors) {
+            if (
+                neighbor.x >= 0 && neighbor.x < SECTOR_WIDTH &&
+                neighbor.y >= 0 && neighbor.y < SECTOR_HEIGHT &&
+                !cells.has(`${neighbor.x},${neighbor.y}`) &&
+                cells.size < targetCellCount
+            ) {
+                // Lower probability to make it more stringy and less clumpy than nebula
+                if (rand() < 0.6) { 
+                    cells.add(`${neighbor.x},${neighbor.y}`);
+                    queue.push(neighbor);
+                }
+            }
+        }
+        
+        // If a path dies out, start a new one
+        if (queue.length === 0 && cells.size < targetCellCount) {
+             let newSeed: Position;
+             do {
+                 newSeed = {
+                    x: Math.floor(rand() * SECTOR_WIDTH),
+                    y: Math.floor(rand() * SECTOR_HEIGHT),
+                };
+             } while (cells.has(`${newSeed.x},${newSeed.y}`));
+             queue.push(newSeed);
+             cells.add(`${newSeed.x},${newSeed.y}`);
+        }
+    }
+
+    return Array.from(cells).map(s => {
+        const [x, y] = s.split(',').map(Number);
+        return { x, y };
+    });
+};
+
 export const createShip = (
     baseStats: ShipClassStats,
     faction: Ship['shipModel'],
@@ -116,6 +201,8 @@ export const createShip = (
         cloakInstability: 0, cloakDestabilizedThisTurn: false,
         cloakTransitionTurnsRemaining: null,
         isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null,
+        // FIX: Added missing property `weaponFailureTurn`.
+        weaponFailureTurn: null,
         statusEffects: [], lastKnownPlayerPosition: null, pointDefenseEnabled: false, energyModifier: baseStats.energyModifier,
         lastAttackerPosition: null,
         // @deprecated
@@ -242,6 +329,23 @@ const createEntityFromTemplate = (
             const eventType = getEventType();
             return { id: uniqueId(), name: 'Unidentified Signal', type: 'event_beacon', eventType, faction: 'Unknown', position, scanned: false, isResolved: false };
         }
+        case 'mine': {
+            if (chosenFaction === 'None' || chosenFaction === 'Unknown') return null;
+            const torpedoType = 'HeavyPlasma';
+            const config = torpedoStats[torpedoType];
+            return {
+                id: uniqueId(),
+                name: 'Cloaked Plasma Mine',
+                type: 'mine',
+                faction: chosenFaction,
+                position,
+                scanned: true,
+                torpedoType: torpedoType,
+                damage: config.damage,
+                specialDamage: config.specialDamage,
+                visibleTo: [chosenFaction],
+            } as Mine;
+        }
     }
     return null;
 };
@@ -332,6 +436,7 @@ export const createSectorFromTemplate = (
     });
 
     const hasNebula = rand() < (template.hasNebulaChance || 0);
+    const hasIonStorm = rand() < (template.hasIonStormChance || 0);
     return {
         templateId: template.id,
         seed,
@@ -339,6 +444,8 @@ export const createSectorFromTemplate = (
         visited: false,
         hasNebula,
         nebulaCells: hasNebula ? generateNebulaField(rand) : [],
+        // FIX: Added missing property `ionStormCells`.
+        ionStormCells: hasIonStorm ? generateIonStormField(rand) : [],
         factionOwner,
         isScanned: false
     };
@@ -370,6 +477,8 @@ export const createInitialGameState = (): GameState => {
     cloakInstability: 0, cloakDestabilizedThisTurn: false,
     cloakTransitionTurnsRemaining: null,
     isStunned: false, engineFailureTurn: null, lifeSupportFailureTurn: null, isDerelict: false, captureInfo: null, statusEffects: [], pointDefenseEnabled: false,
+    // FIX: Added missing property `weaponFailureTurn`.
+    weaponFailureTurn: null,
     energyModifier: playerStats.energyModifier,
     lastAttackerPosition: null,
     // @deprecated
@@ -388,7 +497,8 @@ export const createInitialGameState = (): GameState => {
     { id: 'officer-3', name: 'Lt. Cmdr. Singh', role: 'Engineering', personality: 'Cautious' },
   ];
 
-  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, nebulaCells: [], factionOwner: 'None', isScanned: false, seed: '', templateId: '' })));
+  // FIX: Added missing property `ionStormCells`.
+  const quadrantMap: GameState['quadrantMap'] = Array.from({ length: QUADRANT_SIZE }, () => Array.from({ length: QUADRANT_SIZE }, () => ({ entities: [], visited: false, hasNebula: false, nebulaCells: [], ionStormCells: [], factionOwner: 'None', isScanned: false, seed: '', templateId: '' })));
   const availablePlanetNames: Record<string, string[]> = JSON.parse(JSON.stringify(planetNames));
   const availableShipNames: Record<string, string[]> = JSON.parse(JSON.stringify(shipNames));
   const colorIndex = { current: 0 };
@@ -397,10 +507,31 @@ export const createInitialGameState = (): GameState => {
   for (let qy = 0; qy < QUADRANT_SIZE; qy++) {
       for (let qx = 0; qx < QUADRANT_SIZE; qx++) {
           const factionOwner = getFactionOwner(qx, qy);
-          const validTemplates = sectorTemplates.filter(t => t.allowedFactions.includes(factionOwner));
-          const totalWeight = validTemplates.reduce((sum, t) => sum + t.weight, 0);
-          let roll = Math.random() * totalWeight;
-          const chosenTemplate = validTemplates.find(t => (roll -= t.weight) <= 0) || validTemplates[0];
+          const depth = calculateSectorDepth(qx, qy);
+
+          const validTemplates = sectorTemplates.filter(t => 
+              t.allowedFactions.includes(factionOwner) &&
+              depth >= t.depth[0] && depth <= t.depth[1]
+          );
+          
+          let chosenTemplate;
+          if (validTemplates.length > 0) {
+              const totalWeight = validTemplates.reduce((sum, t) => sum + t.weight, 0);
+              let roll = Math.random() * totalWeight;
+              chosenTemplate = validTemplates.find(t => (roll -= t.weight) <= 0) || validTemplates[0];
+          } else {
+              // Fallback: find templates for this faction at any depth
+              const fallbackTemplates = sectorTemplates.filter(t => t.allowedFactions.includes(factionOwner));
+              if (fallbackTemplates.length > 0) {
+                  const totalWeight = fallbackTemplates.reduce((sum, t) => sum + t.weight, 0);
+                  let roll = Math.random() * totalWeight;
+                  chosenTemplate = fallbackTemplates.find(t => (roll -= t.weight) <= 0) || fallbackTemplates[0];
+              } else {
+                  // Final fallback to the very first template (empty space)
+                  chosenTemplate = sectorTemplates[0];
+              }
+          }
+
           const sectorSeed = `${galaxySeed}_${qx}_${qy}`;
           if (chosenTemplate) {
             quadrantMap[qy][qx] = createSectorFromTemplate(chosenTemplate, factionOwner, availablePlanetNames, availableShipNames, colorIndex, sectorSeed);

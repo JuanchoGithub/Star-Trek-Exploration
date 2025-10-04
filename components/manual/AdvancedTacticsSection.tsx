@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
@@ -80,24 +82,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 <li><strong>Using the Environment:</strong> Lure aggressive enemies into <span className="text-gray-400">Asteroid Fields</span>. The dense rock provides cover (reducing phaser accuracy against ships inside by 30%) and a direct hazard (risk of impact damage). You can also use asteroid fields as a cloak. By positioning your ship inside a field, you become undetectable beyond 4 hexes. This allows you to break sensor lock and set up ambushes. Lure an enemy to chase you, then enter a field. They will be forced to close to within 2 hexes to fire, bringing them into your optimal torpedo range.</li>
                 <li><strong>Focus Fire:</strong> In multi-ship engagements, it is always better to destroy one enemy than to damage two. Concentrate all fire on a single target until it is neutralized before moving to the next. Prioritize destroying high-damage, low-health threats (like a B'rel Bird-of-Prey) first.</li>
             </ul>
-
-            <SubHeader>Nebula Warfare</SubHeader>
-            <p className="text-text-secondary mb-4">Nebulae are your greatest tactical tool for stealth, surprise, and controlling the flow of battle. Their particulate density and gravimetric distortions create unique opportunities for a cunning captain.</p>
-            <div className="space-y-3">
-                <DetailBox title="Concealment (Deep Nebula)" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-purple-400">
-                    <p>If you position your ship in a nebula cell that is <span className="text-white font-bold">completely surrounded by 8 other nebula cells</span> (including diagonals), you enter a "Deep Nebula".</p>
-                    <p>Your vessel will become <span className="text-accent-yellow">completely undetectable</span> to enemy ships and will vanish from their tactical displays. This is the ultimate ambush position, allowing you to fire on an enemy that cannot see you.</p>
-                </DetailBox>
-                <DetailBox title="Sensor Reduction" icon={<FederationScanIcon className="w-6 h-6"/>} borderColorClass="border-cyan-400">
-                    <p>While your ship is inside <span className="text-white font-bold">any</span> nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in <span className="text-accent-yellow">adjacent cells (range 1)</span>.</p>
-                    <p>Use this to break contact with a superior force, force a close-range engagement where your torpedoes excel, or sneak past enemy patrols undetected.</p>
-                </DetailBox>
-                <DetailBox title="Communication Blackout" icon={<TransporterIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
-                    <p>Allied vessels normally share sensor data, allowing them to see each other regardless of line of sight. However, this connection can be severed.</p>
-                    <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship in the center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
-                </DetailBox>
-            </div>
-
+            
             <SubHeader>Subsystem Targeting: A Surgical Approach</SubHeader>
             <p className="text-text-secondary mb-4">A discerning captain knows that simply pounding on an enemy's hull is inefficient. Crippling key systems can neutralize a threat with less risk and greater tactical advantage. An enemy ship is only as dangerous as its functioning components.</p>
              <div className="space-y-3">
@@ -129,7 +114,48 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         <p className="text-sm text-text-secondary">While most hostile ships lack transporters, those that possess them use them to repel boarders and conduct rapid internal repairs. Disabling their transporter makes them highly vulnerable to your own boarding actions and strike teams.</p>
                     </div>
                 </div>
+                <div className="mt-4 p-3 bg-black rounded border-l-4 border-accent-yellow">
+                    <h4 className="font-bold text-accent-yellow">Focus Fire Bonus</h4>
+                    <p className="text-sm text-text-secondary mt-2">Sustained, focused fire on a single subsystem is rewarded with a damage bonus. After targeting the same subsystem for <strong className="text-white">two consecutive turns</strong>, a flat <strong className="text-white">+50% damage bonus</strong> is applied to the portion of damage that specifically hits the targeted subsystem (this does not increase hull damage). This bonus does not increase on subsequent turns. This tactic is essential for quickly disabling critical enemy systems.</p>
+                </div>
             </div>
+            
+            <SubHeader>Derelict Capture &amp; Salvage</SubHeader>
+            <p className="text-text-secondary mb-4">Derelict vessels are not just battlefield debris; they are valuable strategic assets waiting to be claimed. Both player and AI ships can attempt to capture and restore these disabled hulks.</p>
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                 <h4 className="font-bold text-accent-yellow">The Capture Process</h4>
+                 <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                     <li><strong>Prerequisites:</strong> You must be adjacent (1 hex) to a derelict vessel. Your ship must have at least <strong className="text-white">1 available Security Team</strong> and <strong className="text-white">5 Dilithium crystals</strong>. The operation consumes your major action for the turn.</li>
+                     <li><strong>Repair Phase:</strong> A salvage team will remain on the derelict for <strong className="text-white">4 turns</strong>, conducting emergency repairs. The vessel cannot be controlled during this period.</li>
+                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. The 5 Dilithium used for the operation are transferred to the captured ship's reserves, allowing it to power its own systems.</li>
+                 </ul>
+            </div>
+
+            <SubHeader>Nebula Warfare</SubHeader>
+            <p className="text-text-secondary mb-4">Nebulae are your greatest tactical tool for stealth, surprise, and controlling the flow of battle. Their particulate density and gravimetric distortions create unique opportunities for a cunning captain.</p>
+            <div className="space-y-3">
+                <DetailBox title="Concealment (Deep Nebula)" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-purple-400">
+                    <p>If you position your ship in a nebula cell that is <span className="text-white font-bold">completely surrounded by 8 other nebula cells</span> (including diagonals), you enter a "Deep Nebula".</p>
+                    <p>Your vessel will become <span className="text-accent-yellow">completely undetectable</span> to enemy ships and will vanish from their tactical displays. This is the ultimate ambush position, allowing you to fire on an enemy that cannot see you.</p>
+                </DetailBox>
+                <DetailBox title="Sensor Reduction" icon={<FederationScanIcon className="w-6 h-6"/>} borderColorClass="border-cyan-400">
+                    <p>While your ship is inside <span className="text-white font-bold">any</span> nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in <span className="text-accent-yellow">adjacent cells (range 1)</span>.</p>
+                    <p>Use this to break contact with a superior force, force a close-range engagement where your torpedoes excel, or sneak past enemy patrols undetected.</p>
+                </DetailBox>
+                <DetailBox title="Communication Blackout" icon={<TransporterIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
+                    <p>Allied vessels normally share sensor data, allowing them to see each other regardless of line of sight. However, this connection can be severed.</p>
+                    <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship in the center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
+                </DetailBox>
+            </div>
+            
+            <SubHeader>Desperation Moves</SubHeader>
+            <p className="text-text-secondary mb-4">When a vessel's hull integrity drops below <strong className="text-white">30%</strong>, its captain has a scaling chance to initiate a faction-specific "last stand" maneuver. This chance increases as the ship takes more damage, becoming a near-certainty at critical hull levels. Be prepared for these final, desperate acts much earlier than previously anticipated.</p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                <li><strong className="text-red-500">Klingons:</strong> Will attempt to ram the player's ship.</li>
+                <li><strong className="text-green-500">Romulans:</strong> Will attempt a risky, unstable warp jump to escape.</li>
+                <li><strong className="text-orange-500">Pirates:</strong> Will overload their reactor and self-destruct.</li>
+                <li><strong className="text-blue-400">Federation (NPCs):</strong> Will abandon ship, becoming a derelict vessel and launching escape shuttles. Note: The saucer separation animation for certain ship classes is a visual representation of this event; the ship does not mechanically split into two separate entities.</li>
+            </ul>
 
             <SubHeader>Employing the Laser Point-Defense (LPD) System</SubHeader>
             <p className="text-text-secondary mb-4">
@@ -181,7 +207,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
                         <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
                             <li><strong>Reliability:</strong> Reduced by 25% (e.g., 92% becomes 69%).</li>
-                            <li><strong>Power Cost:</strong> Increased by 30% (e.g., 40 becomes 52 per turn).</li>
+                            <li><strong>Power Cost:</strong> Increased by 30% (e.g., 45 becomes ~58 per turn).</li>
                         </ul>
                     </div>
                     <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-gray-500">
@@ -189,7 +215,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         <p className="text-sm text-text-secondary">The dense rock, ice, and sensor-reflective dust in an asteroid field can create minor interference with cloaking fields.</p>
                         <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
                             <li><strong>Reliability:</strong> Reduced by 10% (e.g., 92% becomes 83%).</li>
-                            <li><strong>Power Cost:</strong> Increased by 15% (e.g., 40 becomes 46 per turn).</li>
+                            <li><strong>Power Cost:</strong> Increased by 15% (e.g., 45 becomes ~52 per turn).</li>
                         </ul>
                     </div>
                 </div>

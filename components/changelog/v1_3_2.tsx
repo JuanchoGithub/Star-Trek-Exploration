@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from '../manual/shared';
 
-export const Version1_3: React.FC = () => {
+export const Version1_3_2: React.FC = () => {
     const releaseDate = "September 22, 2025";
     return (
         <>

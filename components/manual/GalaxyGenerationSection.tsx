@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import type { SectorTemplate, FactionOwner } from '../../types';
@@ -42,9 +43,15 @@ export const GalaxyGenerationSection: React.FC = () => {
             <p className="text-text-secondary mb-4">
                 The Typhon Expanse is not a random collection of stars and planets. Its creation is governed by a template-based system designed to create a thematic and logical galaxy. Each sector you enter is generated from a blueprint that defines its contents, rarity, and character based on its location in the quadrant.
             </p>
-            <SubHeader>Sector Templates Explained</SubHeader>
+            <SubHeader>Quadrant &amp; Sector Templates</SubHeader>
+            <p className="text-text-secondary mb-4">
+                The galaxy map is divided into four static quadrants, each with a designated primary owner: Federation (bottom-left), Klingon (top-left), Romulan (top-right), and Uncharted Space (bottom-right). Within these quadrants, the simulation selects from a weighted list of "sector templates" to construct the environment.
+            </p>
             <p className="text-text-secondary mb-4">
                 A sector template is a blueprint containing a name, a rarity "weight" (higher is more common), and a list of rules for what can appear within it. Crucially, each template is restricted to certain territories. For example, you will only find "Klingon Hunting Grounds" within the Klingon Empire, while "Pirate Ambush Points" are most common in Uncharted Space. This ensures that the galaxy feels coherent and believable.
+            </p>
+            <p className="text-text-secondary mb-4">
+                The simulation utilizes a "depth" system to determine which templates can appear. A sector's depth is its distance from the nearest foreign border, ranging from 1 (a border sector) to 4 (a sector deep within a faction's territory). This ensures that border patrols appear on borders, while high-level fleet encounters like the 'Klingon Homeland Defense Fleet' or rare anomalies like a 'Dyson Sphere Fragment' occur in the heart of an empire.
             </p>
             
             <SubHeader>Environmental Generation: Nebulae &amp; Asteroid Fields</SubHeader>

@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile, ProjectileWeapon } from '../types';
@@ -305,10 +306,12 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
 
     const onWarp = useCallback((pos: QuadrantPosition) => {
         const { ship } = gameState.player;
-        const warpEnginesHealth = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
-        
-        if (warpEnginesHealth < 0.50) {
-            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Cannot initiate warp: Main engines are too damaged.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
+        const warpEnginesHealthPercent = ship.subsystems.engines.health / ship.subsystems.engines.maxHealth;
+        const maxWarpDistance = Math.floor(1 + 0.09 * (warpEnginesHealthPercent * 100));
+        const distance = Math.max(Math.abs(gameState.player.position.qx - pos.qx), Math.abs(gameState.player.position.qy - pos.qy));
+
+        if (distance > maxWarpDistance) {
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot initiate warp: Target is out of range. Maximum warp distance is ${maxWarpDistance} quadrants due to engine damage.`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
 
@@ -316,10 +319,10 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: "Cannot initiate warp while on Red Alert.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
-
-        const { current: dilithium } = gameState.player.ship.dilithium;
-        if (dilithium <= 0) {
-            addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: ship.faction, message: "Cannot warp: No dilithium crystals available.", isPlayerSource: true, color: 'border-blue-400', category: 'system' });
+        
+        const dilithiumCost = distance;
+        if (ship.dilithium.current < dilithiumCost) {
+            addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot warp: Insufficient dilithium crystals. Required: ${dilithiumCost}.`, isPlayerSource: true, color: 'border-blue-400', category: 'system' });
             return;
         }
         
@@ -334,7 +337,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             newSector.visited = true;
             next.currentSector = newSector;
             next.player.ship.position = { x: 6, y: 8 };
-            next.player.ship.dilithium.current -= 1;
+            next.player.ship.dilithium.current -= dilithiumCost;
             next.orbitingPlanetId = null;
             next.replayHistory = []; // Clear history on warp
             nextState = next;
@@ -342,7 +345,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
           });
           setIsWarping(false);
           setCurrentView('sector');
-          addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}).`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
+          addLog({ sourceId: 'player', sourceName: gameState.player.ship.name, sourceFaction: gameState.player.ship.faction, message: `Warp successful. Arrived in quadrant (${pos.qx}, ${pos.qy}). Consumed ${dilithiumCost} dilithium.`, isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
           addLog({
               sourceId: 'system',
               sourceName: 'Debug',
@@ -458,7 +461,7 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         if (!target) return;
     
-        const targetingCheck = canTargetEntity(ship, target, gameState.currentSector);
+        const targetingCheck = canTargetEntity(ship, target, gameState.currentSector, gameState.turn);
         if (!targetingCheck.canTarget) {
             addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Cannot fire: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
             return;
@@ -644,10 +647,11 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
             
             const prompt = `You are the captain of a ${target.faction} ${target.shipRole} starship named '${target.name}'. You are being hailed by a Federation starship. Your ship is ${isDamaged ? 'damaged' : 'at full health'}. Your personality is typical for your faction: ${target.faction === 'Klingon' ? 'aggressive and honor-bound' : target.faction === 'Romulan' ? 'suspicious and arrogant' : target.faction === 'Pirate' ? 'greedy and dismissive' : 'neutral'}. Provide a short, in-character hailing response based on this base message: "${baseResponse}"`;
 
+            // FIX: Removed `thinkingConfig` when `temperature` is present to align with "All Other Tasks" guideline.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
-                config: { temperature: 0.8, thinkingConfig: { thinkingBudget: 0 } },
+                config: { temperature: 0.8 },
             });
 
             setActiveHail({ targetId: target.id, loading: false, message: response.text });

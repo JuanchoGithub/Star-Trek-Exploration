@@ -7,6 +7,35 @@ export const TyphonExpanseSection: React.FC = () => (
         <SectionHeader>A Primer on the Typhon Expanse</SectionHeader>
         <p className="text-red-400 font-bold tracking-widest text-sm">CLASSIFICATION: EYES ONLY - LEVEL 7 CLEARANCE</p>
         <p className="text-text-secondary mt-4 indent-8">The Typhon Expanse is a largely uncharted sector on the fringe of the Alpha and Beta Quadrants. For decades, exploration was deemed too hazardous due to unpredictable gravimetric distortions and plasma storms. However, recent long-range sensor data indicates these phenomena have begun to subside, opening a new frontier for exploration, colonization... and conflict.</p>
+        
+        <SubHeader>Known Environmental Hazards</SubHeader>
+        <div className="space-y-4 my-4">
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-purple-400">Nebulae</h4>
+                <p className="text-sm text-text-secondary mt-1">These dense clouds of gas and dust disrupt sensors and targeting systems. While inside a nebula, sensor range is reduced to adjacent cells, and phaser accuracy is significantly diminished. The densest parts of a nebula can even provide complete sensor concealment.</p>
+            </div>
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-yellow-400">Ion Storms</h4>
+                <div className="text-sm text-text-secondary mt-1 space-y-2">
+                    <p>Far from being benign, ion storms are extremely hazardous electrical phenomena. At the end of each turn, any ship within an ion storm cell is subjected to checks against all of the following hazards. If one or more checks succeed, a single effect is chosen at random from the successful checks and applied to the ship.</p>
+                    <ul className="list-disc list-inside ml-4 font-mono text-xs">
+                        <li><strong className="text-white">Hull Damage (10% chance):</strong> Inflicts damage equal to 5% of the ship's maximum hull.</li>
+                        <li><strong className="text-white">Shields Offline (5% chance):</strong> Instantly depletes shields and prevents them from being raised for 2 turns.</li>
+                        <li><strong className="text-white">Shield System Damage (15% chance):</strong> Inflicts damage equal to 10% of the shield subsystem's maximum health.</li>
+                        <li><strong className="text-white">Weapons Offline (7% chance):</strong> Prevents all weapon use for 2 turns.</li>
+                        <li><strong className="text-white">Reserve Power Depleted (7% chance):</strong> Instantly drains all reserve energy to zero.</li>
+                        <li><strong className="text-white">Impulse Engines Disabled (23% chance):</strong> Prevents all movement for 1 turn.</li>
+                        <li><strong className="text-white">Phaser Ionization (55% chance):</strong> Reduces all phaser damage by 70% for 2 turns.</li>
+                        <li><strong className="text-white">Torpedo Misfire (70% chance):</strong> If the ship has torpedoes, one is destroyed in its launch tube, causing 25 hull damage.</li>
+                    </ul>
+                </div>
+            </div>
+             <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-gray-400">Asteroid Fields</h4>
+                <p className="text-sm text-text-secondary mt-1">These dense fields of rock and debris provide tactical cover, reducing phaser accuracy against ships within them. However, they are a hazard to navigation; ending a turn inside an asteroid field risks taking micrometeoroid damage.</p>
+            </div>
+        </div>
+
         <SubHeader>Strategic Map of the Region</SubHeader>
         <div className="w-full max-w-md mx-auto my-4 border-2 border-border-main p-1 font-bold">
             <div className="grid grid-cols-2 grid-rows-2 gap-1">

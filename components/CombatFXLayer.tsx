@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { CombatEffect, Entity, Ship, TorpedoType } from '../types';
+import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../assets/configs/gameConstants';
 
 interface CombatFXLayerProps {
     effects: CombatEffect[];
     entities: Entity[];
     entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
 }
-
-const SECTOR_WIDTH = 11;
-const SECTOR_HEIGHT = 10;
 
 const getPercentageCoords = (gridPos: { x: number; y: number }) => {
     const x = (gridPos.x / SECTOR_WIDTH) * 100 + (100 / SECTOR_WIDTH / 2);

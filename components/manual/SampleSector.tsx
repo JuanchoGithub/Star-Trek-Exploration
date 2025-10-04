@@ -90,6 +90,7 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
     });
 
     const hasNebula = (template.hasNebulaChance || 0) > 0.5;
+    const hasIonStorm = (template.hasIonStormChance || 0) > 0.5;
     const hasAsteroids = template.entityTemplates.some(et => et.type === 'asteroid_field');
     const asteroidClusterPositions = [
         { top: '37.5%', left: '30%' },
@@ -102,6 +103,7 @@ export const SampleSector: React.FC<SampleSectorProps> = ({ template }) => {
     return (
         <div className="w-48 h-36 bg-black border border-border-dark grid grid-cols-5 grid-rows-4 relative overflow-hidden">
             {hasNebula && <div className="nebula-background"></div>}
+            {hasIonStorm && <div className="ion-storm-background"></div>}
             {Array.from({ length: 20 }).map((_, index) => (
                 <div key={index} className="border border-border-dark border-opacity-30"></div>
             ))}

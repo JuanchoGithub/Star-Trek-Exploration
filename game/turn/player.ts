@@ -23,27 +23,29 @@ export const processPlayerTurn = (
 
     if (playerTurnActions.isUndocking) {
         nextState.isDocked = false;
-        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Undocking procedures complete. Ship has cleared the starbase.', isPlayerSource: true, color: 'border-blue-400' });
+        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Undocking procedures complete. Ship has cleared the starbase.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
         return { newNavigationTarget: null, newSelectedTargetId: selectedTargetId };
     }
 
     if (nextState.isDocked) {
-        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Holding position at starbase. Awaiting orders.', isPlayerSource: true, color: 'border-blue-400' });
+        addLog({ sourceId: 'player', sourceName: ship.name, message: 'Holding position at starbase. Awaiting orders.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
         return { newNavigationTarget: null, newSelectedTargetId: selectedTargetId };
     }
 
 
     // Movement
     let newNavigationTarget = navigationTarget;
-    if (navigationTarget) {
+    if (ship.engineFailureTurn && nextState.turn < ship.engineFailureTurn) {
+        addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: `Impulse engines are disabled by ion storm for ${ship.engineFailureTurn - nextState.turn} more turn(s), cannot move.`, isPlayerSource: true, color: 'border-orange-500', category: 'movement' });
+        newNavigationTarget = null; // Also cancel any existing navigation
+    } else if (navigationTarget) {
         const moveSpeed = nextState.redAlert ? 1 : 3;
         const allOtherShips = nextState.currentSector.entities.filter(e => e.type === 'ship' && e.id !== ship.id) as Ship[];
 
         for (let i = 0; i < moveSpeed; i++) {
             if (!newNavigationTarget || (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y)) {
                 if (newNavigationTarget) {
-                    // FIX: addLog call was missing properties.
-                    addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                    addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
                     newNavigationTarget = null;
                 }
                 break;
@@ -54,8 +56,7 @@ export const processPlayerTurn = (
             const isBlocked = allOtherShips.some(s => s.position.x === nextStep.x && s.position.y === nextStep.y);
 
             if (isBlocked) {
-                // FIX: addLog call was missing properties.
-                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Path blocked by another vessel. Halting movement for this turn.', isPlayerSource: true, color: 'border-blue-400' });
+                addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Path blocked by another vessel. Halting movement for this turn.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
                 // Do not clear navigation target, just stop for this turn.
                 break; 
             }
@@ -64,8 +65,7 @@ export const processPlayerTurn = (
 
             // check arrival again after moving one step
             if (ship.position.x === newNavigationTarget.x && ship.position.y === newNavigationTarget.y) {
-                 // FIX: addLog call was missing properties.
-                 addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400' });
+                 addLog({ sourceId: 'player', sourceName: ship.name, sourceFaction: ship.faction, message: 'Arrived at destination.', isPlayerSource: true, color: 'border-blue-400', category: 'movement' });
                  newNavigationTarget = null;
                  break;
             }

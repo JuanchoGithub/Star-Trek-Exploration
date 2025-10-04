@@ -7,6 +7,7 @@ import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { FederationShuttleWireframe } from '../assets/ships/wireframes/federation';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { PlasmaMineWireframe } from '../assets/projectiles/wireframes/PlasmaMineWireframe';
 
 interface WireframeDisplayProps {
     target: Entity;
@@ -51,6 +52,9 @@ const WireframeDisplay: React.FC<WireframeDisplayProps> = ({ target }) => {
         }
         case 'shuttle':
             WireframeComponent = FederationShuttleWireframe;
+            break;
+        case 'mine':
+            WireframeComponent = PlasmaMineWireframe;
             break;
         default:
             return null;

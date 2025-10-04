@@ -109,7 +109,12 @@ export class KlingonAI extends FactionAI {
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
         const allShips = [gameState.player.ship, ...gameState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
-        const enemyShips = allShips.filter(s => s.faction !== ship.faction);
+        const enemyShips = allShips.filter(s => {
+            const sAllegiance = s.id === 'player' ? 'player' : s.allegiance;
+            const shipAllegiance = ship.allegiance;
+            // An enemy is anyone with a different allegiance (player/ally vs enemy vs neutral)
+            return s.hull > 0 && s.id !== ship.id && sAllegiance !== shipAllegiance;
+        });
         const target = findClosestTarget(ship, enemyShips);
 
         if (target) {

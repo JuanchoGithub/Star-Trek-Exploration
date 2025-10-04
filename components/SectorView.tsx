@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase } from '../types';
+import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase, Mine } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
@@ -13,9 +13,10 @@ import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 import { canShipSeeEntity } from '../game/utils/visibility';
-import { isDeepNebula } from '../game/utils/sector';
+import { isDeepNebula, isDeepIonStorm } from '../game/utils/sector';
 import { asteroidIcons } from '../assets/asteroids/icons';
 import { cyrb53 } from '../game/utils/helpers';
+import { PlasmaMineIcon } from '../assets/projectiles/icons';
 
 interface SectorViewProps {
   entities: Entity[];
@@ -171,6 +172,12 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
   const visibleEntities = playerShip ? allEntities.filter(entity => {
       if (entity.type === 'ship' && ((entity as Ship).cloakState === 'cloaked' || (entity as Ship).cloakState === 'cloaking')) return false;
+      if (entity.type === 'mine') {
+          const mine = entity as Mine;
+          if (!mine.visibleTo.includes(playerShip.shipModel)) {
+              return false;
+          }
+      }
       return canShipSeeEntity(entity, playerShip, sector);
   }) : allEntities;
   
@@ -275,6 +282,28 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
             >
               <div className="nebula-cell" />
               {isDeep && <div className="deep-nebula-overlay" />}
+            </div>
+          );
+        })}
+        {sector.ionStormCells.map(pos => {
+          const isDeep = isDeepIonStorm(pos, sector);
+          const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
+          const cellWidth = containerSize.width / sectorSize.width;
+          const cellHeight = containerSize.height / sectorSize.height;
+
+          return (
+            <div
+              key={`ionstorm-${pos.x}-${pos.y}`}
+              className="absolute"
+              style={{
+                top: `${y - cellHeight / 2}px`,
+                left: `${x - cellWidth / 2}px`,
+                width: `${cellWidth}px`,
+                height: `${cellHeight}px`,
+              }}
+            >
+              <div className="ion-storm-cell" />
+              {isDeep && <div className="deep-ion-storm-overlay" />}
             </div>
           );
         })}
@@ -407,6 +436,22 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                                 <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
                             </div>
                         </React.Fragment>
+                    );
+                }
+                if (entity.type === 'mine') {
+                    const mine = entity as Mine;
+                    const isVisible = mine.visibleTo.includes(playerShip.shipModel);
+                    return (
+                        <div
+                            key={entity.id}
+                            ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }}
+                            className="absolute z-30"
+                            style={style}
+                        >
+                            <div className="relative">
+                                <PlasmaMineIcon className={`w-8 h-8 text-green-400 ${isVisible ? 'animate-pulse' : ''}`} style={{ filter: 'drop-shadow(0 0 5px var(--color-plasma-green))' }} />
+                            </div>
+                        </div>
                     );
                 }
                 if (entity.type === 'ship') {

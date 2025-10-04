@@ -21,10 +21,9 @@ import { UnknownShipIcon } from '../icons';
 
 import {
     FederationCruiserWireframe, FederationDreadnoughtWireframe,
-    // FIX: Removed imports for non-existent Explorer separation wireframes.
     FederationCruiserSaucerWireframe, FederationCruiserEngineeringWireframe,
     FederationDreadnoughtSaucerWireframe, FederationDreadnoughtEngineeringWireframe,
-    IntrepidWireframe, DefiantWireframe, GalaxyWireframe,
+    IntrepidWireframe, DefiantWireframe, GalaxyWireframe, GalaxySaucerWireframe, GalaxyEngineeringWireframe,
 } from '../wireframes/federation';
 import {
     BirdOfPreyWireframe, KtingaWireframe, VorchaWireframe, NeghvarWireframe,
@@ -74,6 +73,8 @@ export const shipVisuals: Record<ShipModel | 'Unknown', FactionVisuals> = {
                 icon: GalaxyIcon, 
                 wireframe: GalaxyWireframe, 
                 colorClass: 'text-blue-400',
+                saucerWireframe: GalaxySaucerWireframe,
+                engineeringWireframe: GalaxyEngineeringWireframe,
             },
             'Intrepid-class': { 
                 icon: IntrepidIcon, 

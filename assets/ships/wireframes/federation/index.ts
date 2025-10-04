@@ -8,3 +8,5 @@ export * from './DreadnoughtEngineeringWireframe';
 export * from './DefiantWireframe';
 export * from './GalaxyWireframe';
 export * from './IntrepidWireframe';
+export * from './GalaxySaucerWireframe';
+export * from './GalaxyEngineeringWireframe';

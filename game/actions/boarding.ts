@@ -1,3 +1,4 @@
+
 import type { Ship, GameState } from '../../types';
 import { uniqueId } from '../utils/ai';
 
@@ -73,7 +74,7 @@ export function handleBoardingTurn(
 
     // THE FIX: Transfer the dilithium to the newly restored ship
     if (ship.captureInfo.dilithiumToTransfer) {
-        ship.dilithium.current = Math.min(ship.dilithium.max, ship.dilithium.current + ship.captureInfo.dilithiumToTransfer);
+        ship.dilithium.current = Math.min(ship.dilithium.max, (ship.dilithium.current || 0) + ship.captureInfo.dilithiumToTransfer);
     }
     
     resultLogs.push({ message: `Success! The ${ship.name} is now operational under our command, running on minimal power. Its dilithium reserves have been topped up by the salvage team.`, color: 'border-green-400', category: 'special' });

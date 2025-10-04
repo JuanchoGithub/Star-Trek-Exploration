@@ -1,10 +1,12 @@
 
+
 import type { GameState, Ship } from '../../types';
 import { AIDirector } from '../ai/AIDirector';
 import type { AIActions } from '../ai/FactionAI';
 import { canShipSeeEntity } from '../utils/visibility';
 import '../ai/factions/index'; // This import ensures the registration script runs
 import { findClosestTarget, calculateDistance } from '../utils/ai';
+import { isCommBlackout } from '../utils/sector';
 
 export function processAITurns(
     gameState: GameState,
@@ -55,9 +57,26 @@ export function processAITurns(
         const shipInInitialState = (initialState.currentSector.entities.find(e => e.id === ship.id) || initialState.player.ship) as Ship;
         const previousTargetId = shipInInitialState?.currentTargetId;
 
+        const allies = allShipsInSector.filter(s => s.id !== ship.id && s.allegiance === ship.allegiance && s.hull > 0);
+        const isShipInBlackout = isCommBlackout(ship.position, gameState.currentSector);
+        const communicableAllies = isShipInBlackout ? [] : allies.filter(ally => !isCommBlackout(ally.position, gameState.currentSector));
+
         const potentialTargets = allPossibleOpponents.filter(target => {
             if (target.cloakState === 'cloaked' || target.cloakState === 'cloaking') return false;
-            return canShipSeeEntity(target, ship, gameState.currentSector);
+
+            // Check if viewer ship can see it
+            if (canShipSeeEntity(target, ship, gameState.currentSector)) {
+                return true;
+            }
+
+            // If not, check if any communicable allies can see it
+            for (const ally of communicableAllies) {
+                if (canShipSeeEntity(target, ally, gameState.currentSector)) {
+                    return true;
+                }
+            }
+
+            return false;
         });
 
         // Check if the previous target is now hidden

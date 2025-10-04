@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { GameState, Ship, ShipSubsystems } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -136,14 +135,22 @@ const ReplayStatusPanel: React.FC<ReplayStatusPanelProps> = ({ gameState, themeN
         {ship.statusEffects.length > 0 && (
             <div>
                 <h4 className="font-bold text-sm uppercase tracking-wider text-text-secondary mt-2">Active Effects</h4>
-                {ship.statusEffects.map((effect, i) => (
-                     <ReadOnlyStatusIndicator 
-                        key={i}
-                        label={effect.type.replace('_', ' ').toUpperCase()}
-                        status={`${effect.damage} DMG/T (${effect.turnsRemaining}T)`}
-                        colorClass={'text-accent-red bg-red-900 bg-opacity-50'}
-                    />
-                ))}
+                {ship.statusEffects.map((effect, i) => {
+                    let statusText = '';
+                    if (effect.type === 'plasma_burn') {
+                        statusText = `${effect.damage} DMG/T (${effect.turnsRemaining}T)`;
+                    } else if (effect.type === 'ion_shock') {
+                        statusText = `Phaser Dmg x${effect.phaserDamageModifier} (${effect.turnsRemaining}T)`;
+                    }
+                    return (
+                        <ReadOnlyStatusIndicator 
+                            key={i}
+                            label={effect.type.replace('_', ' ').toUpperCase()}
+                            status={statusText}
+                            colorClass={'text-accent-red bg-red-900 bg-opacity-50'}
+                        />
+                    );
+                })}
             </div>
         )}
 

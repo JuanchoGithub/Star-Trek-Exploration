@@ -1,3 +1,4 @@
+
 import type { Ship, ShipModel, ShipRole, AmmoType } from '../../types';
 // FIX: Switched from shipRoleStats to shipClasses for more accurate data lookup.
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
@@ -27,6 +28,8 @@ const createMockShip = (id: string, model: ShipModel, className: string): Ship =
         isStunned: false,
         engineFailureTurn: null,
         lifeSupportFailureTurn: null,
+        // FIX: Added missing property `weaponFailureTurn`.
+        weaponFailureTurn: null,
         isDerelict: false,
         captureInfo: null,
         statusEffects: [],

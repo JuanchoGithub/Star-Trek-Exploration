@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect, BeamWeapon, ProjectileWeapon } from '../../../types';
 import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
@@ -9,6 +8,7 @@ import { findOptimalMove } from '../pathfinding';
 import { generateRecoveryLog, generateStanceLog, generateBeamAttackLog, generateTorpedoLaunchLog } from '../aiLogger';
 import { fireBeamWeapon } from '../../utils/combat';
 import { isDeepNebula } from '../../utils/sector';
+import { AmmoType } from '../../../types';
 
 export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
     const closestTarget = findClosestTarget(ship, potentialTargets);
@@ -361,7 +361,9 @@ export function processCommonTurn(
     let didMove = false;
     let moveRationale = moveResult.reason; // Start with the ideal reason
 
-    if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
+    if (ship.engineFailureTurn && gameState.turn < ship.engineFailureTurn) {
+        moveRationale = 'Impulse engines disabled by ion storm!';
+    } else if (ship.subsystems.engines.health < ship.subsystems.engines.maxHealth * 0.5) {
         moveRationale = 'Impulse Engines Offline!';
     } else {
         let finalMovePosition: Position | null = null;
@@ -393,13 +395,14 @@ export function processCommonTurn(
 
     // --- WEAPON USAGE DETERMINATION ---
     const beamWeapon = ship.weapons.find(w => w.type === 'beam') as BeamWeapon | undefined;
-    const willFirePhasers = beamWeapon && ship.subsystems.weapons.health > 0 && distance <= beamWeapon.range;
+    const willFirePhasers = beamWeapon && ship.subsystems.weapons.health > 0 && distance <= beamWeapon.range && (!ship.weaponFailureTurn || gameState.turn >= ship.weaponFailureTurn);
     
     const projectileWeapon = ship.weapons.find(w => w.type === 'projectile') as ProjectileWeapon | undefined;
     const canLaunchTorpedo = projectileWeapon && 
                              ship.ammo[projectileWeapon.ammoType] && 
                              ship.ammo[projectileWeapon.ammoType]!.current > 0 &&
-                             (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34;
+                             (ship.subsystems.weapons.health / ship.subsystems.weapons.maxHealth) >= 0.34 &&
+                             (!ship.weaponFailureTurn || gameState.turn >= ship.weaponFailureTurn);
 
     const targetShields = primaryTarget.maxShields > 0 ? primaryTarget.shields / primaryTarget.maxShields : 0;
     

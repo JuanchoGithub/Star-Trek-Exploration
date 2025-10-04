@@ -1,5 +1,4 @@
-
-import type { GameState, Ship, Position } from '../../types';
+import type { GameState, Ship, Position, Mine } from '../../types';
 import { AIStance } from './FactionAI';
 import { calculateDistance } from '../utils/ai';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../assets/configs/gameConstants';
@@ -53,6 +52,11 @@ export function findOptimalMove(
 ): PathfindingResult {
     const { currentSector } = gameState;
     const occupiedPositions = new Set(allShipsInSector.filter(s => s.id !== ship.id).map(s => `${s.position.x},${s.position.y}`));
+
+    const visibleMines = currentSector.entities.filter((e): e is Mine => 
+        e.type === 'mine' && e.visibleTo.includes(ship.shipModel)
+    );
+    visibleMines.forEach(mine => occupiedPositions.add(`${mine.position.x},${mine.position.y}`));
 
     const candidateMoves: Position[] = [];
     for (let dx = -1; dx <= 1; dx++) {

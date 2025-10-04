@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -24,9 +26,15 @@ export const MechanicsSection: React.FC = () => (
                     <li>Engine <span className="text-red-400">damage</span> reduces this output proportionally. An engine at 50% health will produce only 50% of its potential energy.</li>
                  </ul>
             </li>
-            <li><strong>Shield Regeneration:</strong> At Red Alert, your shields regenerate each turn. The base regeneration rate is a standard <span className="font-bold text-accent-yellow">7 points</span>, which is then modified by your power allocation to Shields and the health of your shield emitters. This means smaller ships with less shield capacity will recharge fully much faster than large dreadnoughts.</li>
+            <li><strong>Shield Regeneration:</strong> At Red Alert, your shields regenerate each turn. The base regeneration rate is a flat value of <span className="font-bold text-accent-yellow">7 points</span>, which is then modified by your power allocation to Shields and the health of your shield emitters. Because this is a flat rate, larger ships with more total shield capacity (e.g., a Dreadnought) will take significantly longer to recharge from a depleted state than smaller ships (e.g., an Escort).</li>
             <li><strong>Power Consumption:</strong> Every online system on your ship consumes power each turn. This includes weapons, shields, life support, and more. A fully operational ship at Green Alert with 33% power to engines has a <span className="font-bold">net zero</span> energy change; generation perfectly matches consumption.</li>
             <li><strong>Reserve Power (Battery):</strong> This is your energy buffer. Any deficit between generation and consumption is drained from this pool. Activating systems like <span className="text-cyan-400">Shields</span> (Red Alert), <span className="text-orange-400">Point-Defense</span>, or <span className="text-yellow-400">Evasive Maneuvers</span> drastically increases consumption, causing a drain on your reserves. Any surplus energy will recharge this pool.</li>
+            <li>
+                <strong>Emergency Dilithium Use:</strong> If your Reserve Power is insufficient for an action or end-of-turn upkeep, the ship will automatically consume Dilithium crystals to compensate. This is a volatile process.
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm text-yellow-400">
+                    <li><strong className="text-white">Consequential Damage:</strong> Each dilithium crystal used in a single emergency power event adds a cumulative 25% chance of causing a feedback surge that will damage a random, functioning subsystem. This risk is checked once per event. For example, if a large power deficit requires 3 crystals, there is a single check with a 75% chance (25% &times; 3) of causing damage. This makes large energy deficits extremely dangerous to resolve with dilithium.</li>
+                </ul>
+            </li>
             <li><strong>Tactical Trade-offs:</strong> If a system is destroyed, its power consumption is removed from the total. This creates a tactical choice: if you are low on power, you could intentionally leave a non-critical system like the transporter offline to free up energy for shields or weapons.</li>
         </ul>
          <SubHeader>Warp & Scanning</SubHeader>

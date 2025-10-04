@@ -1,9 +1,7 @@
-
-
 import React, { useState } from 'react';
-import { Version1_7, Version1_6_2, Version1_6_1, Version1_6, Version1_5, Version1_4, Version1_3 } from './changelog/index';
+import { Version2_2, Version2_1, Version2_0, Version1_7, Version1_6_2, Version1_6_1, Version1_6, Version1_5, Version1_4, Version1_3_2 } from './changelog/index';
 
-type Version = 'v1.7' | 'v1.6.2' | 'v1.6.1' | 'v1.6' | 'v1.5' | 'v1.4' | 'v1.3';
+type Version = 'v2.2' | 'v2.1' | 'v2.0' | 'v1.7' | 'v1.6.2' | 'v1.6.1' | 'v1.6' | 'v1.5' | 'v1.4' | 'v1.3';
 
 interface ChangelogProps {
     onClose: () => void;
@@ -16,17 +14,20 @@ const VersionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
 );
 
 const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
-    const [activeVersion, setActiveVersion] = useState<Version>('v1.7');
+    const [activeVersion, setActiveVersion] = useState<Version>('v2.2');
 
     const renderContent = () => {
         switch(activeVersion) {
+            case 'v2.2': return <Version2_2 />;
+            case 'v2.1': return <Version2_1 />;
+            case 'v2.0': return <Version2_0 />;
             case 'v1.7': return <Version1_7 />;
             case 'v1.6.2': return <Version1_6_2 />;
             case 'v1.6.1': return <Version1_6_1 />;
             case 'v1.6': return <Version1_6 />;
             case 'v1.5': return <Version1_5 />;
             case 'v1.4': return <Version1_4 />;
-            case 'v1.3': return <Version1_3 />;
+            case 'v1.3': return <Version1_3_2 />;
             default: return null;
         }
     };
@@ -40,6 +41,15 @@ const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
                 </div>
                 <main className="flex-grow flex gap-4 min-h-0">
                     <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
+                        <VersionLink active={activeVersion === 'v2.2'} onClick={() => setActiveVersion('v2.2')}>
+                            Version 2.2
+                        </VersionLink>
+                        <VersionLink active={activeVersion === 'v2.1'} onClick={() => setActiveVersion('v2.1')}>
+                            Version 2.1
+                        </VersionLink>
+                        <VersionLink active={activeVersion === 'v2.0'} onClick={() => setActiveVersion('v2.0')}>
+                            Version 2.0
+                        </VersionLink>
                          <VersionLink active={activeVersion === 'v1.7'} onClick={() => setActiveVersion('v1.7')}>
                             Version 1.7
                         </VersionLink>

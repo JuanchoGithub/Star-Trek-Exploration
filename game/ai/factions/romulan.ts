@@ -1,4 +1,5 @@
 
+
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
@@ -60,13 +61,17 @@ export class RomulanAI extends FactionAI {
     }
 
     executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
-        if (tryCaptureDerelict(ship, gameState, actions)) {
-            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
-            return; // Turn spent capturing
-        }
-        
         const { stance, reason } = this.determineStance(ship, potentialTargets);
 
+        if (stance === 'Balanced') {
+            if (Math.random() < 0.3) {
+                if (tryCaptureDerelict(ship, gameState, actions)) {
+                    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                    return; // Turn spent capturing
+                }
+            }
+        }
+        
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;

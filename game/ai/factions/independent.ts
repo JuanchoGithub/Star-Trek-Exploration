@@ -1,9 +1,7 @@
-
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep } from '../../utils/ai';
-import { processRecoveryTurn } from './common';
+import { processCommonTurn, processRecoveryTurn } from './common';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../../assets/configs/gameConstants';
 import { generateFleeLog } from '../aiLogger';
 
@@ -46,11 +44,27 @@ export class IndependentAI extends FactionAI {
     }
 
     executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+        // If this ship has been designated an ally in the simulator, it must fight, not flee.
+        if (ship.allegiance === 'ally' || ship.allegiance === 'player') {
+            const enemyTargets = potentialTargets.filter(t => t.allegiance === 'enemy');
+            if (enemyTargets.length > 0) {
+                const target = findClosestTarget(ship, enemyTargets);
+                if (target) {
+                    const fightStance = (ship.hull / ship.maxHull > 0.7) ? 'Aggressive' : 'Balanced';
+                    if (ship.energyAllocation.weapons < 34) {
+                        ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
+                    }
+                    processCommonTurn(ship, enemyTargets, gameState, actions, 'weapons', fightStance, 'Forced to engage by allegiance', defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
+                    return;
+                }
+            }
+        }
+        
+        // --- Original Fleeing Logic for Neutrals ---
         const { stance, reason } = this.determineStance(ship, potentialTargets);
         
         if (stance === 'Recovery') {
             ship.hiddenEnemies = []; // Clear threat memory when recovering
-            // FIX: Added the missing 'claimedCellsThisTurn' argument.
             processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;
         }

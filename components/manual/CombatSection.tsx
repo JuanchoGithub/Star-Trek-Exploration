@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -58,13 +56,31 @@ export const CombatSection: React.FC = () => {
         <SectionHeader>Advanced Combat Mechanics</SectionHeader>
         <p className="text-text-secondary mb-4">A thorough understanding of weapon mechanics is paramount. For detailed specifications on individual weapon systems, refer to the 'Weapon Systems Registry'.</p>
         
-        <SubHeader>Energy Weapons (Phasers)</SubHeader>
+        <SubHeader>Energy Weapons (Phasers & Disruptors)</SubHeader>
+        <div className="p-3 bg-bg-paper-lighter rounded my-4">
+            <h4 className="text-lg font-bold text-accent-yellow">Accuracy Modifiers</h4>
+            <p className="text-text-secondary mb-2">Phaser and disruptor accuracy is not guaranteed. All energy weapons begin with a <strong className="text-white">base 90% chance to hit</strong>. This is then multiplied by any applicable modifiers from the list below:</p>
+            <ul className="list-disc list-inside ml-4 text-text-secondary space-y-1 text-sm">
+                <li><strong className="text-cyan-400">Target Evasive Maneuvers:</strong> Accuracy is multiplied by 0.60.</li>
+                <li><strong className="text-gray-400">Asteroid Field Cover:</strong> Accuracy is multiplied by 0.70.</li>
+                <li><strong className="text-purple-400">Nebula Obscurement:</strong> Accuracy is multiplied by 0.75.</li>
+                <li><strong className="text-yellow-400">Attacker Evasive Maneuvers:</strong> Accuracy is multiplied by 0.75.</li>
+                <li><strong className="text-red-400">Klingon Disruptors:</strong> Accuracy is multiplied by 0.95.</li>
+            </ul>
+            <p className="text-xs text-text-disabled mt-2">Note: Modifiers are cumulative. For example, firing a Klingon disruptor (x0.95) at an evasive target (x0.60) in a nebula (x0.75) would result in a final hit chance of: 90% &times; 0.95 &times; 0.60 &times; 0.75 &approx; 38.5%.</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DamageFalloffTable data={phaserFalloffData} />
             <ShieldLeakageExplanation />
         </div>
         
         <SubHeader>Projectile Weapons (Torpedoes)</SubHeader>
+        <div className="p-3 bg-bg-paper-lighter rounded my-4">
+            <h4 className="text-lg font-bold text-accent-yellow">Shield Absorption</h4>
+            <p className="text-text-secondary">Unlike energy weapons, torpedoes do not "leak" through shields. Instead, their kinetic and explosive energy is absorbed by the shield bubble. Shields are highly effective at mitigating this type of damage, but at a significant energy cost.</p>
+             <p className="text-center font-bold text-2xl my-4 text-white">4 Shield Points : 1 Torpedo Damage</p>
+             <p className="text-text-secondary">For every 4 points of energy drained from the shield grid, 1 point of incoming torpedo damage is negated. This makes torpedoes exceptionally good at draining shield power, but less effective at dealing hull damage to a fully shielded target.</p>
+        </div>
         <p className="text-text-secondary mb-4">All torpedoes have a chance to miss that increases with distance. The table below shows the base hit chance for a standard Photon Torpedo. Other torpedo types have modifiers applied to this base chance.</p>
         <table className="w-full max-w-md text-sm text-left border-collapse my-4">
             <thead className="bg-bg-paper-lighter">

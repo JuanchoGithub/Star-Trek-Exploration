@@ -224,6 +224,7 @@ const App: React.FC = () => {
     }
 
     const { player, logs, currentSector: sector, redAlert, quadrantMap, isDocked } = gameState;
+    const computerHealthPercent = (player.ship.subsystems.computer.health / player.ship.subsystems.computer.maxHealth) * 100;
 
     return (
         <div className={`h-screen w-screen bg-bg-default text-text-primary overflow-hidden relative ${theme.font} ${redAlert ? 'red-alert-pulse' : ''} theme-${themeName}`}>
@@ -278,6 +279,8 @@ const App: React.FC = () => {
                                                     ? 'bg-primary-main text-primary-text'
                                                     : 'bg-secondary-main text-secondary-text hover:bg-secondary-light'
                                             }`}
+                                            disabled={computerHealthPercent < 100}
+                                            title={computerHealthPercent < 100 ? "Quadrant Map offline: Computer damaged" : "Quadrant Map"}
                                         >
                                             <span className="[writing-mode:vertical-rl] rotate-180 whitespace-nowrap">Quadrant Map</span>
                                         </button>
@@ -305,6 +308,7 @@ const App: React.FC = () => {
                                                 <QuadrantView
                                                     quadrantMap={quadrantMap}
                                                     playerPosition={player.position}
+                                                    playerShip={player.ship}
                                                     onWarp={onWarp}
                                                     onScanQuadrant={onScanQuadrant}
                                                     isInCombat={redAlert}

@@ -1,5 +1,4 @@
-
-import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult } from '../../types';
+import type { Ship, ShipSubsystems, GameState, TorpedoProjectile, SectorState, Entity, Position, BeamWeapon, BeamAttackResult, Mine } from '../../types';
 import { calculateDistance } from './ai';
 import { isPosInNebula } from './sector';
 import { useOneDilithiumCrystal } from './energy';
@@ -32,7 +31,11 @@ export const getTorpedoHitChance = (torpedoType: TorpedoType, distance: number):
 };
 
 
-export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState): { canTarget: boolean, reason: string } => {
+export const canTargetEntity = (source: Ship, target: Entity, sector: SectorState, currentTurn: number): { canTarget: boolean, reason: string } => {
+    if (source.weaponFailureTurn && currentTurn < source.weaponFailureTurn) {
+        return { canTarget: false, reason: `Weapon systems are offline due to ion storm for ${source.weaponFailureTurn - currentTurn} more turn(s).` };
+    }
+    
     if (target.type === 'ship' && (target as Ship).cloakState === 'cloaked') {
         return { canTarget: false, reason: 'Target is cloaked.' };
     }
@@ -326,6 +329,64 @@ export const applyTorpedoDamage = (target: Ship, torpedo: TorpedoProjectile, sou
             absorbedDamageRatio,
             finalHullDamage,
             newInstability,
+            isDestroyed,
+            plasmaDamage,
+            plasmaDuration,
+        }
+    };
+    
+    return generateTorpedoImpactLog(logData);
+};
+
+export const applyMineDamage = (target: Ship, mine: Mine): string => {
+    target.lastAttackerPosition = { ...mine.position };
+    let damageToHull = mine.damage;
+
+    let bypassDamage = 0;
+    if (mine.torpedoType === 'Quantum') {
+        bypassDamage = damageToHull * 0.25;
+        target.hull = Math.max(0, target.hull - bypassDamage);
+        damageToHull *= 0.75;
+    }
+    
+    const shieldAbsorption = Math.min(target.shields, damageToHull * 4);
+    const absorbedDamageRatio = shieldAbsorption / 4;
+    damageToHull -= absorbedDamageRatio;
+
+    if (shieldAbsorption > 0) {
+        target.shields = Math.max(0, target.shields - shieldAbsorption);
+    }
+    
+    const finalHullDamage = Math.max(0, Math.round(damageToHull));
+    if (finalHullDamage > 0) {
+        target.hull = Math.max(0, target.hull - finalHullDamage);
+    }
+
+    let plasmaDamage, plasmaDuration;
+    if (mine.specialDamage?.type === 'plasma_burn') {
+        target.statusEffects.push({
+            type: 'plasma_burn',
+            damage: mine.specialDamage.damage,
+            turnsRemaining: mine.specialDamage.duration,
+        });
+        plasmaDamage = mine.specialDamage.damage;
+        plasmaDuration = mine.specialDamage.duration;
+    }
+
+    const isDestroyed = target.hull <= 0;
+    
+    const logData = {
+        source: null,
+        target,
+        torpedo: { ...mine, name: "Cloaked Plasma Mine" } as any,
+        results: {
+            hit: true,
+            hitChance: 1, // Always hits
+            bypassDamage,
+            shieldAbsorption,
+            absorbedDamageRatio,
+            finalHullDamage,
+            newInstability: null,
             isDestroyed,
             plasmaDamage,
             plasmaDuration,

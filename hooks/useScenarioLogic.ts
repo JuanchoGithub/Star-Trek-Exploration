@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState, ProjectileWeapon } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
@@ -6,6 +7,8 @@ import { uniqueId } from '../game/utils/ai';
 import { generatePhasedTurn, TurnStep } from '../game/turn/turnManager';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 import { canTargetEntity } from '../game/utils/combat';
+// FIX: Import AI factions to register them with the AIDirector for use in the simulator.
+import '../game/ai/factions'; // This import ensures the registration script runs
 
 export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorState | null, scenarioMode: ScenarioMode) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -147,7 +150,8 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         if (!target) return;
 
-        const targetingCheck = canTargetEntity(playerShip, target, gameState.currentSector);
+        // FIX: Added missing 'gameState.turn' argument to 'canTargetEntity' call.
+        const targetingCheck = canTargetEntity(playerShip, target, gameState.currentSector, gameState.turn);
         if (!targetingCheck.canTarget) {
             addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot fire: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
             return;

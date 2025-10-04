@@ -39,15 +39,12 @@ interface TargetInfoProps {
     onStartAwayMission: (planetId: string) => void;
     onEnterOrbit: (planetId: string) => void;
     isDocked: boolean;
-// FIX: Add the missing onUndock prop to the interface.
-    onUndock: () => void;
 }
 
 const TargetInfo: React.FC<TargetInfoProps> = ({
     target, themeName, selectedSubsystem, onSelectSubsystem, playerShip, hasEnemy, 
     orbitingPlanetId, isTurnResolving, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit,
-// FIX: Destructure the onUndock prop.
-    isDocked, onUndock
+    isDocked
 }) => {
     const [isPickerVisible, setPickerVisible] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -206,7 +203,6 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                     <div className="text-center p-2">
                         <h4 className="font-bold text-lg text-green-400">Docked</h4>
                         <p className="text-sm text-text-secondary">All systems undergoing repair and resupply.</p>
-                         <button onClick={onUndock} disabled={isTurnResolving} className="w-full btn btn-primary mt-4">Undock (Ends Turn)</button>
                     </div>
                 )}
             </div>
