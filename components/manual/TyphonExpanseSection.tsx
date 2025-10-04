@@ -18,7 +18,9 @@ export const TyphonExpanseSection: React.FC = () => (
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-yellow-400">Ion Storms</h4>
                 <div className="text-sm text-text-secondary mt-1 space-y-2">
-                    <p>Far from being benign, ion storms are extremely hazardous electrical phenomena. At the end of each turn, any ship within an ion storm cell is subjected to checks against all of the following hazards. If one or more checks succeed, a single effect is chosen at random from the successful checks and applied to the ship.</p>
+                    <p>Ion storms are extremely hazardous phenomena that affect ship systems and projectiles.</p>
+                    <h5 className="font-bold text-white pt-2">End-of-Turn Ship Hazards:</h5>
+                    <p>At the end of each turn, any ship within an ion storm cell is subjected to checks against all of the following hazards. If one or more checks succeed, a single effect is chosen at random from the successful checks and applied to the ship.</p>
                     <ul className="list-disc list-inside ml-4 font-mono text-xs">
                         <li><strong className="text-white">Hull Damage (10% chance):</strong> Inflicts damage equal to 5% of the ship's maximum hull.</li>
                         <li><strong className="text-white">Shields Offline (5% chance):</strong> Instantly depletes shields and prevents them from being raised for 2 turns.</li>
@@ -27,8 +29,9 @@ export const TyphonExpanseSection: React.FC = () => (
                         <li><strong className="text-white">Reserve Power Depleted (7% chance):</strong> Instantly drains all reserve energy to zero.</li>
                         <li><strong className="text-white">Impulse Engines Disabled (23% chance):</strong> Prevents all movement for 1 turn.</li>
                         <li><strong className="text-white">Phaser Ionization (55% chance):</strong> Reduces all phaser damage by 70% for 2 turns.</li>
-                        <li><strong className="text-white">Torpedo Misfire (70% chance):</strong> If the ship has torpedoes, one is destroyed in its launch tube, causing 25 hull damage.</li>
                     </ul>
+                    <h5 className="font-bold text-white pt-2">Projectile Hazard: In-Flight Detonation</h5>
+                    <p>Launched torpedoes are highly unstable within ion storms. For each cell of an ion storm a torpedo travels through, it has a <strong className="text-white">20% chance</strong> to prematurely detonate. If a detonation occurs, the torpedo explodes immediately. Any ship occupying that same cell will suffer a direct hit from the warhead, receiving <strong className="text-white">50% of its standard damage</strong>. This effect applies to all ships, including the one that launched the torpedo if it has not yet moved away.</p>
                 </div>
             </div>
              <div className="p-3 bg-bg-paper-lighter rounded">

@@ -99,7 +99,12 @@ export const MechanicsSection: React.FC = () => (
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Life Support</h4>
-                <p className="text-sm text-text-secondary">When life support systems are damaged below 100%, they cease to produce oxygen. The ship then switches to emergency reserves, which last for exactly two turns. If life support is not repaired within that time, the crew is lost, and the ship becomes a derelict hulk, ripe for salvage or capture. This applies to all ships in the sector, including yours.</p>
+                <p className="text-sm text-text-secondary">Life support is a critical system that is tied to both system health and ship power. A 2-turn countdown to total ship loss (dereliction) will begin under either of the following conditions:</p>
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm text-text-secondary">
+                    <li>The Life Support subsystem's health reaches <b>0%</b>.</li>
+                    <li>The ship completely runs out of both Reserve Power and backup Dilithium crystals at the end of a turn.</li>
+                </ul>
+                <p className="text-sm text-text-secondary mt-2">The ship can only be saved from this countdown if <b>both</b> conditions are resolved: Life Support must be repaired above 0%, and the ship must have available power. This applies to all ships in the sector, including yours.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-secondary-light">Transporter</h4>

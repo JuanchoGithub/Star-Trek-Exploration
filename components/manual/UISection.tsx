@@ -66,15 +66,19 @@ export const UISection: React.FC = () => {
                     <p className="text-sm text-text-secondary">These toggles control your ship's combat state. 'Red Alert' raises shields, 'Evasive' increases your chance to dodge attacks, 'Cloak' conceals your ship, and 'Point-Defense' automatically targets incoming torpedoes. Each provides a significant advantage at the cost of increased energy consumption.</p>
                 </div>
                 <div>
-                    <h4 className="font-bold text-accent-yellow">3. Threat Analysis</h4>
+                    <h4 className="font-bold text-accent-yellow">3. Environment</h4>
+                    <p className="text-sm text-text-secondary">This section provides at-a-glance information on your ship's immediate surroundings, indicating if you are currently within a hazardous Ion Storm, a sensor-dampening Nebula, or a cluttered Asteroid Field.</p>
+                </div>
+                <div>
+                    <h4 className="font-bold text-accent-yellow">4. Threat Analysis</h4>
                     <p className="text-sm text-text-secondary">This vital intelligence panel shows how many hostile ships are currently targeting you and the number of torpedoes on an intercept course. Use this information to decide whether to press the attack or adopt a defensive posture.</p>
                 </div>
                  <div>
-                    <h4 className="font-bold text-accent-yellow">4. Damage Control</h4>
+                    <h4 className="font-bold text-accent-yellow">5. Damage Control</h4>
                     <p className="text-sm text-text-secondary">This section allows you to assign damage control teams. Select a damaged subsystem or the hull to begin slow, automated repairs at the end of each turn. A flashing red indicator next to a system denotes a critical failure (e.g., Engines offline, Life Support failing).</p>
                 </div>
                  <div>
-                    <h4 className="font-bold text-accent-yellow">5. Energy Allocation</h4>
+                    <h4 className="font-bold text-accent-yellow">6. Energy Allocation</h4>
                     <p className="text-sm text-text-secondary">This is your primary command interface for managing the ship's reactor output. Distribute 100% of your power between Weapons, Shields, and Engines. This directly impacts your phaser damage, shield regeneration rate, and energy generation. Adjusting this is a free action and can be done at any time.</p>
                 </div>
             </div>

@@ -118,3 +118,26 @@ export const calculateOptimalEngagementRange = (aiShip: Ship, targetShip: Ship):
         return 3; // Tactical compromise to balance offense and defense
     }
 };
+
+export const getPath = (start: Position, end: Position | null): Position[] => {
+    if (!end) return [];
+    const path: Position[] = [];
+    let current = { ...start };
+
+    let safety = 0;
+    while ((current.x !== end.x || current.y !== end.y) && safety < 30) {
+        const dx = end.x - current.x;
+        const dy = end.y - current.y;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            current.x += Math.sign(dx);
+        } else if (dy !== 0) {
+            current.y += Math.sign(dy);
+        } else if (dx !== 0) {
+            current.x += Math.sign(dx);
+        }
+        path.push({ ...current });
+        safety++;
+    }
+    return path;
+};

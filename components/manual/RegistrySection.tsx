@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -9,7 +10,6 @@ import { ShipModel, ShipSubsystems, BeamWeapon, ProjectileWeapon } from '../../t
 import { SectionHeader, SubHeader } from './shared';
 import { shuttleType } from '../../assets/shuttles/configs/shuttleType';
 import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
-// FIX: Removed import for non-existent PirateEscortIcon.
 import { IndependentFreighterIcon } from '../../assets/ships/icons';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
@@ -260,6 +260,27 @@ export const RegistrySection: React.FC = () => {
         <div>
             <SectionHeader>Entity Registry</SectionHeader>
             <p>A registry of all known vessels, planets, and anomalies identified by Starfleet in the Typhon Expanse.</p>
+            
+            <div className="p-3 bg-bg-paper-lighter rounded my-4 border-l-4 border-accent-yellow">
+                <h4 className="font-bold text-accent-yellow">A Note on Tactical Ratings</h4>
+                <p className="text-sm text-text-secondary mt-2">
+                    The tactical profiles for each ship class use qualitative ratings (e.g., "Weapon Power: Strong", "Hull Integrity: Very Strong"). These are not arbitrary descriptions; they are derived directly from the ship's base statistics to provide a quick, at-a-glance comparison.
+                </p>
+                <p className="text-sm text-text-secondary mt-2">
+                    Each rating corresponds to a specific numerical threshold. For example, a ship's Hull Integrity is rated based on its maximum hull points:
+                </p>
+                <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-xs font-mono">
+                    <li>&lt; 200 Hull: <strong className="text-white">Light</strong></li>
+                    <li>200 - 299 Hull: <strong className="text-white">Medium</strong></li>
+                    <li>300 - 399 Hull: <strong className="text-white">Strong</strong></li>
+                    <li>400 - 499 Hull: <strong className="text-white">Very Strong</strong></li>
+                    <li>&gt;= 500 Hull: <strong className="text-white">Extreme</strong></li>
+                </ul>
+                <p className="text-sm text-text-secondary mt-2">
+                    Similar thresholds exist for Shield Capacity and Weapon Power (based on the health of the weapon subsystem). While the specific numbers vary, this system provides a consistent and transparent method for assessing a vessel's capabilities relative to others.
+                </p>
+            </div>
+            
             <div className="flex gap-2 my-4 flex-wrap">
                 <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
                 <a href="#registry-klingon-empire" className="btn btn-tertiary">Klingon</a>

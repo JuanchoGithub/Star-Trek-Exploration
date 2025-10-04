@@ -129,6 +129,7 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
     const remainingTorpedoes = nextState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     if (remainingTorpedoes.length > 0) {
         const asteroidPositions = new Set(nextState.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+        const ionStormPositions = new Set(nextState.currentSector.ionStormCells.map(p => `${p.x},${p.y}`));
         const destroyedTorpedoIds = new Set<string>();
 
         const maxSpeed = Math.max(0, ...remainingTorpedoes.map(t => t.speed));
@@ -161,6 +162,90 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
                                 torpedoType: torpedo.torpedoType
                             });
                             addTurnEvent(`INTERCEPTED: [${torpedo.id}] by Asteroid`);
+                        }
+                    }
+
+                    if (!destroyedTorpedoIds.has(torpedo.id) && ionStormPositions.has(`${torpedo.position.x},${torpedo.position.y}`)) {
+                        if (Math.random() < 0.20) { // 20% chance of detonation per cell
+                            destroyedTorpedoIds.add(torpedo.id);
+                            addTurnEvent(`INTERCEPTED: [${torpedo.id}] by Ion Storm`);
+                            addLog({
+                                sourceId: 'system',
+                                sourceName: 'Ion Storm',
+                                message: `A <b class="${torpedoStats[torpedo.torpedoType].colorClass}">${torpedo.name}</b> was prematurely detonated by an ionic discharge!`,
+                                color: 'border-yellow-400',
+                                isPlayerSource: false,
+                                category: 'system'
+                            });
+                            nextState.combatEffects.push({
+                                type: 'torpedo_hit',
+                                position: { ...torpedo.position },
+                                delay: 0,
+                                torpedoType: torpedo.torpedoType
+                            });
+                    
+                            // Find ships in the blast radius
+                            const shipsInCell = allShips.filter(s => s.position.x === torpedo.position.x && s.position.y === torpedo.position.y);
+                            shipsInCell.forEach(shipInBlast => {
+                                let damageToHull = torpedo.damage * 0.5;
+                    
+                                let bypassDamage = 0;
+                                if (torpedo.torpedoType === 'Quantum') {
+                                    bypassDamage = damageToHull * 0.25;
+                                    damageToHull *= 0.75;
+                                }
+                                
+                                const shieldAbsorption = Math.min(shipInBlast.shields, damageToHull * 4);
+                                const absorbedDamageRatio = shieldAbsorption / 4;
+                                damageToHull -= absorbedDamageRatio;
+                    
+                                if (shieldAbsorption > 0) {
+                                    shipInBlast.shields = Math.max(0, shipInBlast.shields - shieldAbsorption);
+                                }
+                                
+                                const finalBypassHullDamage = Math.max(0, Math.round(bypassDamage));
+                                if (finalBypassHullDamage > 0) {
+                                    shipInBlast.hull = Math.max(0, shipInBlast.hull - finalBypassHullDamage);
+                                }
+                                
+                                const finalHullDamage = Math.max(0, Math.round(damageToHull));
+                                if (finalHullDamage > 0) {
+                                    shipInBlast.hull = Math.max(0, shipInBlast.hull - finalHullDamage);
+                                }
+                    
+                                let plasmaDamage, plasmaDuration;
+                                if (torpedo.specialDamage?.type === 'plasma_burn') {
+                                    const existingBurn = shipInBlast.statusEffects.find(e => e.type === 'plasma_burn');
+                                    const burnDamage = torpedo.specialDamage.damage * 0.5;
+                                    if(existingBurn && existingBurn.type === 'plasma_burn'){
+                                        existingBurn.damage += burnDamage;
+                                        existingBurn.turnsRemaining = Math.max(existingBurn.turnsRemaining, torpedo.specialDamage.duration);
+                                    } else {
+                                        shipInBlast.statusEffects.push({
+                                            type: 'plasma_burn',
+                                            damage: burnDamage,
+                                            turnsRemaining: torpedo.specialDamage.duration,
+                                        });
+                                    }
+                                    plasmaDamage = burnDamage;
+                                    plasmaDuration = torpedo.specialDamage.duration;
+                                }
+                    
+                                const totalHullDamage = finalHullDamage + finalBypassHullDamage;
+                                
+                                let damageLog = `${shipInBlast.name} caught in the blast! Shields absorbed ${Math.round(absorbedDamageRatio)} energy, mitigating ${Math.round(absorbedDamageRatio)} damage. Hull takes ${totalHullDamage} total damage.`;
+                                if (plasmaDamage) {
+                                    damageLog += ` Inflicted with plasma fire.`
+                                }
+                                addLog({
+                                    sourceId: 'system',
+                                    sourceName: 'Ion Storm',
+                                    message: damageLog,
+                                    color: 'border-orange-500',
+                                    isPlayerSource: false,
+                                    category: 'combat'
+                                });
+                            });
                         }
                     }
                 }
@@ -237,7 +322,6 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
                 { name: 'energy_depleted', chance: 0.07, details: 'Reserve Power Depleted' },
                 { name: 'engines_offline', chance: 0.23, details: 'Impulse Engines Disabled (1 Turn)' },
                 { name: 'phaser_damage_down', chance: 0.55, details: 'Phaser Damage Reduced (2 Turns)' },
-                { name: 'torpedo_misfire', chance: 0.70, details: 'Torpedo Misfire' },
             ];
 
             const successfulChecks = [];
@@ -293,23 +377,6 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
                             ship.statusEffects.push({ type: 'ion_shock', phaserDamageModifier: 0.3, turnsRemaining: 2 });
                         }
                         effectLog = `Phaser emitters are ionized! Damage reduced by 70% for 2 turns.`;
-                        break;
-                    case 'torpedo_misfire':
-                        if (ship.torpedoes.current > 0) {
-                            ship.torpedoes.current--;
-                            
-                            const ammoTypesWithAmmo = Object.keys(ship.ammo).filter(key => ship.ammo[key as AmmoType]!.current > 0) as AmmoType[];
-                            if(ammoTypesWithAmmo.length > 0) {
-                                const randomAmmoType = ammoTypesWithAmmo[Math.floor(Math.random() * ammoTypesWithAmmo.length)];
-                                ship.ammo[randomAmmoType]!.current--;
-                            }
-        
-                            const misfireDamage = 25;
-                            ship.hull = Math.max(0, ship.hull - misfireDamage);
-                            effectLog = `A torpedo casing in the launch bay is detonated by the storm! The ship takes ${misfireDamage} hull damage.`;
-                        } else {
-                            effectLog = `An energy surge hits the torpedo bay, but it is empty.`;
-                        }
                         break;
                 }
                 logDetails += `\n<b class="text-orange-400">Result: ${effectLog}</b>`;

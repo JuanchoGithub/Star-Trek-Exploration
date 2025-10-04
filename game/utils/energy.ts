@@ -132,10 +132,6 @@ export function handleFullRecharge(ship: Ship, turn: number): string[] {
     const logs: string[] = [];
     
     if (ship.dilithium.current <= 0) {
-        if (ship.lifeSupportFailureTurn === null) {
-            ship.lifeSupportFailureTurn = turn;
-            logs.push(`CRITICAL: All power and dilithium reserves exhausted! Life support is switching to emergency batteries.`);
-        }
         return logs;
     }
     
@@ -352,32 +348,50 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState, add
             logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: logMessage, isPlayerSource, color: logColor, category: 'system' });
         }
     }
-    
-    // Emergency Power (Dilithium) & Life Support Failure
+
+    // --- Emergency Power (Dilithium) ---
     if (ship.energy.current <= 0) {
         const rechargeLogs = handleFullRecharge(ship, turn);
         rechargeLogs.forEach(message => {
-            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource, color: message.includes('WARNING') ? 'border-orange-500' : (message.startsWith('CRITICAL:') ? 'border-red-600' : logColor), category: 'system' });
+            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message, isPlayerSource, color: message.includes('WARNING') ? 'border-orange-500' : logColor, category: 'system' });
         });
     }
+    
+    // --- Life Support Failure Logic ---
+    const lifeSupportHealth = ship.subsystems.lifeSupport.health;
+    const hasPower = ship.energy.current > 0 || ship.dilithium.current > 0;
+    const isLifeSupportSystemBroken = lifeSupportHealth <= 0;
+    const isLifeSupportFailing = isLifeSupportSystemBroken || !hasPower;
 
-    // Life Support Countdown & Dereliction
     if (ship.lifeSupportFailureTurn !== null) {
-        const turnsSinceFailure = turn - ship.lifeSupportFailureTurn;
-        const turnsRemaining = 2 - turnsSinceFailure;
-        if (turnsRemaining > 0) {
-             logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `CRITICAL: Life support is on emergency batteries. Main power failure in ${turnsRemaining} turn(s)!`, isPlayerSource, color: 'border-red-600', category: 'system' });
+        // A countdown is active. Check if it should be cancelled.
+        if (!isLifeSupportSystemBroken && hasPower) {
+            ship.lifeSupportFailureTurn = null;
+            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: 'Life support restored. Main power and oxygen production are back online.', isPlayerSource, color: 'border-green-400', category: 'system' });
         } else {
-            ship.isDerelict = true;
-            ship.hull = Math.min(ship.hull, ship.maxHull * 0.1);
-            ship.shields = 0;
-            ship.energy.current = 0;
-            Object.keys(ship.subsystems).forEach(key => {
-                const system = ship.subsystems[key as keyof ShipSubsystems];
-                if (system) system.health = 0;
-            });
-            logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Life support has failed! The ship is now a derelict hulk.`, isPlayerSource, color: 'border-red-600', category: 'system' });
+            // Countdown continues. Process it.
+            const turnsSinceFailure = turn - ship.lifeSupportFailureTurn;
+            const turnsRemaining = 2 - turnsSinceFailure;
+            if (turnsRemaining > 0) {
+                const reason = isLifeSupportSystemBroken ? 'system damage' : 'a total power failure';
+                logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `CRITICAL: Life support is on emergency batteries due to ${reason}. Main power failure in ${turnsRemaining} turn(s)!`, isPlayerSource, color: 'border-red-600', category: 'system' });
+            } else {
+                ship.isDerelict = true;
+                ship.hull = Math.min(ship.hull, ship.maxHull * 0.1);
+                ship.shields = 0;
+                ship.energy.current = 0;
+                Object.keys(ship.subsystems).forEach(key => {
+                    const system = ship.subsystems[key as keyof ShipSubsystems];
+                    if (system) system.health = 0;
+                });
+                logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Life support has failed! The ship is now a derelict hulk.`, isPlayerSource, color: 'border-red-600', category: 'system' });
+            }
         }
+    } else if (isLifeSupportFailing) {
+        // Countdown is NOT active, but failure conditions are met. START the countdown.
+        ship.lifeSupportFailureTurn = turn;
+        const reason = isLifeSupportSystemBroken ? 'critical system damage' : 'a total power failure';
+        logs.push({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `CRITICAL: Life support has failed due to ${reason}! Switching to emergency batteries. Failure in 2 turns!`, isPlayerSource, color: 'border-red-600', category: 'system' });
     }
 
     // Cloaking Sequence Resolution

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -43,6 +42,28 @@ export const AIBehaviorSection: React.FC = () => (
             </li>
         </ul>
 
+        <SubHeader>Ion Storm Torpedo Firing Doctrine</SubHeader>
+        <p className="text-text-secondary mb-2">
+            AI captains will no longer fire torpedoes recklessly through hazardous ion storms. Before any launch is authorized, the AI performs a sophisticated risk-reward analysis.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong className="text-accent-yellow">Reward Calculation:</strong> The AI calculates the potential damage a torpedo would inflict on its target. This "Expected Reward" is then heavily discounted by the torpedo's overall probability of surviving its journey through all ion storm cells on its path.
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Cost Calculation:</strong> The AI calculates the potential for self-damage or friendly fire. It iterates through each storm cell on the torpedo's path, calculating the specific probability of a detonation in that cell. If the firing ship or an allied ship is in that cell, the potential 50% splash damage is added to the "Expected Cost".
+            </li>
+             <li>
+                <strong className="text-accent-yellow">Factional Risk Aversion:</strong> The final decision is filtered through a faction-specific "Risk Aversion Factor". A launch is only authorized if the Expected Reward is significantly greater than the Expected Cost.
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong className="text-red-400">Klingons:</strong> Low risk aversion. They are willing to accept a high probability of collateral damage for a chance at a glorious victory.</li>
+                    <li><strong className="text-green-400">Romulans:</strong> Very high risk aversion. Pragmatic and asset-focused, they will abort any launch that has a significant chance of causing self-damage, regardless of potential reward.</li>
+                    <li><strong className="text-blue-400">Federation Allies:</strong> Extremely averse to friendly fire. The potential cost of harming an allied vessel is weighted heavily in their calculations.</li>
+                    <li><strong className="text-orange-400">Pirates:</strong> Selfish and opportunistic. Their cost calculation only considers potential self-damage; they are completely indifferent to the fate of other "allied" pirate ships.</li>
+                </ul>
+            </li>
+        </ul>
+
 
         <SubHeader>Core AI Capabilities</SubHeader>
         <p className="text-text-secondary mb-2">
@@ -71,14 +92,6 @@ export const AIBehaviorSection: React.FC = () => (
                  </ul>
             </li>
             <li>
-                <strong className="text-accent-yellow">Resource Management &amp; Recovery:</strong>
-                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Recovery Stance:</strong> If no hostile targets are nearby, an AI ship will enter a 'Recovery' stance. It will maximize power to engines to regenerate energy and will assign damage control teams to repair its most damaged systems.</li>
-                    <li><strong>Dilithium Reserves:</strong> Hostile ships now carry a finite supply of Dilithium. If their reserve power is depleted, they will perform an emergency transfer, risking subsystem damage just as a player would.</li>
-                    <li><strong>Life Support Failure:</strong> An AI vessel with no power and no dilithium will suffer life support failure, becoming a derelict hulk after 2 turns.</li>
-                </ul>
-            </li>
-            <li>
                 <strong className="text-accent-yellow">Intelligent Subsystem Targeting:</strong> The AI no longer targets the hull exclusively. It now analyzes the player's ship and targets key weaknesses based on its factional doctrine.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Klingons:</strong> Will prioritize targeting your <span className="text-white">Weapon Systems</span> to force an honorable, close-range battle. However, once a target's shields are depleted, their doctrine shifts; they will target the <span className="text-white">Hull</span> directly to secure a glorious kill.</li>
@@ -104,6 +117,25 @@ export const AIBehaviorSection: React.FC = () => (
             </li>
         </ul>
 
+        <SubHeader>Resource Parity & System Failures</SubHeader>
+        <p className="text-text-secondary mb-2">
+            All non-player vessels operate under the exact same resource constraints as the player's ship. This principle of "resource parity" ensures a fair and realistic simulation.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong className="text-white">Energy Grid:</strong> AI ships generate and consume energy based on their class, power allocation, and system damage. They possess a finite reserve power pool.
+            </li>
+            <li>
+                <strong className="text-white">Emergency Dilithium Use:</strong> If an AI ship's reserve power is depleted, it will automatically use its own supply of Dilithium crystals for an emergency recharge.
+            </li>
+            <li>
+                <strong className="text-white">Consequential Damage Risk:</strong> Crucially, this emergency power transfer carries the same risk for the AI as it does for the player. Each dilithium crystal used introduces a 25% cumulative chance of a feedback surge that will damage a random subsystem. A tactically astute captain can exploit this by forcing an enemy into a high-consumption defensive stance (e.g., activating point-defense), draining their power, and potentially causing them to damage their own systems in a desperate attempt to stay operational.
+            </li>
+            <li>
+                <strong className="text-white">Life Support Failure:</strong> AI ships are also subject to the life support failure cascade. A ship with zero power and zero dilithium will become a derelict hulk after 2 turns.
+            </li>
+        </ul>
+
         <SubHeader>Dynamic Energy Management &amp; Stance Logic</SubHeader>
         <p className="text-text-secondary mb-2">Hostile vessels will re-allocate power based on their doctrine and the battle's state.</p>
         <h4 className="font-bold text-accent-yellow mt-4">Core Stance Triggers (Universal Logic)</h4>
@@ -112,6 +144,7 @@ export const AIBehaviorSection: React.FC = () => (
             <li><strong className="text-cyan-400">Defensive:</strong> An AI will prioritize survival and adopt a Defensive stance if its hull drops below 25% or its shields drop below 15%.</li>
             <li><strong className="text-red-400">Aggressive:</strong> An AI will press the attack if it detects a clear advantage, such as the target's shields being depleted (&lt;= 5%) and its hull being below 70%. It may also become aggressive during a stalemate if both its own and its target's shields are high (&gt; 80%).</li>
             <li><strong className="text-yellow-400">Balanced:</strong> If no special conditions are met, the ship will adopt a Balanced stance, weighing offense and defense equally.</li>
+             <li><strong className="text-blue-400">Recovery:</strong> If no hostile targets are nearby, an AI ship will enter a 'Recovery' stance. It will maximize power to engines to regenerate energy and will assign damage control teams to repair its most damaged systems.</li>
         </ul>
         <h4 className="font-bold text-accent-yellow mt-4">Factional Overrides & Power Allocation</h4>
         <p className="text-text-secondary mb-2">While all AIs follow the core triggers, each faction has a preferred default stance and unique power allocation profiles:</p>

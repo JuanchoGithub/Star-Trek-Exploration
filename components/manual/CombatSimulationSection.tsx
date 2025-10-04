@@ -47,14 +47,22 @@ export const ScenarioSimulatorSection: React.FC = () => (
         
         <div className="p-3 bg-bg-paper-lighter rounded mb-3">
             <h4 className="font-bold text-white">Spectate Mode</h4>
-            <p className="text-sm text-text-secondary">
+            <div className="text-sm text-text-secondary">
                  This is a read-only observation mode where all ships are controlled by the AI.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Playback Controls:</strong> At the bottom of the tactical map, you have full control over the simulation's flow. You can Play/Pause the automatic turn progression, step forward and backward one turn at a time, or use the slider to jump to any point in the battle's history. This allows for detailed turn-by-turn analysis.</li>
                     <li><strong>Layout:</strong> The screen is split between the tactical map on the left and a sidebar on the right.</li>
-                    <li><strong>Ship Inspection:</strong> Clicking on any ship on the map will select it. This splits the right sidebar, showing a detailed, scrollable status panel for that ship in the top half and the turn-by-turn combat log in the bottom half. Clicking an empty cell or the selected ship again will deselect it, giving the log the full sidebar height.</li>
+                    <li>
+                        <strong>Ship Inspection (M.A.C.O. Update):</strong> Clicking on any ship on the map will select it for detailed analysis in the right-hand sidebar. The panel has been overhauled for maximum tactical clarity:
+                        <ul className="list-[circle] list-inside ml-6 mt-1">
+                            <li><strong>Numerical Readouts:</strong> All primary stats (Hull, Shields, etc.) are displayed as precise numbers rather than graphical bars.</li>
+                            <li><strong>Targeting Intelligence:</strong> The panel shows what the selected ship is targeting ("Targeting Data") and which vessels are targeting it ("Targeted By").</li>
+                            <li><strong>Subsystem Highlighting:</strong> The subsystem list visually indicates status. A <span className="text-red-500">red ring</span> highlights a system being targeted by an enemy, while a <span className="text-yellow-400">yellow ring</span> indicates a system undergoing repairs.</li>
+                            <li><strong>Full Tactical Profile:</strong> The panel includes a complete breakdown of Threat Analysis, active environmental effects, and detailed status for all weapon systems, mirroring the advanced readouts of the main game.</li>
+                        </ul>
+                    </li>
                 </ul>
-            </p>
+            </div>
         </div>
          <div className="p-3 bg-bg-paper-lighter rounded">
             <h4 className="font-bold text-white">Dogfight Mode</h4>

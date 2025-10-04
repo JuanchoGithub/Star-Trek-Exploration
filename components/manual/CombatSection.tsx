@@ -1,30 +1,6 @@
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
-const DamageFalloffTable: React.FC<{ data: { range: number; modifier: string }[] }> = ({ data }) => (
-    <div>
-        <dt className="font-bold text-text-secondary mt-2">Phaser Damage Falloff:</dt>
-        <dd className="mt-1">
-            <table className="w-full max-w-sm text-sm text-left border-collapse">
-                <thead className="bg-bg-paper-lighter">
-                    <tr>
-                        <th className="p-2 border border-border-dark font-bold">Range (Hexes)</th>
-                        <th className="p-2 border border-border-dark font-bold">Damage Modifier</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map(row => (
-                        <tr key={row.range} className="bg-bg-paper even:bg-black/20">
-                            <td className="p-2 border border-border-dark font-mono">{row.range}</td>
-                            <td className="p-2 border border-border-dark font-mono">{row.modifier}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </dd>
-    </div>
-);
-
 const ShieldLeakageExplanation: React.FC = () => (
     <div className="mt-2">
         <dt className="font-bold text-text-secondary">Phaser Shield Leakage (Probabilistic):</dt>
@@ -42,15 +18,6 @@ const ShieldLeakageExplanation: React.FC = () => (
 
 
 export const CombatSection: React.FC = () => {
-    const phaserFalloffData = [
-        { range: 1, modifier: '100%' },
-        { range: 2, modifier: '80%' },
-        { range: 3, modifier: '60%' },
-        { range: 4, modifier: '40%' },
-        { range: 5, modifier: '20%' },
-        { range: 6, modifier: '20% (Minimum)' },
-    ];
-
     return (
      <div>
         <SectionHeader>Advanced Combat Mechanics</SectionHeader>
@@ -70,7 +37,17 @@ export const CombatSection: React.FC = () => {
             <p className="text-xs text-text-disabled mt-2">Note: Modifiers are cumulative. For example, firing a Klingon disruptor (x0.95) at an evasive target (x0.60) in a nebula (x0.75) would result in a final hit chance of: 90% &times; 0.95 &times; 0.60 &times; 0.75 &approx; 38.5%.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DamageFalloffTable data={phaserFalloffData} />
+            <div>
+                <dt className="font-bold text-text-secondary mt-2">Phaser Damage Falloff:</dt>
+                <dd className="mt-1 text-sm">
+                    <p>
+                        The damage of all energy weapons (phasers, disruptors) decreases linearly over distance. Damage is 100% at range 1 and falls off to a minimum of 20% at the weapon's maximum range.
+                    </p>
+                    <p className="mt-2 italic">
+                        The previous static table was only accurate for a weapon with a max range of 6. For precise damage values at each range for every weapon, please consult the new <strong className="text-white">Weapon Systems Registry</strong> section.
+                    </p>
+                </dd>
+            </div>
             <ShieldLeakageExplanation />
         </div>
         
@@ -81,26 +58,7 @@ export const CombatSection: React.FC = () => {
              <p className="text-center font-bold text-2xl my-4 text-white">4 Shield Points : 1 Torpedo Damage</p>
              <p className="text-text-secondary">For every 4 points of energy drained from the shield grid, 1 point of incoming torpedo damage is negated. This makes torpedoes exceptionally good at draining shield power, but less effective at dealing hull damage to a fully shielded target.</p>
         </div>
-        <p className="text-text-secondary mb-4">All torpedoes have a chance to miss that increases with distance. The table below shows the base hit chance for a standard Photon Torpedo. Other torpedo types have modifiers applied to this base chance.</p>
-        <table className="w-full max-w-md text-sm text-left border-collapse my-4">
-            <thead className="bg-bg-paper-lighter">
-                <tr>
-                    <th className="p-2 border border-border-dark font-bold">Range (Cells)</th>
-                    <th className="p-2 border border-border-dark font-bold">Photon (Baseline)</th>
-                    <th className="p-2 border border-border-dark font-bold">Quantum (+15%)</th>
-                    <th className="p-2 border border-border-dark font-bold">Plasma (-10%)</th>
-                    <th className="p-2 border border-border-dark font-bold">Heavy Plasma (-15%)</th>
-                    <th className="p-2 border border-border-dark font-bold">Heavy Photon (-20%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">1</td><td className="p-2 border border-border-dark font-mono">80%</td><td className="p-2 border border-border-dark font-mono">95%</td><td className="p-2 border border-border-dark font-mono">70%</td><td className="p-2 border border-border-dark font-mono">65%</td><td className="p-2 border border-border-dark font-mono">60%</td></tr>
-                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">2</td><td className="p-2 border border-border-dark font-mono">70%</td><td className="p-2 border border-border-dark font-mono">85%</td><td className="p-2 border border-border-dark font-mono">60%</td><td className="p-2 border border-border-dark font-mono">55%</td><td className="p-2 border border-border-dark font-mono">50%</td></tr>
-                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">3</td><td className="p-2 border border-border-dark font-mono">50%</td><td className="p-2 border border-border-dark font-mono">65%</td><td className="p-2 border border-border-dark font-mono">40%</td><td className="p-2 border border-border-dark font-mono">35%</td><td className="p-2 border border-border-dark font-mono">30%</td></tr>
-                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">4</td><td className="p-2 border border-border-dark font-mono">25%</td><td className="p-2 border border-border-dark font-mono">40%</td><td className="p-2 border border-border-dark font-mono">15%</td><td className="p-2 border border-border-dark font-mono">10%</td><td className="p-2 border border-border-dark font-mono">5%</td></tr>
-                <tr className="bg-bg-paper even:bg-black/20"><td className="p-2 border border-border-dark font-mono">5+</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td><td className="p-2 border border-border-dark font-mono">0%</td></tr>
-            </tbody>
-        </table>
+        <p className="text-text-secondary mb-4">All torpedoes have a chance to miss that increases with distance. Different torpedo types (Photon, Quantum, Plasma) have different base accuracies and modifiers. For a detailed breakdown of hit chances for each weapon type, please consult the <strong className="text-white">Weapon Systems Registry</strong>.</p>
     </div>
     );
 };

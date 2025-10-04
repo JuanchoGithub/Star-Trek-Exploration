@@ -1,5 +1,5 @@
 import type { GameState, Ship, TorpedoProjectile, ShipSubsystems, Position, CombatEffect, BeamWeapon, ProjectileWeapon } from '../../../types';
-import { calculateDistance, moveOneStep, findClosestTarget, uniqueId } from '../../utils/ai';
+import { calculateDistance, moveOneStep, findClosestTarget, uniqueId, getPath } from '../../utils/ai';
 import { AIActions, AIStance } from '../FactionAI';
 import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { torpedoStats } from '../../../assets/projectiles/configs/torpedoTypes';
@@ -9,6 +9,94 @@ import { generateRecoveryLog, generateStanceLog, generateBeamAttackLog, generate
 import { fireBeamWeapon } from '../../utils/combat';
 import { isDeepNebula } from '../../utils/sector';
 import { AmmoType } from '../../../types';
+
+function isSafeToFireTorpedoInStorm(
+    firingShip: Ship,
+    targetShip: Ship,
+    projectileWeapon: ProjectileWeapon,
+    gameState: GameState,
+    allShipsInSector: Ship[]
+): { isSafe: boolean; reason: string } {
+    const torpedoPath = getPath(firingShip.position, targetShip.position);
+    const ionStormCells = new Set(gameState.currentSector.ionStormCells.map(p => `${p.x},${p.y}`));
+    const stormPath = torpedoPath.filter(p => ionStormCells.has(`${p.x},${p.y}`));
+
+    if (stormPath.length === 0) {
+        return { isSafe: true, reason: "Path is clear of ion storms." };
+    }
+
+    const DETONATION_CHANCE_PER_CELL = 0.20;
+
+    // 1. Get Risk Aversion Factor
+    let riskAversionFactor: number;
+    switch (firingShip.shipModel) {
+        case 'Klingon': riskAversionFactor = 1.25; break;
+        case 'Romulan': riskAversionFactor = 3.5; break;
+        case 'Federation': riskAversionFactor = 3.0; break;
+        case 'Pirate': riskAversionFactor = 1.75; break;
+        default: riskAversionFactor = 2.0;
+    }
+
+    const torpedoConfig = torpedoStats[projectileWeapon.ammoType];
+    const baseTorpedoDamage = torpedoConfig.damage;
+
+    // 2. Calculate Expected Reward
+    const survivalProbability = Math.pow(1 - DETONATION_CHANCE_PER_CELL, stormPath.length);
+    let expectedReward = baseTorpedoDamage * survivalProbability;
+    
+    if (firingShip.shipModel === 'Klingon') {
+        expectedReward *= 1.2; // "Glory Bonus"
+    }
+
+    // 3. Calculate Expected Cost
+    let expectedCost = 0;
+    const endOfTurnPosition = firingShip.position;
+    const alliedShips = allShipsInSector.filter(s => s.id !== firingShip.id && s.allegiance === firingShip.allegiance);
+
+    let probabilityOfReachingCell = 1.0;
+    for (const cell of stormPath) {
+        const detonationProbabilityInThisCell = probabilityOfReachingCell * DETONATION_CHANCE_PER_CELL;
+
+        // Check for self-damage
+        if (cell.x === endOfTurnPosition.x && cell.y === endOfTurnPosition.y) {
+            expectedCost += detonationProbabilityInThisCell * (baseTorpedoDamage * 0.5);
+        }
+
+        // Check for friendly-fire
+        for (const ally of alliedShips) {
+            if (cell.x === ally.position.x && cell.y === ally.position.y) {
+                let costToAdd = detonationProbabilityInThisCell * (baseTorpedoDamage * 0.5);
+                if (firingShip.shipModel === 'Pirate') costToAdd = 0;
+                else if (firingShip.shipModel === 'Klingon') costToAdd *= 0.5;
+                else if (firingShip.shipModel === 'Federation') costToAdd *= 2.5;
+                expectedCost += costToAdd;
+            }
+        }
+        
+        probabilityOfReachingCell *= (1 - DETONATION_CHANCE_PER_CELL);
+    }
+    
+    // Romulan hard limit
+    if (firingShip.shipModel === 'Romulan') {
+        const selfThreateningStormCells = stormPath.filter(p => p.x === endOfTurnPosition.x && p.y === endOfTurnPosition.y).length;
+        if (selfThreateningStormCells > 0) {
+            const selfDetonationProbability = 1 - Math.pow(1 - DETONATION_CHANCE_PER_CELL, selfThreateningStormCells);
+            if (selfDetonationProbability > 0.40) {
+                return { isSafe: false, reason: `Launch aborted. Self-detonation risk (${(selfDetonationProbability*100).toFixed(0)}%) exceeds the 40% tactical limit.` };
+            }
+        }
+    }
+
+    // 4. The Decision
+    const isSafe = expectedReward > (expectedCost * riskAversionFactor);
+
+    return {
+        isSafe,
+        reason: isSafe
+            ? `Calculated risk acceptable (Reward: ${expectedReward.toFixed(1)} > Cost: ${expectedCost.toFixed(1)} * ${riskAversionFactor}).`
+            : `Launch aborted due to unacceptable risk from ion storm (Reward: ${expectedReward.toFixed(1)} <= Cost: ${expectedCost.toFixed(1)} * ${riskAversionFactor}).`
+    };
+}
 
 export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
     const closestTarget = findClosestTarget(ship, potentialTargets);
@@ -422,8 +510,26 @@ export function processCommonTurn(
     if (stance === 'Aggressive') { torpedoLaunchChance = targetShields > 0.3 ? 0.75 : 0.4; } 
     else if (stance === 'Balanced') { torpedoLaunchChance = 0.3; }
     
-    const willLaunchTorpedo = canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance;
+    let willLaunchTorpedo = canLaunchTorpedo && distance <= 8 && Math.random() < torpedoLaunchChance;
     
+    // --- NEW ION STORM SAFETY CHECK ---
+    if (willLaunchTorpedo && projectileWeapon && gameState.currentSector.ionStormCells.length > 0) {
+        const safetyCheck = isSafeToFireTorpedoInStorm(ship, primaryTarget, projectileWeapon, gameState, allShipsInSector);
+        if (!safetyCheck.isSafe) {
+            willLaunchTorpedo = false;
+            actions.addLog({
+                sourceId: ship.id,
+                sourceName: ship.name,
+                sourceFaction: ship.faction,
+                message: safetyCheck.reason,
+                isPlayerSource: false,
+                color: ship.logColor,
+                category: 'targeting'
+            });
+        }
+    }
+    // --- END ION STORM SAFETY CHECK ---
+
     // --- BUILD & DISPATCH LOG ---
     const shipsTargetingMe = allShipsInSector.filter(s => s.currentTargetId === ship.id);
     const moveAction = didMove ? 'MOVING' : 'HOLDING';

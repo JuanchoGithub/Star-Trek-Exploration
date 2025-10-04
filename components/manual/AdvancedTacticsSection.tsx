@@ -133,7 +133,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                  <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                      <li><strong>Prerequisites:</strong> You must be adjacent (1 hex) to a derelict vessel. Your ship must have at least <strong className="text-white">1 available Security Team</strong> and be able to transfer <strong className="text-white">5 Dilithium crystals</strong> to the derelict to power its systems. The operation consumes your major action for the turn.</li>
                      <li><strong>Repair Phase:</strong> A salvage team will remain on the derelict for <strong className="text-white">4 turns</strong>, conducting emergency repairs. The vessel cannot be controlled during this period.</li>
-                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. The initial 5 Dilithium investment is then transferred to the captured ship's reserves, allowing it to power its own systems.</li>
+                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. <strong className="text-white">Crucially, the initial 5 Dilithium investment is then transferred to the captured ship's reserves, allowing it to power its own systems or perform a warp jump as soon as it becomes active.</strong></li>
                  </ul>
             </div>
 
