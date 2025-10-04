@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Entity, Ship, ShipSubsystems, Planet } from '../types';
+import type { Entity, Ship, ShipSubsystems, Planet, Weapon, BeamWeapon, ProjectileWeapon } from '../types';
 import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
 
@@ -39,12 +39,13 @@ interface TargetInfoProps {
     onStartAwayMission: (planetId: string) => void;
     onEnterOrbit: (planetId: string) => void;
     isDocked: boolean;
+    selectedWeapon: (BeamWeapon | ProjectileWeapon) | null;
 }
 
 const TargetInfo: React.FC<TargetInfoProps> = ({
     target, themeName, selectedSubsystem, onSelectSubsystem, playerShip, hasEnemy, 
     orbitingPlanetId, isTurnResolving, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit,
-    isDocked
+    isDocked, selectedWeapon
 }) => {
     const [isPickerVisible, setPickerVisible] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -104,8 +105,11 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
     };
     const awayMissionState = getAwayMissionButtonState();
     
+    const isTorpedoSelected = selectedWeapon?.type === 'projectile';
     let targetingButtonText = "Target Subsystem";
-    if (selectedSubsystem) {
+    if (isTorpedoSelected) {
+        targetingButtonText = "Subsystem Targeting N/A";
+    } else if (selectedSubsystem) {
         targetingButtonText = `Targeting: ${subsystemAbbr[selectedSubsystem]}`;
     }
 
@@ -138,7 +142,13 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                         </div>
                         {isFederation ? (
                             <div className="relative">
-                                <button ref={buttonRef} onClick={() => setPickerVisible(!isPickerVisible)} className="w-full btn btn-tertiary mt-2">
+                                <button
+                                    ref={buttonRef}
+                                    onClick={() => setPickerVisible(!isPickerVisible)}
+                                    className="w-full btn btn-tertiary mt-2"
+                                    disabled={isTorpedoSelected}
+                                    title={isTorpedoSelected ? "Subsystem targeting is not available for torpedoes." : "Target a specific subsystem"}
+                                >
                                     {targetingButtonText}
                                 </button>
                                 {isPickerVisible && (
@@ -172,8 +182,9 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                              <button 
                                                 key={key}
                                                 onClick={() => onSelectSubsystem(key)}
-                                                className={`p-1 rounded text-center transition-colors ${selectedSubsystem === key ? 'ring-2 ring-white' : 'hover:bg-bg-paper-lighter'}`}
-                                                title={`${subsystemFullNames[key]}: ${Math.round(healthPercentage)}%`}
+                                                disabled={isTorpedoSelected}
+                                                className={`p-1 rounded text-center transition-colors ${selectedSubsystem === key && !isTorpedoSelected ? 'ring-2 ring-white' : ''} ${isTorpedoSelected ? 'cursor-not-allowed opacity-50' : 'hover:bg-bg-paper-lighter'}`}
+                                                title={isTorpedoSelected ? 'Subsystem targeting unavailable for torpedoes' : `${subsystemFullNames[key]}: ${Math.round(healthPercentage)}%`}
                                              >
                                                  <div className="text-xs font-bold text-text-secondary">{subsystemAbbr[key]}</div>
                                                  <div className="w-full bg-black h-2 rounded-full mt-1 overflow-hidden">

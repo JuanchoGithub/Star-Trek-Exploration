@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -60,6 +59,7 @@ export const AIBehaviorSection: React.FC = () => (
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Klingon &amp; Pirate:</strong> Will *always* attempt to capture an adjacent derelict, viewing it as a prize of war or salvage.</li>
                     <li><strong>Federation &amp; Romulan:</strong> Will only consider capturing if they are not under immediate threat (in a 'Balanced' stance). Even then, they will only commit to a capture operation about 30% of the time, weighing the tactical advantage against their primary mission objectives.</li>
+                    <li><strong>Independent Vessels:</strong> As non-combatants, they will <strong className="text-white">never</strong> attempt to capture derelict vessels.</li>
                 </ul>
             </li>
              <li>
@@ -114,17 +114,26 @@ export const AIBehaviorSection: React.FC = () => (
         </ul>
         <h4 className="font-bold text-accent-yellow mt-4">Factional Overrides & Power Allocation</h4>
         <p className="text-text-secondary mb-2">While all AIs follow the core triggers, each faction has a preferred default stance and unique power allocation profiles:</p>
-        <div className="pl-6 mt-2 text-sm">
+        <div className="pl-6 mt-2 text-sm space-y-2">
             <p><strong>- Klingons:</strong> Default to an <span className="text-red-400">Aggressive</span> stance. (Power: 74% WPN, 13% SHD, 13% ENG)</p>
             <p><strong>- Romulans:</strong> Default to a <span className="text-yellow-400">Balanced</span> stance. (Power: 34% WPN, 33% SHD, 33% ENG)</p>
             <p><strong>- Pirates:</strong> Default to a <span className="text-yellow-400">Balanced</span> stance. They will become <span className="text-red-400">Aggressive</span> if the player's hull is below 40%, and switch to <span className="text-cyan-400">Defensive</span> if their own hull is below 60%. (Power: 50% WPN, 50% SHD, 0% ENG)</p>
+            <p>
+                <strong>- Independent Vessels:</strong> These are truly neutral entities. Their sole doctrine is self-preservation.
+                <ul className="list-[circle] list-inside ml-4 mt-1">
+                    <li>They will <strong className="text-white">always</strong> adopt a <span className="text-cyan-400">Defensive</span> stance and attempt to flee from any perceived threat.</li>
+                    <li>They do not engage in combat and will not initiate hostilities.</li>
+                    <li>They are non-opportunistic and will <strong className="text-white">never</strong> attempt to capture derelict vessels.</li>
+                    <li><strong className="text-accent-yellow">Simulator Note:</strong> If an Independent vessel is manually assigned the 'Ally' allegiance in the Scenario Simulator, its core doctrine is overridden. It will engage 'Enemy' vessels and will not attempt to flee, effectively acting as a friendly combatant.</li>
+                </ul>
+            </p>
         </div>
 
         <SubHeader>Advanced Cloaking Doctrine (Revision 1.7)</SubHeader>
         <p className="text-text-secondary mb-2">Stealth technology is a dynamic state requiring constant power and subject to failure under pressure.</p>
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
             <li>
-                <strong className="text-accent-yellow">Multi-Turn Operation:</strong> Cloaking is no longer instantaneous.
+                <strong className="text-accent-yellow">Multi-Turn Operation:</strong>
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Engaging:</strong> A two-turn process. On Turn 1, the sequence is initiated, consuming the ship's major action. The ship is vulnerable in a 'cloaking' state. The cloak becomes active at the end of Turn 2.</li>
                     <li><strong>Disengaging:</strong> A three-turn process. The ship enters a 'decloaking' state and remains vulnerable for two full turns. It becomes fully visible and can act normally at the start of Turn 3.</li>

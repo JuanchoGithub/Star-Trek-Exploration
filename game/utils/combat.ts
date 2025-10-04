@@ -125,7 +125,7 @@ export const fireBeamWeapon = (
     }
 
     if (target.evasive) hitChance *= 0.6;
-    if (sourceShip.id === 'player' && sourceShip.evasive) hitChance *= 0.75;
+    if (sourceShip.evasive) hitChance *= 0.75;
     
     const phaserPowerModifier = sourceShip.energyAllocation.weapons / 100;
     const damageAfterPower = weapon.baseDamage * phaserPowerModifier * sourceShip.energyModifier;
@@ -152,18 +152,6 @@ export const fireBeamWeapon = (
         const distanceModifier = Math.max(0.2, 1 - (effectiveDistance - 1) / (MAX_PHASER_RANGE - 1));
         effectiveDamage *= distanceModifier;
         damageModifiers.push(`Range x${distanceModifier.toFixed(2)}`);
-    }
-
-    if (sourceShip.id === 'player' && subsystem) {
-        const targetingInfo = gameState.player.targeting;
-        if (targetingInfo && targetingInfo.entityId === target.id && targetingInfo.subsystem === subsystem) {
-            const consecutiveTurns = targetingInfo.consecutiveTurns || 1;
-            if (consecutiveTurns > 1) {
-                const targetingModifier = 1 + (Math.min(4, consecutiveTurns - 1) * 0.25);
-                effectiveDamage *= targetingModifier;
-                damageModifiers.push(`Focus +${((targetingModifier - 1) * 100).toFixed(0)}%`);
-            }
-        }
     }
     
     const hit = Math.random() < hitChance;
@@ -205,12 +193,15 @@ export const fireBeamWeapon = (
             const hullPortion = totalPenetratingDamage * (1 - subsystemDamageMultiplier);
             
             let criticalHitMultiplier = 1.0;
-            if (sourceShip.id === 'player') {
-                const targetingInfo = gameState.player.targeting;
-                if (targetingInfo && targetingInfo.entityId === target.id && targetingInfo.subsystem === subsystem) {
-                    if (targetingInfo.consecutiveTurns >= 2) {
-                        criticalHitMultiplier = 1.5;
-                    }
+            const targetingInfo = sourceShip.id === 'player' ? gameState.player.targeting : sourceShip.targeting;
+            if (targetingInfo && targetingInfo.entityId === target.id && targetingInfo.subsystem === subsystem) {
+                const consecutiveTurns = targetingInfo.consecutiveTurns || 1;
+                switch (consecutiveTurns) {
+                    case 1: criticalHitMultiplier = 1.0; break;
+                    case 2: criticalHitMultiplier = 1.1; break;
+                    case 3: criticalHitMultiplier = 1.25; break;
+                    case 4: criticalHitMultiplier = 1.4; break;
+                    default: criticalHitMultiplier = 1.5; break;
                 }
             }
 

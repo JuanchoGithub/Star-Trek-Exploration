@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
-import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon } from '../types';
+import type { Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon, QuadrantPosition, ShipSubsystems, BridgeOfficer, PlayerTurnActions } from '../types';
 import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
 import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
@@ -621,6 +621,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 <div className="basis-1/2 flex-shrink min-h-0">
                                     <ShipStatus
                                         gameState={{...currentGameState, player: {...currentGameState.player, ship: playerShip}}}
+                                        selectedTargetId={selectedTargetId}
                                         onEnergyChange={onEnergyChange} onToggleRedAlert={onToggleRedAlert} onEvasiveManeuvers={onEvasiveManeuvers} onSelectRepairTarget={onSelectRepairTarget as any}
                                         onToggleCloak={onToggleCloak} onTogglePointDefense={onTogglePointDefense} themeName={themeName}
                                     />

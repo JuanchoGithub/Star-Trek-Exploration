@@ -1,11 +1,10 @@
-
-
 import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
 import { SectionHeader, SubHeader } from './shared';
-// FIX: Replaced non-existent PirateEscortIcon with OrionRaiderIcon.
 import { OrionRaiderIcon } from '../../assets/ships/icons';
+import { AsteroidFieldIcon } from '../../assets/asteroids/icons';
+import { ScienceIcon } from '../../assets/ui/icons';
 
 interface AdvancedTacticsSectionProps {
     themeName: ThemeName;
@@ -50,7 +49,6 @@ const CloakingMechanicsTable: React.FC = () => (
 
 export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ themeName }) => {
     const { WeaponIcon, ShieldIcon, EngineIcon, TransporterIcon, CloakIcon } = getFactionIcons(themeName);
-    // FIX: Replaced non-existent 'ScanIcon' with 'ScienceIcon' to resolve the error.
     const { ScienceIcon: FederationScanIcon } = getFactionIcons('federation');
     
     return (
@@ -79,7 +77,6 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <p className="text-text-secondary mb-4">The sector grid is your chessboard. Where you place your ship is as important as how you equip it.</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                 <li><strong>Optimal Range:</strong> Phaser damage drops off sharply with distance. Your ideal engagement range is 2-3 hexes. Conversely, if an enemy is slow but powerful (like a Klingon Negh'Var), try to stay at maximum range (5-6 hexes), a practice known as "kiting", to pepper them with long-range fire while minimizing their devastating return volleys.</li>
-                <li><strong>Using the Environment:</strong> Lure aggressive enemies into <span className="text-gray-400">Asteroid Fields</span>. The dense rock provides cover (reducing phaser accuracy against ships inside by 30%) and a direct hazard (risk of impact damage). You can also use asteroid fields as a cloak. By positioning your ship inside a field, you become undetectable beyond 4 hexes. This allows you to break sensor lock and set up ambushes. Lure an enemy to chase you, then enter a field. They will be forced to close to within 2 hexes to fire, bringing them into your optimal torpedo range.</li>
                 <li><strong>Focus Fire:</strong> In multi-ship engagements, it is always better to destroy one enemy than to damage two. Concentrate all fire on a single target until it is neutralized before moving to the next. Prioritize destroying high-damage, low-health threats (like a B'rel Bird-of-Prey) first.</li>
             </ul>
             
@@ -116,7 +113,15 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </div>
                 <div className="mt-4 p-3 bg-black rounded border-l-4 border-accent-yellow">
                     <h4 className="font-bold text-accent-yellow">Focus Fire Bonus</h4>
-                    <p className="text-sm text-text-secondary mt-2">Sustained, focused fire on a single subsystem is rewarded with a damage bonus. After targeting the same subsystem for <strong className="text-white">two consecutive turns</strong>, a flat <strong className="text-white">+50% damage bonus</strong> is applied to the portion of damage that specifically hits the targeted subsystem (this does not increase hull damage). This bonus does not increase on subsequent turns. This tactic is essential for quickly disabling critical enemy systems.</p>
+                    <p className="text-sm text-text-secondary mt-2">Sustained, focused fire on a single subsystem is rewarded with an incremental damage bonus. The bonus increases with each consecutive phaser attack against the same subsystem on the same target, resetting if you switch targets or subsystems. This bonus applies <strong className="text-white">only to the portion of damage that hits the targeted subsystem</strong>, not to the hull.</p>
+                    <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
+                        <li><strong>Shot 1 (New Target):</strong> 0% bonus</li>
+                        <li><strong>Shot 2:</strong> <strong className="text-white">+10%</strong> bonus subsystem damage</li>
+                        <li><strong>Shot 3:</strong> <strong className="text-white">+25%</strong> bonus subsystem damage</li>
+                        <li><strong>Shot 4:</strong> <strong className="text-white">+40%</strong> bonus subsystem damage</li>
+                        <li><strong>Shot 5 and beyond:</strong> <strong className="text-white">+50%</strong> (maximum) bonus subsystem damage</li>
+                    </ul>
+                    <p className="text-sm text-text-secondary mt-2">This tactic is essential for quickly disabling critical enemy systems.</p>
                 </div>
             </div>
             
@@ -147,6 +152,45 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship in the center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
                 </DetailBox>
             </div>
+
+            <SubHeader>Asteroid Warfare</SubHeader>
+            <p className="text-text-secondary mb-4">Asteroid fields are double-edged swords: they provide excellent cover but introduce significant hazards to both movement and combat. Master their use to turn a cluttered sector into a tactical advantage.</p>
+            <div className="space-y-3">
+                <DetailBox title="Cover & Ambush" icon={<AsteroidFieldIcon className="w-6 h-6"/>} borderColorClass="border-gray-400">
+                    <p>Asteroid fields disrupt sensors and targeting systems, making them ideal for ambushes and defensive maneuvers.</p>
+                    <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
+                        <li>Phaser Accuracy: <span className="text-white">x0.70</span> (30% reduction) against targets inside a field.</li>
+                        <li>Sensor Detection: Ships inside a field are undetectable beyond a range of <span className="text-white">4 hexes</span>.</li>
+                        <li>Weapon Targeting: Ships inside a field cannot be targeted by weapons from a range greater than <span className="text-white">2 hexes</span>.</li>
+                    </ul>
+                    <p className="mt-2 text-xs italic">Use this to break sensor lock and force enemies into your optimal weapon range.</p>
+                </DetailBox>
+                <DetailBox title="Navigational & Projectile Hazard" icon={<AsteroidFieldIcon className="w-6 h-6"/>} borderColorClass="border-red-500">
+                    <p>The dense rock and debris are a constant threat to any vessel or projectile moving through the field.</p>
+                    <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
+                        <li>Micrometeoroid Impact: Ending your turn inside an asteroid field risks taking hull damage.</li>
+                        <li>Projectile Interception: Any torpedo traveling through an asteroid cell has a <span className="text-white">40% chance</span> of being destroyed by a collision before reaching its target.</li>
+                    </ul>
+                     <p className="mt-2 text-xs italic">Fire torpedoes from outside an asteroid field, not through it. Lure enemy torpedoes into the field to use it as a natural point-defense screen.</p>
+                </DetailBox>
+            </div>
+            
+            <SubHeader>Ion Storm Warfare</SubHeader>
+            <p className="text-text-secondary mb-4">Ion storms are the ultimate chaotic element. They are not tactical cover; they are an unpredictable hazard that affects all ships equally. Entering one is a gamble that can either save a desperate captain or doom a victorious one.</p>
+             <div className="space-y-3">
+                <DetailBox title="The Great Equalizer" icon={<ScienceIcon className="w-6 h-6 text-yellow-400"/>} borderColorClass="border-yellow-400">
+                    <p>The storm's random, debilitating effects can level the playing field against a technologically superior or numerically superior foe.</p>
+                    <p className="mt-2">Luring a powerful enemy into a storm is a high-risk, high-reward gambit. You might force a critical failure on their weapon systems, or they might emerge unscathed while your own engines go offline.</p>
+                </DetailBox>
+                <DetailBox title="Calculated Risks" icon={<ScienceIcon className="w-6 h-6 text-yellow-400"/>} borderColorClass="border-orange-500">
+                    <p>While unpredictable, some interactions can be anticipated.</p>
+                     <ul className="list-disc list-inside ml-4 mt-2 text-sm">
+                        <li><strong>Screen for Retreat:</strong> An ion storm can serve as a screen to escape. An enemy may be reluctant to follow you into such a hazardous environment.</li>
+                        <li><strong>Cloaking Interaction:</strong> Ion storms do not directly interfere with cloaking fields. However, a common storm effect is a complete drain of reserve power. If this occurs, a cloak will fail due to energy starvation, triggering the full failure cascade (shields offline, cloak cooldown). This makes cloaking inside a storm extremely risky.</li>
+                    </ul>
+                    <p className="mt-2 text-xs italic">Avoid entering ion storms when your own ship is in a critical state unless you have no other choice.</p>
+                </DetailBox>
+            </div>
             
             <SubHeader>Desperation Moves</SubHeader>
             <p className="text-text-secondary mb-4">When a vessel's hull integrity drops below <strong className="text-white">30%</strong>, its captain has a scaling chance to initiate a faction-specific "last stand" maneuver. This chance increases as the ship takes more damage, becoming a near-certainty at critical hull levels. Be prepared for these final, desperate acts much earlier than previously anticipated.</p>
@@ -171,9 +215,22 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <p className="text-text-secondary mb-4">Stealth technology is no longer a simple fire-and-forget system. It is a dynamic state requiring constant power and subject to failure under pressure. Understanding these new, more complex mechanics is essential to survival.</p>
             <div className="space-y-3">
                 <DetailBox title="General Cloaking Mechanics" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
-                    <p><strong>Engaging Cloak:</strong> This is a two-turn process. On Turn 1, you initiate the sequence, which consumes your major action. Your ship enters a vulnerable 'cloaking' state. At the end of Turn 2, the cloak becomes fully active. Your ship is vulnerable for the entire turn it is engaging the cloak.</p>
-                    <p><strong>Disengaging Cloak:</strong> This is a three-turn process. On Turn 1, you initiate the sequence. The ship enters a vulnerable 'decloaking' state. It remains in this vulnerable state for Turn 1 and Turn 2. At the start of Turn 3, the ship is fully visible and can act normally. This means the ship is vulnerable for two full turns.</p>
-                    <p><strong>Action Cost & Restrictions:</strong> Initiating either sequence consumes your major tactical action for the turn. A cloaked ship cannot fire weapons or be at Red Alert. A ship in a 'cloaking' or 'decloaking' state is also unable to perform any other major actions.</p>
+                    <p><strong>Engaging Cloak (Two-Turn Process):</strong> The process of activating the cloaking device renders the ship vulnerable for a short duration. The sequence is as follows:</p>
+                    <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
+                        <li><strong>Turn 1 (Action):</strong> You initiate the "Cloak" command. This consumes your major action for the turn. The ship enters the 'cloaking' state and is vulnerable to attack.</li>
+                        <li><strong>Turn 2 (Vulnerable):</strong> The ship continues the cloaking sequence. It remains vulnerable and cannot perform major actions.</li>
+                        <li><strong>Start of Turn 3 (Cloaked):</strong> The sequence completes. The ship is now fully cloaked and undetectable on sensors.</li>
+                    </ul>
+
+                    <p className="mt-2"><strong>Disengaging Cloak (Two-Turn Process):</strong> Decloaking also involves a vulnerable transition period. It is functionally a two-turn process from the player's perspective.</p>
+                    <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
+                        <li><strong>Turn 1 (Action):</strong> You initiate the "Decloak" command. This consumes your major action. The ship enters the 'decloaking' state and is vulnerable.</li>
+                        <li><strong>Turn 2 (Vulnerable):</strong> The ship continues the decloaking sequence. It remains vulnerable and cannot perform major actions.</li>
+                        <li><strong>Start of Turn 3 (Visible & Actionable):</strong> The sequence completes. The ship is now fully visible, and you can perform actions normally (e.g., raise shields, fire weapons).</li>
+                    </ul>
+                    <p className="text-xs italic text-text-disabled mt-1">Note: While the process spans three turn numbers, it is considered a "two-turn" process because it affects your actions on two consecutive turns (the initial action and the subsequent vulnerable turn).</p>
+
+                    <p className="mt-2"><strong>Action Cost & Restrictions:</strong> Initiating either sequence consumes your major tactical action for the turn. A cloaked ship cannot fire weapons or be at Red Alert. A ship in a 'cloaking' or 'decloaking' state is also unable to perform any other major actions.</p>
                 </DetailBox>
                 
                  <DetailBox title="Reliability & Failure Cascade" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-red-500">
@@ -217,6 +274,11 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                             <li><strong>Reliability:</strong> Reduced by 10% (e.g., 92% becomes 83%).</li>
                             <li><strong>Power Cost:</strong> Increased by 15% (e.g., 45 becomes ~52 per turn).</li>
                         </ul>
+                    </div>
+                    <div className="md:col-span-2 p-3 bg-bg-paper-lighter rounded border-l-4 border-yellow-400">
+                        <h5 className="font-bold text-yellow-300">Ion Storms</h5>
+                        <p className="text-sm text-text-secondary">While ion storms are extremely dangerous to ship systems, their electrical properties do not directly interfere with the subspace fields generated by a cloaking device. Therefore, they do not impose a direct penalty on cloak reliability or power cost.</p>
+                        <p className="text-sm text-text-secondary mt-1"><strong className="text-white">WARNING:</strong> An indirect failure is still a major risk. An ion storm effect that depletes all reserve power will cause a cloak to fail due to energy starvation, resulting in the standard failure cascade (shields offline, cloak cooldown).</p>
                     </div>
                 </div>
             </div>

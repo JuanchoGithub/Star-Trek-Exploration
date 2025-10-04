@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GameState, Entity, PlayerTurnActions, Position, Ship, ShipSubsystems } from '../types';
+import type { GameState, Entity, PlayerTurnActions, Position, Ship, ShipSubsystems, Weapon, BeamWeapon, ProjectileWeapon } from '../types';
 import CommandConsole from './CommandConsole';
 import { ThemeName } from '../hooks/useTheme';
 import LcarsDecoration from './LcarsDecoration';
@@ -57,6 +57,8 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
     const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && (e.faction === 'Klingon' || e.faction === 'Romulan' || e.faction === 'Pirate'));
     const isAdjacentToStarbase = target?.type === 'starbase' && Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1;
 
+    const selectedWeapon = playerTurnActions.firedWeaponId ? gameState.player.ship.weapons.find(w => w.id === playerTurnActions.firedWeaponId) : null;
+
     return (
         <div className="relative">
             {themeName === 'federation' && (
@@ -84,6 +86,7 @@ const PlayerHUD: React.FC<PlayerHUDProps> = ({
                                 onStartAwayMission={onStartAwayMission}
                                 onEnterOrbit={onEnterOrbit}
                                 isDocked={isDocked}
+                                selectedWeapon={selectedWeapon || null}
                             />
                         ) : (
                             <div className="panel-style p-3 flex flex-col justify-center text-center h-full">

@@ -67,6 +67,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onSaveGame, onLoadGame, onExportSav
 // FIX: Moved SidebarContent outside of the App component to prevent re-mounting on every render.
 interface SidebarContentProps {
     gameState: GameState;
+    selectedTargetId: string | null;
     onEnergyChange: (changedKey: 'weapons' | 'shields' | 'engines', value: number) => void;
     onToggleRedAlert: () => void;
     onEvasiveManeuvers: () => void;
@@ -77,10 +78,11 @@ interface SidebarContentProps {
 }
 
 const SidebarContent: React.FC<SidebarContentProps> = ({ 
-    gameState, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName 
+    gameState, selectedTargetId, onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense, themeName 
 }) => (
     <ShipStatus 
         gameState={gameState} 
+        selectedTargetId={selectedTargetId}
         onEnergyChange={onEnergyChange}
         onToggleRedAlert={onToggleRedAlert}
         onEvasiveManeuvers={onEvasiveManeuvers}
@@ -365,6 +367,7 @@ const App: React.FC = () => {
                         <aside className="hidden md:flex flex-shrink-0" style={{ width: `${sidebarWidth}px` }}>
                            <SidebarContent 
                                 gameState={gameState}
+                                selectedTargetId={selectedTargetId}
                                 onEnergyChange={onEnergyChange}
                                 onToggleRedAlert={onToggleRedAlert}
                                 onEvasiveManeuvers={onEvasiveManeuvers}
@@ -394,6 +397,7 @@ const App: React.FC = () => {
                     <aside className="relative z-40 w-full max-w-xs bg-bg-default p-4 h-full">
                         <SidebarContent 
                             gameState={gameState}
+                            selectedTargetId={selectedTargetId}
                             onEnergyChange={onEnergyChange}
                             onToggleRedAlert={onToggleRedAlert}
                             onEvasiveManeuvers={onEvasiveManeuvers}

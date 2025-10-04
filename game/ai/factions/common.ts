@@ -262,6 +262,18 @@ export function processCommonTurn(
     const primaryTarget = findClosestTarget(ship, potentialTargets);
     ship.currentTargetId = primaryTarget ? primaryTarget.id : null;
 
+    // Update targeting info for focus fire
+    if (primaryTarget && subsystemTarget) {
+        if (ship.targeting && ship.targeting.entityId === primaryTarget.id && ship.targeting.subsystem === subsystemTarget) {
+            ship.targeting.consecutiveTurns++;
+        } else {
+            ship.targeting = { entityId: primaryTarget.id, subsystem: subsystemTarget, consecutiveTurns: 1 };
+        }
+    } else {
+        // Reset if no target or no subsystem target
+        delete ship.targeting;
+    }
+
     if (!primaryTarget && ship.lastAttackerPosition) {
         actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: `Detecting weapon impacts from an unseen source! Attempting to evade!`, isPlayerSource: false, color: ship.logColor, category: 'movement' });
         

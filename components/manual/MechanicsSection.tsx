@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -14,6 +12,7 @@ export const MechanicsSection: React.FC = () => (
             <li><strong>Cruise Speed (Green Alert):</strong> When not in combat, the ship can move up to <span className="font-bold text-accent-green">three cells</span> per turn, allowing for rapid travel across sectors.</li>
             <li><strong>Tactical Speed (Red Alert):</strong> During combat, power is diverted to weapons and shields. Movement is reduced to <span className="font-bold text-accent-red">one cell</span> per turn to maximize maneuverability.</li>
             <li><strong>Hazards:</strong> Ending a turn inside an asteroid field cell risks taking damage from micrometeoroid impacts. Additionally, asteroid fields provide cover, reducing the accuracy of incoming phaser fire by 30%. However, they are a danger to projectiles; any torpedo traveling through an asteroid field cell has a 40% chance of being destroyed by a collision. Furthermore, asteroid fields act as sensor cover. A ship inside a field is only detectable within 4 hexes, and can only be targeted by weapons from 2 hexes or less.</li>
+            <li><strong>Ion Storms:</strong> These sectors are extremely hazardous. Ending a turn inside an ion storm cell subjects the ship to a high risk of random system failures, hull damage, or power drains.</li>
         </ul>
         <SubHeader>Energy Management</SubHeader>
         <p className="text-text-secondary">Your ship's power is a dynamic resource. Managing the balance between power generation and consumption is the key to victory.</p>
@@ -61,6 +60,14 @@ export const MechanicsSection: React.FC = () => (
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Phaser Inaccuracy:</strong> Firing phasers at any target <span className="text-white font-bold">inside a nebula cell</span> will reduce your accuracy. The gravimetric distortions and particle density make it difficult to maintain a coherent energy beam over distance. Torpedoes, being self-propelled projectiles, are unaffected by this accuracy penalty.</li>
             <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in adjacent cells. Be warned: this means you can be ambushed as easily as you can set an ambush.</li>
+        </ul>
+        <SubHeader>Ion Storms</SubHeader>
+        <p className="text-text-secondary">
+            Unlike nebulae, which offer tactical cover, ion storms are purely hazardous environments. At the end of each turn, any ship within an ion storm cell is subjected to a series of checks against various system failures. If one or more checks succeed, a single, random effect is applied to the ship.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
+            <li>Key risks include spontaneous hull damage, systems being knocked offline for several turns (weapons, shields, engines), complete depletion of reserve power, and even torpedo misfires causing internal damage.</li>
+            <li>Full details on all potential effects and their probabilities are available in the <span className="font-bold">Typhon Expanse Primer</span> section of this manual.</li>
         </ul>
         <SubHeader>Ship Systems Breakdown</SubHeader>
         <p className="text-text-secondary">The Endeavour is a complex machine. Understanding how its key systems function and degrade under fire is essential for effective command.</p>

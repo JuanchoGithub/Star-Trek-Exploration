@@ -159,6 +159,10 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                             isDisabled = true;
                             title = 'Weapon systems too damaged to launch.';
                         }
+
+                        if (targeting?.subsystem && !isDisabled) {
+                            title = "Torpedoes will ignore subsystem targeting and aim for the hull.";
+                        }
                     }
 
                     return (
