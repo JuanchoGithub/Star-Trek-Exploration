@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../../hooks/useTheme';
@@ -130,9 +131,9 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <div className="p-3 bg-bg-paper-lighter rounded">
                  <h4 className="font-bold text-accent-yellow">The Capture Process</h4>
                  <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
-                     <li><strong>Prerequisites:</strong> You must be adjacent (1 hex) to a derelict vessel. Your ship must have at least <strong className="text-white">1 available Security Team</strong> and <strong className="text-white">5 Dilithium crystals</strong>. The operation consumes your major action for the turn.</li>
+                     <li><strong>Prerequisites:</strong> You must be adjacent (1 hex) to a derelict vessel. Your ship must have at least <strong className="text-white">1 available Security Team</strong> and be able to transfer <strong className="text-white">5 Dilithium crystals</strong> to the derelict to power its systems. The operation consumes your major action for the turn.</li>
                      <li><strong>Repair Phase:</strong> A salvage team will remain on the derelict for <strong className="text-white">4 turns</strong>, conducting emergency repairs. The vessel cannot be controlled during this period.</li>
-                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. The 5 Dilithium used for the operation are transferred to the captured ship's reserves, allowing it to power its own systems.</li>
+                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. The initial 5 Dilithium investment is then transferred to the captured ship's reserves, allowing it to power its own systems.</li>
                  </ul>
             </div>
 
@@ -215,20 +216,20 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <p className="text-text-secondary mb-4">Stealth technology is no longer a simple fire-and-forget system. It is a dynamic state requiring constant power and subject to failure under pressure. Understanding these new, more complex mechanics is essential to survival.</p>
             <div className="space-y-3">
                 <DetailBox title="General Cloaking Mechanics" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
-                    <p><strong>Engaging Cloak (Two-Turn Process):</strong> The process of activating the cloaking device renders the ship vulnerable for a short duration. The sequence is as follows:</p>
+                    <p><strong>Engaging Cloak (Vulnerable Sequence):</strong> The process of activating the cloaking device renders the ship vulnerable for a full turn after initiation. The timeline is as follows:</p>
                     <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
-                        <li><strong>Turn 1 (Action):</strong> You initiate the "Cloak" command. This consumes your major action for the turn. The ship enters the 'cloaking' state and is vulnerable to attack.</li>
-                        <li><strong>Turn 2 (Vulnerable):</strong> The ship continues the cloaking sequence. It remains vulnerable and cannot perform major actions.</li>
-                        <li><strong>Start of Turn 3 (Cloaked):</strong> The sequence completes. The ship is now fully cloaked and undetectable on sensors.</li>
+                        <li><strong>Turn N (Action):</strong> You initiate the "Cloak" command. This consumes your major action. The ship enters the 'cloaking' state.</li>
+                        <li><strong>Turn N+1 (Vulnerable):</strong> The ship continues the cloaking sequence and cannot perform major actions.</li>
+                        <li><strong>Start of Turn N+2 (Cloaked):</strong> The sequence completes. The ship is now fully cloaked and can take actions appropriate for a cloaked vessel (e.g., move).</li>
                     </ul>
 
-                    <p className="mt-2"><strong>Disengaging Cloak (Two-Turn Process):</strong> Decloaking also involves a vulnerable transition period. It is functionally a two-turn process from the player's perspective.</p>
+                    <p className="mt-2"><strong>Disengaging Cloak (Vulnerable Sequence):</strong> Decloaking involves a significant delay before you can resume combat operations. From the moment you initiate the sequence, it will be <strong className="text-white">three full turns</strong> before you can issue another command like firing weapons.</p>
                     <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
-                        <li><strong>Turn 1 (Action):</strong> You initiate the "Decloak" command. This consumes your major action. The ship enters the 'decloaking' state and is vulnerable.</li>
-                        <li><strong>Turn 2 (Vulnerable):</strong> The ship continues the decloaking sequence. It remains vulnerable and cannot perform major actions.</li>
-                        <li><strong>Start of Turn 3 (Visible & Actionable):</strong> The sequence completes. The ship is now fully visible, and you can perform actions normally (e.g., raise shields, fire weapons).</li>
+                        <li><strong>Turn N (Action):</strong> You initiate the "Decloak" command. This consumes your major action. The ship enters the 'decloaking' state.</li>
+                        <li><strong>Turn N+1 (Vulnerable):</strong> The ship continues the decloaking sequence and cannot perform major actions.</li>
+                        <li><strong>Turn N+2 (Visible, Not Actionable):</strong> The sequence completes at the start of this turn. The ship is fully visible but cannot perform a major action.</li>
+                        <li><strong>Start of Turn N+3 (Actionable):</strong> You can now act normally (e.g., raise shields, fire weapons).</li>
                     </ul>
-                    <p className="text-xs italic text-text-disabled mt-1">Note: While the process spans three turn numbers, it is considered a "two-turn" process because it affects your actions on two consecutive turns (the initial action and the subsequent vulnerable turn).</p>
 
                     <p className="mt-2"><strong>Action Cost & Restrictions:</strong> Initiating either sequence consumes your major tactical action for the turn. A cloaked ship cannot fire weapons or be at Red Alert. A ship in a 'cloaking' or 'decloaking' state is also unable to perform any other major actions.</p>
                 </DetailBox>

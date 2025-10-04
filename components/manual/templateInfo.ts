@@ -1,3 +1,4 @@
+
 export const templateInfo: Record<string, { description: string, intent: string }> = {
     'common-empty-space': {
         description: 'A quiet, largely uninhabited sector, typical of the vast emptiness of space.',
@@ -156,8 +157,8 @@ export const templateInfo: Record<string, { description: string, intent: string 
         intent: 'To create suspicion and tension, where not everything is as it seems.'
     },
     'none-ion-storm': {
-        description: 'A sector filled with the visual phenomena of an ion storm. Currently, these storms have no adverse mechanical effects on ship systems.',
-        intent: 'To serve as a visually distinct but mechanically benign environmental hazard.'
+        description: 'A sector filled with a dangerous ion storm. Ships ending their turn within the storm are subject to numerous hazardous effects, including hull damage, system failures, and power drains.',
+        intent: 'To serve as a visually distinct and mechanically hazardous environmental challenge.'
     },
     'rare-generation-ship': {
         description: 'An ancient, sub-light generation ship from a long-lost civilization, still carrying its sleeping passengers.',

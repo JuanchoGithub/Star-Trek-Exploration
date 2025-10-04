@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -11,7 +12,7 @@ export const MechanicsSection: React.FC = () => (
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Cruise Speed (Green Alert):</strong> When not in combat, the ship can move up to <span className="font-bold text-accent-green">three cells</span> per turn, allowing for rapid travel across sectors.</li>
             <li><strong>Tactical Speed (Red Alert):</strong> During combat, power is diverted to weapons and shields. Movement is reduced to <span className="font-bold text-accent-red">one cell</span> per turn to maximize maneuverability.</li>
-            <li><strong>Hazards:</strong> Ending a turn inside an asteroid field cell risks taking damage from micrometeoroid impacts. Additionally, asteroid fields provide cover, reducing the accuracy of incoming phaser fire by 30%. However, they are a danger to projectiles; any torpedo traveling through an asteroid field cell has a 40% chance of being destroyed by a collision. Furthermore, asteroid fields act as sensor cover. A ship inside a field is only detectable within 4 hexes, and can only be targeted by weapons from 2 hexes or less.</li>
+            <li><strong>Hazards:</strong> Ending a turn inside an asteroid field cell risks taking damage from micrometeoroid impacts. Additionally, asteroid fields provide cover, reducing the accuracy of incoming phaser fire by 30%. They also act as sensor cover: a ship inside a field is only detectable within 4 hexes, and can only be targeted by weapons from 2 hexes or less. <strong className="text-white">Crucially, any torpedo traveling through an asteroid field cell has a 40% chance of being destroyed by a collision.</strong></li>
             <li><strong>Ion Storms:</strong> These sectors are extremely hazardous. Ending a turn inside an ion storm cell subjects the ship to a high risk of random system failures, hull damage, or power drains.</li>
         </ul>
         <SubHeader>Energy Management</SubHeader>

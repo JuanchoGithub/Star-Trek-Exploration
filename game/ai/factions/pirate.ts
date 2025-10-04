@@ -48,20 +48,29 @@ export class PirateAI extends FactionAI {
     }
 
     determineSubsystemTarget(ship: Ship, playerShip: Ship): keyof ShipSubsystems | null {
-        // If target is unshielded, go for the engines to secure the prize.
+        // Per manual: If shields are down, target Engines to prevent escape.
         if (playerShip.shields <= 0) {
-            return 'engines';
+            if (playerShip.subsystems.engines.health > 0) {
+                return 'engines';
+            }
+            // Fallback: If engines are destroyed, target weapons.
+            if (playerShip.subsystems.weapons.health > 0) {
+                return 'weapons';
+            }
+        } 
+        // Per manual: Otherwise (shields up), target Transporter Systems.
+        else {
+            if (playerShip.subsystems.transporter.health > 0) {
+                return 'transporter';
+            }
+            // Fallback: If transporters are destroyed, target weapons.
+            if (playerShip.subsystems.weapons.health > 0) {
+                return 'weapons';
+            }
         }
-        
-        // Pirates target transporters to prevent boarding parties, which might capture their loot.
-        if (playerShip.subsystems.transporter.health > 0) {
-            return 'transporter';
-        }
-        // Fallback to weapons if transporter is down.
-        if (playerShip.subsystems.weapons.health > 0) {
-            return 'weapons';
-        }
-        return null; // Target hull as a last resort.
+
+        // If the primary and fallback for the situation are both destroyed, target the hull.
+        return null;
     }
 
     handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null } {

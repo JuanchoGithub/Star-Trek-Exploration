@@ -1,10 +1,10 @@
 import React from 'react';
-import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../../types';
-import { ThemeName } from '../../hooks/useTheme';
-import { getFactionIcons } from '../../assets/ui/icons/getFactionIcons';
-import { shipClasses } from '../../assets/ships/configs/shipClassStats';
-import { canTargetEntity } from '../../game/utils/combat';
-import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
+import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../types';
+import { ThemeName } from '../hooks/useTheme';
+import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
+import { shipClasses } from '../assets/ships/configs/shipClassStats';
+import { canTargetEntity } from '../game/utils/combat';
+import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
 
 interface CommandConsoleProps {
   onEndTurn: () => void;

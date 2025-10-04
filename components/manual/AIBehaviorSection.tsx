@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -7,7 +8,7 @@ export const AIBehaviorSection: React.FC = () => (
         <p className="text-red-400 font-bold tracking-widest text-sm">CLASSIFICATION: STARFLEET INTELLIGENCE - EYES ONLY</p>
         <p className="text-text-secondary my-4">This document provides a tactical overview of the current command logic ("Artificial Intelligence") governing non-player vessels in this simulation. The recent introduction of a phased turn system has allowed for a significant increase in AI tactical sophistication. Understanding these behavioral patterns is critical for predicting and countering enemy actions.</p>
 
-        <SubHeader>Weapon-Aware Pathfinding (Federation &amp; Romulan)</SubHeader>
+        <SubHeader>Weapon-Aware Pathfinding (Federation & Romulan)</SubHeader>
         <p className="text-text-secondary mb-2">
             The standard 'Balanced' stance for Federation and Romulan captains has been upgraded with a dynamic engagement logic core. These AIs no longer adhere to a fixed optimal range. Instead, they perform a comparative analysis of their primary phaser system against their current target's primary phaser system at the start of their turn.
         </p>
@@ -80,9 +81,9 @@ export const AIBehaviorSection: React.FC = () => (
             <li>
                 <strong className="text-accent-yellow">Intelligent Subsystem Targeting:</strong> The AI no longer targets the hull exclusively. It now analyzes the player's ship and targets key weaknesses based on its factional doctrine.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Klingons:</strong> Will prioritize targeting your <span className="text-white">Weapon Systems</span>.</li>
+                    <li><strong>Klingons:</strong> Will prioritize targeting your <span className="text-white">Weapon Systems</span> to force an honorable, close-range battle. However, once a target's shields are depleted, their doctrine shifts; they will target the <span className="text-white">Hull</span> directly to secure a glorious kill.</li>
                     <li><strong>Romulans:</strong> Will prioritize targeting your <span className="text-white">Engine Systems</span>.</li>
-                    <li><strong>Pirates:</strong> Prioritize targeting <span className="text-white">Engines</span> if your shields are down to prevent escape. Otherwise, they will target your <span className="text-white">Transporter Systems</span> to prevent your security teams from boarding.</li>
+                    <li><strong>Pirates:</strong> Prioritize targeting <span className="text-white">Engines</span> if your shields are down to prevent escape. Otherwise, they will target your <span className="text-white">Transporter Systems</span> to prevent your security teams from boarding. If the transporter is already disabled, they will target <span className="text-white">Weapon Systems</span>.</li>
                 </ul>
             </li>
             <li>

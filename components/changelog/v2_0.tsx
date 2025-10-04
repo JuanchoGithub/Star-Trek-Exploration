@@ -40,7 +40,7 @@ export const Version2_0: React.FC = () => {
                     <strong className="text-white">Scimitar-class Capabilities:</strong> The tactical registry entry for the Romulan Scimitar has been updated. Contrary to initial intelligence reports, the vessel is currently unable to fire its weapons while cloaked, conforming to standard fleet-wide combat logic.
                 </li>
                 <li>
-                    <strong className="text-white">Galaxy Generation Protocols:</strong> The 'Galaxy Generation' section now accurately describes the simulation's world-building process, clarifying that the map is divided into four static quadrants based on faction territory. As a result, certain deep-space fleet templates are not currently in operational use.
+                    <strong className="text-white">Galaxy Generation Protocols:</strong> The 'Galaxy Generation' section now accurately describes the simulation's world-building process, clarifying that the map is divided into four static quadrants based on faction territory.
                 </li>
             </ul>
         </>

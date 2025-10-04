@@ -78,13 +78,14 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
     
     turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), newNavigationTarget: newNavTarget, newSelectedTargetId: newSelectedTargetId, delay: 100 });
 
-    // --- Phase 2: AI Actions ---
     const allShips = [...nextState.currentSector.entities.filter(e => e.type === 'ship')] as Ship[];
     if (nextState.player.ship && nextState.player.ship.id) {
         if (!allShips.some(s => s.id === nextState.player.ship.id)) {
             allShips.push(nextState.player.ship);
         }
     }
+
+    // --- Phase 2: AI Actions ---
     const claimedCellsThisTurn = new Set<string>();
     
     // Player claims their final spot first.
@@ -127,18 +128,49 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
 
     const remainingTorpedoes = nextState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[];
     if (remainingTorpedoes.length > 0) {
-        for (let i = 0; i < Math.max(...remainingTorpedoes.map(t => t.speed)); i++) {
+        const asteroidPositions = new Set(nextState.currentSector.entities.filter(e => e.type === 'asteroid_field').map(f => `${f.position.x},${f.position.y}`));
+        const destroyedTorpedoIds = new Set<string>();
+
+        const maxSpeed = Math.max(0, ...remainingTorpedoes.map(t => t.speed));
+        for (let i = 0; i < maxSpeed; i++) {
             remainingTorpedoes.forEach(torpedo => {
-                if (i >= torpedo.speed) return;
+                if (i >= torpedo.speed || destroyedTorpedoIds.has(torpedo.id)) return;
+
                 const target = allShips.find(s => s.id === torpedo.targetId);
                 if (target) {
                     const from = { ...torpedo.position };
                     torpedo.position = moveOneStep(torpedo.position, target.position);
                     torpedo.path.push({ ...torpedo.position });
                     addTurnEvent(`MOVE TORPEDO: [${torpedo.id}] from (${from.x},${from.y}) to (${torpedo.position.x},${torpedo.position.y})`);
+
+                    if (asteroidPositions.has(`${torpedo.position.x},${torpedo.position.y}`)) {
+                        if (Math.random() < 0.40) { // 40% chance of destruction
+                            destroyedTorpedoIds.add(torpedo.id);
+                            addLog({
+                                sourceId: 'system',
+                                sourceName: 'Asteroid Field',
+                                message: `A ${torpedo.name} was destroyed by a collision!`,
+                                color: 'border-gray-500',
+                                isPlayerSource: false,
+                                category: 'combat'
+                            });
+                            nextState.combatEffects.push({
+                                type: 'torpedo_hit',
+                                position: { ...torpedo.position },
+                                delay: 0,
+                                torpedoType: torpedo.torpedoType
+                            });
+                            addTurnEvent(`INTERCEPTED: [${torpedo.id}] by Asteroid`);
+                        }
+                    }
                 }
             });
         }
+        
+        if (destroyedTorpedoIds.size > 0) {
+            nextState.currentSector.entities = nextState.currentSector.entities.filter(e => !destroyedTorpedoIds.has(e.id));
+        }
+
         turnSteps.push({ updatedState: JSON.parse(JSON.stringify(nextState)), delay: 400 });
     }
 
