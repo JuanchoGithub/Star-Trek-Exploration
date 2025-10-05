@@ -21,10 +21,29 @@ export const AIBehaviorSection: React.FC = () => (
              <li>
                 <strong className="text-accent-yellow">Matched Range:</strong> If both ships have phasers of equal range, the AI will seek to engage at a tactically-sound range of 3 cells, balancing its own damage output against the risk of incoming fire.
             </li>
+        </ul>
+        
+        <h4 className="font-bold text-accent-yellow mt-4">Multi-Factor Scoring System</h4>
+        <p className="text-text-secondary mb-2">
+            In addition to weapon ranges, all AI pathfinding includes a sophisticated multi-factor scoring system. It evaluates every possible move based on multiple weighted factors:
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
             <li>
-                <strong className="text-accent-yellow">Centrality Preference:</strong> In addition to weapon ranges, all AI pathfinding includes a "centrality score." This gives AI ships a subtle but constant preference for moving towards the center of the map, as this maximizes their future maneuverability. Captains may find that attempting to "box in" an enemy ship against the sector border is an effective tactic because it works against the AI's inherent positional preference.
+                <strong className="text-white">Threat Score:</strong> Measures the proximity to enemies. This score is weighted positively for an 'Aggressive' AI (drawing it closer) and negatively for a 'Defensive' AI (pushing it away).
+            </li>
+            <li>
+                <strong className="text-white">Centrality Score:</strong> A strong, constant preference for moving away from edges and corners. This incentivizes the AI to maintain open space around it, maximizing future maneuverability.
+            </li>
+             <li>
+                <strong className="text-white">Cover Score:</strong> A significant bonus is awarded for any move that ends in a tactically advantageous position, such as a nebula cell or an asteroid field.
+            </li>
+            <li>
+                <strong className="text-white">Range Score:</strong> In a 'Balanced' stance, this score is the primary driver. It evaluates how close a potential move gets the ship to its calculated ideal engagement range.
             </li>
         </ul>
+        <p className="text-text-secondary mt-2">
+            Captains can exploit this logic by using cover as bait or by forcing an enemy towards the edge of the map, which works against their inherent positional preference.
+        </p>
 
         <SubHeader>Lost Contact Doctrine</SubHeader>
         <p className="text-text-secondary mb-2">
@@ -94,6 +113,7 @@ export const AIBehaviorSection: React.FC = () => (
             <li>
                 <strong className="text-accent-yellow">Intelligent Subsystem Targeting:</strong> The AI no longer targets the hull exclusively. It now analyzes the player's ship and targets key weaknesses based on its factional doctrine.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><strong>Federation (Allies):</strong> As per Starfleet tactical doctrine, allied captains follow a logical "disarm, then immobilize" protocol. They will prioritize targeting your <span className="text-white">Weapon Systems</span> to neutralize you as a threat. Once your weapons are disabled, they will shift focus to your <span className="text-white">Engine Systems</span> to prevent your escape.</li>
                     <li><strong>Klingons:</strong> Will prioritize targeting your <span className="text-white">Weapon Systems</span> to force an honorable, close-range battle. However, once a target's shields are depleted, their doctrine shifts; they will target the <span className="text-white">Hull</span> directly to secure a glorious kill.</li>
                     <li><strong>Romulans:</strong> Will prioritize targeting your <span className="text-white">Engine Systems</span>.</li>
                     <li><strong>Pirates:</strong> Prioritize targeting <span className="text-white">Engines</span> if your shields are down to prevent escape. Otherwise, they will target your <span className="text-white">Transporter Systems</span> to prevent your security teams from boarding. If the transporter is already disabled, they will target <span className="text-white">Weapon Systems</span>.</li>
@@ -144,7 +164,7 @@ export const AIBehaviorSection: React.FC = () => (
             <li><strong className="text-cyan-400">Defensive:</strong> An AI will prioritize survival and adopt a Defensive stance if its hull drops below 25% or its shields drop below 15%.</li>
             <li><strong className="text-red-400">Aggressive:</strong> An AI will press the attack if it detects a clear advantage, such as the target's shields being depleted (&lt;= 5%) and its hull being below 70%. It may also become aggressive during a stalemate if both its own and its target's shields are high (&gt; 80%).</li>
             <li><strong className="text-yellow-400">Balanced:</strong> If no special conditions are met, the ship will adopt a Balanced stance, weighing offense and defense equally.</li>
-             <li><strong className="text-blue-400">Recovery:</strong> If no hostile targets are nearby, an AI ship will enter a 'Recovery' stance. It will maximize power to engines to regenerate energy and will assign damage control teams to repair its most damaged systems.</li>
+             <li><strong className="text-blue-400">Recovery:</strong> An AI will only enter a Recovery stance when it perceives no immediate or potential threats. This condition is met when there are <strong>no visible hostile targets on sensors</strong> and the AI has <strong>no memory of recently vanished or cloaked contacts</strong>. If these conditions are met and the ship has taken damage (to its hull or any subsystem) or its reserve energy is below 90%, it will adopt this stance. In Recovery, it will maximize power to engines for energy regeneration and assign damage control teams to its most damaged systems. If a threat reappears, it will immediately exit this state.</li>
         </ul>
         <h4 className="font-bold text-accent-yellow mt-4">Factional Overrides & Power Allocation</h4>
         <p className="text-text-secondary mb-2">While all AIs follow the core triggers, each faction has a preferred default stance and unique power allocation profiles:</p>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -32,7 +31,8 @@ export const MechanicsSection: React.FC = () => (
             <li>
                 <strong>Emergency Dilithium Use:</strong> If your Reserve Power is insufficient for an action or end-of-turn upkeep, the ship will automatically consume Dilithium crystals to compensate. This is a volatile process.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm text-yellow-400">
-                    <li><strong className="text-white">Consequential Damage:</strong> Each dilithium crystal used in a single emergency power event adds a cumulative 25% chance of causing a feedback surge that will damage a random, functioning subsystem. This risk is checked once per event. For example, if a large power deficit requires 3 crystals, there is a single check with a 75% chance (25% &times; 3) of causing damage. This makes large energy deficits extremely dangerous to resolve with dilithium.</li>
+                    <li><strong className="text-white">Consequential Damage (Chance):</strong> Each dilithium crystal used in a single emergency power event adds a cumulative 25% chance of causing a feedback surge that will damage a random, functioning subsystem. This risk is checked once per event. For example, if a large power deficit requires 3 crystals, there is a single check with a 75% chance (25% &times; 3) of causing damage.</li>
+                    <li><strong className="text-white">Consequential Damage (Scaling):</strong> In addition to the increasing chance, the <strong className="text-red-400">amount of damage</strong> dealt during a feedback surge also scales directly with the number of crystals consumed. A surge caused by 3 crystals will inflict three times as much damage to a subsystem as a surge caused by 1 crystal. This makes large energy deficits extremely dangerous to resolve with dilithium.</li>
                 </ul>
             </li>
             <li><strong>Tactical Trade-offs:</strong> If a system is destroyed, its power consumption is removed from the total. This creates a tactical choice: if you are low on power, you could intentionally leave a non-critical system like the transporter offline to free up energy for shields or weapons.</li>
