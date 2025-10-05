@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { Ship } from '../../types';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
-import { shipRoleStats } from '../../assets/ships/configs/shipRoleStats';
+import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 import { FederationShuttleIcon } from '../../assets/ships/icons/federation';
 
 
@@ -11,7 +12,7 @@ interface FederationEvacuateAnimationProps {
 }
 
 const FederationEvacuateAnimation: React.FC<FederationEvacuateAnimationProps> = ({ source }) => {
-    const shuttleCount = shipRoleStats[source.shipRole]?.shuttleCount || 1;
+    const shuttleCount = shipClasses[source.shipModel]?.[source.shipClass]?.shuttleCount || 1;
     const shuttles = Array.from({ length: shuttleCount });
     
     // Dynamically get wireframes from shipVisuals config

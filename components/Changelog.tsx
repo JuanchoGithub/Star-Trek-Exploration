@@ -7,14 +7,21 @@ interface ChangelogProps {
     onClose: () => void;
 }
 
-const VersionLink: React.FC<{ active: boolean, onClick: () => void, children: React.ReactNode }> = ({ active, onClick, children }) => (
-    <button onClick={onClick} className={`w-full text-left p-3 rounded transition-colors ${active ? 'bg-secondary-main text-secondary-text font-bold' : 'hover:bg-bg-paper-lighter'}`}>
-        {children}
-    </button>
-);
-
 const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
     const [activeVersion, setActiveVersion] = useState<Version>('v2.2');
+
+    const versions: { key: Version, label: string }[] = [
+        { key: 'v2.2', label: 'Version 2.2' },
+        { key: 'v2.1', label: 'Version 2.1' },
+        { key: 'v2.0', label: 'Version 2.0' },
+        { key: 'v1.7', label: 'Version 1.7' },
+        { key: 'v1.6.2', label: 'Version 1.6.2' },
+        { key: 'v1.6.1', label: 'Version 1.6.1' },
+        { key: 'v1.6', label: 'Version 1.6.x' },
+        { key: 'v1.5', label: 'Version 1.5.x' },
+        { key: 'v1.4', label: 'Version 1.4.x' },
+        { key: 'v1.3', label: 'Version 1.3.x' },
+    ];
 
     const renderContent = () => {
         switch(activeVersion) {
@@ -37,45 +44,23 @@ const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
             <div className="panel-style h-full w-full max-w-4xl flex flex-col p-4">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h1 className="text-2xl font-bold text-primary-light">SIMULATION CHANGELOG</h1>
-                    <button onClick={onClose} className="btn btn-tertiary">Close</button>
+                    <div className="flex items-center gap-4">
+                        <select
+                            value={activeVersion}
+                            onChange={(e) => setActiveVersion(e.target.value as Version)}
+                            className="bg-bg-paper-lighter border border-border-main rounded p-2 text-text-primary"
+                            aria-label="Select a version"
+                        >
+                            {versions.map(v => (
+                                <option key={v.key} value={v.key}>{v.label}</option>
+                            ))}
+                        </select>
+                        <button onClick={onClose} className="btn btn-tertiary">Close</button>
+                    </div>
                 </div>
-                <main className="flex-grow flex gap-4 min-h-0">
-                    <nav className="w-1/4 flex-shrink-0 flex flex-col gap-1 panel-style p-2">
-                        <VersionLink active={activeVersion === 'v2.2'} onClick={() => setActiveVersion('v2.2')}>
-                            Version 2.2
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v2.1'} onClick={() => setActiveVersion('v2.1')}>
-                            Version 2.1
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v2.0'} onClick={() => setActiveVersion('v2.0')}>
-                            Version 2.0
-                        </VersionLink>
-                         <VersionLink active={activeVersion === 'v1.7'} onClick={() => setActiveVersion('v1.7')}>
-                            Version 1.7
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.6.2'} onClick={() => setActiveVersion('v1.6.2')}>
-                            Version 1.6.2
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.6.1'} onClick={() => setActiveVersion('v1.6.1')}>
-                            Version 1.6.1
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.6'} onClick={() => setActiveVersion('v1.6')}>
-                            Version 1.6.x
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.5'} onClick={() => setActiveVersion('v1.5')}>
-                            Version 1.5.x
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.4'} onClick={() => setActiveVersion('v1.4')}>
-                            Version 1.4.x
-                        </VersionLink>
-                        <VersionLink active={activeVersion === 'v1.3'} onClick={() => setActiveVersion('v1.3')}>
-                            Version 1.3.x
-                        </VersionLink>
-                    </nav>
-                    <div className="w-3/4 flex-grow panel-style p-4 flex flex-col min-h-0">
-                        <div className="h-full overflow-y-auto pr-2">
-                           {renderContent()}
-                        </div>
+                <main className="flex-grow panel-style p-4 flex flex-col min-h-0">
+                    <div className="h-full overflow-y-auto pr-2">
+                        {renderContent()}
                     </div>
                 </main>
             </div>

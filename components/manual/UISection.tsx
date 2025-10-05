@@ -19,7 +19,12 @@ export const UISection: React.FC = () => {
                 <p>Displays either the current <strong>Sector View</strong> or the strategic <strong>Quadrant Map</strong>. You can switch between them using the vertical tabs.</p>
                 <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2 space-y-1">
                     <li><strong>Sector View:</strong> A tactical grid of the current sector. Click on an empty square to set a <NavigationTargetIcon className="w-4 h-4 inline-block text-accent-yellow" /> navigation target. Click on an entity like a <PlayerShipIcon className="w-4 h-4 inline-block text-blue-400" /> ship or <MClassIcon className="w-4 h-4 inline-block text-green-500" /> planet to select it. Successfully captured ships will be displayed with a friendly blue icon.</li>
-                    <li><strong>Quadrant Map:</strong> A strategic overview of the entire Typhon Expanse. Green quadrants are Federation-controlled, Red are Klingon, etc. Click on an adjacent sector to open a context menu to Warp or Scan.</li>
+                    <li>
+                        <strong>Quadrant Map:</strong> A strategic overview of the entire Typhon Expanse. Click on an adjacent sector to open a context menu to Warp or Scan.
+                        <div className="mt-2 text-xs p-2 bg-black/30 border-l-2 border-accent-yellow">
+                            <p><strong className="text-accent-yellow">CRITICAL:</strong> The Quadrant Map requires the ship's main computer to be at 100% operational capacity. If the computer subsystem sustains any damage, the map will become inaccessible, and your view will be automatically returned to the Sector View until repairs are complete.</p>
+                        </div>
+                    </li>
                 </ul>
                 <div className="font-bold mb-2 mt-4">2. Player HUD</div>
                 <p>This section is divided into the Target Information panel and the Command Console.</p>
@@ -49,6 +54,13 @@ export const UISection: React.FC = () => {
                     <li><strong>Energy Allocation:</strong> Distribute main reactor power between Weapons, Shields, and Engines to dynamically adjust your ship's performance.</li>
                  </ul>
              </div>
+            <SubHeader>Bottom: Status Line &amp; Menus</SubHeader>
+            <p className="text-text-secondary">The bar at the bottom of the screen provides quick access to game functions and displays the latest log entry.</p>
+            <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-2 space-y-1">
+                <li><strong>Game Menu:</strong> Access save/load functions, the Player's Manual, and exit options.</li>
+                <li><strong>Latest Log Entry:</strong> A truncated version of the most recent event log is displayed for quick reference.</li>
+                <li><strong>Captain's Log:</strong> Opens a full-screen modal view of all recorded log entries. To aid in identifying different vessels in the log, each ship is assigned a unique color (`logColor`) which is used for the border of its log entries.</li>
+            </ul>
             <SubHeader>Mobile & Touch Interface (PADDs)</SubHeader>
             <p className="text-text-secondary">When operating on smaller, touch-enabled devices such as a PADD, the bridge interface adapts to a single-column layout to maximize screen space for the tactical view.</p>
             <div className="mt-4 p-2 border border-border-dark rounded">

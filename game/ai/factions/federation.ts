@@ -1,8 +1,9 @@
+
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance, calculateOptimalEngagementRange } from '../../utils/ai';
 // FIX: Corrected import path for shipRoleStats.
-import { shipRoleStats } from '../../../assets/ships/configs/shipRoleStats';
+import { shipClasses } from '../../../assets/ships/configs/shipClassStats';
 import { determineGeneralStance, processCommonTurn, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn, tryCaptureDerelict } from './common';
 
 export class FederationAI extends FactionAI {
@@ -145,7 +146,7 @@ export class FederationAI extends FactionAI {
     }
 
     processDesperationMove(ship: Ship, gameState: GameState, actions: AIActions): void {
-        const shuttleCount = shipRoleStats[ship.shipRole]?.shuttleCount || 1;
+        const shuttleCount = shipClasses[ship.shipModel]?.[ship.shipClass]?.shuttleCount || 1;
 
         actions.triggerDesperationAnimation({ source: ship, type: 'evacuate' });
         

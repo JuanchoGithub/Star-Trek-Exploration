@@ -11,8 +11,6 @@ export const MechanicsSection: React.FC = () => (
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Cruise Speed (Green Alert):</strong> When not in combat, the ship can move up to <span className="font-bold text-accent-green">three cells</span> per turn, allowing for rapid travel across sectors.</li>
             <li><strong>Tactical Speed (Red Alert):</strong> During combat, power is diverted to weapons and shields. Movement is reduced to <span className="font-bold text-accent-red">one cell</span> per turn to maximize maneuverability.</li>
-            <li><strong>Hazards:</strong> Ending a turn inside an asteroid field cell risks taking damage from micrometeoroid impacts. Additionally, asteroid fields provide cover, reducing the accuracy of incoming phaser fire by 30%. They also act as sensor cover: a ship inside a field is only detectable within 4 hexes, and can only be targeted by weapons from 2 hexes or less. <strong className="text-white">Crucially, any torpedo traveling through an asteroid field cell has a 40% chance of being destroyed by a collision.</strong></li>
-            <li><strong>Ion Storms:</strong> These sectors are extremely hazardous. Ending a turn inside an ion storm cell subjects the ship to a high risk of random system failures, hull damage, or power drains.</li>
         </ul>
         <SubHeader>Energy Management</SubHeader>
         <p className="text-text-secondary">Your ship's power is a dynamic resource. Managing the balance between power generation and consumption is the key to victory.</p>
@@ -48,7 +46,7 @@ export const MechanicsSection: React.FC = () => (
             </p>
             <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm text-text-secondary">
                 <li><strong>Capacity:</strong> Most starships begin with a standard capacity of 200 Repair Points.</li>
-                <li><strong>Cost:</strong> Repairing 1% of a system's maximum health costs exactly 1 Repair Point. This means repairing a heavily armored component (like the hull) costs significantly more than a lighter component (like the transporter).</li>
+                <li><strong>Cost:</strong> The cost to repair a system is proportional to the percentage of its maximum health being restored. For example, restoring 10 HP to a system with 100 max HP (10% health) costs 10 Repair Points.</li>
                 <li><strong>Conservation:</strong> To conserve this finite resource, captains will not repair systems to 100% functionality. Instead, repairs will automatically cease once a system reaches an acceptable, functional threshold (e.g., 50% for Life Support, 40% for Hull).</li>
                 <li><strong>Resupply:</strong> Repair Points can be fully restored by docking at a friendly starbase.</li>
             </ul>
@@ -67,22 +65,46 @@ export const MechanicsSection: React.FC = () => (
             <li><strong>Energy Cost:</strong> The LPDS adds a significant drain to your passive power consumption each turn it is active.</li>
             <li><strong>Tactical Trade-off:</strong> Activating the LPDS requires a significant power diversion from your main phaser arrays. While active, your phaser damage is reduced by <span className="font-bold text-accent-red">40%</span>, and their effective range for damage falloff calculations is increased by one hex (e.g., a shot at 2 hexes is calculated as if it were 3).</li>
         </ul>
-        <SubHeader>Nebulae</SubHeader>
-        <p className="text-text-secondary">
-            Nebulae are no longer just visual obstructions; they are tactical environments composed of individual cells of gas and dust. Being inside any nebula cell has immediate effects on combat and sensors.
-        </p>
-        <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li><strong>Phaser Inaccuracy:</strong> Firing phasers at any target <span className="text-white font-bold">inside a nebula cell</span> will reduce your accuracy. The gravimetric distortions and particle density make it difficult to maintain a coherent energy beam over distance. Torpedoes, being self-propelled projectiles, are unaffected by this accuracy penalty.</li>
-            <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, your own sensor resolution is drastically reduced. You will only be able to detect hostile ships in adjacent cells. Be warned: this means you can be ambushed as easily as you can set an ambush.</li>
-        </ul>
-        <SubHeader>Ion Storms</SubHeader>
-        <p className="text-text-secondary">
-            Unlike nebulae, which offer tactical cover, ion storms are purely hazardous environments. At the end of each turn, any ship within an ion storm cell is subjected to a series of checks against various system failures. If one or more checks succeed, a single, random effect is applied to the ship.
-        </p>
-        <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li>Key risks include spontaneous hull damage, systems being knocked offline for several turns (weapons, shields, engines), complete depletion of reserve power, and even torpedo misfires causing internal damage.</li>
-            <li>Full details on all potential effects and their probabilities are available in the <span className="font-bold">Typhon Expanse Primer</span> section of this manual.</li>
-        </ul>
+        <SubHeader>Environmental Hazards</SubHeader>
+        <p className="text-text-secondary mb-4">The Typhon Expanse is fraught with perilous environmental conditions that can be turned into a tactical advantage or a fatal mistake. Understanding their precise effects is critical to survival.</p>
+        <div className="space-y-4 my-4">
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-gray-400">Asteroid Fields</h4>
+                <p className="text-sm text-text-secondary mt-1">Dense fields of rock and ice that provide cover but pose a significant risk to navigation and projectiles.</p>
+                <ul className="list-disc list-inside ml-4 mt-2 text-sm text-text-secondary space-y-1">
+                    <li><strong>Phaser Accuracy:</strong> Reduces accuracy of incoming phaser fire against ships within them by <strong className="text-white">30%</strong> (x0.70 multiplier).</li>
+                    <li><strong>Sensor Cover:</strong> Ships inside a field are only detectable within <strong className="text-white">4 hexes</strong>, and can only be targeted by weapons from <strong className="text-white">2 hexes</strong> or less.</li>
+                    <li><strong>Torpedo Collisions:</strong> Torpedoes traveling through an asteroid field cell have a <strong className="text-white">40% chance</strong> of being destroyed by a collision.</li>
+                    <li><strong>Navigational Hazard:</strong> Ending a turn inside an asteroid field risks taking micrometeoroid hull damage.</li>
+                </ul>
+            </div>
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-purple-400">Nebulae</h4>
+                <p className="text-sm text-text-secondary mt-1">Dense clouds of gas and dust that disrupt sensors and targeting systems. Torpedoes are unaffected by nebulae.</p>
+                <ul className="list-disc list-inside ml-4 mt-2 text-sm text-text-secondary space-y-1">
+                    <li><strong>Phaser Accuracy:</strong> Reduces accuracy of phaser fire against targets inside a nebula by <strong className="text-white">25%</strong> (x0.75 multiplier).</li>
+                    <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, sensor range is reduced to adjacent cells only (<strong className="text-white">1 hex</strong>).</li>
+                    <li><strong>Deep Nebula Concealment:</strong> A ship in a cell completely surrounded by 8 other nebula cells is rendered completely invisible on sensors.</li>
+                </ul>
+            </div>
+            <div className="p-3 bg-bg-paper-lighter rounded">
+                <h4 className="font-bold text-yellow-400">Ion Storms</h4>
+                <p className="text-sm text-text-secondary mt-1">Extremely hazardous phenomena that affect ship systems and projectiles at the end of each turn.</p>
+                <h5 className="font-bold text-white pt-2 text-sm">End-of-Turn Ship Hazards:</h5>
+                <p className="text-sm text-text-secondary">If a ship ends its turn in an ion storm, a single effect from the following list (if its chance succeeds) is chosen at random and applied:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 font-mono text-xs text-text-secondary">
+                    <li><strong className="text-white">Hull Damage (10% chance):</strong> Inflicts damage equal to 5% of the ship's maximum hull.</li>
+                    <li><strong className="text-white">Shields Offline (5% chance):</strong> Instantly depletes shields and prevents them from being raised for 2 turns.</li>
+                    <li><strong className="text-white">Shield System Damage (15% chance):</strong> Inflicts damage equal to 10% of the shield subsystem's maximum health.</li>
+                    <li><strong className="text-white">Weapons Offline (7% chance):</strong> Prevents all weapon use for 2 turns.</li>
+                    <li><strong className="text-white">Reserve Power Depleted (7% chance):</strong> Instantly drains all reserve energy to zero.</li>
+                    <li><strong className="text-white">Impulse Engines Disabled (23% chance):</strong> Prevents all movement for 1 turn.</li>
+                    <li><strong className="text-white">Phaser Ionization (55% chance):</strong> Reduces all phaser damage by 70% for 2 turns.</li>
+                </ul>
+                <h5 className="font-bold text-white pt-2 text-sm">Projectile Hazard: In-Flight Detonation</h5>
+                <p className="text-sm text-text-secondary">Launched torpedoes have a <strong className="text-white">20% chance per cell</strong> of prematurely detonating while traveling through an ion storm. Any ship in the detonation cell suffers <strong className="text-white">50% splash damage</strong>.</p>
+            </div>
+        </div>
         <SubHeader>Ship Systems Breakdown</SubHeader>
         <p className="text-text-secondary">The Endeavour is a complex machine. Understanding how its key systems function and degrade under fire is essential for effective command.</p>
         <div className="space-y-4 mt-4">

@@ -234,9 +234,10 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </DetailBox>
                 
                  <DetailBox title="Reliability & Failure Cascade" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-red-500">
-                    <p>At the end of every turn a cloak is active or engaging, it must pass a reliability check and consume a significant amount of reserve power.</p>
-                    <p><strong>Instability:</strong> Taking damage while engaging the cloak will increase the device's 'instability', permanently reducing its base reliability for the rest of combat.</p>
-                    <p><strong>Failure:</strong> If the reliability check fails or there is insufficient power, the cloak collapses. This makes the ship visible, puts the cloaking device on a 2-turn cooldown, and critically, shorts out the shield emitters, preventing you from raising shields for 2 turns. A failed cloak is a moment of extreme vulnerability.</p>
+                    <p>At the end of every turn a cloak is active or engaging, it must pass a reliability check. The final reliability is calculated with the following formula:</p>
+                    <p className="mt-2 font-mono text-center bg-black p-2 rounded text-sm text-accent-yellow">Final Reliability = (Base Reliability - Instability) &times; Environment Multiplier</p>
+                    <p className="mt-2"><strong>Instability:</strong> Taking damage while engaging the cloak will increase the device's 'instability', permanently reducing its base reliability for the rest of combat.</p>
+                    <p className="mt-2"><strong>Failure:</strong> If the reliability check fails or there is insufficient power, the cloak collapses. This makes the ship visible, puts the cloaking device on a 2-turn cooldown, and critically, shorts out the shield emitters, preventing you from raising shields for 2 turns. A failed cloak is a moment of extreme vulnerability.</p>
                 </DetailBox>
 
                 <h4 className="text-lg font-bold text-accent-yellow mt-4">Technical Specifications by Faction</h4>
@@ -263,7 +264,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         <h5 className="font-bold text-purple-300">Nebulae</h5>
                         <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
                         <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
-                            <li><strong>Reliability:</strong> Reduced by 25% (e.g., 92% becomes 69%).</li>
+                            <li><strong>Reliability Multiplier:</strong> x0.75 (a 25% reduction).</li>
                             <li><strong>Power Cost:</strong> Increased by 30% (e.g., 45 becomes ~58 per turn).</li>
                         </ul>
                     </div>
@@ -271,7 +272,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                         <h5 className="font-bold text-gray-400">Asteroid Fields</h5>
                         <p className="text-sm text-text-secondary">The dense rock, ice, and sensor-reflective dust in an asteroid field can create minor interference with cloaking fields.</p>
                         <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
-                            <li><strong>Reliability:</strong> Reduced by 10% (e.g., 92% becomes 83%).</li>
+                            <li><strong>Reliability Multiplier:</strong> x0.90 (a 10% reduction).</li>
                             <li><strong>Power Cost:</strong> Increased by 15% (e.g., 45 becomes ~52 per turn).</li>
                         </ul>
                     </div>

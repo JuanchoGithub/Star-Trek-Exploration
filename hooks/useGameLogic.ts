@@ -140,6 +140,21 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         }
     }, [gameState.isRetreatingWarp]);
 
+    useEffect(() => {
+        const computerHealthPercent = (gameState.player.ship.subsystems.computer.health / gameState.player.ship.subsystems.computer.maxHealth) * 100;
+        if (currentView === 'quadrant' && computerHealthPercent < 100) {
+            setCurrentView('sector');
+            addLog({
+                sourceId: 'system',
+                sourceName: 'Ship Computer',
+                message: 'Quadrant map offline due to computer damage. Switching to sector view.',
+                isPlayerSource: false,
+                color: 'border-orange-500',
+                category: 'system'
+            });
+        }
+    }, [currentView, gameState.player.ship.subsystems.computer.health, gameState.player.ship.subsystems.computer.maxHealth, addLog]);
+
     const saveGame = useCallback(() => {
         const success = saveGameToLocalStorage(gameState);
         if (success) {

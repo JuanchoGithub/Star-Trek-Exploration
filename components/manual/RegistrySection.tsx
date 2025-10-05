@@ -1,6 +1,3 @@
-
-
-
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -15,7 +12,7 @@ import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClas
 import { IndependentFreighterIcon } from '../../assets/ships/icons';
 
 const FactionHeader: React.FC<{ name: string, icon: React.ReactNode }> = ({ name, icon }) => (
-    <div id={`registry-${name.toLowerCase().replace(/ /g, '-')}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
+    <div id={`registry-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className="flex items-center gap-3 mt-8 mb-4 border-b-2 border-border-dark pb-2">
         {icon}
         <h3 className="text-2xl font-bold">{name}</h3>
     </div>
@@ -288,7 +285,7 @@ export const RegistrySection: React.FC = () => {
                 <a href="#registry-federation" className="btn btn-tertiary">Federation</a>
                 <a href="#registry-klingon-empire" className="btn btn-tertiary">Klingon</a>
                 <a href="#registry-romulan-star-empire" className="btn btn-tertiary">Romulan</a>
-                <a href="#registry-pirate-&-independent" className="btn btn-tertiary">Pirate &amp; Independent</a>
+                <a href="#registry-pirate-independent" className="btn btn-tertiary">Pirate &amp; Independent</a>
                 <a href="#registry-other-entities" className="btn btn-tertiary">Other Entities</a>
             </div>
             

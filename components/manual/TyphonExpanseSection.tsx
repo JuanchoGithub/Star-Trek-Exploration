@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { StarfleetLogoIcon, KlingonLogoIcon, RomulanLogoIcon } from '../../assets/ui/icons';
 import { SectionHeader, SubHeader } from './shared';
@@ -10,33 +9,22 @@ export const TyphonExpanseSection: React.FC = () => (
         <p className="text-text-secondary mt-4 indent-8">The Typhon Expanse is a largely uncharted sector on the fringe of the Alpha and Beta Quadrants. For decades, exploration was deemed too hazardous due to unpredictable gravimetric distortions and plasma storms. However, recent long-range sensor data indicates these phenomena have begun to subside, opening a new frontier for exploration, colonization... and conflict.</p>
         
         <SubHeader>Known Environmental Hazards</SubHeader>
+        <p className="text-text-secondary mt-4">The Typhon Expanse is defined by its volatile and unpredictable environmental conditions. While these phenomena have begun to subside, they remain a constant tactical consideration for any vessel operating in the region. Captains should familiarize themselves with the precise mechanics of these hazards.</p>
+        <div className="p-3 bg-black rounded border-l-4 border-accent-yellow my-4">
+            <p className="text-text-secondary">For a detailed, numerical breakdown of all hazard effects—including accuracy penalties, system failure probabilities, and torpedo interactions for Nebulae, Ion Storms, and Asteroid Fields—please consult the <strong className="text-white">"Environmental Hazards"</strong> subsection in the <strong className="text-white">Core Mechanics</strong> section of this manual.</p>
+        </div>
         <div className="space-y-4 my-4">
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-purple-400">Nebulae</h4>
-                <p className="text-sm text-text-secondary mt-1">These dense clouds of gas and dust disrupt sensors and targeting systems. While inside a nebula, sensor range is reduced to adjacent cells, and phaser accuracy is significantly diminished. The densest parts of a nebula can even provide complete sensor concealment.</p>
+                <p className="text-sm text-text-secondary mt-1">These dense clouds of gas and dust provide tactical cover by disrupting sensors and targeting systems, but they can also be used for ambushes.</p>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-yellow-400">Ion Storms</h4>
-                <div className="text-sm text-text-secondary mt-1 space-y-2">
-                    <p>Ion storms are extremely hazardous phenomena that affect ship systems and projectiles.</p>
-                    <h5 className="font-bold text-white pt-2">End-of-Turn Ship Hazards:</h5>
-                    <p>At the end of each turn, any ship within an ion storm cell is subjected to checks against all of the following hazards. If one or more checks succeed, a single effect is chosen at random from the successful checks and applied to the ship.</p>
-                    <ul className="list-disc list-inside ml-4 font-mono text-xs">
-                        <li><strong className="text-white">Hull Damage (10% chance):</strong> Inflicts damage equal to 5% of the ship's maximum hull.</li>
-                        <li><strong className="text-white">Shields Offline (5% chance):</strong> Instantly depletes shields and prevents them from being raised for 2 turns.</li>
-                        <li><strong className="text-white">Shield System Damage (15% chance):</strong> Inflicts damage equal to 10% of the shield subsystem's maximum health.</li>
-                        <li><strong className="text-white">Weapons Offline (7% chance):</strong> Prevents all weapon use for 2 turns.</li>
-                        <li><strong className="text-white">Reserve Power Depleted (7% chance):</strong> Instantly drains all reserve energy to zero.</li>
-                        <li><strong className="text-white">Impulse Engines Disabled (23% chance):</strong> Prevents all movement for 1 turn.</li>
-                        <li><strong className="text-white">Phaser Ionization (55% chance):</strong> Reduces all phaser damage by 70% for 2 turns.</li>
-                    </ul>
-                    <h5 className="font-bold text-white pt-2">Projectile Hazard: In-Flight Detonation</h5>
-                    <p>Launched torpedoes are highly unstable within ion storms. For each cell of an ion storm a torpedo travels through, it has a <strong className="text-white">20% chance</strong> to prematurely detonate. If a detonation occurs, the torpedo explodes immediately. Any ship occupying that same cell will suffer a direct hit from the warhead, receiving <strong className="text-white">50% of its standard damage</strong>. This effect applies to all ships, including the one that launched the torpedo if it has not yet moved away.</p>
-                </div>
+                <p className="text-sm text-text-secondary mt-1">Violent plasma storms that are extremely hazardous to all ship systems. Entering one is a significant gamble, as they can disable critical systems at random.</p>
             </div>
              <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-gray-400">Asteroid Fields</h4>
-                <p className="text-sm text-text-secondary mt-1">These dense fields of rock and debris provide tactical cover, reducing phaser accuracy against ships within them. However, they are a hazard to navigation; ending a turn inside an asteroid field risks taking micrometeoroid damage.</p>
+                <p className="text-sm text-text-secondary mt-1">Dense fields of rock and debris that provide cover but are hazardous to navigation and projectiles.</p>
             </div>
         </div>
 
