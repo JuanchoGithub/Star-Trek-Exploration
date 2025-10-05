@@ -1,7 +1,7 @@
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
-import { findClosestTarget, calculateOptimalEngagementRange } from '../../utils/ai';
+import { findClosestTarget, calculateOptimalEngagementRange, calculateDistance } from '../../utils/ai';
 
 export class RomulanAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
@@ -58,17 +58,38 @@ export class RomulanAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
-        const { stance, reason } = this.determineStance(ship, potentialTargets);
-
-        if (stance === 'Balanced') {
-            if (Math.random() < 0.3) {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
+        const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
+        const adjacentDerelicts = allEntities.filter((e): e is Ship => 
+            e.type === 'ship' &&
+            e.isDerelict &&
+            !e.captureInfo &&
+            calculateDistance(ship.position, e.position) <= 1
+        );
+    
+        if (adjacentDerelicts.length > 0) {
+            const derelictTarget = adjacentDerelicts[0];
+            // Romulans are cautious and prefer to deny assets. 5% chance to capture for intelligence.
+            if (Math.random() < 0.05) {
                 if (tryCaptureDerelict(ship, gameState, actions)) {
                     claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
                     return; // Turn spent capturing
                 }
+            } else {
+                // Destroy the derelict
+                const stance = 'Aggressive';
+                const reason = `Neutralizing the derelict ${derelictTarget.name} to prevent enemy capture.`;
+                const subsystemTarget = null; // Target hull for destruction
+    
+                if (ship.energyAllocation.weapons !== 70) {
+                    ship.energyAllocation = { weapons: 70, shields: 20, engines: 10 };
+                }
+                processCommonTurn(ship, [derelictTarget], gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, derelictTarget.id);
+                return;
             }
         }
+
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
         
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
@@ -119,7 +140,7 @@ export class RomulanAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId, optimalRange);
         } else {
              claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
              actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });

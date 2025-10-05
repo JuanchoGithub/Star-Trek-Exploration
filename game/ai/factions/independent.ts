@@ -43,18 +43,28 @@ export class IndependentAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
         // If this ship has been designated an ally in the simulator, it must fight, not flee.
         if (ship.allegiance === 'ally' || ship.allegiance === 'player') {
             const enemyTargets = potentialTargets.filter(t => t.allegiance === 'enemy');
             if (enemyTargets.length > 0) {
-                const target = findClosestTarget(ship, enemyTargets);
+                const target = potentialTargets.find(t => t.id === priorityTargetId) || findClosestTarget(ship, enemyTargets);
                 if (target) {
                     const fightStance = (ship.hull / ship.maxHull > 0.7) ? 'Aggressive' : 'Balanced';
                     if (ship.energyAllocation.weapons < 34) {
                         ship.energyAllocation = { weapons: 34, shields: 33, engines: 33 };
                     }
-                    processCommonTurn(ship, enemyTargets, gameState, actions, 'weapons', fightStance, 'Forced to engage by allegiance', defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
+                    
+                    // A more logical subsystem targeting for an ally, following Federation doctrine.
+                    let subsystemTarget: keyof ShipSubsystems | null = 'weapons';
+                    if (target.subsystems.weapons.health <= 0) {
+                        subsystemTarget = 'engines';
+                    }
+                    if (target.subsystems.engines.health <= 0 && target.subsystems.weapons.health <= 0) {
+                        subsystemTarget = null; // Target hull if both are down
+                    }
+
+                    processCommonTurn(ship, enemyTargets, gameState, actions, subsystemTarget, fightStance, 'Forced to engage by allegiance', defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId);
                     return;
                 }
             }

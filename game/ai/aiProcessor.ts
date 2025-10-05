@@ -6,7 +6,7 @@ import '../ai/factions/index'; // This import ensures the registration script ru
 import { findClosestTarget, calculateDistance } from '../utils/ai';
 import { isCommBlackout } from '../utils/sector';
 import { SECTOR_WIDTH } from '../../assets/configs/gameConstants';
-import { generateSquadronTargetingLog, SquadronTargetingScore } from '../ai/aiLogger';
+import { generateSquadronTargetingLog, SquadronTargetingScore } from './aiLogger';
 
 
 // --- NEW: Module-level state for Target Persistence ---

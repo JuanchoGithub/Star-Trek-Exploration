@@ -88,7 +88,7 @@ export class PirateAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
         if (tryCaptureDerelict(ship, gameState, actions)) {
             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return; // Turn spent capturing
@@ -135,7 +135,7 @@ export class PirateAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId);
         } else {
             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });

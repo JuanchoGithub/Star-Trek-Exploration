@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, Shuttle, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { findClosestTarget, moveOneStep, uniqueId, calculateDistance, calculateOptimalEngagementRange } from '../../utils/ai';
@@ -60,18 +59,15 @@ export class FederationAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
-        const { stance, reason } = this.determineStance(ship, potentialTargets);
-
-        if (stance === 'Balanced') {
-            if (Math.random() < 0.3) {
-                if (tryCaptureDerelict(ship, gameState, actions)) {
-                    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
-                    return; // Turn spent capturing
-                }
-            }
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
+        // Federation prioritizes capture/rescue.
+        if (tryCaptureDerelict(ship, gameState, actions)) {
+            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+            return; // Turn spent capturing
         }
 
+        const { stance, reason } = this.determineStance(ship, potentialTargets);
+        
         if (stance === 'Recovery') {
             processRecoveryTurn(ship, actions, gameState.turn, claimedCellsThisTurn);
             return;
@@ -113,7 +109,7 @@ export class FederationAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, optimalRange);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId, optimalRange);
         } else {
              // This case handles when a stance is aggressive but no targets are currently visible (e.g. they cloaked)
             if (ship.hiddenEnemies && ship.hiddenEnemies.length > 0) {

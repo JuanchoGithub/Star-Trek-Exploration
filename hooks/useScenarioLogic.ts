@@ -1,6 +1,5 @@
 
-
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState, ProjectileWeapon } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { uniqueId } from '../game/utils/ai';
@@ -87,9 +86,11 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             };
             const nextLogs = [...prev.logs, newLog];
             if (nextLogs.length > 200) {
-                return { ...prev, logs: nextLogs.slice(nextLogs.length - 200) };
+                const newState = { ...prev, logs: nextLogs.slice(nextLogs.length - 200) };
+                return newState;
             }
-            return { ...prev, logs: nextLogs };
+            const newState = { ...prev, logs: nextLogs };
+            return newState;
         });
     }, []);
 
@@ -171,7 +172,36 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
 
     }, [gameState, isTurnResolving, playerTurnActions, addLog]);
 
-    const onSelectSubsystem = (subsystem: keyof ShipSubsystems | null) => {};
+    const onSelectSubsystem = useCallback((subsystem: keyof ShipSubsystems | null) => {
+        setGameState(prev => {
+            if (!prev) return null;
+            const targetEntity = prev.currentSector.entities.find(e => e.id === selectedTargetId);
+            if (!targetEntity) return prev;
+
+            const next = JSON.parse(JSON.stringify(prev));
+            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            if (!playerShip || !selectedTargetId) return prev;
+
+            if (!playerShip.targeting || playerShip.targeting.entityId !== selectedTargetId) {
+                playerShip.targeting = { entityId: selectedTargetId, subsystem: subsystem, consecutiveTurns: 1 };
+            } else {
+                const oldSubsystem = playerShip.targeting.subsystem;
+                playerShip.targeting.subsystem = subsystem;
+                if (oldSubsystem !== subsystem) {
+                    playerShip.targeting.consecutiveTurns = 1;
+                }
+            }
+            
+            const logMessage = subsystem ? `Targeting computer locked on ${targetEntity.name}'s ${subsystem} system.` : `Targeting computer locked on ${targetEntity.name}'s hull.`;
+            const newLog: LogEntry = {
+                id: uniqueId(), turn: next.turn, sourceId: playerShip.id, sourceName: playerShip.name, message: logMessage,
+                isPlayerSource: true, color: 'border-blue-400', category: 'targeting'
+            };
+            next.logs.push(newLog);
+
+            return next;
+        });
+    }, [selectedTargetId]);
     
     const onEnergyChange = useCallback((changedKey: 'weapons' | 'shields' | 'engines', value: number) => {
         if (!gameState) return;
@@ -210,28 +240,30 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
 
 
     const onToggleCloak = useCallback(() => {
-        if (!gameState) return;
         setGameState(prev => {
              if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
             if (!playerShip) return prev;
             
+            let logMessage = '';
             if (playerShip.cloakState === 'cloaked') {
                 playerShip.cloakState = 'visible';
                 playerShip.cloakCooldown = 2; 
-                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: "Cloaking device disengaged.", isPlayerSource: true, color: 'border-blue-400' });
+                logMessage = "Cloaking device disengaged.";
             } else if (playerShip.cloakState === 'visible') {
                 if (playerShip.cloakCooldown > 0) return prev;
                 playerShip.cloakState = 'cloaking';
-                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Initiating cloaking sequence.`, isPlayerSource: true, color: 'border-blue-400' });
+                logMessage = `Initiating cloaking sequence.`;
+            }
+            if(logMessage){
+                 next.logs.push({ id: uniqueId(), turn: next.turn, sourceId: playerShip.id, sourceName: playerShip.name, message: logMessage, isPlayerSource: true, color: 'border-blue-400' });
             }
             return next;
         });
-    }, [gameState, addLog]);
+    }, []);
 
     const onTogglePointDefense = useCallback(() => {
-        if (!gameState) return;
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
@@ -239,14 +271,18 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             if (!playerShip) return prev;
 
             playerShip.pointDefenseEnabled = !playerShip.pointDefenseEnabled;
-            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Point-defense system ${playerShip.pointDefenseEnabled ? 'activated' : 'deactivated'}.`, isPlayerSource: true, color: 'border-blue-400' });
+            const newLog: LogEntry = {
+                id: uniqueId(), turn: next.turn, sourceId: playerShip.id, sourceName: playerShip.name, 
+                message: `Point-defense system ${playerShip.pointDefenseEnabled ? 'activated' : 'deactivated'}.`, 
+                isPlayerSource: true, color: 'border-blue-400'
+            };
+            next.logs.push(newLog);
 
             return next;
         });
-    }, [gameState, addLog]);
+    }, []);
 
     const onEvasiveManeuvers = useCallback(() => {
-        if (!gameState) return;
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
@@ -257,32 +293,36 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             }
 
             playerShip.evasive = !playerShip.evasive;
-            addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Evasive maneuvers ${playerShip.evasive ? 'engaged' : 'disengaged'}.`, isPlayerSource: true, color: 'border-blue-400' });
+            const newLog: LogEntry = {
+                id: uniqueId(), turn: next.turn, sourceId: playerShip.id, sourceName: playerShip.name,
+                message: `Evasive maneuvers ${playerShip.evasive ? 'engaged' : 'disengaged'}.`,
+                isPlayerSource: true, color: 'border-blue-400'
+            };
+            next.logs.push(newLog);
             return next;
         });
-    }, [gameState, addLog]);
+    }, []);
 
     const onSelectRepairTarget = useCallback((subsystem: 'hull' | keyof ShipSubsystems | null) => {
-        if (!gameState) return;
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
             const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
             if (!playerShip) return prev;
 
-            if (playerShip.repairTarget === subsystem) {
-                playerShip.repairTarget = null;
-                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Damage control team standing by.`, isPlayerSource: true, color: 'border-blue-400' });
-            } else {
-                playerShip.repairTarget = subsystem;
-                addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Damage control team assigned to repair ${subsystem}.`, isPlayerSource: true, color: 'border-blue-400' });
-            }
+            const newTarget = playerShip.repairTarget === subsystem ? null : subsystem;
+            playerShip.repairTarget = newTarget;
+            const newLog: LogEntry = {
+                id: uniqueId(), turn: next.turn, sourceId: playerShip.id, sourceName: playerShip.name,
+                message: newTarget ? `Damage control team assigned to repair ${newTarget}.` : `Damage control team standing by.`,
+                isPlayerSource: true, color: 'border-blue-400'
+            };
+            next.logs.push(newLog);
             return next;
         });
-    }, [gameState, addLog]);
+    }, []);
 
     const onToggleRedAlert = useCallback(() => {
-        if (!gameState) return;
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
@@ -290,17 +330,24 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
             if (!playerShip) return prev;
             
             next.redAlert = !next.redAlert;
+            let logMessage = '';
             if (next.redAlert) {
                 playerShip.shields = playerShip.maxShields;
-                addLog({ sourceId: 'system', sourceName: 'Simulator', message: 'Red Alert! Shields up!', isPlayerSource: false, color: 'border-red-600' });
+                logMessage = 'Red Alert! Shields up!';
             } else {
                 playerShip.shields = 0;
                 playerShip.evasive = false;
-                addLog({ sourceId: 'system', sourceName: 'Simulator', message: 'Standing down from Red Alert. Shields offline.', isPlayerSource: false, color: 'border-gray-500' });
+                logMessage = 'Standing down from Red Alert. Shields offline.';
             }
+
+            const newLog: LogEntry = {
+                id: uniqueId(), turn: next.turn, sourceId: 'system', sourceName: 'Simulator',
+                message: logMessage, isPlayerSource: false, color: next.redAlert ? 'border-red-600' : 'border-gray-500'
+            };
+            next.logs.push(newLog);
             return next;
         });
-    }, [gameState, addLog]);
+    }, []);
 
     const goToHistoryTurn = useCallback((index: number) => {
         if (index >= 0 && index < replayHistory.length) {

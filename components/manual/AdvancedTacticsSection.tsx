@@ -113,13 +113,13 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </div>
                 <div className="mt-4 p-3 bg-black rounded border-l-4 border-accent-yellow">
                     <h4 className="font-bold text-accent-yellow">Focus Fire Bonus</h4>
-                    <p className="text-sm text-text-secondary mt-2">Sustained, focused fire on a single subsystem is rewarded with an incremental damage bonus. The bonus increases with each consecutive phaser attack against the same subsystem on the same target, resetting if you switch targets or subsystems. This bonus applies <strong className="text-white">only to the portion of damage that hits the targeted subsystem</strong>, not to the hull.</p>
+                    <p className="text-sm text-text-secondary mt-2">Sustained, focused phaser fire on a single subsystem is rewarded with an incremental damage bonus. The bonus increases with each consecutive turn of attacks against the same subsystem on the same target, resetting if you switch targets or subsystems. This bonus applies <strong className="text-white">only to the portion of damage that hits the targeted subsystem</strong>, not to the hull.</p>
                     <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm">
-                        <li><strong>Shot 1 (New Target):</strong> 0% bonus</li>
-                        <li><strong>Shot 2:</strong> <strong className="text-white">+10%</strong> bonus subsystem damage</li>
-                        <li><strong>Shot 3:</strong> <strong className="text-white">+25%</strong> bonus subsystem damage</li>
-                        <li><strong>Shot 4:</strong> <strong className="text-white">+40%</strong> bonus subsystem damage</li>
-                        <li><strong>Shot 5 and beyond:</strong> <strong className="text-white">+50%</strong> (maximum) bonus subsystem damage</li>
+                        <li><b>Turn 1 (New Target):</b> 0% bonus</li>
+                        <li><b>Turn 2:</b> <strong className="text-white">+10%</strong> bonus subsystem damage</li>
+                        <li><b>Turn 3:</b> <strong className="text-white">+25%</strong> bonus subsystem damage</li>
+                        <li><b>Turn 4:</b> <strong className="text-white">+40%</strong> bonus subsystem damage</li>
+                        <li><b>Turn 5 and beyond:</b> <strong className="text-white">+50%</strong> (maximum) bonus subsystem damage</li>
                     </ul>
                     <p className="text-sm text-text-secondary mt-2">This tactic is essential for quickly disabling critical enemy systems.</p>
                 </div>
@@ -128,19 +128,19 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             <SubHeader>Derelict Capture &amp; Salvage</SubHeader>
             <p className="text-text-secondary mb-4">Derelict vessels are not just battlefield debris; they are valuable strategic assets waiting to be claimed. Both player and AI ships can attempt to capture and restore these disabled hulks.</p>
             <div className="p-3 bg-bg-paper-lighter rounded">
-                 <h4 className="font-bold text-accent-yellow">The Capture Process</h4>
-                 <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
-                     <li><strong>Prerequisites:</strong> You must be adjacent (1 hex) to a derelict vessel. Your ship must have at least <strong className="text-white">1 available Security Team</strong> and be able to transfer <strong className="text-white">5 Dilithium crystals</strong> to the derelict to power its systems. The operation consumes your major action for the turn.</li>
-                     <li><strong>Repair Phase:</strong> A salvage team will remain on the derelict for <strong className="text-white">4 turns</strong>, conducting emergency repairs. The vessel cannot be controlled during this period.</li>
-                     <li><strong>Outcome:</strong> After 4 turns, the derelict vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally under your command. <strong className="text-white">Crucially, the initial 5 Dilithium investment is then transferred to the captured ship's reserves, allowing it to power its own systems or perform a warp jump as soon as it becomes active.</strong></li>
-                 </ul>
+                 <h4 className="font-bold text-accent-yellow">Boarding &amp; Capture Process</h4>
+                  <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+                     <li><b>Prerequisites:</b> You must be adjacent (1 hex) to a derelict vessel with a functional transporter. The operation requires <strong className="text-white">1 available Security Team</strong> and <strong className="text-white">5 Dilithium crystals</strong>. This consumes your major action for the turn.</li>
+                     <li><b>Repair Phase:</b> A salvage team will remain on the derelict for <strong className="text-white">4 turns</strong>, conducting emergency repairs. The vessel cannot be controlled during this period.</li>
+                     <li><b>Outcome:</b> After 4 turns, the vessel is restored to <strong className="text-white">30% hull and subsystem health</strong>. It becomes an armed, controllable ally. The initial 5 Dilithium is transferred to the captured ship's reserves, allowing it to immediately power its own systems.</li>
+                  </ul>
             </div>
 
             <SubHeader>Nebula Warfare</SubHeader>
             <p className="text-text-secondary mb-4">Nebulae are your greatest tactical tool for stealth, surprise, and controlling the flow of battle. Their particulate density and gravimetric distortions create unique opportunities for a cunning captain.</p>
             <div className="space-y-3">
                 <DetailBox title="Concealment (Deep Nebula)" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-purple-400">
-                    <p>If you position your ship in a nebula cell that is <span className="text-white font-bold">completely surrounded by 8 other nebula cells</span> (including diagonals), you enter a "Deep Nebula".</p>
+                    <p>If you position your ship in a nebula cell that is <span className="text-white font-bold">completely surrounded by all 8 adjacent nebula cells</span> (including diagonals), you enter a "Deep Nebula".</p>
                     <p>Your vessel will become <span className="text-accent-yellow">completely undetectable</span> to enemy ships and will vanish from their tactical displays. This is the ultimate ambush position, allowing you to fire on an enemy that cannot see you.</p>
                 </DetailBox>
                 <DetailBox title="Sensor Reduction" icon={<FederationScanIcon className="w-6 h-6"/>} borderColorClass="border-cyan-400">
@@ -149,7 +149,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 </DetailBox>
                 <DetailBox title="Communication Blackout" icon={<TransporterIcon className="w-6 h-6"/>} borderColorClass="border-gray-500">
                     <p>Allied vessels normally share sensor data, allowing them to see each other regardless of line of sight. However, this connection can be severed.</p>
-                    <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship in the center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
+                    <p>If an allied ship is positioned in a nebula cell that is surrounded by <span className="text-accent-yellow">two full layers of nebula cells</span> on all sides (a 5x5 grid with the ship at its center), all its communications will be blocked. It will disappear even from <span className="text-white font-bold">allied</span> sensors.</p>
                 </DetailBox>
             </div>
 
@@ -169,7 +169,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     <p>The dense rock and debris are a constant threat to any vessel or projectile moving through the field.</p>
                     <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
                         <li>Micrometeoroid Impact: Ending your turn inside an asteroid field risks taking hull damage.</li>
-                        <li>Projectile Interception: Any torpedo traveling through an asteroid cell has a <span className="text-white">40% chance</span> of being destroyed by a collision before reaching its target.</li>
+                        <li>Projectile Interception: Any torpedo traveling through an asteroid cell has a <span className="text-white">40% chance per cell</span> of being destroyed by a collision before reaching its target.</li>
                     </ul>
                      <p className="mt-2 text-xs italic">Fire torpedoes from outside an asteroid field, not through it. Lure enemy torpedoes into the field to use it as a natural point-defense screen.</p>
                 </DetailBox>
@@ -193,7 +193,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
             </div>
             
             <SubHeader>Desperation Moves</SubHeader>
-            <p className="text-text-secondary mb-4">When a vessel's hull integrity drops below <strong className="text-white">30%</strong>, its captain has a scaling chance to initiate a faction-specific "last stand" maneuver. This chance increases as the ship takes more damage, becoming a near-certainty at critical hull levels. Be prepared for these final, desperate acts much earlier than previously anticipated.</p>
+            <p className="text-text-secondary mb-4">When a vessel's hull integrity drops below <strong className="text-white">30%</strong>, its captain has a scaling chance to initiate a faction-specific "last stand" maneuver. The chance increases linearly from <strong className="text-white">0% at 30% hull</strong> to <strong className="text-white">100% at 0% hull</strong>. Be prepared for these final, desperate acts.</p>
             <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
                 <li><strong className="text-red-500">Klingons:</strong> Will attempt to ram the player's ship.</li>
                 <li><strong className="text-green-500">Romulans:</strong> Will attempt a risky, unstable warp jump to escape.</li>
@@ -236,7 +236,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                  <DetailBox title="Reliability & Failure Cascade" icon={<CloakIcon className="w-6 h-6"/>} borderColorClass="border-red-500">
                     <p>At the end of every turn a cloak is active or engaging, it must pass a reliability check. The final reliability is calculated with the following formula:</p>
                     <p className="mt-2 font-mono text-center bg-black p-2 rounded text-sm text-accent-yellow">Final Reliability = (Base Reliability - Instability) &times; Environment Multiplier</p>
-                    <p className="mt-2"><strong>Instability:</strong> Taking damage while engaging the cloak will increase the device's 'instability', permanently reducing its base reliability for the rest of combat.</p>
+                    <p className="mt-2"><strong>Instability:</strong> Taking damage while engaging the cloak increases the device's 'instability', permanently reducing its base reliability. Phaser hits add <strong className="text-white">15% instability</strong>; torpedo hits add a more significant <strong className="text-white">25%</strong>.</p>
                     <p className="mt-2"><strong>Failure:</strong> If the reliability check fails or there is insufficient power, the cloak collapses. This makes the ship visible, puts the cloaking device on a 2-turn cooldown, and critically, shorts out the shield emitters, preventing you from raising shields for 2 turns. A failed cloak is a moment of extreme vulnerability.</p>
                 </DetailBox>
 
@@ -247,33 +247,33 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                 <div className="mt-4">
                     <DetailBox title="Special Case: Pirate Makeshift Cloak" icon={<OrionRaiderIcon className="w-6 h-6"/>} borderColorClass="border-orange-500">
                         <p>Intelligence has confirmed that some pirate factions have managed to jury-rig cloaking devices onto their vessels. These systems are highly volatile and should be considered as much a threat to their user as to their target.</p>
-                        <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm">
+                        <ul className="list-disc list-inside ml-4 mt-2 font-mono text-sm font-bold">
                             <li>Base Reliability: <span className="text-white">60%</span></li>
                             <li>Power Cost / Turn: <span className="text-white">70</span></li>
-                            <li>Subsystem Damage Chance: <span className="text-white">7%</span> per turn (30% damage to a random key system)</li>
-                            <li>Catastrophic Failure Chance: <span className="text-white">0.1%</span> per turn (instant self-destruction)</li>
+                            <li>Subsystem Damage Chance (per turn): <span className="text-white">7%</span> (deals 30% damage to a random key system)</li>
+                            <li>Catastrophic Failure Chance (per turn): <span className="text-white">0.1%</span> (instant self-destruction)</li>
                         </ul>
                         <p className="mt-2">Note: These failure chances are <span className="text-white font-bold">compounded</span> by environmental effects like nebulae. A pirate attempting to cloak in a nebula is taking an extreme gamble.</p>
                     </DetailBox>
                 </div>
 
                 <h4 className="font-bold text-accent-yellow mt-4">Environmental Factors</h4>
-                <p className="text-sm text-text-secondary mb-2">Sector conditions can severely impact cloaking device performance, turning a tactical advantage into a critical liability.</p>
+                <p className="text-sm text-text-secondary mb-2">Sector conditions can severely impact cloaking device performance.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-purple-400">
                         <h5 className="font-bold text-purple-300">Nebulae</h5>
-                        <p className="text-sm text-text-secondary">The gravimetric shear and particle density within a nebula wreak havoc on the delicate balance required to maintain a cloaking field.</p>
-                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
-                            <li><strong>Reliability Multiplier:</strong> x0.75 (a 25% reduction).</li>
-                            <li><strong>Power Cost:</strong> Increased by 30% (e.g., 45 becomes ~58 per turn).</li>
+                        <p className="text-sm text-text-secondary">The dense gas interferes with the cloaking field.</p>
+                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1 font-mono">
+                            <li><b>Reliability Multiplier:</b> <span className="text-white">x0.75</span> (-25%)</li>
+                            <li><b>Power Cost:</b> <span className="text-white">+30%</span></li>
                         </ul>
                     </div>
                     <div className="p-3 bg-bg-paper-lighter rounded border-l-4 border-gray-500">
                         <h5 className="font-bold text-gray-400">Asteroid Fields</h5>
-                        <p className="text-sm text-text-secondary">The dense rock, ice, and sensor-reflective dust in an asteroid field can create minor interference with cloaking fields.</p>
-                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1">
-                            <li><strong>Reliability Multiplier:</strong> x0.90 (a 10% reduction).</li>
-                            <li><strong>Power Cost:</strong> Increased by 15% (e.g., 45 becomes ~52 per turn).</li>
+                        <p className="text-sm text-text-secondary">Sensor-reflective dust creates minor interference.</p>
+                        <ul className="list-disc list-inside ml-4 text-sm text-text-secondary mt-1 font-mono">
+                            <li><b>Reliability Multiplier:</b> <span className="text-white">x0.90</span> (-10%)</li>
+                            <li><b>Power Cost:</b> <span className="text-white">+15%</span></li>
                         </ul>
                     </div>
                     <div className="md:col-span-2 p-3 bg-bg-paper-lighter rounded border-l-4 border-yellow-400">

@@ -1,7 +1,7 @@
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
-import { findClosestTarget } from '../../utils/ai';
+import { calculateDistance, findClosestTarget } from '../../utils/ai';
 
 export class KlingonAI extends FactionAI {
     determineStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
@@ -47,10 +47,35 @@ export class KlingonAI extends FactionAI {
         return { turnEndingAction: false, defenseActionTaken: null };
     }
 
-    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
-        if (tryCaptureDerelict(ship, gameState, actions)) {
-            claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
-            return; // Turn spent capturing
+    executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
+        const allEntities = [...gameState.currentSector.entities, gameState.player.ship];
+        const adjacentDerelicts = allEntities.filter((e): e is Ship => 
+            e.type === 'ship' &&
+            e.isDerelict &&
+            !e.captureInfo &&
+            calculateDistance(ship.position, e.position) <= 1
+        );
+    
+        if (adjacentDerelicts.length > 0) {
+            const derelictTarget = adjacentDerelicts[0];
+            // Klingons are warriors. Capturing is less honorable. 10% chance.
+            if (Math.random() < 0.10) {
+                if (tryCaptureDerelict(ship, gameState, actions)) {
+                    claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
+                    return; // Turn spent capturing
+                }
+            } else {
+                // Destroy the derelict
+                const stance = 'Aggressive';
+                const reason = `Destroying the dishonorable hulk of the ${derelictTarget.name}.`;
+                const subsystemTarget = null; // Target hull for destruction
+    
+                if (ship.energyAllocation.weapons !== 74) {
+                    ship.energyAllocation = { weapons: 74, shields: 13, engines: 13 };
+                }
+                processCommonTurn(ship, [derelictTarget], gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, derelictTarget.id);
+                return;
+            }
         }
         
         const { stance, reason } = this.determineStance(ship, potentialTargets);
@@ -95,7 +120,7 @@ export class KlingonAI extends FactionAI {
                     break;
             }
             
-            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
+            processCommonTurn(ship, potentialTargets, gameState, actions, subsystemTarget, stance, reason, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId);
         } else {
             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             actions.addLog({ sourceId: ship.id, sourceName: ship.name, message: `Holding position, no targets in sight.`, isPlayerSource: false });

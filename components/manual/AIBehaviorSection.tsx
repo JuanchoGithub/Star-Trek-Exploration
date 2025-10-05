@@ -7,6 +7,28 @@ export const AIBehaviorSection: React.FC = () => (
         <p className="text-red-400 font-bold tracking-widest text-sm">CLASSIFICATION: STARFLEET INTELLIGENCE - EYES ONLY</p>
         <p className="text-text-secondary my-4">This document provides a tactical overview of the current command logic ("Artificial Intelligence") governing non-player vessels in this simulation. The recent introduction of a phased turn system has allowed for a significant increase in AI tactical sophistication. Understanding these behavioral patterns is critical for predicting and countering enemy actions.</p>
 
+        <SubHeader>Squadron Tactics &amp; Coordinated Fire</SubHeader>
+        <p className="text-text-secondary mb-2">
+            A significant upgrade has been deployed to the fleet combat logic core. AI vessels no longer act as individuals. Instead, allied and enemy ships now form tactical squadrons and coordinate their attacks on a single, high-priority target.
+        </p>
+        <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
+            <li>
+                <strong className="text-accent-yellow">Priority Target Designation:</strong> Before any ship acts, all vessels in a communicating squadron collectively analyze all visible threats. They use a scoring algorithm to designate a single "squadron priority target."
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Target Scoring Logic:</strong> The selection algorithm prioritizes targets based on several weighted factors:
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li><b className="text-white">Damage Level (Weight: 200):</b> Score increases based on the target's missing hull percentage.</li>
+                    <li><b className="text-white">Vulnerability (Weight: 150):</b> A flat bonus is applied if the target's shields are depleted.</li>
+                    <li><b className="text-white">Threat Level (Weight: 150 + 0.5 &times; Max Hull):</b> The player's flagship is always considered a high threat. Other targets are weighted by their potential power (proxied by max hull).</li>
+                    <li><b className="text-white">Proximity (Weight: 50):</b> Score increases the closer a target is to the squadron's average position.</li>
+                </ul>
+            </li>
+            <li>
+                <strong className="text-accent-yellow">Execution &amp; Fallback:</strong> Each ship in the squadron will attempt to engage the designated priority target. If an individual ship cannot engage the priority target (due to range or line-of-sight), it will revert to its standard doctrine of engaging the closest available enemy. This ensures no ship is ever idle.
+            </li>
+        </ul>
+
         <SubHeader>Weapon-Aware Pathfinding (Federation & Romulan)</SubHeader>
         <p className="text-text-secondary mb-2">
             The standard 'Balanced' stance for Federation and Romulan captains has been upgraded with a dynamic engagement logic core. These AIs no longer adhere to a fixed optimal range. Instead, they perform a comparative analysis of their primary phaser system against their current target's primary phaser system at the start of their turn.
@@ -29,16 +51,16 @@ export const AIBehaviorSection: React.FC = () => (
         </p>
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
             <li>
-                <strong className="text-white">Threat Score:</strong> Measures the proximity to enemies. This score is weighted positively for an 'Aggressive' AI (drawing it closer) and negatively for a 'Defensive' AI (pushing it away).
+                <strong className="text-white">Threat Score:</strong> Measures the proximity to enemies. This score is weighted positively for an 'Aggressive' AI (drawing it closer) and negatively for a 'Defensive' AI (pushing it away). The base weight for this factor is <b className="font-mono">50</b>.
             </li>
             <li>
-                <strong className="text-white">Centrality Score:</strong> A strong, constant preference for moving away from edges and corners. This incentivizes the AI to maintain open space around it, maximizing future maneuverability.
+                <strong className="text-white">Centrality Score:</strong> A preference for moving away from edges and corners to maintain maneuverability. The weight varies by stance: <b className="font-mono">Defensive (0.5)</b>, <b className="font-mono">Balanced (0.2)</b>, <b className="font-mono">Aggressive (0.1)</b>.
             </li>
              <li>
-                <strong className="text-white">Cover Score:</strong> A significant bonus is awarded for any move that ends in a tactically advantageous position, such as a nebula cell or an asteroid field.
+                <strong className="text-white">Cover Score:</strong> A significant bonus is awarded for moving into cover. The base weight is <b className="font-mono">1.5</b>, with bonuses of <b className="font-mono">+10</b> for standard cover and an additional <b className="font-mono">+15</b> for deep nebula concealment.
             </li>
             <li>
-                <strong className="text-white">Range Score:</strong> In a 'Balanced' stance, this score is the primary driver. It evaluates how close a potential move gets the ship to its calculated ideal engagement range.
+                <strong className="text-white">Range Score:</strong> In a 'Balanced' stance, this score is the primary driver, weighted by <b className="font-mono">5</b>. It evaluates how close a potential move gets the ship to its calculated ideal engagement range.
             </li>
         </ul>
         <p className="text-text-secondary mt-2">
@@ -73,10 +95,12 @@ export const AIBehaviorSection: React.FC = () => (
                 <strong className="text-accent-yellow">Cost Calculation:</strong> The AI calculates the potential for self-damage or friendly fire. It iterates through each storm cell on the torpedo's path, calculating the specific probability of a detonation in that cell. If the firing ship or an allied ship is in that cell, the potential 50% splash damage is added to the "Expected Cost".
             </li>
              <li>
-                <strong className="text-accent-yellow">Factional Risk Aversion:</strong> The final decision is filtered through a faction-specific "Risk Aversion Factor". A launch is only authorized if the Expected Reward is significantly greater than the Expected Cost.
-                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong className="text-red-400">Klingons:</strong> Low risk aversion. They are willing to accept a high probability of collateral damage for a chance at a glorious victory.</li>
-                    <li><strong className="text-green-400">Romulans:</strong> Very high risk aversion. Pragmatic and asset-focused, they will abort any launch that has a significant chance of causing self-damage, regardless of potential reward.</li>
+                <strong className="text-accent-yellow">Factional Risk Aversion:</strong> A launch is only authorized if <code className="text-white bg-black p-1 rounded">Reward > Cost &times; RiskFactor</code>.
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm font-mono">
+                    <li><b className="text-red-400">Klingon Risk Factor:</b> 1.25 (Low Aversion)</li>
+                    <li><b className="text-orange-400">Pirate Risk Factor:</b> 1.75</li>
+                    <li><b className="text-blue-400">Federation Risk Factor:</b> 3.0</li>
+                    <li><b className="text-green-400">Romulan Risk Factor:</b> 3.5 (High Aversion) - Romulans also have a hard limit and will abort any launch with over a <b className="text-white">40%</b> chance of self-detonation.</li>
                     <li><strong className="text-blue-400">Federation Allies:</strong> Extremely averse to friendly fire. The potential cost of harming an allied vessel is weighted heavily in their calculations.</li>
                     <li><strong className="text-orange-400">Pirates:</strong> Selfish and opportunistic. Their cost calculation only considers potential self-damage; they are completely indifferent to the fate of other "allied" pirate ships.</li>
                 </ul>
@@ -96,18 +120,36 @@ export const AIBehaviorSection: React.FC = () => (
                 </ul>
             </li>
             <li>
-                <strong className="text-accent-yellow">Derelict Capture &amp; Salvage:</strong> AI ships are now opportunistic. If an AI vessel is adjacent to a derelict ship, it may attempt to capture it. This process takes 4 turns, after which the derelict will join the capturing faction's fleet. However, the decision to capture depends on the AI's doctrine:
+                <strong className="text-accent-yellow">Derelict Ship Doctrine (Capture vs. Destroy):</strong> AI ships now treat derelict vessels not just as opportunities, but as strategic objectives to either be claimed or denied to the enemy. Their approach is now strictly dictated by factional doctrine. Note that any capture attempt requires the vessel to be adjacent to the derelict and have a security team and 5 dilithium available.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li><strong>Klingon &amp; Pirate:</strong> Will *always* attempt to capture an adjacent derelict, viewing it as a prize of war or salvage.</li>
-                    <li><strong>Federation &amp; Romulan:</strong> Will only consider capturing if they are not under immediate threat (in a 'Balanced' stance). Even then, they will only commit to a capture operation about 30% of the time, weighing the tactical advantage against their primary mission objectives.</li>
-                    <li><strong>Independent Vessels:</strong> As non-combatants, they will <strong className="text-white">never</strong> attempt to capture derelict vessels.</li>
+                    <li><strong className="text-white">Federation &amp; Pirate Doctrine (Acquisition):</strong> These factions are fundamentally opportunistic. If a Federation or Pirate vessel is adjacent to a derelict, it will <strong className="text-white">always (100% chance)</strong> attempt to initiate a capture operation. This becomes their primary objective, overriding any other combat maneuvers for that turn. For Starfleet, this is a rescue and recovery operation; for Pirates, it is a purely profitable salvage run.</li>
+                    <li><strong className="text-red-400">Klingon Doctrine (Prizes of War vs. Honorable Destruction):</strong> A Klingon captain sees a derelict as either a trophy or a dishonorable hulk. True glory is found in battle, not in scavenging. When adjacent to a derelict, a Klingon vessel has a:
+                        <ul className="list-[square] list-inside ml-6 mt-1 font-mono">
+                            <li><b>90% chance</b> to destroy the vessel.</li>
+                            <li><b>10% chance</b> to capture the vessel as a prize of war.</li>
+                        </ul>
+                    </li>
+                    <li><strong className="text-green-400">Romulan Doctrine (Calculated Neutralization):</strong> A Romulan commander views a derelict as a security risk and a source of intelligence to be denied to the enemy. When adjacent to a derelict, a Romulan vessel has a:
+                         <ul className="list-[square] list-inside ml-6 mt-1 font-mono">
+                            <li><b>95% chance</b> to destroy the vessel.</li>
+                            <li><b>5% chance</b> to capture the vessel for intelligence analysis.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Independent Vessels:</strong> As non-combatants, they will <strong className="text-white">never</strong> attempt to capture or destroy derelict vessels.</li>
                 </ul>
             </li>
             <li>
                 <strong className="text-accent-yellow">Conservative Repair Doctrine:</strong> AI captains are aware that their **Repair Points** are a finite resource. Their damage control logic is designed for conservation.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li>AI ships will only initiate repairs on a system if it falls below a critical operational threshold (e.g., Hull below 30%, Engines below 55%).</li>
-                    <li>To avoid wasting points on non-essential repairs, the AI will automatically cease repairs once a system reaches a state of acceptable functionality (e.g., Hull at 40%), rather than repairing it all the way to 100%.</li>
+                    <li>AI ships will only initiate repairs on a system if it falls below a critical operational threshold:
+                        <ul className="list-[square] list-inside ml-6 mt-1 font-mono">
+                            <li><b>Life Support:</b> &lt; 30%</li>
+                            <li><b>Hull:</b> &lt; 30%</li>
+                            <li><b>Engines:</b> &lt; 55%</li>
+                            <li><b>Weapons:</b> &lt; 80% (in combat only)</li>
+                        </ul>
+                    </li>
+                    <li>To avoid wasting points, the AI will automatically cease repairs once a system reaches a state of acceptable functionality (e.g., Hull at 40%, Engines at 60%), rather than repairing it all the way to 100%.</li>
                  </ul>
             </li>
              <li>
@@ -134,7 +176,7 @@ export const AIBehaviorSection: React.FC = () => (
                 </ul>
             </li>
             <li>
-                <strong className="text-accent-yellow">Desperation Moves:</strong> When a vessel's hull integrity drops below 30%, they have a scaling chance to initiate a faction-specific "last stand" maneuver.
+                <strong className="text-accent-yellow">Desperation Moves:</strong> When a vessel's hull integrity drops below 30%, they have a linearly scaling chance to initiate a faction-specific "last stand" maneuver, from <b className="text-white">0% at 30% hull</b> to <b className="text-white">100% at 0% hull</b>.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
                     <li><strong>Klingons:</strong> Will attempt to ram the player's ship.</li>
                     <li><strong>Romulans:</strong> Will attempt a risky, unstable warp jump to escape.</li>
@@ -143,6 +185,24 @@ export const AIBehaviorSection: React.FC = () => (
                  </ul>
             </li>
         </ul>
+        <div className="p-3 bg-black rounded border-l-4 border-primary-main my-4">
+            <h4 className="font-bold text-primary-light">Tactical Scenario: The Derelict Cruiser</h4>
+            <p className="text-sm text-text-secondary mt-2">
+                <strong>SITUATION:</strong> A derelict Constitution-class cruiser is adrift. A Federation Defiant-class, a Klingon B'rel-class, and a Romulan Valdore-type are all adjacent to it. A Pirate Raider is two hexes away.
+            </p>
+            <p className="text-sm text-text-secondary mt-2">
+                <strong>PREDICTED OUTCOMES:</strong>
+            </p>
+            <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm text-text-secondary">
+                <li>The <strong className="text-blue-400">Federation</strong> ship, driven by its rescue/recovery doctrine, will immediately begin a capture operation, ignoring the other vessels.</li>
+                <li>The <strong className="text-red-400">Klingon</strong> ship, in 9 out of 10 simulations, will target the derelict with its disruptors, viewing its destruction as an honorable necessity. In a rare 1/10 case, it might race the Federation to capture it.</li>
+                <li>The <strong className="text-green-400">Romulan</strong> ship will almost certainly (19 out of 20 simulations) target the derelict with plasma torpedoes to deny the asset to all other parties.</li>
+                <li>The <strong className="text-orange-400">Pirate</strong> ship, seeing the opportunity, will ignore all threats and move to get adjacent, preparing to initiate its own capture attempt on the next turn.</li>
+            </ul>
+            <p className="text-sm text-text-secondary mt-2">
+                <strong>ANALYSIS:</strong> This scenario creates a "race against time." The Federation and Pirates must complete their capture operations before the Klingons or Romulans succeed in destroying the prize. Captains can use this predictable behavior to their advantage, either by protecting the derelict or by using it as a distraction to engage a preoccupied enemy.
+            </p>
+        </div>
 
         <SubHeader>Resource Parity & System Failures</SubHeader>
         <p className="text-text-secondary mb-2">
@@ -152,11 +212,12 @@ export const AIBehaviorSection: React.FC = () => (
             <li>
                 <strong className="text-white">Energy Grid:</strong> AI ships generate and consume energy based on their class, power allocation, and system damage. They possess a finite reserve power pool.
             </li>
-            <li>
-                <strong className="text-white">Emergency Dilithium Use:</strong> If an AI ship's reserve power is depleted, it will automatically use its own supply of Dilithium crystals for an emergency recharge.
-            </li>
-            <li>
-                <strong className="text-white">Consequential Damage Risk:</strong> Crucially, this emergency power transfer carries the same risk for the AI as it does for the player. Each dilithium crystal used introduces a 25% cumulative chance of a feedback surge that will damage a random subsystem. A tactically astute captain can exploit this by forcing an enemy into a high-consumption defensive stance (e.g., activating point-defense), draining their power, and potentially causing them to damage their own systems in a desperate attempt to stay operational.
+            <li><strong className="text-white">Emergency Dilithium Use:</strong> If an AI ship's reserve power is depleted, it will automatically use its own supply of Dilithium crystals for an emergency recharge.</li>
+            <li><strong className="text-white">Consequential Damage Risk:</strong> Crucially, this emergency power transfer carries the same risk for the AI as it does for the player.
+                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>Each dilithium crystal used introduces a <b className="text-yellow-400">25% cumulative chance</b> of a feedback surge that will damage a random subsystem.</li>
+                    <li>The <b className="text-red-400">damage inflicted</b> by a surge scales with the number of crystals consumed.</li>
+                </ul>
             </li>
             <li>
                 <strong className="text-white">Life Support Failure:</strong> AI ships are also subject to the life support failure cascade. A ship with zero power and zero dilithium will become a derelict hulk after 2 turns.

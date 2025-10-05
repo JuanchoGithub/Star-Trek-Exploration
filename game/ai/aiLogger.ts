@@ -1,8 +1,20 @@
-
 import type { Ship, Position, BeamWeapon, BeamAttackResult, TorpedoProjectile, TorpedoType } from '../../types';
 import type { AIStance } from './FactionAI';
 import { torpedoStats } from '../../assets/projectiles/configs/torpedoTypes';
 import { PathfindingResult } from '../pathfinding';
+import { AIDirector } from './AIDirector';
+
+export interface SquadronTargetingScore {
+    targetId: string;
+    totalScore: number;
+    components: {
+        damage: number;
+        vulnerability: number;
+        threat: number;
+        proximity: number;
+        persistence: number;
+    };
+}
 
 export interface StanceLogData {
     ship: Ship;
@@ -16,6 +28,7 @@ export interface StanceLogData {
     turn: number;
     defenseAction?: string | null;
     pathfindingDetails?: PathfindingResult;
+    isCoordinatedTarget?: boolean;
 }
 
 const formatPathfindingDetails = (details: PathfindingResult, stance: AIStance): string => {
@@ -36,8 +49,8 @@ const formatPathfindingDetails = (details: PathfindingResult, stance: AIStance):
             <span class="font-mono" title="Threat Score"><b>Thr:</b> ${candidate.threatComponent.toFixed(1)}</span>
             <span class="font-mono" title="Centrality Score"><b>Ctr:</b> ${candidate.centralityComponent.toFixed(1)}</span>
             <span class="font-mono" title="Cover Score"><b>Cvr:</b> ${candidate.coverComponent.toFixed(1)}</span>`;
-        if (isBalanced) {
-            content += `<span class="font-mono" title="Range Score"><b>Rng:</b> ${(candidate.rangeComponent ?? 0).toFixed(1)}</span>`;
+        if (isBalanced && candidate.rangeComponent !== undefined) {
+            content += `<span class="font-mono" title="Range Score"><b>Rng:</b> ${(candidate.rangeComponent).toFixed(1)}</span>`;
         }
         content += `<span class="font-mono ml-auto"><b>Total: ${candidate.finalScore.toFixed(1)}</b></span></div>`;
     });
@@ -47,7 +60,7 @@ const formatPathfindingDetails = (details: PathfindingResult, stance: AIStance):
 }
 
 export const generateStanceLog = (data: StanceLogData): string => {
-    const { ship, stance, analysisReason, target, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn, defenseAction, pathfindingDetails } = data;
+    const { ship, stance, analysisReason, target, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn, defenseAction, pathfindingDetails, isCoordinatedTarget } = data;
 
     const stanceColor = stance === 'Aggressive' ? 'text-red-500' : stance === 'Defensive' ? 'text-cyan-400' : 'text-yellow-400';
     const moveActionColor = moveAction === 'MOVING' ? 'text-green-400' : 'text-yellow-400';
@@ -57,15 +70,29 @@ export const generateStanceLog = (data: StanceLogData): string => {
         pathfindingHtml = formatPathfindingDetails(pathfindingDetails, stance);
     }
 
+    const targetingReason = isCoordinatedTarget ? '(Squadron Priority)' : '(Closest Threat)';
+    const targetDisplay = target ? `<b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y}) ${targetingReason}</span>` : '<b>None</b>';
+    
+    let subsystemTargetText = 'Hull';
+    if (target) {
+        const factionAI = AIDirector.getAIForFaction(ship.faction);
+        const targetedSub = factionAI.determineSubsystemTarget(ship, target);
+        if (targetedSub) {
+            subsystemTargetText = targetedSub.charAt(0).toUpperCase() + targetedSub.slice(1);
+        }
+    }
+
+
     const logMessage = `
     <div class="${ship.logColor.replace('border-', 'text-')} font-bold">${ship.name} Turn Analysis (T${turn}):</div>
     <div class="text-sm pl-2">
       <div class="font-bold">Threat Assessment:</div>
-      <div>&nbsp;&nbsp;Target: ${target ? `<b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span>` : '<b>None</b>'}</div>
+      <div>&nbsp;&nbsp;Target: ${targetDisplay}</div>
       <div>&nbsp;&nbsp;Targeted By: ${shipsTargetingMe.length > 0 ? `<b>${shipsTargetingMe.length} ship(s)</b>` : '<b>None</b>'} <span class="text-text-disabled">(Threat: ${ship.threatInfo?.total.toFixed(2) || '0.00'})</span></div>
       ${defenseAction ? `<div>&nbsp;&nbsp;Defense: <b class="text-orange-400">${defenseAction}</b></div>` : ''}
       <div class="font-bold mt-1">Tactical Decision:</div>
       <div>&nbsp;&nbsp;Stance: <b class="${stanceColor}">${stance}</b> <i class="text-text-disabled">(${analysisReason})</i></div>
+      <div>&nbsp;&nbsp;Subsystem Focus: <b class="text-yellow-400">${subsystemTargetText}</b></div>
       <div>&nbsp;&nbsp;Power: <span class="text-red-400">W:${ship.energyAllocation.weapons}%</span> <span class="text-cyan-400">S:${ship.energyAllocation.shields}%</span> <span class="text-green-400">E:${ship.energyAllocation.engines}%</span></div>
       <div class="font-bold mt-1">Maneuver Execution:</div>
       <div>&nbsp;&nbsp;Action: <b class="${moveActionColor}">${moveAction}</b> from (${originalPosition.x},${originalPosition.y}) to (${ship.position.x},${ship.position.y})</div>
@@ -104,7 +131,7 @@ export interface FleeLogData {
     ship: Ship;
     stance: AIStance;
     analysisReason: string;
-    target: Ship;
+    target: Ship | null;
     shipsTargetingMe: Ship[];
     moveAction: 'MOVING' | 'HOLDING';
     originalPosition: Position;
@@ -118,12 +145,13 @@ export const generateFleeLog = (data: FleeLogData): string => {
     
     const stanceColor = 'text-cyan-400';
     const moveActionColor = moveAction === 'MOVING' ? 'text-green-400' : 'text-yellow-400';
+    const targetDisplay = target ? `<b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span>` : '<b>last known position</b>';
 
     const logMessage = `
-    <div class="text-yellow-400 font-bold">${ship.name} Turn Analysis (T${turn}):</div>
+    <div class="${ship.logColor.replace('border-', 'text-')} font-bold">${ship.name} Turn Analysis (T${turn}):</div>
      <div class="text-sm pl-2">
       <div class="font-bold">Threat Assessment:</div>
-      <div>&nbsp;&nbsp;Primary Threat: <b>${target.name}</b> <span class="text-text-disabled">(${target.position.x},${target.position.y})</span></div>
+      <div>&nbsp;&nbsp;Primary Threat: ${targetDisplay}</div>
        ${defenseAction ? `<div>&nbsp;&nbsp;Defense: <b class="text-orange-400">${defenseAction}</b></div>` : ''}
       <div class="font-bold mt-1">Tactical Decision:</div>
       <div>&nbsp;&nbsp;Stance: <b class="${stanceColor}">${stance}</b> <i class="text-text-disabled">(${analysisReason})</i></div>
@@ -146,6 +174,84 @@ const getFactionStyle = (faction: string) => {
         default: return 'text-gray-300';
     }
 };
+
+export const generateSquadronTargetingLog = (
+    squadron: Ship[],
+    allegiance: Required<Ship>['allegiance'],
+    potentialTargets: Ship[],
+    scoringDetails: SquadronTargetingScore[]
+): string => {
+    const squadronName = `${allegiance.charAt(0).toUpperCase() + allegiance.slice(1)} Squadron`;
+    const finalDecision = scoringDetails.length > 0 ? scoringDetails[0].targetId : null;
+    const finalTarget = potentialTargets.find(t => t.id === finalDecision);
+
+    let squadronComposition = '<ul>';
+    squadron.forEach(ship => {
+        squadronComposition += `<li>${ship.name} (${ship.shipClass}) at (${ship.position.x},${ship.position.y})</li>`;
+    });
+    squadronComposition += '</ul>';
+
+    let targetAnalysisTable = `
+        <table class="w-full text-xs mt-1 border-collapse">
+            <thead class="bg-black/30">
+                <tr>
+                    <th class="p-1 border border-border-dark text-left">Target</th>
+                    <th class="p-1 border border-border-dark" title="Damage Level Score">Dmg</th>
+                    <th class="p-1 border border-border-dark" title="Vulnerability Score">Vuln</th>
+                    <th class="p-1 border border-border-dark" title="Threat Score">Thr</th>
+                    <th class="p-1 border border-border-dark" title="Proximity Score">Prox</th>
+                    <th class="p-1 border border-border-dark" title="Persistence Bonus">Persist</th>
+                    <th class="p-1 border border-border-dark">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    scoringDetails.forEach(detail => {
+        const target = potentialTargets.find(t => t.id === detail.targetId);
+        if (!target) return;
+        
+        const isChosen = detail.targetId === finalDecision;
+        const rowClass = isChosen ? 'bg-yellow-900/50' : '';
+
+        targetAnalysisTable += `
+            <tr class="${rowClass}">
+                <td class="p-1 border border-border-dark">${target.name}</td>
+                <td class="p-1 border border-border-dark text-center">${detail.components.damage.toFixed(0)}</td>
+                <td class="p-1 border border-border-dark text-center">${detail.components.vulnerability.toFixed(0)}</td>
+                <td class="p-1 border border-border-dark text-center">${detail.components.threat.toFixed(0)}</td>
+                <td class="p-1 border border-border-dark text-center">${detail.components.proximity.toFixed(0)}</td>
+                <td class="p-1 border border-border-dark text-center">${detail.components.persistence.toFixed(0)}</td>
+                <td class="p-1 border border-border-dark text-center font-bold">${detail.totalScore.toFixed(0)}</td>
+            </tr>
+        `;
+    });
+    
+    if(scoringDetails.length === 0) {
+        targetAnalysisTable += '<tr><td colspan="7" class="p-1 border border-border-dark text-center italic">No valid targets in sensor range.</td></tr>';
+    }
+
+    targetAnalysisTable += '</tbody></table>';
+
+    const decisionText = finalTarget 
+        ? `Primary target designated: <b class="${getFactionStyle(finalTarget.faction)}">${finalTarget.name}</b>.`
+        : 'No target designated.';
+
+    const logMessage = `
+    <div class="text-yellow-400 font-bold">Squadron Target Designation (${squadronName}):</div>
+    <div class="text-sm pl-2">
+      <div class="font-bold">Squadron Composition:</div>
+      <div class="pl-2 text-xs">${squadronComposition}</div>
+      <div class="font-bold mt-1">Target Analysis:</div>
+      ${targetAnalysisTable}
+      <div class="font-bold mt-1">Final Decision:</div>
+      <div class="pl-2">${decisionText}</div>
+    </div>
+    `.replace(/\n/g, '').replace(/  +/g, ' ');
+
+    return logMessage;
+};
+
 
 export const generateBeamAttackLog = (source: Ship, target: Ship, weapon: BeamWeapon, result: BeamAttackResult): string => {
     const phaserColor = 'text-red-400';

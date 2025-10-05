@@ -16,22 +16,28 @@ export const MechanicsSection: React.FC = () => (
         <p className="text-text-secondary">Your ship's power is a dynamic resource. Managing the balance between power generation and consumption is the key to victory.</p>
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
             <li><strong>Power Generation:</strong> Your ship generates a baseline amount of energy each turn. This generation is directly affected by your <span className="text-green-400">Engine</span> power allocation and the health of your engine subsystem.
-                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
-                    <li>At <span className="font-bold">33% power</span>, engines provide <span className="font-bold">100% (1x)</span> of baseline energy generation.</li>
-                    <li>At <span className="font-bold">100% power</span>, engines are overloaded to provide <span className="font-bold">200% (2x)</span> energy generation.</li>
-                     <li>At <span className="font-bold">0% power</span>, engines provide only <span className="font-bold">50% (0.5x)</span> energy generation.</li>
-                    <li>Engine <span className="text-red-400">damage</span> reduces this output proportionally. An engine at 50% health will produce only 50% of its potential energy.</li>
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm font-mono">
+                    <li><b>0% Power Allocation:</b> <span className="text-yellow-400">0.5x</span> Base Generation</li>
+                    <li><b>33% Power Allocation:</b> <span className="text-green-400">1.0x</span> Base Generation (Standard)</li>
+                    <li><b>100% Power Allocation:</b> <span className="text-green-400">2.0x</span> Base Generation (Overload)</li>
+                    <li>Engine <span className="text-red-400">damage</span> reduces this output proportionally. An engine at 50% health will produce only 50% of its potential energy at any allocation level.</li>
                  </ul>
             </li>
-            <li><strong>Shield Regeneration:</strong> At Red Alert, your shields regenerate each turn. The base regeneration rate is a flat value of <span className="font-bold text-accent-yellow">7 points</span>, which is then modified by your power allocation to Shields and the health of your shield emitters. Because this is a flat rate, larger ships with more total shield capacity (e.g., a Dreadnought) will take significantly longer to recharge from a depleted state than smaller ships (e.g., an Escort).</li>
-            <li><strong>Power Consumption:</strong> Every online system on your ship consumes power each turn. This includes weapons, shields, life support, and more. A fully operational ship at Green Alert with 33% power to engines has a <span className="font-bold">net zero</span> energy change; generation perfectly matches consumption.</li>
-            <li><strong>Reserve Power (Battery):</strong> This is your energy buffer. Any deficit between generation and consumption is drained from this pool. Activating systems like <span className="text-cyan-400">Shields</span> (Red Alert), <span className="text-orange-400">Point-Defense</span>, or <span className="text-yellow-400">Evasive Maneuvers</span> drastically increases consumption, causing a drain on your reserves. Any surplus energy will recharge this pool.</li>
+            <li><strong>Shield Regeneration:</strong> At Red Alert, your shields regenerate each turn. The base regeneration rate is a flat value of <span className="font-bold text-accent-yellow">7 points</span>, which is then modified by your power allocation to Shields and the health of your shield emitters. Because this is a flat rate, larger ships with more total shield capacity will take longer to recharge from a depleted state than smaller ships.</li>
+            <li><strong>Power Consumption:</strong> Every online system on your ship consumes passive power each turn. A fully operational ship at Green Alert with 33% power to engines has a net zero energy change. Activating tactical systems adds a significant drain to your passive consumption:
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm font-mono">
+                    <li><b className="text-cyan-400">Shields (Red Alert):</b> +20 Power/turn</li>
+                    <li><b className="text-yellow-400">Evasive Maneuvers:</b> +10 Power/turn</li>
+                    <li><b className="text-orange-400">Point-Defense:</b> +15 Power/turn</li>
+                 </ul>
+            </li>
+            <li><strong>Reserve Power (Battery):</strong> This is your energy buffer. Any deficit between generation and consumption is drained from this pool. Any surplus energy will recharge this pool.</li>
             <li>
                 <strong>Emergency Dilithium Use:</strong> If your Reserve Power is insufficient for an action or end-of-turn upkeep, the ship will automatically consume Dilithium crystals to compensate. This is a volatile process.
-                <ul className="list-[circle] list-inside ml-6 mt-1 text-sm text-yellow-400">
-                    <li><strong className="text-white">Consequential Damage (Chance):</strong> Each dilithium crystal used in a single emergency power event adds a cumulative 25% chance of causing a feedback surge that will damage a random, functioning subsystem. This risk is checked once per event. For example, if a large power deficit requires 3 crystals, there is a single check with a 75% chance (25% &times; 3) of causing damage.</li>
-                    <li><strong className="text-white">Consequential Damage (Scaling):</strong> In addition to the increasing chance, the <strong className="text-red-400">amount of damage</strong> dealt during a feedback surge also scales directly with the number of crystals consumed. A surge caused by 3 crystals will inflict three times as much damage to a subsystem as a surge caused by 1 crystal. This makes large energy deficits extremely dangerous to resolve with dilithium.</li>
-                </ul>
+                <div className="p-2 bg-black/30 border-l-2 border-yellow-400 mt-2 text-sm">
+                    <p><strong className="text-white">Consequential Damage (Chance):</strong> Each dilithium crystal used in a single emergency power event adds a cumulative <strong className="text-yellow-400">25% chance</strong> of causing a feedback surge that will damage a random, functioning subsystem. This risk is checked once per event. For example, if a large power deficit requires 3 crystals, there is a single check with a 75% chance (25% &times; 3) of causing damage.</p>
+                    <p className="mt-2"><strong className="text-white">Consequential Damage (Scaling):</strong> In addition to the increasing chance, the <strong className="text-red-400">amount of damage</strong> dealt during a feedback surge also scales directly with the number of crystals consumed. A surge caused by 3 crystals will inflict three times as much damage to a subsystem as a surge caused by 1 crystal. This makes large energy deficits extremely dangerous to resolve with dilithium.</p>
+                </div>
             </li>
             <li><strong>Tactical Trade-offs:</strong> If a system is destroyed, its power consumption is removed from the total. This creates a tactical choice: if you are low on power, you could intentionally leave a non-critical system like the transporter offline to free up energy for shields or weapons.</li>
         </ul>
@@ -42,28 +48,27 @@ export const MechanicsSection: React.FC = () => (
         <div className="p-3 bg-black rounded border-l-4 border-accent-yellow my-4">
             <h4 className="font-bold text-accent-yellow">New Mechanic: Repair Points</h4>
             <p className="text-sm text-text-secondary mt-2">
-                All ships are now equipped with a finite pool of **Repair Points**, representing the onboard supply of spare parts, fabrication materials, and specialized tools. This is a critical resource that must be managed carefully.
+                All ships are now equipped with a finite pool of **Repair Points** (typically <strong className="text-white">200</strong>), representing the onboard supply of spare parts, fabrication materials, and specialized tools. This is a critical resource that must be managed carefully.
             </p>
             <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm text-text-secondary">
-                <li><strong>Capacity:</strong> Most starships begin with a standard capacity of 200 Repair Points.</li>
-                <li><strong>Cost:</strong> The cost to repair a system is proportional to the percentage of its maximum health being restored. For example, restoring 10 HP to a system with 100 max HP (10% health) costs 10 Repair Points.</li>
-                <li><strong>Conservation:</strong> To conserve this finite resource, captains will not repair systems to 100% functionality. Instead, repairs will automatically cease once a system reaches an acceptable, functional threshold (e.g., 50% for Life Support, 40% for Hull).</li>
+                <li><strong>Cost:</strong> The cost to repair a system is proportional to the percentage of its maximum health being restored. For example, restoring 10 HP to a system with 100 max HP (10% of its health) costs 10 Repair Points.</li>
+                <li><strong>Conservation:</strong> To conserve this finite resource, AI captains will not repair systems to 100% functionality. Instead, repairs will automatically cease once a system reaches an acceptable, functional threshold (e.g., 50% for Life Support, 40% for Hull). Player-directed repairs will continue as long as points are available.</li>
                 <li><strong>Resupply:</strong> Repair Points can be fully restored by docking at a friendly starbase.</li>
             </ul>
         </div>
         <p>Damage can be repaired in two ways:</p>
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes Repair Points. The amount repaired per turn is determined by your ship's `Repair Rate`.</li>
+            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This occurs at the end of each turn and consumes Repair Points. The amount repaired per turn is determined by your ship's `Repair Rate` (typically <strong className="text-white">5 HP</strong>).</li>
             <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems and resupply of Repair Points, free of charge. You can also resupply torpedoes and dilithium here.</li>
         </ul>
         <SubHeader>Laser Point-Defense System (LPDS)</SubHeader>
         <p className="text-text-secondary">The LPDS is a specialized, short-range defensive system designed to intercept incoming torpedoes. It can be toggled in the Ship Status panel.</p>
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
             <li><strong>Function:</strong> When active, the LPDS grid will automatically target and attempt to destroy <span className="font-bold text-white">one</span> incoming hostile torpedo per turn. It will prioritize the most dangerous torpedo type first.</li>
-            <li><strong>Effectiveness:</strong> The system's chance to successfully intercept a torpedo is equal to its current subsystem health percentage. A system at 75% health has a 75% chance to hit.</li>
-            <li><strong>Range:</strong> The system is effective only at extremely close range, targeting torpedoes in adjacent cells (<span className="font-bold text-white">1 hex</span>).</li>
-            <li><strong>Energy Cost:</strong> The LPDS adds a significant drain to your passive power consumption each turn it is active.</li>
-            <li><strong>Tactical Trade-off:</strong> Activating the LPDS requires a significant power diversion from your main phaser arrays. While active, your phaser damage is reduced by <span className="font-bold text-accent-red">40%</span>, and their effective range for damage falloff calculations is increased by one hex (e.g., a shot at 2 hexes is calculated as if it were 3).</li>
+            <li><strong>Effectiveness:</strong> The system's chance to successfully intercept a torpedo is equal to its current subsystem health percentage. A system at 75% health has a <strong className="text-white">75% chance to hit</strong>.</li>
+            <li><strong>Range:</strong> The system is effective only at extremely close range, targeting torpedoes in adjacent cells (<strong className="text-white">1 hex</strong>).</li>
+            <li><strong>Energy Cost:</strong> The LPDS adds a drain of <strong className="text-white">15 power</strong> to your passive consumption each turn it is active.</li>
+            <li><strong>Tactical Trade-off:</strong> Activating the LPDS requires a significant power diversion from your main phaser arrays. While active, your phaser damage is reduced by <strong className="text-accent-red">40%</strong>, and their effective range for damage falloff calculations is penalized by one hex (e.g., a shot at 2 hexes is calculated as if it were 3).</li>
         </ul>
         <SubHeader>Environmental Hazards</SubHeader>
         <p className="text-text-secondary mb-4">The Typhon Expanse is fraught with perilous environmental conditions that can be turned into a tactical advantage or a fatal mistake. Understanding their precise effects is critical to survival.</p>
@@ -72,37 +77,35 @@ export const MechanicsSection: React.FC = () => (
                 <h4 className="font-bold text-gray-400">Asteroid Fields</h4>
                 <p className="text-sm text-text-secondary mt-1">Dense fields of rock and ice that provide cover but pose a significant risk to navigation and projectiles.</p>
                 <ul className="list-disc list-inside ml-4 mt-2 text-sm text-text-secondary space-y-1">
-                    <li><strong>Phaser Accuracy:</strong> Reduces accuracy of incoming phaser fire against ships within them by <strong className="text-white">30%</strong> (x0.70 multiplier).</li>
+                    <li><strong>Phaser Accuracy:</strong> Reduces accuracy of phaser fire against targets inside the field by <strong className="text-white">30%</strong> (x0.70 multiplier).</li>
                     <li><strong>Sensor Cover:</strong> Ships inside a field are only detectable within <strong className="text-white">4 hexes</strong>, and can only be targeted by weapons from <strong className="text-white">2 hexes</strong> or less.</li>
-                    <li><strong>Torpedo Collisions:</strong> Torpedoes traveling through an asteroid field cell have a <strong className="text-white">40% chance</strong> of being destroyed by a collision.</li>
+                    <li><strong>Torpedo Collisions:</strong> Torpedoes traveling through an asteroid field cell have a <strong className="text-white">40% chance per cell</strong> of being destroyed by a collision.</li>
                     <li><strong>Navigational Hazard:</strong> Ending a turn inside an asteroid field risks taking micrometeoroid hull damage.</li>
                 </ul>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-purple-400">Nebulae</h4>
                 <p className="text-sm text-text-secondary mt-1">Dense clouds of gas and dust that disrupt sensors and targeting systems. Torpedoes are unaffected by nebulae.</p>
-                <ul className="list-disc list-inside ml-4 mt-2 text-sm text-text-secondary space-y-1">
-                    <li><strong>Phaser Accuracy:</strong> Reduces accuracy of phaser fire against targets inside a nebula by <strong className="text-white">25%</strong> (x0.75 multiplier).</li>
-                    <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, sensor range is reduced to adjacent cells only (<strong className="text-white">1 hex</strong>).</li>
-                    <li><strong>Deep Nebula Concealment:</strong> A ship in a cell completely surrounded by 8 other nebula cells is rendered completely invisible on sensors.</li>
+                <ul className="list-disc list-inside ml-4 mt-2 text-sm text-text-secondary space-y-1 font-mono">
+                     <li><strong>Phaser Accuracy:</strong> Reduces accuracy of phaser fire against targets inside a nebula by <strong className="text-white">25%</strong> (x0.75 multiplier).</li>
+                     <li><strong>Sensor Reduction:</strong> While your ship is inside a nebula cell, sensor range is reduced to adjacent cells only (<strong className="text-white">1 hex</strong>).</li>
+                     <li><strong>Deep Nebula Concealment:</strong> A ship in a cell completely surrounded by 8 other nebula cells is rendered completely invisible on sensors.</li>
                 </ul>
             </div>
             <div className="p-3 bg-bg-paper-lighter rounded">
                 <h4 className="font-bold text-yellow-400">Ion Storms</h4>
-                <p className="text-sm text-text-secondary mt-1">Extremely hazardous phenomena that affect ship systems and projectiles at the end of each turn.</p>
-                <h5 className="font-bold text-white pt-2 text-sm">End-of-Turn Ship Hazards:</h5>
                 <p className="text-sm text-text-secondary">If a ship ends its turn in an ion storm, a single effect from the following list (if its chance succeeds) is chosen at random and applied:</p>
-                <ul className="list-disc list-inside ml-4 mt-2 font-mono text-xs text-text-secondary">
-                    <li><strong className="text-white">Hull Damage (10% chance):</strong> Inflicts damage equal to 5% of the ship's maximum hull.</li>
-                    <li><strong className="text-white">Shields Offline (5% chance):</strong> Instantly depletes shields and prevents them from being raised for 2 turns.</li>
-                    <li><strong className="text-white">Shield System Damage (15% chance):</strong> Inflicts damage equal to 10% of the shield subsystem's maximum health.</li>
-                    <li><strong className="text-white">Weapons Offline (7% chance):</strong> Prevents all weapon use for 2 turns.</li>
-                    <li><strong className="text-white">Reserve Power Depleted (7% chance):</strong> Instantly drains all reserve energy to zero.</li>
-                    <li><strong className="text-white">Impulse Engines Disabled (23% chance):</strong> Prevents all movement for 1 turn.</li>
-                    <li><strong className="text-white">Phaser Ionization (55% chance):</strong> Reduces all phaser damage by 70% for 2 turns.</li>
+                <ul className="list-disc list-inside ml-4 mt-2 font-mono text-xs text-text-secondary space-y-1">
+                    <li><b>10% Chance:</b> Hull Damage (5% of max hull)</li>
+                    <li><b>5% Chance:</b> Shields Offline (2 turns)</li>
+                    <li><b>15% Chance:</b> Shield System Damage (10% of max health)</li>
+                    <li><b>7% Chance:</b> Weapons Offline (2 turns)</li>
+                    <li><b>7% Chance:</b> Reserve Power Depleted</li>
+                    <li><b>23% Chance:</b> Impulse Engines Disabled (1 turn)</li>
+                    <li><b>55% Chance:</b> Phaser Ionization (-70% damage for 2 turns)</li>
                 </ul>
                 <h5 className="font-bold text-white pt-2 text-sm">Projectile Hazard: In-Flight Detonation</h5>
-                <p className="text-sm text-text-secondary">Launched torpedoes have a <strong className="text-white">20% chance per cell</strong> of prematurely detonating while traveling through an ion storm. Any ship in the detonation cell suffers <strong className="text-white">50% splash damage</strong>.</p>
+                <p className="text-sm text-text-secondary">Launched torpedoes have a <strong className="text-white">20% chance per cell</strong> of prematurely detonating while traveling through an ion storm. Any ship in the detonation cell (friend or foe) suffers <strong className="text-white">50% of the torpedo's base damage</strong> as splash damage.</p>
             </div>
         </div>
         <SubHeader>Ship Systems Breakdown</SubHeader>

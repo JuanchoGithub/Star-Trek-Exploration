@@ -423,9 +423,24 @@ export function processCommonTurn(
     defenseActionTaken: string | null,
     claimedCellsThisTurn: Set<string>,
     allShipsInSector: Ship[],
+    priorityTargetId: string | null,
     optimalRangeOverride?: number
 ) {
-    const primaryTarget = findClosestTarget(ship, potentialTargets);
+    let primaryTarget: Ship | null = null;
+    let isCoordinatedTarget = false;
+
+    // --- TARGET SELECTION ---
+    if (priorityTargetId) {
+        const priorityTarget = potentialTargets.find(t => t.id === priorityTargetId);
+        if (priorityTarget) {
+            primaryTarget = priorityTarget;
+            isCoordinatedTarget = true;
+        }
+    }
+
+    if (!primaryTarget) {
+        primaryTarget = findClosestTarget(ship, potentialTargets);
+    }
     ship.currentTargetId = primaryTarget ? primaryTarget.id : null;
 
     // Update targeting info for focus fire
@@ -614,7 +629,7 @@ export function processCommonTurn(
 
     const finalLogMessage = generateStanceLog({
         ship, stance, analysisReason, target: primaryTarget, shipsTargetingMe, moveAction, originalPosition, moveRationale, turn: gameState.turn, defenseAction: defenseActionTaken,
-        pathfindingDetails: moveResult
+        pathfindingDetails: moveResult, isCoordinatedTarget
     });
   
     actions.addLog({ sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, message: finalLogMessage, isPlayerSource: false, color: ship.logColor, category: 'stance' });

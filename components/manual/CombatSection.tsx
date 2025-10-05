@@ -5,9 +5,9 @@ const ShieldLeakageExplanation: React.FC = () => (
     <div className="mt-2">
         <dt className="font-bold text-text-secondary">Phaser Shield Leakage (Probabilistic):</dt>
         <dd className="mt-1 text-sm text-text-primary">
-            <p>Phaser fire against shielded targets now has a chance to "leak" a portion of its damage directly to the hull, bypassing the shields entirely. This mechanic makes every phaser hit meaningful and prevents combat stalemates.</p>
+            <p>Phaser fire against shielded targets has a chance to "leak" a portion of its damage directly to the hull. This mechanic makes every phaser hit meaningful and prevents combat stalemates.</p>
             <ul className="list-disc list-inside ml-4 my-2 space-y-1">
-                <li>The chance of a leak is calculated based on the target's current shield percentage. It starts at a base of <strong className="text-white">5%</strong> against full shields and increases exponentially as shields weaken. A ship at 50% shields has a ~29% chance of suffering a leak, while a ship at 10% shields has a ~82% chance.</li>
+                <li>The chance of a leak is calculated based on the target's current shield percentage. It starts at a base of <strong className="text-white">5%</strong> against full shields and increases exponentially as shields weaken. For example, a ship at 50% shields has a <strong className="text-white">~29% chance</strong> of suffering a leak, while a ship at 10% shields has a <strong className="text-white">~82% chance</strong>.</li>
                 <li>If a leak occurs, the amount of damage that bypasses the shields is also proportional to the leakage chance.</li>
                 <li>Any successful leak that would deal less than 1 point of damage is rounded up to a minimum of <strong className="text-white">1 point</strong>, ensuring even glancing hits have an impact.</li>
                 <li>The combat log will explicitly state the chance of leakage, whether the check succeeded or failed, and the amount of damage that penetrated.</li>
@@ -54,9 +54,9 @@ export const CombatSection: React.FC = () => {
         <SubHeader>Projectile Weapons (Torpedoes)</SubHeader>
         <div className="p-3 bg-bg-paper-lighter rounded my-4">
             <h4 className="text-lg font-bold text-accent-yellow">Shield Absorption</h4>
-            <p className="text-text-secondary">Unlike energy weapons, torpedoes do not "leak" through shields. Instead, their kinetic and explosive energy is absorbed by the shield bubble. Shields are highly effective at mitigating this type of damage, but at a significant energy cost.</p>
-             <p className="text-center font-bold text-2xl my-4 text-white">4 Shield Points : 1 Torpedo Damage</p>
-             <p className="text-text-secondary">For every 4 points of energy drained from the shield grid, 1 point of incoming torpedo damage is negated. This makes torpedoes exceptionally good at draining shield power, but less effective at dealing hull damage to a fully shielded target.</p>
+            <p className="text-text-secondary">Unlike energy weapons, torpedoes do not "leak" through shields. Instead, their kinetic and explosive energy is absorbed by the shield bubble. Shields are highly effective at mitigating this type of damage, but at a significant cost to shield integrity.</p>
+             <p className="text-center font-bold text-2xl my-4 text-white">4 Shield HP : 1 Torpedo Damage</p>
+             <p className="text-text-secondary">For every 4 points of shield HP drained from the grid, 1 point of incoming torpedo damage is negated. This makes torpedoes exceptionally good at draining shield power, but less effective at dealing hull damage to a fully shielded target.</p>
         </div>
         <p className="text-text-secondary mb-4">All torpedoes have a chance to miss that increases with distance. Different torpedo types (Photon, Quantum, Plasma) have different base accuracies and modifiers. For a detailed breakdown of hit chances for each weapon type, please consult the <strong className="text-white">Weapon Systems Registry</strong>.</p>
     </div>

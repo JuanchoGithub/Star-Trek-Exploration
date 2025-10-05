@@ -23,10 +23,10 @@ export abstract class FactionAI {
     abstract handleTorpedoThreat(ship: Ship, gameState: GameState, actions: AIActions, incomingTorpedoes: TorpedoProjectile[]): { turnEndingAction: boolean, defenseActionTaken: string | null };
     
     // NEW abstract method for the main turn logic
-    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void;
+    abstract executeMainTurnLogic(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], defenseActionTaken: string | null, claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void;
 
     // The main turn processing method, now in the base class to enforce order of operations.
-    public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[]): void {
+    public processTurn(ship: Ship, gameState: GameState, actions: AIActions, potentialTargets: Ship[], claimedCellsThisTurn: Set<string>, allShipsInSector: Ship[], priorityTargetId: string | null): void {
         // A ship in transition cannot take any actions. The log for this is now generated at the end of turn.
         if (ship.cloakState === 'cloaking' || ship.cloakState === 'decloaking') {
             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
@@ -56,7 +56,7 @@ export abstract class FactionAI {
         }
         
         // Execute the main logic for the turn
-        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets, defenseActionTaken, claimedCellsThisTurn, allShipsInSector);
+        this.executeMainTurnLogic(ship, gameState, actions, potentialTargets, defenseActionTaken, claimedCellsThisTurn, allShipsInSector, priorityTargetId);
     }
     
     // This method will execute the desperation move.
