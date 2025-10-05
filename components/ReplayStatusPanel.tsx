@@ -54,7 +54,7 @@ interface ReplayStatusPanelProps {
 const ReplayStatusPanel: React.FC<ReplayStatusPanelProps> = ({ gameState, themeName }) => {
   const { player, turn, redAlert } = gameState;
   const { ship } = player;
-  const { TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
+  const { RepairIcon, TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
   
   const cloakStatusText =
     ship.cloakState === 'cloaked' ? 'ACTIVE' :
@@ -130,6 +130,10 @@ const ReplayStatusPanel: React.FC<ReplayStatusPanelProps> = ({ gameState, themeN
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold flex items-center gap-1"><SecurityIcon className="w-5 h-5 text-accent-red"/> Security</span>
             <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
+        </div>
+        <div className="flex justify-between items-center text-sm">
+            <span className="font-bold flex items-center gap-1"><RepairIcon className="w-5 h-5 text-accent-yellow"/> Repair Capacity</span>
+            <span className="font-bold text-accent-yellow">{ship.repairPoints.current.toFixed(0)} / {ship.repairPoints.max}</span>
         </div>
 
         {ship.statusEffects.length > 0 && (

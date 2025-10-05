@@ -237,7 +237,7 @@ const TorpedoSystemStatus: React.FC<{ ship: Ship, gameState: GameState }> = ({ s
                         {[1, 2, 3, 4].map(range => (
                             <div key={range}>
                                 <div className="text-text-disabled">Rng {range}</div>
-                                <div className="font-bold text-accent-sky">{getTorpedoHitChance(primaryLauncher.ammoType, range) * 100}%</div>
+                                <div className="font-bold text-accent-sky">{Math.round(getTorpedoHitChance(primaryLauncher.ammoType, range) * 100)}%</div>
                             </div>
                         ))}
                     </div>
@@ -264,7 +264,7 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
 }) => {
   const { player, redAlert, currentSector } = gameState;
   const { ship } = player;
-  const { TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
+  const { RepairIcon, TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -341,6 +341,10 @@ const ShipStatus: React.FC<ShipStatusProps> = ({
         <div className="flex justify-between items-center text-sm">
             <span className="font-bold flex items-center gap-1"><SecurityIcon className="w-5 h-5 text-accent-red"/> Security</span>
             <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
+        </div>
+        <div className="flex justify-between items-center text-sm">
+            <span className="font-bold flex items-center gap-1"><RepairIcon className="w-5 h-5 text-accent-yellow"/> Repair Capacity</span>
+            <span className="font-bold text-accent-yellow">{ship.repairPoints.current.toFixed(0)} / {ship.repairPoints.max}</span>
         </div>
         
         <div className="mt-3">

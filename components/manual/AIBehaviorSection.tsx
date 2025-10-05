@@ -103,6 +103,13 @@ export const AIBehaviorSection: React.FC = () => (
                     <li><strong>Independent Vessels:</strong> As non-combatants, they will <strong className="text-white">never</strong> attempt to capture derelict vessels.</li>
                 </ul>
             </li>
+            <li>
+                <strong className="text-accent-yellow">Conservative Repair Doctrine:</strong> AI captains are aware that their **Repair Points** are a finite resource. Their damage control logic is designed for conservation.
+                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">
+                    <li>AI ships will only initiate repairs on a system if it falls below a critical operational threshold (e.g., Hull below 30%, Engines below 55%).</li>
+                    <li>To avoid wasting points on non-essential repairs, the AI will automatically cease repairs once a system reaches a state of acceptable functionality (e.g., Hull at 40%), rather than repairing it all the way to 100%.</li>
+                 </ul>
+            </li>
              <li>
                 <strong className="text-accent-yellow">Intelligent Point-Defense Grid:</strong> Hostile vessels no longer keep their LPD systems active at all times. They will now toggle the system based on immediate threats.
                  <ul className="list-[circle] list-inside ml-6 mt-1 text-sm">

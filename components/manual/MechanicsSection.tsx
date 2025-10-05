@@ -40,10 +40,23 @@ export const MechanicsSection: React.FC = () => (
          <SubHeader>Warp & Scanning</SubHeader>
         <p>From the Quadrant Map, you can travel long distances via Warp Drive. Each warp jump consumes one Dilithium crystal. You can also perform a Long-Range Scan on an adjacent quadrant to reveal basic information about it (e.g., number of hostile contacts) at the cost of Reserve Power.</p>
          <SubHeader>Repairs & Damage Control</SubHeader>
+        <p className="text-text-secondary mb-4">A starship is a complex machine, and damage is an inevitable part of deep-space operations. Understanding how to manage and repair your vessel is a critical command skill.</p>
+        <div className="p-3 bg-black rounded border-l-4 border-accent-yellow my-4">
+            <h4 className="font-bold text-accent-yellow">New Mechanic: Repair Points</h4>
+            <p className="text-sm text-text-secondary mt-2">
+                All ships are now equipped with a finite pool of **Repair Points**, representing the onboard supply of spare parts, fabrication materials, and specialized tools. This is a critical resource that must be managed carefully.
+            </p>
+            <ul className="list-disc list-inside ml-4 my-2 space-y-1 text-sm text-text-secondary">
+                <li><strong>Capacity:</strong> Most starships begin with a standard capacity of 200 Repair Points.</li>
+                <li><strong>Cost:</strong> Repairing 1% of a system's maximum health costs exactly 1 Repair Point. This means repairing a heavily armored component (like the hull) costs significantly more than a lighter component (like the transporter).</li>
+                <li><strong>Conservation:</strong> To conserve this finite resource, captains will not repair systems to 100% functionality. Instead, repairs will automatically cease once a system reaches an acceptable, functional threshold (e.g., 50% for Life Support, 40% for Hull).</li>
+                <li><strong>Resupply:</strong> Repair Points can be fully restored by docking at a friendly starbase.</li>
+            </ul>
+        </div>
         <p>Damage can be repaired in two ways:</p>
          <ul className="list-disc list-inside ml-4 text-text-secondary my-2">
-            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes a small amount of power.</li>
-            <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems, free of charge. You can also resupply torpedoes and dilithium here.</li>
+            <li><strong>Damage Control Teams:</strong> In the Ship Status panel, you can assign your crew to slowly repair the Hull or a specific subsystem. This is a slow process that occurs at the end of each turn and consumes Repair Points. The amount repaired per turn is determined by your ship's `Repair Rate`.</li>
+            <li><strong>Starbase:</strong> Docking with a friendly Starbase allows for a full repair of all systems and resupply of Repair Points, free of charge. You can also resupply torpedoes and dilithium here.</li>
         </ul>
         <SubHeader>Laser Point-Defense System (LPDS)</SubHeader>
         <p className="text-text-secondary">The LPDS is a specialized, short-range defensive system designed to intercept incoming torpedoes. It can be toggled in the Ship Status panel.</p>

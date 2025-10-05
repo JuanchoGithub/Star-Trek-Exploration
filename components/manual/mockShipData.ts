@@ -1,4 +1,5 @@
 
+
 import type { Ship, ShipModel, ShipRole, AmmoType } from '../../types';
 // FIX: Switched from shipRoleStats to shipClasses for more accurate data lookup.
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
@@ -18,6 +19,9 @@ const createMockShip = (id: string, model: ShipModel, className: string): Ship =
         shields: stats.maxShields, maxShields: stats.maxShields,
         subsystems: {} as any, energy: {} as any, energyAllocation: {} as any, dilithium: {} as any,
         scanned: true, evasive: false, retreatingTurn: null, crewMorale: {} as any, securityTeams: {} as any, repairTarget: null, logColor: '',
+        // FIX: Added missing repairPoints and repairRate properties to satisfy the Ship interface.
+        repairPoints: { current: stats.repairPoints.max, max: stats.repairPoints.max },
+        repairRate: stats.repairRate,
         lifeSupportReserves: { current: 100, max: 100 },
         cloakState: 'visible',
         cloakCooldown: 0,

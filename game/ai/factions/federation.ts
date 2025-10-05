@@ -87,10 +87,6 @@ export class FederationAI extends FactionAI {
             processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
             return;
         }
-
-        if (ship.repairTarget) {
-            ship.repairTarget = null;
-        }
         
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {

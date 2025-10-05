@@ -1,5 +1,3 @@
-
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { AIActions, FactionAI, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
@@ -97,10 +95,6 @@ export class RomulanAI extends FactionAI {
             return;
         }
 
-
-        if (ship.repairTarget) {
-            ship.repairTarget = null;
-        }
 
         const target = findClosestTarget(ship, potentialTargets);
         if (target) {

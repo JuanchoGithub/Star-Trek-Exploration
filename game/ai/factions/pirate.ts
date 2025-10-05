@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { processCommonTurn, tryCaptureDerelict, determineGeneralStance, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';

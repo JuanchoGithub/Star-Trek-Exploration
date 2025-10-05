@@ -1,5 +1,7 @@
+
+
 import React from 'react';
-import type { GameState, Entity, Ship, ShipSubsystems, Planet, Starbase, TorpedoProjectile, Mine, BeamWeapon, ProjectileWeapon } from '../types';
+import type { GameState, Entity, Ship, ShipSubsystems, Planet, Starbase, TorpedoProjectile, Mine, BeamWeapon, ProjectileWeapon } from '../../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
@@ -252,7 +254,7 @@ const TorpedoSystemStatus: React.FC<{ ship: Ship, gameState: GameState }> = ({ s
                         {[1, 2, 3, 4].map(range => (
                             <div key={range}>
                                 <div className="text-text-disabled">Rng {range}</div>
-                                <div className="font-bold text-accent-sky">{getTorpedoHitChance(primaryLauncher.ammoType, range) * 100}%</div>
+                                <div className="font-bold text-accent-sky">{Math.round(getTorpedoHitChance(primaryLauncher.ammoType, range) * 100)}%</div>
                             </div>
                         ))}
                     </div>
@@ -325,7 +327,7 @@ const ReadOnlyStatusIndicator: React.FC<{ label: string; status: string; colorCl
 );
 
 const ShipDetails: React.FC<{ship: Ship, turn: number, themeName: ThemeName, gameState: GameState}> = ({ ship, turn, themeName, gameState }) => {
-    const { TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
+    const { RepairIcon, TorpedoIcon, SecurityIcon, DilithiumIcon } = getFactionIcons(themeName);
     
     const allEntities: Entity[] = [...gameState.currentSector.entities];
     if (gameState.player.ship && gameState.player.ship.id) {
@@ -378,10 +380,11 @@ const ShipDetails: React.FC<{ship: Ship, turn: number, themeName: ThemeName, gam
             <ReadOnlyStatus label="Reserve Power" value={`${Math.round(ship.energy.current)} / ${ship.energy.max}`} />
             <ReadOnlyStatus label="Crew Morale" value={`${Math.round(ship.crewMorale.current)} / ${ship.crewMorale.max}`} />
 
-            <div className="grid grid-cols-3 gap-2 text-xs text-center mt-1">
+            <div className="grid grid-cols-4 gap-2 text-xs text-center mt-1">
                 <ResourceDisplay icon={<DilithiumIcon className="w-4 h-4 text-accent-pink"/>} label="Dilithium" value={ship.dilithium.current} max={ship.dilithium.max} />
                 <ResourceDisplay icon={<TorpedoIcon className="w-4 h-4 text-accent-orange"/>} label="Torpedoes" value={ship.torpedoes.current} max={ship.torpedoes.max} />
                 <ResourceDisplay icon={<SecurityIcon className="w-4 h-4 text-accent-red"/>} label="Security" value={ship.securityTeams.current} max={ship.securityTeams.max} />
+                <ResourceDisplay icon={<RepairIcon className="w-4 h-4 text-accent-yellow"/>} label="Repairs" value={ship.repairPoints.current} max={ship.repairPoints.max} />
             </div>
 
             {ship.statusEffects.length > 0 && (
@@ -541,7 +544,7 @@ const ReadOnlyStatus: React.FC<{label: string, value: string | number}> = ({ lab
 const ResourceDisplay: React.FC<{icon: React.ReactNode, label: string, value: number, max: number}> = ({ icon, label, value, max }) => (
     <div className="bg-black/30 p-1 rounded flex flex-col items-center">
         <div className="flex items-center gap-1 text-xs">{icon} {label}</div>
-        <span className="font-bold">{value}/{max}</span>
+        <span className="font-bold">{value.toFixed(0)}/{max}</span>
     </div>
 );
 

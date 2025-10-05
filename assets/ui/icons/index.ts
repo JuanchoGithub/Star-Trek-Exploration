@@ -1,5 +1,6 @@
 
 
+
 export * from './BaseIcon';
 export * from './DilithiumIcon';
 export * from './EngineIcon';
@@ -17,6 +18,7 @@ export * from './TransporterIcon';
 export * from './WeaponIcon';
 export * from './StarfleetLogoIcon';
 export * from './CloakIcon';
+export * from './RepairIcon';
 // FIX: Export icons from subdirectories to make them available for import.
 export * from './klingon';
 export * from './romulan';

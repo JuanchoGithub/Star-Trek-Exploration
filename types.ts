@@ -97,6 +97,8 @@ export interface Ship extends BaseEntity {
   crewMorale: { current: number; max: number };
   securityTeams: { current: number; max: number };
   repairTarget: 'hull' | keyof ShipSubsystems | null;
+  repairPoints: { current: number; max: number };
+  repairRate: number;
   logColor: string;
   lifeSupportReserves: { current: number; max: number };
   cloakState: CloakState;

@@ -38,6 +38,8 @@ export interface ShipClassStats {
     energyModifier: number;
     baseEnergyGeneration: number;
     systemConsumption: Record<keyof ShipSubsystems | 'base', number>;
+    repairPoints: { max: number };
+    repairRate: number;
 
     // New properties for modular weapons
     weapons: (BeamWeapon | ProjectileWeapon)[];
@@ -124,6 +126,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(450, 120),
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, shields: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 8 }, shuttleCount: 6,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 20 }, torpedoType: 'Quantum',
             // New weapon system
@@ -135,6 +138,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(300, 100),
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, computer: {health: 110, maxHealth: 110}}),
             securityTeams: { max: 5 }, shuttleCount: 4,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 10 }, torpedoType: 'Photon',
             // New weapon system
@@ -146,6 +150,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(400, 120),
             subsystems: F({ shields: {health: 140, maxHealth: 140}, pointDefense: {health: 140, maxHealth: 140}, computer: {health: 140, maxHealth: 140}}),
             securityTeams: { max: 6 }, shuttleCount: 8,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 12 }, torpedoType: 'Photon',
             // New weapon system
@@ -157,6 +162,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(200, 80),
             subsystems: F({ engines: {health: 120, maxHealth: 120}, pointDefense: {health: 130, maxHealth: 130}}),
             securityTeams: { max: 3 }, shuttleCount: 2,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 6 }, torpedoType: 'Photon',
             // New weapon system
@@ -168,6 +174,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(250, 100),
             subsystems: F({ weapons: {health: 180, maxHealth: 180}, engines: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 4 }, shuttleCount: 1,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 8 }, torpedoType: 'Quantum',
             // New weapon system
@@ -181,6 +188,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(150, 50),
             subsystems: K({ weapons: {health: 140, maxHealth: 140}, engines: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 4 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 6 }, torpedoType: 'Photon',
             // New weapon system
@@ -190,8 +198,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'K\'t\'inga-class': {
             name: 'K\'t\'inga-class', role: 'Cruiser', ...NO_CLOAK, maxHull: 300, maxShields: 80,
             ...calculateDerivedStats(300, 80),
-            subsystems: K({ weapons: {health: 140, maxHealth: 140}}),
+            subsystems: K({ weapons: {health: 140, maxHealth: 140}, transporter: { health: 60, maxHealth: 60 }}),
             securityTeams: { max: 6 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 10 }, torpedoType: 'Photon',
             // New weapon system
@@ -201,8 +210,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'Vor\'cha-class': {
             name: 'Vor\'cha-class', role: 'Attack Cruiser', cloakChance: 0.8, cloakEnergyCost: { initial: 0, maintain: 45 }, cloakFailureChance: 0.08, maxHull: 350, maxShields: 100,
             ...calculateDerivedStats(350, 100),
-            subsystems: K({ weapons: {health: 160, maxHealth: 160}, shields: {health: 100, maxHealth: 100}}),
+            subsystems: K({ weapons: {health: 160, maxHealth: 160}, shields: {health: 100, maxHealth: 100}, transporter: { health: 70, maxHealth: 70 }}),
             securityTeams: { max: 8 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 12 }, torpedoType: 'Photon',
             // New weapon system
@@ -212,8 +222,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'Negh\'Var-class': {
             name: 'Negh\'Var-class', role: 'Battleship', ...NO_CLOAK, maxHull: 500, maxShields: 120,
             ...calculateDerivedStats(500, 120),
-            subsystems: K({ weapons: {health: 200, maxHealth: 200}, shields: {health: 120, maxHealth: 120}}),
+            subsystems: K({ weapons: {health: 200, maxHealth: 200}, shields: {health: 120, maxHealth: 120}, transporter: { health: 80, maxHealth: 80 }}),
             securityTeams: { max: 10 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 18 }, torpedoType: 'HeavyPhoton',
             // New weapon system
@@ -225,8 +236,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'D\'deridex-class': {
             name: 'D\'deridex-class', role: 'Warbird', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 400, maxShields: 100,
             ...calculateDerivedStats(400, 100),
-            subsystems: R({ weapons: {health: 180, maxHealth: 180}, shields: {health: 110, maxHealth: 110}}),
+            subsystems: R({ weapons: {health: 180, maxHealth: 180}, shields: {health: 110, maxHealth: 110}, transporter: { health: 80, maxHealth: 80 }}),
             securityTeams: { max: 7 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 15 }, torpedoType: 'HeavyPlasma',
             // New weapon system
@@ -236,8 +248,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'Valdore-type': {
             name: 'Valdore-type', role: 'Scout', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 200, maxShields: 80,
             ...calculateDerivedStats(200, 80),
-            subsystems: R({ weapons: {health: 120, maxHealth: 120}, engines: {health: 130, maxHealth: 130}}),
+            subsystems: R({ weapons: {health: 120, maxHealth: 120}, engines: {health: 130, maxHealth: 130}, transporter: { health: 60, maxHealth: 60 }}),
             securityTeams: { max: 3 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 8 }, torpedoType: 'Plasma',
             // New weapon system
@@ -247,8 +260,9 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
         'Scimitar-class': {
             name: 'Scimitar-class', role: 'Command Ship', cloakChance: 1.0, cloakEnergyCost: { initial: 0, maintain: 40 }, cloakFailureChance: 0.01, maxHull: 450, maxShields: 120,
             ...calculateDerivedStats(450, 120),
-            subsystems: R({ weapons: {health: 200, maxHealth: 200}, shields: {health: 140, maxHealth: 140}}),
+            subsystems: R({ weapons: {health: 200, maxHealth: 200}, shields: {health: 140, maxHealth: 140}, transporter: { health: 90, maxHealth: 90 }}),
             securityTeams: { max: 10 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 25 }, torpedoType: 'HeavyPlasma',
             // New weapon system
@@ -262,6 +276,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(180, 50),
             subsystems: K({ weapons: {health: 80, maxHealth: 80}, engines: {health: 130, maxHealth: 130}}),
             securityTeams: { max: 2 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 4 }, torpedoType: 'Photon',
             // New weapon system
@@ -274,6 +289,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(250, 80),
             subsystems: F({ weapons: {health: 120, maxHealth: 120}, shields: {health: 80, maxHealth: 80}, lifeSupport: {health: 120, maxHealth: 120}}),
             securityTeams: { max: 3 }, shuttleCount: 1,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 8 }, torpedoType: 'Plasma',
             // New weapon system
@@ -286,6 +302,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(350, 100),
             subsystems: K({ weapons: {health: 160, maxHealth: 160}, engines: {health: 80, maxHealth: 80}}),
             securityTeams: { max: 5 }, shuttleCount: 0,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 0 }, torpedoType: 'None',
             // New weapon system
@@ -300,6 +317,7 @@ export const shipClasses: Record<ShipModel, Record<string, ShipClassStats>> = {
             ...calculateDerivedStats(200, 40),
             subsystems: F({ weapons: { health: 40, maxHealth: 40 }, engines: { health: 80, maxHealth: 80 }, lifeSupport: { health: 120, maxHealth: 120 }}),
             securityTeams: { max: 1 }, shuttleCount: 1,
+            repairPoints: { max: 200 }, repairRate: 5,
             // @deprecated
             torpedoes: { max: 0 }, torpedoType: 'None',
             // New weapon system

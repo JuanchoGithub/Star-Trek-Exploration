@@ -1,4 +1,6 @@
 
+
+
 import React from 'react';
 import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../../assets/starbases/configs/starbaseTypes';
@@ -74,11 +76,11 @@ const shipTacticalInfo: Record<string, { description: string; notes: string; }> 
     // Pirate
     'Orion Raider': {
         description: 'A light, fast vessel favored by Orion pirates and other raiders. It is a classic scavenger and harasser, sacrificing durability for speed and maneuverability.',
-        notes: 'Often operates in packs and will flee if outmatched. Intelligence reports suggest a small number have been fitted with dangerously unstable cloaking devices.',
+        notes: 'Equipped with a randomized weapon loadout, including Type IV/V phasers or light disruptors, and either Photon or Plasma torpedoes. Often operates in packs and will flee if outmatched. Intelligence reports suggest a small number have been fitted with dangerously unstable cloaking devices.',
     },
     'Ferengi Marauder': {
         description: 'While ostensibly a trade vessel, the D\'Kora-class Marauder is surprisingly well-armed. It is often used by Ferengi to "disrupt" trade rivals and defend their profitable ventures.',
-        notes: 'Favors disabling attacks on engines to capture vessels intact for "salvage". May rarely be equipped with a jury-rigged cloaking system.',
+        notes: 'Favors disabling attacks on engines to capture vessels intact for "salavage". May rarely be equipped with a jury-rigged cloaking system.',
     },
     'Nausicaan Battleship': {
         description: 'A brute-force raider built for one purpose: smashing through defenses. It is slow and lacks finesse, but its heavy armor and powerful weapons make it a serious threat in a direct confrontation.',
@@ -216,6 +218,7 @@ const ClassEntry: React.FC<{ model: ShipModel, shipClass: ShipClassStats }> = ({
                         <StatRating label="Weapon Power" value={weaponRating} />
                         <StatRating label="Energy Reserves" value={String(shipClass.energy.max)} />
                         <StatRating label="Dilithium Stores" value={String(shipClass.dilithium.max)} />
+                        <StatRating label="Repair Capacity" value={String(shipClass.repairPoints.max)} />
                         <StatRating label="Cloaking Device" value={cloakDisplayValue} />
                         <StatRating label="Shuttlebay" value={`${shipClass.shuttleCount} craft`} />
                         <div className="col-span-full">

@@ -1,4 +1,3 @@
-
 import type { Ship, ShipSubsystems, ResourceType, GameState, LogEntry } from '../../types';
 import { shipClasses } from '../../assets/ships/configs/shipClassStats';
 import { isPosInNebula } from './sector';
@@ -271,11 +270,55 @@ export const handleShipEndOfTurnSystems = (ship: Ship, gameState: GameState, add
     }
 
     // Damage Control Team Repairs
-    if (ship.repairTarget) {
-        const repairAmount = 5;
-        applyResourceChange(ship, ship.repairTarget, repairAmount);
-        addTurnEvent?.(`REPAIR: '${ship.name}' -> ${ship.repairTarget} (+${repairAmount})`);
+    if (ship.repairTarget && ship.repairPoints.current > 0) {
+        const repairAmountHp = ship.repairRate;
+        let cost = 0;
+        let repairedSystemName = 'hull';
+        let maxHealth = ship.maxHull;
+        let currentHealth = ship.hull;
+
+        if (ship.repairTarget === 'hull') {
+            cost = (repairAmountHp / ship.maxHull) * 100;
+        } else {
+            const subsystem = ship.subsystems[ship.repairTarget];
+            if (subsystem && subsystem.maxHealth > 0) {
+                repairedSystemName = ship.repairTarget;
+                maxHealth = subsystem.maxHealth;
+                currentHealth = subsystem.health;
+                cost = (repairAmountHp / subsystem.maxHealth) * 100;
+            } else {
+                ship.repairTarget = null;
+            }
+        }
+
+        if (ship.repairTarget) {
+            const affordablePercentage = ship.repairPoints.current;
+            const maxRepairableHp = (affordablePercentage / 100) * maxHealth;
+            
+            const healthNeeded = maxHealth - currentHealth;
+            const actualRepairHp = Math.min(repairAmountHp, maxRepairableHp, healthNeeded);
+            const actualCost = (actualRepairHp / maxHealth) * 100;
+
+            if (actualRepairHp > 0.1) {
+                applyResourceChange(ship, ship.repairTarget, actualRepairHp);
+                ship.repairPoints.current -= actualCost;
+
+                addTurnEvent?.(`REPAIR: '${ship.name}' -> ${ship.repairTarget} (+${actualRepairHp.toFixed(1)}HP)`);
+                if (isPlayerSource) {
+                    logs.push({
+                        sourceId: ship.id,
+                        sourceName: ship.name,
+                        sourceFaction: ship.faction,
+                        message: `Damage control team repaired <b>${actualRepairHp.toFixed(1)}</b> HP on the ${repairedSystemName}. Used ${actualCost.toFixed(1)} repair points. <b>${ship.repairPoints.current.toFixed(1)}</b> remaining.`,
+                        isPlayerSource,
+                        color: logColor,
+                        category: 'system'
+                    });
+                }
+            }
+        }
     }
+
 
     // Shield Regeneration
     if ((ship.shieldReactivationTurn && turn < ship.shieldReactivationTurn) || ship.shields < 0) {

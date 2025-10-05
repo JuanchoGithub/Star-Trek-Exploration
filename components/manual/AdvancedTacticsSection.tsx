@@ -108,7 +108,7 @@ export const AdvancedTacticsSection: React.FC<AdvancedTacticsSectionProps> = ({ 
                     <TransporterIcon className="w-8 h-8 text-accent-purple flex-shrink-0 mt-1"/>
                     <div>
                         <h4 className="font-bold">Targeting: Transporter</h4>
-                        <p className="text-sm text-text-secondary">While most hostile ships lack transporters, those that possess them use them to repel boarders and conduct rapid internal repairs. Disabling their transporter makes them highly vulnerable to your own boarding actions and strike teams.</p>
+                        <p className="text-sm text-text-secondary">A specialized tactic. While smaller raiders like the Klingon B'rel-class lack transporters, most capital ships of all major factions, including Klingon Cruisers and Romulan Warbirds, are equipped with them. Disabling an enemy's transporter prevents them from conducting boarding actions or capturing derelict vessels, and can hinder their ability to repel your own away teams. It is a key tactic against Federation, Independent, and Pirate vessels.</p>
                     </div>
                 </div>
                 <div className="mt-4 p-3 bg-black rounded border-l-4 border-accent-yellow">

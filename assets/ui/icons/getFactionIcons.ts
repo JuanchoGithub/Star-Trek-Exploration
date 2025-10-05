@@ -1,4 +1,5 @@
 
+
 import { ThemeName } from '../../../themes';
 
 // Federation (default)
@@ -16,6 +17,7 @@ import { StarfleetLogoIcon } from './StarfleetLogoIcon';
 import { ShuttleIcon } from './ShuttleIcon';
 import { PhaserIcon } from './PhaserIcon';
 import { CloakIcon } from './CloakIcon';
+import { RepairIcon } from './RepairIcon';
 
 // Klingon
 import { KlingonWeaponIcon } from './klingon/KlingonWeaponIcon';
@@ -48,6 +50,7 @@ const federationIcons = {
     DilithiumIcon,
     RetreatIcon,
     CloakIcon,
+    RepairIcon,
     HailIcon: StarfleetLogoIcon,
     BoardingIcon: ShuttleIcon,
     StrikeTeamIcon: PhaserIcon,

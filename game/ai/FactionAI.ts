@@ -1,5 +1,5 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, BeamAttackResult } from '../../types';
+import { handleRepairDecisions } from './factions/common';
 
 // Defines a set of actions the AI can perform that will mutate the game state.
 export interface AIActions {
@@ -32,6 +32,9 @@ export abstract class FactionAI {
             claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
             return;
         }
+
+        const isInCombat = potentialTargets.length > 0;
+        handleRepairDecisions(ship, isInCombat, actions);
 
         const incomingTorpedoes = (gameState.currentSector.entities.filter(e => e.type === 'torpedo_projectile') as TorpedoProjectile[]).filter(t => t.targetId === ship.id);
 

@@ -1,4 +1,3 @@
-
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile } from '../../../types';
 import { FactionAI, AIActions, AIStance } from '../FactionAI';
 import { determineGeneralStance, processCommonTurn, tryCaptureDerelict, processRecoveryTurn, processPreparingTurn, processSeekingTurn, processProwlingTurn } from './common';
@@ -71,10 +70,6 @@ export class KlingonAI extends FactionAI {
         if (stance === 'Prowling') {
             processProwlingTurn(ship, gameState, actions, claimedCellsThisTurn, allShipsInSector);
             return;
-        }
-
-        if (ship.repairTarget) {
-            ship.repairTarget = null;
         }
 
         const target = findClosestTarget(ship, potentialTargets);

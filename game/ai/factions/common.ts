@@ -10,6 +10,85 @@ import { fireBeamWeapon } from '../../utils/combat';
 import { isDeepNebula } from '../../utils/sector';
 import { AmmoType } from '../../../types';
 
+type RepairPriority = {
+    subsystem: 'hull' | keyof ShipSubsystems;
+    threshold: number; // percentage (0-1)
+    inCombatOnly?: boolean;
+    repairUntil: number; // percentage (0-1)
+};
+
+const defaultRepairPriorities: RepairPriority[] = [
+    { subsystem: 'lifeSupport', threshold: 0.30, repairUntil: 0.50 },
+    { subsystem: 'hull', threshold: 0.30, repairUntil: 0.40 },
+    { subsystem: 'engines', threshold: 0.55, repairUntil: 0.60 },
+    { subsystem: 'weapons', threshold: 0.80, inCombatOnly: true, repairUntil: 0.85 },
+    { subsystem: 'shields', threshold: 0.20, repairUntil: 0.30 },
+];
+
+export function handleRepairDecisions(ship: Ship, isInCombat: boolean, actions: AIActions) {
+    // Step 1: Check if current repair target is complete
+    if (ship.repairTarget) {
+        const currentPriority = defaultRepairPriorities.find(p => p.subsystem === ship.repairTarget);
+        if (currentPriority) {
+            let currentHealthPercent = 0;
+            if (ship.repairTarget === 'hull') {
+                currentHealthPercent = ship.hull / ship.maxHull;
+            } else {
+                const system = ship.subsystems[ship.repairTarget];
+                currentHealthPercent = system.health / system.maxHealth;
+            }
+
+            if (currentHealthPercent >= currentPriority.repairUntil) {
+                actions.addLog({
+                    sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, isPlayerSource: false, color: ship.logColor, category: 'system',
+                    message: `Repairs on ${ship.repairTarget} complete. Damage control teams standing by.`
+                });
+                ship.repairTarget = null;
+            }
+        } else {
+             let isRepaired = false;
+             if (ship.repairTarget === 'hull') {
+                 isRepaired = ship.hull >= ship.maxHull;
+             } else {
+                 const system = ship.subsystems[ship.repairTarget];
+                 isRepaired = system.health >= system.maxHealth;
+             }
+             if(isRepaired) ship.repairTarget = null;
+        }
+    }
+    
+    // Step 2: If no target, find a new one based on priority
+    if (!ship.repairTarget && ship.repairPoints.current > 0) {
+        for (const priority of defaultRepairPriorities) {
+            if (priority.inCombatOnly && !isInCombat) {
+                continue;
+            }
+            
+            let healthPercent = 1.0;
+
+            if (priority.subsystem === 'hull') {
+                healthPercent = ship.hull / ship.maxHull;
+            } else {
+                const system = ship.subsystems[priority.subsystem];
+                if (system && system.maxHealth > 0) {
+                    healthPercent = system.health / system.maxHealth;
+                } else {
+                    continue; 
+                }
+            }
+
+            if (healthPercent < priority.threshold) {
+                ship.repairTarget = priority.subsystem;
+                actions.addLog({
+                    sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, isPlayerSource: false, color: ship.logColor, category: 'system',
+                    message: `Critical damage detected! Diverting repair crews to ${priority.subsystem}.`
+                });
+                break;
+            }
+        }
+    }
+}
+
 function isSafeToFireTorpedoInStorm(
     firingShip: Ship,
     targetShip: Ship,
@@ -99,6 +178,21 @@ function isSafeToFireTorpedoInStorm(
 }
 
 export function determineGeneralStance(ship: Ship, potentialTargets: Ship[]): { stance: AIStance, reason: string } {
+    if (ship.repairTarget === 'hull' || ship.repairTarget === 'engines' || ship.repairTarget === 'lifeSupport') {
+        let healthPercent = 0;
+        if (ship.repairTarget === 'hull') {
+            healthPercent = ship.hull / ship.maxHull;
+        } else {
+            const system = ship.subsystems[ship.repairTarget];
+            if (system) {
+                healthPercent = system.health / system.maxHealth;
+            }
+        }
+        if (healthPercent < 0.4) {
+             return { stance: 'Defensive', reason: `Attempting to disengage for critical repairs to ${ship.repairTarget} (${Math.round(healthPercent*100)}%).` };
+        }
+    }
+    
     const closestTarget = findClosestTarget(ship, potentialTargets);
 
     // FIX: Added logic to handle cases where there are no visible targets.
@@ -156,10 +250,48 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
 
     if (adjacentDerelicts.length > 0) {
         const derelictToCapture = adjacentDerelicts[0];
+
+        // --- NEW CHECKS to enforce game rules ---
+        if (ship.subsystems.transporter.maxHealth === 0) {
+            return false; // This ship simply cannot perform this action. No log needed.
+        }
+        if ((ship.subsystems.transporter.health / ship.subsystems.transporter.maxHealth) < 0.5) {
+            actions.addLog({
+                sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, isPlayerSource: false, color: ship.logColor, category: 'system',
+                message: `Attempted to capture ${derelictToCapture.name}, but its personnel transfer systems are too damaged.`
+            });
+            return false;
+        }
+        if (ship.securityTeams.current <= 0) {
+             actions.addLog({
+                sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, isPlayerSource: false, color: ship.logColor, category: 'system',
+                message: `Attempted to capture ${derelictToCapture.name}, but has no available security teams.`
+            });
+            return false;
+        }
+        if (ship.dilithium.current < 5) {
+             actions.addLog({
+                sourceId: ship.id, sourceName: ship.name, sourceFaction: ship.faction, isPlayerSource: false, color: ship.logColor, category: 'system',
+                message: `Attempted to capture ${derelictToCapture.name}, but lacks the 5 dilithium required for the salvage team.`
+            });
+            return false;
+        }
+        // --- END NEW CHECKS ---
+
+        // --- NEW: Deduct resources ---
+        ship.dilithium.current -= 5;
+        ship.securityTeams.current--;
+        
         derelictToCapture.faction = ship.faction;
         derelictToCapture.logColor = ship.logColor;
         derelictToCapture.isDerelict = false;
-        derelictToCapture.captureInfo = { captorId: ship.id, repairTurn: gameState.turn };
+        // --- UPDATE: Add full capture info for consistency with player logic ---
+        derelictToCapture.captureInfo = { 
+            captorId: ship.id, 
+            repairTurn: gameState.turn,
+            turnsToRepair: 4,
+            dilithiumToTransfer: 5,
+        };
         
         actions.addLog({ 
             sourceId: ship.id, 
@@ -177,35 +309,8 @@ export function tryCaptureDerelict(ship: Ship, gameState: GameState, actions: AI
 
 export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number, claimedCellsThisTurn: Set<string>): void {
     ship.currentTargetId = null;
-    // Set energy allocation for recovery
     if (ship.energyAllocation.engines !== 100) {
         ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
-    }
-
-    // Set repair target if not already set
-    if (!ship.repairTarget) {
-        const subsystemsToRepair: (keyof ShipSubsystems)[] = [
-            'lifeSupport', 'engines', 'weapons', 'shields', 'pointDefense', 'computer', 'transporter', 'shuttlecraft'
-        ];
-        let mostDamagedSystem: keyof ShipSubsystems | null = null;
-        let maxDamagePercent = 0;
-
-        for (const key of subsystemsToRepair) {
-            const system = ship.subsystems[key];
-            if (system.maxHealth > 0) {
-                const damagePercent = 1 - (system.health / system.maxHealth);
-                if (damagePercent > maxDamagePercent) {
-                    maxDamagePercent = damagePercent;
-                    mostDamagedSystem = key;
-                }
-            }
-        }
-
-        if (mostDamagedSystem && maxDamagePercent > 0.01) { // Only repair if there's meaningful damage
-            ship.repairTarget = mostDamagedSystem;
-        } else if (ship.hull < ship.maxHull) {
-            ship.repairTarget = 'hull';
-        }
     }
     
     claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
@@ -216,35 +321,8 @@ export function processRecoveryTurn(ship: Ship, actions: AIActions, turn: number
 
 // FIX: Added missing exported functions
 export function processPreparingTurn(ship: Ship, actions: AIActions, turn: number, claimedCellsThisTurn: Set<string>): void {
-    // Similar to recovery, but with the intent of re-engaging. Maximize engines for power.
     if (ship.energyAllocation.engines !== 100) {
         ship.energyAllocation = { weapons: 0, shields: 0, engines: 100 };
-    }
-
-    // Set repair target if not already set, prioritizing critical systems
-    if (!ship.repairTarget) {
-        const subsystemsToRepair: (keyof ShipSubsystems)[] = [
-            'lifeSupport', 'engines', 'weapons', 'shields', 'pointDefense', 'computer', 'transporter', 'shuttlecraft'
-        ];
-        let mostDamagedSystem: keyof ShipSubsystems | null = null;
-        let maxDamagePercent = 0;
-
-        for (const key of subsystemsToRepair) {
-            const system = ship.subsystems[key];
-            if (system && system.maxHealth > 0) {
-                const damagePercent = 1 - (system.health / system.maxHealth);
-                if (damagePercent > maxDamagePercent) {
-                    maxDamagePercent = damagePercent;
-                    mostDamagedSystem = key;
-                }
-            }
-        }
-
-        if (mostDamagedSystem && maxDamagePercent > 0.01) {
-            ship.repairTarget = mostDamagedSystem;
-        } else if (ship.hull < ship.maxHull) {
-            ship.repairTarget = 'hull';
-        }
     }
     
     claimedCellsThisTurn.add(`${ship.position.x},${ship.position.y}`);
