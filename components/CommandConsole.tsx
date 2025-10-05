@@ -1,36 +1,22 @@
 import React from 'react';
-import type { PlayerTurnActions, Position, Ship, Entity, GameState, Weapon, ProjectileWeapon } from '../types';
-import { ThemeName } from '../hooks/useTheme';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
 import { canTargetEntity } from '../game/utils/combat';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { useGameState } from '../contexts/GameStateContext';
+import { useGameActions } from '../contexts/GameActionsContext';
+import { useUIState } from '../contexts/UIStateContext';
+import { Ship, ProjectileWeapon } from '../types';
 
-interface CommandConsoleProps {
-  onEndTurn: () => void;
-  onFireWeapon: (weaponId: string, targetId: string) => void;
-  onToggleCloak: () => void;
-  onInitiateRetreat: () => void;
-  onCancelRetreat: () => void;
-  onSendAwayTeam: (type: 'boarding' | 'strike') => void;
-  retreatingTurn: number | null;
-  currentTurn: number;
-  hasTarget: boolean;
-  hasEnemy: boolean;
-  playerTurnActions: PlayerTurnActions;
-  navigationTarget: Position | null;
-  playerShipPosition: Position;
-  isTurnResolving: boolean;
-  playerShip: Ship;
-  target?: Entity;
-  targeting?: GameState['player']['targeting'];
-  themeName: ThemeName;
-  gameState: GameState;
-  isDocked: boolean;
-  onUndock: () => void;
+interface CommandButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  accentColor: string;
+  title?: string;
 }
 
-const CommandButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, accentColor: string, title?: string}> = ({ onClick, disabled, children, accentColor, title }) => (
+const CommandButton: React.FC<CommandButtonProps> = ({ onClick, disabled, children, accentColor, title }) => (
   <button
     onClick={onClick}
     disabled={disabled}
@@ -46,22 +32,24 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 );
 
 
-const CommandConsole: React.FC<CommandConsoleProps> = ({ 
-    onEndTurn, onFireWeapon, onToggleCloak,
-    onInitiateRetreat, onCancelRetreat, onSendAwayTeam,
-    retreatingTurn, currentTurn, hasTarget, hasEnemy, 
-    playerTurnActions, navigationTarget, playerShipPosition, isTurnResolving, playerShip, target, targeting, themeName, gameState,
-    isDocked, onUndock
-}) => {
-  const isRetreating = retreatingTurn !== null && retreatingTurn >= currentTurn;
-  const turnsToRetreat = isRetreating ? retreatingTurn! - currentTurn : 0;
+const CommandConsole: React.FC = () => {
+  const { gameState, playerTurnActions, navigationTarget, targetEntity, isTurnResolving } = useGameState();
+  const { onEndTurn, onFireWeapon, onToggleCloak, onInitiateRetreat, onCancelRetreat, onSendAwayTeam, onUndock } = useGameActions();
+  const { themeName } = useUIState();
+
+  if (!gameState) return null;
+
+  const { player: { ship: playerShip }, turn, isDocked } = gameState;
+  
+  const isRetreating = playerShip.retreatingTurn !== null && playerShip.retreatingTurn >= turn;
+  const turnsToRetreat = isRetreating ? playerShip.retreatingTurn! - turn : 0;
   
   const getEndTurnButtonText = () => {
     if (playerShip.isStunned) return "Systems Stunned";
     if (isTurnResolving) return "Resolving...";
     if (isRetreating && turnsToRetreat === 0) return "Engage Emergency Warp";
     
-    const isMoving = navigationTarget && (playerShipPosition.x !== navigationTarget.x || playerShipPosition.y !== navigationTarget.y);
+    const isMoving = navigationTarget && (playerShip.position.x !== navigationTarget.x || playerShip.position.y !== navigationTarget.y);
     const isFiring = !!playerTurnActions.firedWeaponId;
 
     if (isMoving && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) {
@@ -90,9 +78,9 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
       );
   }
 
-  const targetShip = target?.type === 'ship' ? (target as Ship) : null;
-
-  const isAdjacentToTarget = target ? Math.max(Math.abs(playerShip.position.x - target.position.x), Math.abs(playerShip.position.y - target.position.y)) <= 1 : false;
+  const targetShip = targetEntity?.type === 'ship' ? (targetEntity as Ship) : null;
+  const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
+  const isAdjacentToTarget = targetEntity ? Math.max(Math.abs(playerShip.position.x - targetEntity.position.x), Math.abs(playerShip.position.y - targetEntity.position.y)) <= 1 : false;
   
   const canBoardOrStrike = targetShip
     && isAdjacentToTarget 
@@ -109,7 +97,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
   const isCloakingOrDecloaking = playerShip.cloakState === 'cloaking' || playerShip.cloakState === 'decloaking';
   const actionDisabled = isRetreating || isTurnResolving || playerShip.isStunned || hasTakenMajorAction || isCloakingOrDecloaking;
 
-  const targetingCheck = target ? canTargetEntity(playerShip, target, gameState.currentSector, currentTurn) : { canTarget: false, reason: 'No target selected.' };
+  const targetingCheck = targetEntity ? canTargetEntity(playerShip, targetEntity, gameState.currentSector, turn) : { canTarget: false, reason: 'No target selected.' };
   const cannotTargetReason = !targetingCheck.canTarget ? targetingCheck.reason : '';
   
   const cloakStats = shipClasses[playerShip.shipModel]?.[playerShip.shipClass];
@@ -131,7 +119,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2 tactical-grid">
                 {playerShip.weapons.map(weapon => {
-                    let isDisabled = !target || actionDisabled || isCloaked || !targetingCheck.canTarget;
+                    let isDisabled = !targetEntity || actionDisabled || isCloaked || !targetingCheck.canTarget;
                     let title = cannotTargetReason;
                     let accentColor = 'red';
                     let Icon = getFactionIcons(themeName).WeaponIcon;
@@ -149,7 +137,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                         Icon = torpedoConfig.icon;
                         accentColor = 'sky';
                         
-                        if (!target || target.type !== 'ship' || (target as Ship).hull <= 0) {
+                        if (!targetEntity || targetEntity.type !== 'ship' || (targetEntity as Ship).hull <= 0) {
                             isDisabled = true;
                             title = 'Must target a ship with torpedoes.';
                         } else if (!ammo || ammo.current <= 0) {
@@ -160,7 +148,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                             title = 'Weapon systems too damaged to launch.';
                         }
 
-                        if (targeting?.subsystem && !isDisabled) {
+                        if (gameState.player.targeting?.subsystem && !isDisabled) {
                             title = "Torpedoes will ignore subsystem targeting and aim for the hull.";
                         }
                     }
@@ -168,7 +156,7 @@ const CommandConsole: React.FC<CommandConsoleProps> = ({
                     return (
                         <CommandButton
                             key={weapon.id}
-                            onClick={() => onFireWeapon(weapon.id, target!.id)}
+                            onClick={() => onFireWeapon(weapon.id, targetEntity!.id)}
                             disabled={isDisabled}
                             accentColor={accentColor}
                             title={title}

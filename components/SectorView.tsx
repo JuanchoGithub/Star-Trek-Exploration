@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase, Mine } from '../types';
+import type { Entity, Ship, SectorState, Planet, TorpedoProjectile, Shuttle, Starbase, Mine, Position } from '../types';
 import { planetTypes } from '../assets/planets/configs/planetTypes';
 import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { starbaseTypes } from '../assets/starbases/configs/starbaseTypes';
@@ -7,7 +7,6 @@ import { asteroidType } from '../assets/asteroids/configs/asteroidTypes';
 import { beaconType } from '../assets/beacons/configs/beaconTypes';
 import { FederationShuttleIcon } from '../assets/ships/icons/federation';
 import { NavigationTargetIcon } from '../assets/ui/icons';
-import { ThemeName } from '../hooks/useTheme';
 import LcarsTargetingReticle from './LcarsTargetingReticle';
 import KlingonTargetingReticle from './KlingonTargetingReticle';
 import RomulanTargetingReticle from './RomulanTargetingReticle';
@@ -17,22 +16,25 @@ import { isDeepNebula, isDeepIonStorm } from '../game/utils/sector';
 import { asteroidIcons } from '../assets/asteroids/icons';
 import { cyrb53 } from '../game/utils/helpers';
 import { PlasmaMineIcon } from '../assets/projectiles/icons';
+import { useGameState } from '../contexts/GameStateContext';
+import { useGameActions } from '../contexts/GameActionsContext';
+import { useUIState } from '../contexts/UIStateContext';
 
 interface SectorViewProps {
-  entities: Entity[];
-  playerShip: Ship;
-  selectedTargetId: string | null;
-  onSelectTarget: (id: string | null) => void;
-  navigationTarget: { x: number; y: number } | null;
-  onSetNavigationTarget: (pos: { x: number; y: number } | null) => void;
-  sector: SectorState;
-  themeName: ThemeName;
   onCellClick?: (pos: { x: number; y: number }) => void;
   spectatorMode?: boolean;
   onMoveShip?: (shipId: string, newPos: { x: number; y: number }) => void;
   isResizing?: boolean;
-  entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
   showTacticalOverlay?: boolean;
+  
+  // Props for simulator setup mode to bypass context
+  sector?: SectorState;
+  entities?: Entity[];
+  playerShip?: Ship | null;
+  selectedTargetId?: string | null;
+  navigationTarget?: Position | null;
+  onSelectTarget?: (id: string | null) => void;
+  onSetNavigationTarget?: (pos: Position | null) => void;
 }
 
 const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
@@ -107,7 +109,39 @@ const getTorpedoPixelCoords = (torpedo: TorpedoProjectile, sectorSize: { width: 
   };
 
 
-const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedTargetId, onSelectTarget, navigationTarget, onSetNavigationTarget, sector, themeName, onCellClick, spectatorMode = false, onMoveShip, isResizing = false, entityRefs, showTacticalOverlay = false }) => {
+const SectorView: React.FC<SectorViewProps> = (props) => {
+  const { onCellClick, spectatorMode = false, onMoveShip, isResizing = false, showTacticalOverlay = false } = props;
+
+  const contextGameState = useGameState();
+  const contextGameActions = useGameActions();
+  const contextUIState = useUIState();
+
+  const sector = props.sector ?? contextGameState.gameState?.currentSector;
+  const selectedTargetId = props.selectedTargetId !== undefined ? props.selectedTargetId : contextGameState.selectedTargetId;
+  const navigationTarget = props.navigationTarget !== undefined ? props.navigationTarget : contextGameState.navigationTarget;
+  const onSelectTarget = props.onSelectTarget ?? contextGameActions.onSelectTarget;
+  const onSetNavigationTarget = props.onSetNavigationTarget ?? contextGameActions.onSetNavigationTarget;
+  const playerShip = props.playerShip !== undefined ? props.playerShip : contextGameState.gameState?.player.ship;
+
+  const allEntities = useMemo(() => {
+    if (props.entities) {
+      return props.entities;
+    }
+    if (contextGameState.gameState) {
+      const player = contextGameState.gameState.player.ship;
+      const gameEntities = contextGameState.gameState.currentSector.entities;
+      if (player && player.id && !gameEntities.some(e => e.id === player.id)) {
+        return [player, ...gameEntities];
+      }
+      return gameEntities;
+    }
+    return [];
+  }, [props.entities, contextGameState.gameState]);
+
+  const { themeName, entityRefs } = contextUIState;
+
+  if (!sector) return null;
+  
   const sectorSize = { width: 11, height: 10 };
   const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -129,11 +163,6 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
     }
     return () => resizeObserver.disconnect();
   }, []);
-
-  const allEntities = useMemo(() => [
-      ...entities, 
-      ...(playerShip ? [{...playerShip, type: 'ship' as const}] : [])
-  ], [entities, playerShip]);
 
   const computerHealthPercent = playerShip ? (playerShip.subsystems.computer.health / playerShip.subsystems.computer.maxHealth) * 100 : 100;
   const isNavDisabled = computerHealthPercent < 100;
@@ -163,7 +192,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
 
     if ((!entityAtPos || entityAtPos.type === 'asteroid_field') && !isNavDisabled) {
         onSetNavigationTarget({ x, y });
-    } else if (entityAtPos && entityAtPos.id !== playerShip?.id && entityAtPos.type !== 'event_beacon') {
+    } else if (entityAtPos && playerShip && entityAtPos.id !== playerShip.id && entityAtPos.type !== 'event_beacon') {
         onSelectTarget(entityAtPos.id);
     }
   };
@@ -171,10 +200,13 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
   const path = playerShip ? getPath(playerShip.position, navigationTarget) : [];
 
   const visibleEntities = playerShip ? allEntities.filter(entity => {
+      if (entity.type === 'torpedo_projectile') {
+          return true;
+      }
       if (entity.type === 'ship' && ((entity as Ship).cloakState === 'cloaked' || (entity as Ship).cloakState === 'cloaking')) return false;
       if (entity.type === 'mine') {
           const mine = entity as Mine;
-          if (!mine.visibleTo.includes(playerShip.shipModel)) {
+          if (playerShip.shipModel && !mine.visibleTo.includes(playerShip.shipModel)) {
               return false;
           }
       }
@@ -189,7 +221,7 @@ const SectorView: React.FC<SectorViewProps> = ({ entities, playerShip, selectedT
     )
   , [allEntities]);
 
-  const tacticalOverlayElements = useMemo(() => {
+const tacticalOverlayElements = useMemo(() => {
     const shouldShow = spectatorMode || showTacticalOverlay;
     if (!shouldShow || !selectedTargetId) return null;
 
@@ -440,7 +472,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 }
                 if (entity.type === 'mine') {
                     const mine = entity as Mine;
-                    const isVisible = mine.visibleTo.includes(playerShip.shipModel);
+                    const isVisible = playerShip && mine.visibleTo.includes(playerShip.shipModel);
                     return (
                         <div
                             key={entity.id}

@@ -1,6 +1,5 @@
 // FIX: Renamed 'CombatSimulationSection' to 'ScenarioSimulatorSection' and added a new 'BattleReplayerSection' to the manual, updating the navigation and component imports accordingly.
 import React, { useState } from 'react';
-import { ThemeName } from '../hooks/useTheme';
 import {
     IntroductionSection,
     UISection,
@@ -17,13 +16,9 @@ import {
     BattleReplayerSection,
     WeaponRegistrySection,
 } from './manual';
+import { useUIState } from '../contexts/UIStateContext';
 
 type Section = 'intro' | 'ui' | 'registry' | 'officers' | 'lore' | 'mechanics' | 'combat' | 'advanced' | 'simulations' | 'animations' | 'generation' | 'ai' | 'replayer' | 'weapons';
-
-interface PlayerManualProps {
-    onClose: () => void;
-    themeName: ThemeName;
-}
 
 const SectionLink: React.FC<{ active: boolean, onClick: () => void, children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button onClick={onClick} className={`w-full text-left p-3 rounded transition-colors ${active ? 'bg-secondary-main text-secondary-text font-bold' : 'hover:bg-bg-paper-lighter'}`}>
@@ -31,8 +26,10 @@ const SectionLink: React.FC<{ active: boolean, onClick: () => void, children: Re
     </button>
 );
 
-const PlayerManual: React.FC<PlayerManualProps> = ({ onClose, themeName }) => {
+const PlayerManual: React.FC = () => {
+    const { themeName, setShowPlayerManual } = useUIState();
     const [activeSection, setActiveSection] = useState<Section>('intro');
+    const onClose = () => setShowPlayerManual(false);
 
     const renderContent = () => {
         switch(activeSection) {

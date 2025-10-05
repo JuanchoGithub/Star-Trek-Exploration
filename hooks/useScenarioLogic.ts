@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import type { GameState, Ship, LogEntry, ScenarioMode, PlayerTurnActions, Position, Entity, ShipSubsystems, TorpedoProjectile, SectorState, ProjectileWeapon } from '../types';
 import { shipClasses } from '../assets/ships/configs/shipClassStats';
@@ -22,25 +21,31 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
     const [historyIndex, setHistoryIndex] = useState<number>(0);
 
     useEffect(() => {
-        if (scenarioMode === 'setup' || !initialSector || gameState) return;
+        if (scenarioMode === 'setup' || !initialSector) return;
 
         const newSector: SectorState = JSON.parse(JSON.stringify(initialSector));
-        const playerShip = initialShips.find(s => s.allegiance === 'player');
         
+        // Create deep copies of ships and reset their state for the simulation
         const simShips = initialShips.map(s => {
             const ship = JSON.parse(JSON.stringify(s));
             ship.energy.current = ship.energy.max;
-            if (ship.allegiance === 'enemy' || ship.allegiance === 'ally' || (playerShip && ship.allegiance === 'player')) {
+            // Always give shields at start of sim if combatant
+            if (ship.allegiance === 'enemy' || ship.allegiance === 'ally' || ship.allegiance === 'player') {
                 ship.shields = ship.maxShields;
             }
             return ship;
         });
 
-        newSector.entities = initialSector.entities.filter(e => e.type !== 'ship').concat(simShips);
+        // FIX: The player ship should only exist in `player.ship` to have a single source of truth.
+        // It should be removed from the entities list to prevent a duplicate, stale object from being used by the AI and renderer.
+        const playerShipForState = simShips.find(s => s.allegiance === 'player');
+        const nonPlayerShips = simShips.filter(s => s.allegiance !== 'player');
+        
+        newSector.entities = initialSector.entities.filter(e => e.type !== 'ship').concat(nonPlayerShips);
         
         const initialState: GameState = {
             player: {
-                ship: playerShip || ({} as Ship),
+                ship: playerShipForState || ({} as Ship),
                 position: { qx: 0, qy: 0 },
                 crew: [],
             },
@@ -63,7 +68,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(initialState);
         setReplayHistory([initialState]);
         setHistoryIndex(0);
-    }, [scenarioMode, initialShips, initialSector, gameState]);
+    }, [scenarioMode, initialShips, initialSector]); // FIX: Removed gameState from dependency array to prevent re-initialization loops.
 
     useEffect(() => {
         if (gameState && gameState.combatEffects.length > 0) {
@@ -142,7 +147,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
     const onFireWeapon = useCallback((weaponId: string, targetId: string) => {
         if (!gameState || isTurnResolving || playerTurnActions.hasTakenMajorAction) return;
 
-        const playerShip = gameState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+        const playerShip = gameState.player.ship;
         if (!playerShip || playerShip.isStunned) return;
 
         const weapon = playerShip.weapons.find(w => w.id === weaponId);
@@ -151,7 +156,6 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         const target = gameState.currentSector.entities.find(e => e.id === targetId);
         if (!target) return;
 
-        // FIX: Added missing 'gameState.turn' argument to 'canTargetEntity' call.
         const targetingCheck = canTargetEntity(playerShip, target, gameState.currentSector, gameState.turn);
         if (!targetingCheck.canTarget) {
             addLog({ sourceId: playerShip.id, sourceName: playerShip.name, message: `Cannot fire: ${targetingCheck.reason}`, isPlayerSource: true, color: 'border-blue-400', category: 'combat' });
@@ -175,11 +179,11 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
     const onSelectSubsystem = useCallback((subsystem: keyof ShipSubsystems | null) => {
         setGameState(prev => {
             if (!prev) return null;
-            const targetEntity = prev.currentSector.entities.find(e => e.id === selectedTargetId);
+            const targetEntity = prev.currentSector.entities.find(e => e.id === selectedTargetId) ?? prev.player.ship;
             if (!targetEntity) return prev;
 
             const next = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip || !selectedTargetId) return prev;
 
             if (!playerShip.targeting || playerShip.targeting.entityId !== selectedTargetId) {
@@ -208,7 +212,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip) return prev;
             
             const oldAlloc = playerShip.energyAllocation;
@@ -243,7 +247,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
              if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip) return prev;
             
             let logMessage = '';
@@ -267,7 +271,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip) return prev;
 
             playerShip.pointDefenseEnabled = !playerShip.pointDefenseEnabled;
@@ -286,7 +290,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
 
             if (!playerShip || !next.redAlert || playerShip.subsystems.engines.health <= 0) {
                 return prev;
@@ -307,7 +311,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip) return prev;
 
             const newTarget = playerShip.repairTarget === subsystem ? null : subsystem;
@@ -326,7 +330,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setGameState(prev => {
             if (!prev) return null;
             const next: GameState = JSON.parse(JSON.stringify(prev));
-            const playerShip = next.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+            const playerShip = next.player.ship;
             if (!playerShip) return prev;
             
             next.redAlert = !next.redAlert;

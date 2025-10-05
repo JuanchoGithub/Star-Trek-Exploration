@@ -6,8 +6,10 @@ import { StarfleetLogoIcon, KlingonLogoIcon } from '../assets/ui/icons';
 import { DderidexWireframe } from '../assets/ships/wireframes';
 import LcarsDecoration from './LcarsDecoration';
 import RomulanDecoration from './RomulanDecoration';
+import { useGameActions } from '../contexts/GameActionsContext';
+import { useUIState } from '../contexts/UIStateContext';
 
-interface MainMenuProps {
+interface MenuLayoutProps {
     onNewGame: () => void;
     onLoadGame: () => void;
     onStartSimulator: () => void;
@@ -15,11 +17,7 @@ interface MainMenuProps {
     onOpenManual: () => void;
     onOpenChangelog: () => void;
     hasSaveGame: boolean;
-    themeName: ThemeName;
-    setTheme: (name: ThemeName) => void;
 }
-
-interface MenuLayoutProps extends Omit<MainMenuProps, 'themeName' | 'setTheme'> {}
 
 const FederationMenu: React.FC<MenuLayoutProps> = (props) => {
     return (
@@ -162,9 +160,19 @@ const RomulanMenu: React.FC<MenuLayoutProps> = (props) => {
     );
 };
 
-const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onStartSimulator, onImportSave, onOpenManual, onOpenChangelog, hasSaveGame, themeName, setTheme }) => {
-    
-    const propsForMenu = { onNewGame, onLoadGame, onStartSimulator, onImportSave, onOpenManual, onOpenChangelog, hasSaveGame };
+const MainMenu: React.FC = () => {
+    const { handleNewGame, handleLoadGame, handleStartSimulator, handleImportClick } = useGameActions();
+    const { hasSaveGame, themeName, setTheme, setShowPlayerManual, setShowChangelog } = useUIState();
+
+    const propsForMenu = { 
+        onNewGame: handleNewGame, 
+        onLoadGame: handleLoadGame, 
+        onStartSimulator: handleStartSimulator, 
+        onImportSave: handleImportClick, 
+        onOpenManual: () => setShowPlayerManual(true),
+        onOpenChangelog: () => setShowChangelog(true),
+        hasSaveGame 
+    };
 
     const renderMenu = () => {
         switch (themeName) {

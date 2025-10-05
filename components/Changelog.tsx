@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Version2_2, Version2_1, Version2_0, Version1_7, Version1_6_2, Version1_6_1, Version1_6, Version1_5, Version1_4, Version1_3_2 } from './changelog/index';
+import { useUIState } from '../contexts/UIStateContext';
 
 type Version = 'v2.2' | 'v2.1' | 'v2.0' | 'v1.7' | 'v1.6.2' | 'v1.6.1' | 'v1.6' | 'v1.5' | 'v1.4' | 'v1.3';
 
-interface ChangelogProps {
-    onClose: () => void;
-}
-
-const Changelog: React.FC<ChangelogProps> = ({ onClose }) => {
+const Changelog: React.FC = () => {
+    const { setShowChangelog } = useUIState();
     const [activeVersion, setActiveVersion] = useState<Version>('v2.2');
+    const onClose = () => setShowChangelog(false);
 
     const versions: { key: Version, label: string }[] = [
         { key: 'v2.2', label: 'Version 2.2' },

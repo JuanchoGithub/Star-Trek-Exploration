@@ -1,4 +1,3 @@
-
 import type { GameState, PlayerTurnActions, Position, Ship, TorpedoProjectile, Mine, AmmoType } from '../../types';
 import { processPlayerTurn } from './player';
 import { processAITurns } from './aiProcessor';
@@ -63,12 +62,13 @@ export function generatePhasedTurn(initialState: GameState, config: TurnConfig):
     let newSelectedTargetId = config.selectedTargetId;
     const actedShipIds = new Set<string>();
     
+    // FIX: Simplified player ship identification. In both 'game' and 'dogfight' modes,
+    // the authoritative player ship object is now `nextState.player.ship`.
     if (config.mode === 'game' || config.mode === 'dogfight') {
-        const playerShip = (config.mode === 'game')
-            ? nextState.player.ship
-            : nextState.currentSector.entities.find(e => e.type === 'ship' && e.allegiance === 'player') as Ship | undefined;
+        const playerShip = nextState.player.ship;
 
-        if (playerShip) {
+        // Ensure a valid player ship exists before processing its turn.
+        if (playerShip && playerShip.id) {
             const playerResult = processPlayerTurn(nextState, config.playerTurnActions, config.navigationTarget, config.selectedTargetId, addLog, addTurnEvent);
             newNavTarget = playerResult.newNavigationTarget;
             newSelectedTargetId = playerResult.newSelectedTargetId;

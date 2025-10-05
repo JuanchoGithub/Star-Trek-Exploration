@@ -1,15 +1,16 @@
-
 import React from 'react';
-import { LogEntry } from '../types';
+import { useGameState } from '../contexts/GameStateContext';
+import { useUIState } from '../contexts/UIStateContext';
 
 interface StatusLineProps {
-  latestLog: LogEntry | null;
-  onOpenLog: () => void;
-  onOpenGameMenu: () => void;
   children?: React.ReactNode;
 }
 
-const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onOpenLog, onOpenGameMenu, children }) => {
+const StatusLine: React.FC<StatusLineProps> = ({ children }) => {
+  const { gameState } = useGameState();
+  const { setShowLogModal, setShowGameMenu } = useUIState();
+
+  const latestLog = gameState && gameState.logs.length > 0 ? gameState.logs[gameState.logs.length-1] : null;
   const rawLogMessage = latestLog ? latestLog.message : "Welcome to the U.S.S. Endeavour.";
   
   const truncateMessage = (message: string, maxLength: number) => {
@@ -25,7 +26,7 @@ const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onOpenLog, onOpenGam
     <div className="panel-style p-2 h-full flex items-center justify-between text-sm">
       <div className="flex items-center gap-4">
         <button 
-          onClick={onOpenGameMenu} 
+          onClick={() => setShowGameMenu(true)} 
           className="btn btn-tertiary flex-shrink-0"
         >
           Game Menu
@@ -37,7 +38,7 @@ const StatusLine: React.FC<StatusLineProps> = ({ latestLog, onOpenLog, onOpenGam
       </p>
       <div className="flex items-center gap-2">
         <button 
-          onClick={onOpenLog} 
+          onClick={() => setShowLogModal(true)} 
           className="btn btn-primary flex-shrink-0"
         >
           View Captain's Log

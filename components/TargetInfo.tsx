@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Entity, Ship, ShipSubsystems, Planet, Weapon, BeamWeapon, ProjectileWeapon } from '../types';
-import { ThemeName } from '../hooks/useTheme';
 import WireframeDisplay from './WireframeDisplay';
+import { useGameState } from '../contexts/GameStateContext';
+import { useGameActions } from '../contexts/GameActionsContext';
+import { useUIState } from '../contexts/UIStateContext';
 
 const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
     weapons: 'WPN',
@@ -25,28 +27,11 @@ const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
     shuttlecraft: 'Shuttlecraft',
 };
 
-interface TargetInfoProps {
-    target: Entity; 
-    themeName: ThemeName;
-    selectedSubsystem: keyof ShipSubsystems | null;
-    onSelectSubsystem: (subsystem: keyof ShipSubsystems | null) => void;
-    playerShip: Ship;
-    hasEnemy: boolean;
-    orbitingPlanetId: string | null;
-    isTurnResolving: boolean;
-    onScanTarget: () => void;
-    onHailTarget: () => void;
-    onStartAwayMission: (planetId: string) => void;
-    onEnterOrbit: (planetId: string) => void;
-    isDocked: boolean;
-    selectedWeapon: (BeamWeapon | ProjectileWeapon) | null;
-}
+const TargetInfo: React.FC = () => {
+    const { gameState, targetEntity, playerTurnActions, isTurnResolving } = useGameState();
+    const { onSelectSubsystem, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit } = useGameActions();
+    const { themeName } = useUIState();
 
-const TargetInfo: React.FC<TargetInfoProps> = ({
-    target, themeName, selectedSubsystem, onSelectSubsystem, playerShip, hasEnemy, 
-    orbitingPlanetId, isTurnResolving, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit,
-    isDocked, selectedWeapon
-}) => {
     const [isPickerVisible, setPickerVisible] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -60,6 +45,20 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+    
+    if (!gameState) return null;
+    const { player, isDocked } = gameState;
+    const playerShip = player.ship;
+
+    if (!targetEntity) {
+        return (
+            <div className="panel-style p-3 flex flex-col justify-center text-center h-full">
+                <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
+                <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
+            </div>
+        );
+    }
+    const target = targetEntity;
 
     const isUnscannedShip = target.type === 'ship' && !target.scanned;
     const name = isUnscannedShip ? 'Unknown Ship' : target.name;
@@ -71,8 +70,9 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
         setPickerVisible(false);
     };
     
-    const isOrbiting = orbitingPlanetId === target.id;
+    const isOrbiting = gameState.orbitingPlanetId === target.id;
     const isAdjacent = target.type === 'planet' ? Math.max(Math.abs(target.position.x - playerShip.position.x), Math.abs(target.position.y - playerShip.position.y)) <= 1 : false;
+    const hasEnemy = gameState.currentSector.entities.some(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction));
 
     const getAwayMissionButtonState = () => {
         if (target.type !== 'planet') return { disabled: true, text: ''};
@@ -81,7 +81,6 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
         
         if ((target as Planet).planetClass === 'J') {
              const shuttlecraft = playerShip.subsystems.shuttlecraft;
-             // FIX: Safely access shuttlecraft subsystem which might not exist on older save files.
              if (shuttlecraft && typeof shuttlecraft.health === 'number' && typeof shuttlecraft.maxHealth === 'number') {
                 if (shuttlecraft.maxHealth <= 0 || (shuttlecraft.health / shuttlecraft.maxHealth) < 0.5) {
                     return { disabled: true, text: 'Cannot Begin Mission: Shuttlebay Damaged' };
@@ -91,7 +90,6 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
              }
         } else {
             const transporter = playerShip.subsystems.transporter;
-            // FIX: Safely access transporter subsystem which might not exist on older save files.
             if (transporter && typeof transporter.health === 'number' && typeof transporter.maxHealth === 'number') {
                 if (transporter.maxHealth <= 0 || (transporter.health / transporter.maxHealth) < 0.5) {
                     return { disabled: true, text: 'Cannot Begin Mission: Transporter Damaged' };
@@ -105,7 +103,9 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
     };
     const awayMissionState = getAwayMissionButtonState();
     
+    const selectedWeapon = playerTurnActions.firedWeaponId ? playerShip.weapons.find(w => w.id === playerTurnActions.firedWeaponId) : null;
     const isTorpedoSelected = selectedWeapon?.type === 'projectile';
+    const selectedSubsystem = player.targeting?.subsystem || null;
     let targetingButtonText = "Target Subsystem";
     if (isTorpedoSelected) {
         targetingButtonText = "Subsystem Targeting N/A";
@@ -155,7 +155,7 @@ const TargetInfo: React.FC<TargetInfoProps> = ({
                                     <div ref={pickerRef} className="absolute z-10 w-full mt-1 bg-bg-paper-lighter border-2 border-border-main rounded-md p-2 grid grid-cols-2 gap-2">
                                         <button onClick={() => handleSelect(null)} className={`btn btn-accent red ${!selectedSubsystem ? 'ring-2 ring-white' : ''}`}>Hull</button>
                                         {(Object.keys(subsystemAbbr) as Array<keyof ShipSubsystems>).map(key => {
-                                            const subsystem = target.subsystems[key];
+                                            const subsystem = (target as Ship).subsystems[key];
                                             const isDisabled = !subsystem || subsystem.health <= 0 || subsystem.maxHealth <= 0;
                                             return (
                                                 <button key={key} onClick={() => handleSelect(key)} disabled={isDisabled} className={`btn btn-tertiary ${selectedSubsystem === key ? 'ring-2 ring-white' : ''}`}>

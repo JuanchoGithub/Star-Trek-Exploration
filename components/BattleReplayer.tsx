@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameState, Entity } from '../types';
-import { ThemeName } from '../hooks/useTheme';
 import SectorView from './SectorView';
 import CombatFXLayer from './CombatFXLayer';
 import ReplayStatusPanel from './ReplayStatusPanel';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import LogPanel from './LogPanel';
 import PlaybackControls from './PlaybackControls';
+import { useGameState } from '../contexts/GameStateContext';
+import { useUIState } from '../contexts/UIStateContext';
 
-interface BattleReplayerProps {
-    history: GameState[];
-    onClose: () => void;
-    themeName: ThemeName;
-}
+const BattleReplayer: React.FC = () => {
+    const { gameState } = useGameState();
+    const { setShowReplayer, themeName, entityRefs } = useUIState();
+    
+    // The history is now part of the main game state
+    const history = gameState?.replayHistory || [];
+    const onClose = () => setShowReplayer(false);
 
-const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, themeName }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState(history.length > 0 ? history.length - 1 : 0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
     const [isLogExpanded, setIsLogExpanded] = useState(false);
-    // FIX: Added a ref to hold references to entity DOM elements for animations.
-    const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const currentGameState = history[currentIndex];
 
@@ -75,16 +75,8 @@ const BattleReplayer: React.FC<BattleReplayerProps> = ({ history, onClose, theme
                         <div className="relative flex-grow">
                              <CombatFXLayer effects={currentGameState.combatEffects} entities={allEntities} entityRefs={entityRefs} />
                              <SectorView 
-                                entities={currentGameState.currentSector.entities} 
-                                playerShip={playerShip}
-                                selectedTargetId={selectedEntityId}
-                                onSelectTarget={handleSelectTarget}
-                                navigationTarget={null}
-                                onSetNavigationTarget={() => {}}
-                                sector={currentGameState.currentSector}
-                                themeName={themeName}
                                 spectatorMode={true}
-                                entityRefs={entityRefs}
+                                isResizing={false}
                             />
                         </div>
                         <PlaybackControls

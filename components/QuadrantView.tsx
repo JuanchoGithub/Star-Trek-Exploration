@@ -3,7 +3,6 @@ import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition, Ship } from '../types';
 // FIX: Corrected import to use GalaxyIcon, which is exported and represents an explorer-type vessel, instead of the non-existent FederationExplorerIcon.
 import { GalaxyIcon as PlayerShipIcon } from '../assets/ships/icons';
-import { ThemeName } from '../hooks/useTheme';
 
 // Seeded PRNG helpers from useGameLogic
 const cyrb53 = (str: string, seed = 0): number => {
@@ -148,7 +147,6 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
     );
 });
 
-
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
     playerPosition: { qx: number; qy: number };
@@ -156,7 +154,7 @@ interface QuadrantViewProps {
     onWarp: (pos: { qx: number; qy: number }) => void;
     onScanQuadrant: (pos: QuadrantPosition) => void;
     isInCombat: boolean;
-    themeName: ThemeName;
+    themeName: string;
 }
 
 const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, playerShip, onWarp, onScanQuadrant, isInCombat, themeName }) => {
@@ -293,7 +291,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                             Warp
                         </button>
                         {!quadrantMap[contextMenu.qy][contextMenu.qx].isScanned && (
-                            <button onClick={() => { onScanQuadrant(contextMenu); setContextMenu(null); }} className="btn btn-secondary text-xs w-full">Scan (1 Pwr)</button>
+                            <button onClick={() => { onScanQuadrant(contextMenu); setContextMenu(null); }} className="btn btn-secondary text-xs w-full">Scan (5 Pwr)</button>
                         )}
                     </div>
                 )}
