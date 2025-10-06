@@ -532,7 +532,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                             </button>
                         </div>
                         <div className="relative flex-grow flex justify-center items-center min-h-0">
-                             <div className="w-full h-full aspect-[11/10] relative">
+                             <div className="w-full h-full relative">
                                 <SectorView
                                     sector={setupState.sector}
                                     entities={[...setupState.ships, ...(setupState.sector?.entities.filter(e => e.type !== 'ship') || [])]}
@@ -678,7 +678,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         <>
                             <div className="grid grid-rows-[1fr_auto] gap-4 min-h-0">
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
-                                    <div className="w-full h-full aspect-[11/10] relative">
+                                    <div className="w-full h-full relative">
                                         <CombatFXLayer effects={effectsForDisplay} entities={entitiesForDisplay} entityRefs={entityRefs} />
                                         {logic.desperationMoveAnimation && <DesperationMoveAnimation animation={logic.desperationMoveAnimation} />}
                                         <SectorView
@@ -713,7 +713,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         <>
                             <div className="flex flex-col gap-4 min-h-0">
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
-                                    <div className="w-full h-full aspect-[11/10] relative">
+                                    <div className="w-full h-full relative">
                                         <CombatFXLayer effects={effectsForDisplay} entities={entitiesForDisplay} entityRefs={entityRefs} />
                                         {logic.desperationMoveAnimation && <DesperationMoveAnimation animation={logic.desperationMoveAnimation} />}
                                         <SectorView

@@ -77,7 +77,7 @@ const GameUI: React.FC = () => {
                                 </div>
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
                                     {isWarping && <WarpAnimation />}
-                                    <div className="w-full h-full aspect-[11/10] relative">
+                                    <div className="w-full h-full relative">
                                         {currentView === 'sector' ? (
                                             <>
                                                 <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} entityRefs={entityRefs} />
@@ -86,6 +86,7 @@ const GameUI: React.FC = () => {
                                         ) : (
                                             <QuadrantView
                                                 quadrantMap={quadrantMap}
+                                                currentSector={sector}
                                                 playerPosition={player.position}
                                                 playerShip={player.ship}
                                                 onWarp={onWarp}

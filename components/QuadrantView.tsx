@@ -1,8 +1,7 @@
 // FIX: Removed invalid "--- START OF FILE components/QuadrantView.tsx ---" header.
 import React, { useState, useMemo } from 'react';
 import type { SectorState, FactionOwner, QuadrantPosition, Ship } from '../types';
-// FIX: Corrected import to use GalaxyIcon, which is exported and represents an explorer-type vessel, instead of the non-existent FederationExplorerIcon.
-import { GalaxyIcon as PlayerShipIcon } from '../assets/ships/icons';
+import { shipVisuals } from '../assets/ships/configs/shipVisuals';
 import { cyrb53, seededRandom } from '../game/utils/helpers';
 
 const QuadrantGFXBackground: React.FC = React.memo(() => {
@@ -10,105 +9,76 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
         const seed = cyrb53(String(Math.random())); // Randomly generate seed each time
         const rand = seededRandom(seed);
         const generatedElements: React.ReactNode[] = [];
-        const width = 800; // viewbox width
-        const height = 800; // viewbox height
+        const totalSize = 800; // Use a square viewbox
 
-        // Add main grid lines (like graph paper)
-        for(let i = 1; i < 8; i++) {
-            generatedElements.push(<line key={`h-grid-${i}`} x1={0} y1={i * 100} x2={width} y2={i * 100} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
-            generatedElements.push(<line key={`v-grid-${i}`} x1={i * 100} y1={0} x2={i * 100} y2={height} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
+        // Main grid lines for the 8x8 map
+        for(let i = 0; i <= 8; i++) {
+            const pos = i * 100;
+            if (i > 0 && i < 8) { // Only draw inner grid lines
+                generatedElements.push(<line key={`h-grid-${i}`} x1={0} y1={pos} x2={totalSize} y2={pos} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
+                generatedElements.push(<line key={`v-grid-${i}`} x1={pos} y1={0} x2={pos} y2={totalSize} stroke="#60a5fa" strokeWidth="1" opacity="0.4" />);
+            }
         }
         // Fainter sub-grid
         for(let i = 1; i < 40; i++) {
              if (i % 5 !== 0) {
-                generatedElements.push(<line key={`sh-grid-${i}`} x1={0} y1={i * 20} x2={width} y2={i * 20} stroke="white" strokeWidth="0.5" opacity="0.1" />);
-                generatedElements.push(<line key={`sv-grid-${i}`} x1={i * 20} y1={0} x2={i * 20} y2={height} stroke="white" strokeWidth="0.5" opacity="0.1" />);
+                const pos = i * 20;
+                generatedElements.push(<line key={`sh-grid-${i}`} x1={0} y1={pos} x2={totalSize} y2={pos} stroke="white" strokeWidth="0.5" opacity="0.1" />);
+                generatedElements.push(<line key={`sv-grid-${i}`} x1={pos} y1={0} x2={pos} y2={totalSize} stroke="white" strokeWidth="0.5" opacity="0.1" />);
              }
         }
 
-        // Generate dots
-        const numDots = 60 + Math.floor(rand() * 20);
+        // Generate dots across the entire viewbox
+        const numDots = 60 + Math.floor(rand() * 15);
         for (let i = 0; i < numDots; i++) {
             const r = rand() > 0.9 ? rand() * 8 + 6 : rand() * 4 + 2;
-            const isHalf = rand() > 0.95; // Some dots are cut off at the edge
-            let cx = rand() * width;
-            let cy = rand() * height;
+            const isHalf = rand() > 0.95;
+            let cx = rand() * totalSize;
+            let cy = rand() * totalSize;
 
             if (isHalf) {
                 if (rand() > 0.5) {
-                    cx = rand() > 0.5 ? -r/2 : width + r/2;
+                    cx = rand() > 0.5 ? -r/2 : totalSize + r/2;
                 } else {
-                    cy = rand() > 0.5 ? -r/2 : height + r/2;
+                    cy = rand() > 0.5 ? -r/2 : totalSize + r/2;
                 }
             }
 
-            generatedElements.push(
-                <circle
-                    key={`dot-${i}`}
-                    cx={cx}
-                    cy={cy}
-                    r={r}
-                    fill="#E5E7EB"
-                    opacity={0.7}
-                />
-            );
+            generatedElements.push(<circle key={`dot-${i}`} cx={cx} cy={cy} r={r} fill="#E5E7EB" opacity={0.7} />);
         }
 
-        // Generate smooth curved line (non-looping sine-like wave)
-        let currentX = -50; // Start off-screen
-        let currentY = rand() * height;
+        // Generate smooth curved line across the entire viewbox
+        let currentX = -50;
+        let currentY = rand() * totalSize;
         let pathData = `M ${currentX} ${currentY}`;
-        const numSegments = 5 + Math.floor(rand() * 3);
-        const segmentWidth = (width + 100) / numSegments;
+        const numSegments = 4 + Math.floor(rand() * 2);
+        const segmentWidth = (totalSize + 100) / numSegments;
         for (let i = 0; i < numSegments; i++) {
             const nextX = currentX + segmentWidth;
-            const nextY = rand() * height;
+            const nextY = rand() * totalSize;
 
             if (i === 0) {
-                // The first segment must use a full cubic Bézier to establish the initial direction.
                 const cp1x = currentX + (nextX - currentX) * (0.2 + rand() * 0.2);
-                const cp1y = rand() * height;
+                const cp1y = rand() * totalSize;
                 const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
-                const cp2y = rand() * height;
+                const cp2y = rand() * totalSize;
                 pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
             } else {
-                // Subsequent segments use the smooth curveto command, which reflects the previous control point.
                 const cp2x = currentX + (nextX - currentX) * (0.6 + rand() * 0.2);
-                const cp2y = rand() * height;
+                const cp2y = rand() * totalSize;
                 pathData += ` S ${cp2x} ${cp2y}, ${nextX} ${nextY}`;
             }
             
             currentX = nextX;
             currentY = nextY;
         }
-        generatedElements.push(
-            <path
-                key="curve"
-                d={pathData}
-                stroke="#D98383"
-                strokeWidth="4"
-                fill="none"
-                opacity={0.8}
-            />
-        );
+        generatedElements.push(<path key="curve" d={pathData} stroke="#D98383" strokeWidth="4" fill="none" opacity={0.8} />);
         
-        // Add highlighted data point
-        generatedElements.push(
-            <circle
-                key="highlight-dot"
-                cx={rand() * width}
-                cy={rand() * height}
-                r={12}
-                fill="#FBBF24"
-                opacity={0.9}
-            />
-        );
-        // Add a vertical line like in the image
-        const xPos = rand() * width;
-        generatedElements.push(
-             <line key="v-line-highlight" x1={xPos} y1={0} x2={xPos} y2={height} stroke="#FBBF24" strokeWidth="1.5" opacity="0.6" />
-        );
-
+        // Add highlighted data point somewhere on the grid
+        generatedElements.push(<circle key="highlight-dot" cx={rand() * totalSize} cy={rand() * totalSize} r={12} fill="#FBBF24" opacity={0.9} />);
+        // Add a vertical line
+        const xPos = rand() * totalSize;
+        generatedElements.push(<line key="v-line-highlight" x1={xPos} y1={0} x2={xPos} y2={totalSize} stroke="#FBBF24" strokeWidth="1.5" opacity="0.6" />);
 
         return generatedElements;
     }, []);
@@ -125,8 +95,10 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
     );
 });
 
+
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
+    currentSector: SectorState;
     playerPosition: { qx: number; qy: number };
     playerShip: Ship;
     onWarp: (pos: { qx: number; qy: number }) => void;
@@ -135,9 +107,15 @@ interface QuadrantViewProps {
     themeName: string;
 }
 
-const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition, playerShip, onWarp, onScanQuadrant, isInCombat, themeName }) => {
-    const quadrantSize = { width: 8, height: 8 };
+const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, currentSector, playerPosition, playerShip, onWarp, onScanQuadrant, isInCombat, themeName }) => {
+    const quadrantGridSize = { width: 8, height: 8 };
+    const gridCells = Array.from({ length: quadrantGridSize.width * quadrantGridSize.height });
+    
     const [contextMenu, setContextMenu] = useState<{ qx: number; qy: number } | null>(null);
+
+    const playerVisualConfig = shipVisuals[playerShip.shipModel];
+    const playerClassConfig = shipVisuals[playerShip.shipModel]?.classes[playerShip.shipClass] ?? shipVisuals.Unknown.classes['Unknown']!;
+    const PlayerShipIcon = playerClassConfig.icon;
 
     const warpEngineHealthPercent = (playerShip.subsystems.engines.health / playerShip.subsystems.engines.maxHealth);
     const maxWarpDistance = Math.floor(1 + 0.09 * (warpEngineHealthPercent * 100));
@@ -154,21 +132,25 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
     
     const menuStyle: React.CSSProperties = contextMenu ? {
         position: 'absolute',
-        left: `${(contextMenu.qx / quadrantSize.width) * 100}%`,
-        top: `${(contextMenu.qy / quadrantSize.height) * 100}%`,
-        transform: `translate(${contextMenu.qx >= quadrantSize.width / 2 ? '-105%' : '5%'}, ${contextMenu.qy >= quadrantSize.height / 2 ? '-105%' : '5%'})`,
+        left: `${(contextMenu.qx / quadrantGridSize.width) * 100}%`,
+        top: `${(contextMenu.qy / quadrantGridSize.height) * 100}%`,
+        transform: `translate(${contextMenu.qx >= quadrantGridSize.width / 2 ? '-105%' : '5%'}, ${contextMenu.qy >= quadrantGridSize.height / 2 ? '-105%' : '5%'})`,
         zIndex: 30,
     } : {};
 
 
     return (
-        <div className="panel-style p-1 w-full max-h-full flex flex-col bg-black aspect-square" onClick={() => setContextMenu(null)}>
-            <div className="grid grid-cols-8 grid-rows-8 gap-0 flex-grow relative">
+        <div className="panel-style p-1 w-full h-full flex flex-col bg-black" onClick={() => setContextMenu(null)}>
+            <div className="grid grid-cols-8 grid-rows-8 gap-0 h-full relative">
                 <QuadrantGFXBackground />
-                {quadrantMap.flat().map((sector, index) => {
-                    const qx = index % quadrantSize.width;
-                    const qy = Math.floor(index / quadrantSize.width);
+                {gridCells.map((_, index) => {
+                    const qx = index % quadrantGridSize.width;
+                    const qy = Math.floor(index / quadrantGridSize.width);
+
+                    const sector = quadrantMap[qy][qx];
                     const isPlayerHere = playerPosition.qx === qx && playerPosition.qy === qy;
+                    
+                    const displaySector = isPlayerHere ? currentSector : sector;
                     
                     const distance = Math.max(Math.abs(playerPosition.qx - qx), Math.abs(playerPosition.qy - qy));
                     const isWarpable = !isPlayerHere && distance > 0 && distance <= maxWarpDistance;
@@ -177,8 +159,8 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, playerPosition
                     const isScanned = sector.isScanned;
 
                     let bgClass, borderClass, textClass, title, content;
-                    const factionDisplay = getFactionDisplay(sector.factionOwner);
-                    const hostileCount = sector.entities.filter(e => e.type === 'ship' && ['Klingon', 'Romulan', 'Pirate'].includes(e.faction)).length;
+                    const factionDisplay = getFactionDisplay(displaySector.factionOwner);
+                    const hostileCount = displaySector.entities.filter(e => e.type === 'ship' && (e as Ship).allegiance === 'enemy').length;
 
                     if (isVisited) {
                         bgClass = factionDisplay.bg;
