@@ -95,6 +95,40 @@ const QuadrantGFXBackground: React.FC = React.memo(() => {
     );
 });
 
+const QuadrantIndicators: React.FC<{ sector: SectorState }> = ({ sector }) => {
+    const indicators = useMemo(() => {
+        const presentIndicators = new Set<string>();
+        if (!sector.visited && !sector.isScanned) return [];
+
+        if (sector.entities.some(e => e.type === 'ship' && (e as Ship).allegiance === 'enemy')) {
+            presentIndicators.add('bg-accent-red');
+        }
+        if (sector.entities.some(e => e.type === 'starbase' || (e.type === 'ship' && (e as Ship).allegiance === 'ally'))) {
+            presentIndicators.add('bg-accent-sky');
+        }
+        if (sector.entities.some(e => e.type === 'event_beacon')) {
+            presentIndicators.add('bg-accent-purple');
+        }
+        if (sector.entities.some(e => e.type === 'planet')) {
+            presentIndicators.add('bg-accent-green');
+        }
+        if (sector.entities.some(e => e.type === 'asteroid_field') || sector.hasNebula || sector.ionStormCells.length > 0) {
+            presentIndicators.add('bg-gray-400');
+        }
+        return Array.from(presentIndicators);
+    }, [sector]);
+
+    if (indicators.length === 0) return null;
+
+    return (
+        <div className="absolute bottom-1 left-1 flex gap-1">
+            {indicators.map((color, i) => (
+                <div key={i} className={`quadrant-indicator ${color}`} />
+            ))}
+        </div>
+    );
+};
+
 
 interface QuadrantViewProps {
     quadrantMap: SectorState[][];
@@ -138,6 +172,31 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, currentSector,
         zIndex: 30,
     } : {};
 
+    const sectorForMenu = contextMenu ? quadrantMap[contextMenu.qy][contextMenu.qx] : null;
+    const sectorInfo = useMemo(() => {
+        if (!sectorForMenu) return { title: '', details: null };
+        if (!sectorForMenu.isScanned && !sectorForMenu.visited) {
+            return { title: 'Unscanned Sector', details: null };
+        }
+        
+        const factionDisplay = getFactionDisplay(sectorForMenu.factionOwner);
+        const hostiles = sectorForMenu.entities.filter(e => e.type === 'ship' && (e as Ship).allegiance === 'enemy').length;
+        const friendlies = sectorForMenu.entities.filter(e => e.type === 'ship' && (e as Ship).allegiance === 'ally').length;
+        const starbases = sectorForMenu.entities.filter(e => e.type === 'starbase').length;
+        const planets = sectorForMenu.entities.filter(e => e.type === 'planet').length;
+        const anomalies = sectorForMenu.entities.filter(e => e.type === 'event_beacon').length;
+
+        const hazards = [];
+        if (sectorForMenu.hasNebula) hazards.push('Nebula');
+        if (sectorForMenu.ionStormCells.length > 0) hazards.push('Ion Storm');
+        if (sectorForMenu.entities.some(e => e.type === 'asteroid_field')) hazards.push('Asteroids');
+
+        return {
+            title: factionDisplay.name,
+            details: { hostiles, friendlies, starbases, planets, anomalies, hazards }
+        };
+    }, [sectorForMenu]);
+
 
     return (
         <div className="panel-style p-1 w-full h-full flex flex-col bg-black" onClick={() => setContextMenu(null)}>
@@ -158,39 +217,24 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, currentSector,
                     const isVisited = sector.visited;
                     const isScanned = sector.isScanned;
 
-                    let bgClass, borderClass, textClass, title, content;
+                    let bgClass, borderClass, textClass, title;
                     const factionDisplay = getFactionDisplay(displaySector.factionOwner);
-                    const hostileCount = displaySector.entities.filter(e => e.type === 'ship' && (e as Ship).allegiance === 'enemy').length;
 
                     if (isVisited) {
                         bgClass = factionDisplay.bg;
                         borderClass = factionDisplay.border;
                         textClass = factionDisplay.text;
                         title = `${factionDisplay.name} (${qx},${qy})`;
-                        content = (
-                            <>
-                                <span className={`font-bold text-xs ${textClass}`}>({qx},{qy})</span>
-                                {hostileCount > 0 && <span className="text-xs text-red-400 font-bold">Hostiles: {hostileCount}</span>}
-                            </>
-                        );
                     } else if (isScanned) {
                         bgClass = factionDisplay.bg;
                         borderClass = 'border-dashed ' + factionDisplay.border;
                         textClass = factionDisplay.text.replace('300', '500');
                         title = `Scanned: ${factionDisplay.name} (${qx},${qy})`;
-                         content = (
-                            <>
-                                <span className={`font-bold text-xs ${textClass}`}>({qx},{qy})</span>
-                                {hostileCount > 0 && <span className="text-xs text-red-500 font-bold">Hostiles: {hostileCount}</span>}
-                                 {!hostileCount && <span className="text-xs text-gray-400">Clear</span>}
-                            </>
-                        );
                     } else { // Not visited, not scanned
                         bgClass = 'bg-black bg-opacity-60';
                         borderClass = 'border-border-dark';
                         textClass = 'text-text-disabled';
                         title = `Unexplored Sector (${qx},${qy})`;
-                        content = <span className={`font-bold text-3xl ${textClass} opacity-50`}>?</span>;
                     }
                     
                     let hoverClass = '';
@@ -225,23 +269,34 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, currentSector,
                             title={cellTitle}
                         >
                             <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                                {content}
+                                <span className={`font-bold text-xs ${textClass}`}>({qx},{qy})</span>
                             </div>
                             {isPlayerHere && (
                                 <div className="absolute inset-0 flex items-center justify-center text-accent-yellow z-20">
                                     <PlayerShipIcon className="w-8 h-8 animate-pulse" />
                                 </div>
                             )}
+                            {(isVisited || isScanned) && <QuadrantIndicators sector={displaySector} />}
                         </div>
                     );
                 })}
-                 {contextMenu && (
+                 {contextMenu && sectorForMenu && (
                     <div 
                         style={menuStyle}
-                        className="bg-bg-paper-lighter border-2 border-border-light rounded-md shadow-lg p-2 flex flex-col gap-1 w-36"
+                        className="bg-bg-paper-lighter border-2 border-border-light rounded-md shadow-lg p-2 flex flex-col gap-1 w-48"
                         onClick={e => e.stopPropagation()}
                     >
-                        <h4 className="text-sm font-bold text-center border-b border-border-dark mb-1 pb-1">Sector ({contextMenu.qx},{contextMenu.qy})</h4>
+                        <h4 className="text-sm font-bold text-center border-b border-border-dark mb-2 pb-1">{sectorInfo.title} ({contextMenu.qx},{contextMenu.qy})</h4>
+                        {sectorInfo.details && (
+                            <div className="text-xs space-y-1 mb-2">
+                                {sectorInfo.details.hostiles > 0 && <div className="flex justify-between"><span className="text-text-secondary">Hostile Contacts:</span><span className="font-bold text-accent-red">{sectorInfo.details.hostiles}</span></div>}
+                                {sectorInfo.details.friendlies > 0 && <div className="flex justify-between"><span className="text-text-secondary">Friendly Contacts:</span><span className="font-bold text-accent-sky">{sectorInfo.details.friendlies}</span></div>}
+                                {sectorInfo.details.starbases > 0 && <div className="flex justify-between"><span className="text-text-secondary">Starbases:</span><span className="font-bold text-accent-sky">{sectorInfo.details.starbases}</span></div>}
+                                {sectorInfo.details.planets > 0 && <div className="flex justify-between"><span className="text-text-secondary">Planets:</span><span className="font-bold text-accent-green">{sectorInfo.details.planets}</span></div>}
+                                {sectorInfo.details.anomalies > 0 && <div className="flex justify-between"><span className="text-text-secondary">Anomalies:</span><span className="font-bold text-accent-purple">{sectorInfo.details.anomalies}</span></div>}
+                                {sectorInfo.details.hazards.length > 0 && <div className="flex justify-between"><span className="text-text-secondary">Hazards:</span><span className="font-bold text-gray-400">{sectorInfo.details.hazards.join(', ')}</span></div>}
+                            </div>
+                        )}
                         <button 
                             onClick={() => { onWarp(contextMenu); setContextMenu(null); }} 
                             className="btn btn-primary text-xs w-full"
@@ -250,7 +305,7 @@ const QuadrantView: React.FC<QuadrantViewProps> = ({ quadrantMap, currentSector,
                         >
                             Warp
                         </button>
-                        {!quadrantMap[contextMenu.qy][contextMenu.qx].isScanned && (
+                        {!sectorForMenu.isScanned && !sectorForMenu.visited && (
                             <button onClick={() => { onScanQuadrant(contextMenu); setContextMenu(null); }} className="btn btn-secondary text-xs w-full">Scan (5 Pwr)</button>
                         )}
                     </div>
