@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SectionHeader, SubHeader } from './shared';
 
@@ -95,7 +96,7 @@ export const AIBehaviorSection: React.FC = () => (
                 <strong className="text-accent-yellow">Cost Calculation:</strong> The AI calculates the potential for self-damage or friendly fire. It iterates through each storm cell on the torpedo's path, calculating the specific probability of a detonation in that cell. If the firing ship or an allied ship is in that cell, the potential 50% splash damage is added to the "Expected Cost".
             </li>
              <li>
-                <strong className="text-accent-yellow">Factional Risk Aversion:</strong> A launch is only authorized if <code className="text-white bg-black p-1 rounded">Reward > Cost &times; RiskFactor</code>.
+                <strong className="text-accent-yellow">Factional Risk Aversion:</strong> A launch is only authorized if <code className="text-white bg-black p-1 rounded">Reward &gt; Cost &times; RiskFactor</code>.
                 <ul className="list-[circle] list-inside ml-6 mt-1 text-sm font-mono">
                     <li><b className="text-red-400">Klingon Risk Factor:</b> 1.25 (Low Aversion)</li>
                     <li><b className="text-orange-400">Pirate Risk Factor:</b> 1.75</li>
@@ -252,7 +253,7 @@ export const AIBehaviorSection: React.FC = () => (
         </div>
 
         <SubHeader>Advanced Cloaking Doctrine (Revision 1.7)</SubHeader>
-        <p className="text-text-secondary mb-2">Stealth technology is a dynamic state requiring constant power and subject to failure under pressure.</p>
+        <p className="text-text-secondary mb-2">Stealth technology is no longer a simple fire-and-forget system. It is a dynamic state requiring constant power and subject to failure under pressure. Understanding these new, more complex mechanics is essential to survival.</p>
         <ul className="list-disc list-inside ml-4 text-text-secondary my-2 space-y-2">
             <li>
                 <strong className="text-accent-yellow">Multi-Turn Operation:</strong>
