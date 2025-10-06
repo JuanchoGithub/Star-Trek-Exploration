@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, Entity, StatusEffect, ProjectileWeapon } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -21,20 +22,68 @@ const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
     shuttlecraft: 'SHTL',
 };
 
-const StatusBar: React.FC<{ label: string; value: number; max: number; colorClass: string; children?: React.ReactNode }> = ({ label, value, max, colorClass, children }) => {
-  const percentage = max > 0 ? (value / max) * 100 : 0;
-  return (
-    <div>
-      <div className="flex justify-between items-center text-sm">
-        <span className="font-bold flex items-center gap-1">{label} {children}</span>
-        <span>{Math.round(value)} / {max}</span>
-      </div>
-      <div className="w-full bg-bg-paper-lighter rounded-full h-2.5">
-        <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${percentage}%` }}></div>
-      </div>
-    </div>
-  );
+const ResourceBar: React.FC<{ label: string; value: number; max: number; colorClass: string; offLine?: boolean; theme: ThemeName; }> = ({ label, value, max, colorClass, offLine = false, theme }) => {
+    const percentage = max > 0 ? (value / max) * 100 : 0;
+
+    // --- Federation (LCARS) Style ---
+    if (theme === 'federation') {
+        const segments = Array.from({ length: 10 });
+        const filledSegments = Math.round(percentage / 10);
+        const lcarsColor = offLine ? 'bg-gray-700/50' : colorClass;
+        const finalLabel = label === 'Reserve Power' ? 'Power' : label === 'Crew Morale' ? 'Morale' : label;
+
+        return (
+            <div className="flex items-center gap-2 h-8">
+                <span className="w-16 text-right font-bold text-sm uppercase text-text-secondary">{finalLabel}</span>
+                <div className="flex-grow h-full rounded-r-lg flex items-center p-1 gap-0.5" style={{ background: 'var(--color-primary-dark)' }}>
+                    {segments.map((_, i) => (
+                        <div 
+                            key={i} 
+                            className={`flex-1 h-full rounded-sm transition-colors duration-300 ${i < filledSegments ? lcarsColor : 'bg-black/50'}`}
+                        />
+                    ))}
+                </div>
+                <span className="w-20 font-mono text-left text-text-secondary">{Math.round(value)}/{max}</span>
+            </div>
+        );
+    }
+    
+    // --- Klingon Style ---
+    if (theme === 'klingon') {
+        const barColor = offLine ? 'bg-bg-paper-lighter' : colorClass;
+        return (
+            <div className="flex items-center gap-2 h-7">
+                <span className="w-24 text-right font-bold text-sm uppercase text-text-secondary">{label}</span>
+                <div className="flex-grow h-full bg-black/50 border-y-2 border-border-dark" style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0% 100%)' }}>
+                    <div className={`${barColor} h-full transition-all duration-300`} style={{ width: `${percentage}%`, clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0% 100%)' }}></div>
+                </div>
+                <span className="w-20 font-mono text-left text-text-secondary">{Math.round(value)}/{max}</span>
+            </div>
+        );
+    }
+    
+    // --- Romulan Style ---
+    if (theme === 'romulan') {
+         const barColor = offLine ? 'var(--color-dark-green)' : 'var(--color-plasma-green)';
+         return (
+            <div className="flex items-center gap-2 h-6">
+                 <span className="w-24 text-right font-bold text-xs uppercase text-text-secondary">{label}</span>
+                 <div className="flex-grow h-2 bg-transparent border border-dark-green">
+                     <div className="h-full transition-all duration-300" style={{ width: `${percentage}%`, backgroundColor: barColor, boxShadow: `0 0 5px ${barColor}` }}></div>
+                 </div>
+                 <span className="w-20 font-mono text-left text-text-secondary text-xs">{Math.round(value)}/{max}</span>
+            </div>
+         );
+    }
+
+    // Fallback style (shouldn't be reached if themes are defined)
+    return (
+        <div>
+            {label}: {value}/{max}
+        </div>
+    );
 };
+
 
 const TacticalButton: React.FC<{
     label: string;
@@ -313,31 +362,55 @@ const ShipStatus: React.FC = () => {
             ref={scrollContainerRef}
             className="flex-grow space-y-2 overflow-y-auto pr-2"
         >
-            <StatusBar label="Hull" value={ship.hull} max={ship.maxHull} colorClass="bg-accent-red" />
-            <StatusBar 
-                label={redAlert ? "Shields" : "Shields (OFFLINE)"} 
-                value={redAlert ? ship.shields : 0} 
-                max={ship.maxShields} 
-                colorClass={redAlert ? "bg-secondary-main" : "bg-text-disabled"}
-            />
-            <StatusBar label="Reserve Power" value={ship.energy.current} max={ship.energy.max} colorClass="bg-accent-yellow" />
-            <StatusBar label="Crew Morale" value={ship.crewMorale.current} max={ship.crewMorale.max} colorClass="bg-accent-sky" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-1">
+                 <ResourceBar 
+                    theme={themeName}
+                    label={themeName === 'federation' ? 'Hull' : 'Hull'} 
+                    value={ship.hull} 
+                    max={ship.maxHull} 
+                    colorClass="bg-accent-red" 
+                />
+                <ResourceBar 
+                    theme={themeName}
+                    label={themeName === 'federation' ? 'Shields' : 'Shields'}
+                    value={redAlert ? ship.shields : 0} 
+                    max={ship.maxShields} 
+                    colorClass="bg-secondary-main"
+                    offLine={!redAlert}
+                />
+                <ResourceBar 
+                    theme={themeName}
+                    label={themeName === 'federation' ? 'Power' : 'Reserve Power'}
+                    value={ship.energy.current} 
+                    max={ship.energy.max} 
+                    colorClass="bg-accent-yellow" 
+                />
+                <ResourceBar 
+                    theme={themeName}
+                    label={themeName === 'federation' ? 'Morale' : 'Crew Morale'}
+                    value={ship.crewMorale.current} 
+                    max={ship.crewMorale.max} 
+                    colorClass="bg-accent-sky" 
+                />
+            </div>
             
-            <div className="flex justify-between items-center text-sm">
-                <span className="font-bold flex items-center gap-1"><DilithiumIcon className="w-5 h-5 text-accent-pink"/> Dilithium</span>
-                <span className="font-bold text-accent-pink">{ship.dilithium.current} / {ship.dilithium.max}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-                <span className="font-bold flex items-center gap-1"><TorpedoIcon className="w-5 h-5 text-secondary-main"/> Torpedoes</span>
-                <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-                <span className="font-bold flex items-center gap-1"><SecurityIcon className="w-5 h-5 text-accent-red"/> Security</span>
-                <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-                <span className="font-bold flex items-center gap-1"><RepairIcon className="w-5 h-5 text-accent-yellow"/> Repair Capacity</span>
-                <span className="font-bold text-accent-yellow">{ship.repairPoints.current.toFixed(0)} / {ship.repairPoints.max}</span>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pt-1">
+                <div className="flex justify-between items-center">
+                    <span className="font-bold flex items-center gap-1 whitespace-nowrap"><DilithiumIcon className="w-5 h-5 text-accent-pink"/> Dilithium</span>
+                    <span className="font-bold text-accent-pink">{ship.dilithium.current} / {ship.dilithium.max}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="font-bold flex items-center gap-1 whitespace-nowrap"><TorpedoIcon className="w-5 h-5 text-secondary-main"/> Torpedoes</span>
+                    <span className="font-bold text-accent-orange">{ship.torpedoes.current} / {ship.torpedoes.max}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="font-bold flex items-center gap-1 whitespace-nowrap"><SecurityIcon className="w-5 h-5 text-accent-red"/> Security</span>
+                    <span className="font-bold text-accent-orange">{ship.securityTeams.current} / {ship.securityTeams.max}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="font-bold flex items-center gap-1 whitespace-nowrap"><RepairIcon className="w-5 h-5 text-accent-yellow"/> Repair</span>
+                    <span className="font-bold text-accent-yellow">{ship.repairPoints.current.toFixed(0)} / {ship.repairPoints.max}</span>
+                </div>
             </div>
             
             <div className="mt-3">
