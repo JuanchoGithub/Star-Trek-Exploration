@@ -1,18 +1,11 @@
 import React from 'react';
-
-const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            {children}
-        </g>
-    </svg>
-);
+import { BaseWireframe } from '../UnknownShipWireframe';
 
 export const GalaxyEngineeringWireframe: React.FC = () => (
-    <WireframeSVG>
+    <BaseWireframe viewBox="0 0 96 96">
         {/* Engineering hull outline, with a new top edge */}
         <path d="M 22.0 53.0 L 34.0 59.0 36.0 62.0 36.0 68.0 38.0 74.0 36.0 68.0 36.0 62.0 34.0 59.0 L 22.0 53.0 M 73.0 53.0 L 61.0 59.0 59.0 62.0 59.0 68.0 57.0 75.0 60.0 78.0 63.0 78.0 66.0 75.0 66.0 65.0 67.0 63.0 70.0 63.0 71.0 65.0 71.0 86.0 70.0 88.0 67.0 88.0 63.0 84.0 55.0 83.0 51.0 86.0 49.0 92.0 46.0 92.0 44.0 86.0 40.0 83.0 32.0 84.0 28.0 88.0 25.0 88.0 24.0 86.0 24.0 65.0 25.0 63.0 28.0 63.0 29.0 65.0 29.0 75.0 32.0 78.0 34.0 78.0 38.0 74.0 36.0 68.0 36.0 62.0 34.0 59.0 L 61.0 59.0 L 73.0 53.0 Z" />
         {/* Nacelles and pylons */}
         <path d="M43.0 60.0L40.0 63.0 41.0 70.0 44.0 71.0 46.0 67.0 49.0 67.0 50.0 70.0 53.0 71.0 55.0 63.0 52.0 60.0 50.0 61.0 45.0 61.0 44.0 60.0Z" />
-    </WireframeSVG>
+    </BaseWireframe>
 );

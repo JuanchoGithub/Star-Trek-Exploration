@@ -1,15 +1,8 @@
 import React from 'react';
-
-const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 100 100" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            {children}
-        </g>
-    </svg>
-);
+import { BaseWireframe } from '../../ships/wireframes/UnknownShipWireframe';
 
 export const QuantumTorpedoWireframe: React.FC = () => (
-    <WireframeSVG>
+    <BaseWireframe>
         {/* Outer boundary */}
         <circle cx="50" cy="50" r="40" />
         {/* Inner core */}
@@ -22,5 +15,5 @@ export const QuantumTorpedoWireframe: React.FC = () => (
         {/* Crosshairs */}
         <line x1="50" y1="20" x2="50" y2="80" strokeDasharray="4 4" />
         <line x1="20" y1="50" x2="80" y2="50" strokeDasharray="4 4" />
-    </WireframeSVG>
+    </BaseWireframe>
 );

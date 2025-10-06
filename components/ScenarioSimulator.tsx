@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useScenarioLogic } from '../hooks/useScenarioLogic';
 import type { GameState, Ship, ShipModel, SectorState, LogEntry, SectorTemplate, Entity, AmmoType, CombatEffect, TorpedoProjectile, BeamWeapon, QuadrantPosition, ShipSubsystems, BridgeOfficer, PlayerTurnActions } from '../types';
-import { shipClasses, ShipClassStats } from '../assets/ships/configs/shipClassStats';
-import { sectorTemplates } from '../assets/galaxy/sectorTemplates';
+import { shipClasses, ShipClassStats } from '../../assets/ships/configs/shipClassStats';
+import { sectorTemplates } from '../../assets/galaxy/sectorTemplates';
 import SectorView from './SectorView';
 import LogPanel from './LogPanel';
 import PlayerHUD from './PlayerHUD';
@@ -10,11 +10,11 @@ import { useTheme } from '../hooks/useTheme';
 import ShipStatus from './ShipStatus';
 import { SampleSector } from './manual/SampleSector';
 import { templateInfo } from './manual/templateInfo';
-import { shipVisuals } from '../assets/ships/configs/shipVisuals';
+import { shipVisuals } from '../../assets/ships/configs/shipVisuals';
 import { createSectorFromTemplate, createShip } from '../game/state/initialization';
 import { uniqueId } from '../game/utils/ai';
-import { planetNames } from '../assets/planets/configs/planetNames';
-import { shipNames } from '../assets/ships/configs/shipNames';
+import { planetNames } from '../../assets/planets/configs/planetNames';
+import { shipNames } from '../../assets/ships/configs/shipNames';
 import SimulatorShipDetailPanel from './SimulatorShipDetailPanel';
 import CombatFXLayer from './CombatFXLayer';
 import DesperationMoveAnimation from './DesperationMoveAnimation';
@@ -24,6 +24,7 @@ import { GameStateProvider } from '../contexts/GameStateContext';
 import { GameActionsProvider } from '../contexts/GameActionsContext';
 import { UIStateProvider } from '../contexts/UIStateContext';
 import { torpedoStats } from '../assets/projectiles/configs/torpedoTypes';
+import { ListIcon, LogIcon } from '../assets/ui/icons';
 
 type Tool = {
     type: 'add_ship';
@@ -181,6 +182,8 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     
     const isSteppingThroughEvents = useMemo(() => mode === 'spectate' && !isTurnResolving, [mode, isTurnResolving]);
 
+    const currentGameState = useMemo(() => historyIndex >= 0 && historyIndex < replayHistory.length ? replayHistory[historyIndex] : null, [historyIndex, replayHistory]);
+
     useEffect(() => {
         if (mode === 'setup' && (!setupState.sector || setupState.sector.seed !== setupState.seed)) {
             const newSector = createSectorForSim(setupState.sectorTemplateId, setupState.seed);
@@ -193,6 +196,12 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             const eventCount = gameState.turnEvents?.length || 0;
 
             if (playOrderIndex >= eventCount - 1) {
+                // If we are in event playback mode, stop at the end of the events.
+                if (logViewMode === 'order') {
+                    setIsRunning(false);
+                    return;
+                }
+                // Otherwise, proceed to the next turn.
                 const nextTurnTimer = setTimeout(() => {
                     if (!isTurnResolving) {
                         setPlayOrderIndex(-1);
@@ -215,7 +224,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
             return () => clearTimeout(timer);
         }
-    }, [mode, isRunning, isTurnResolving, gameState, playOrderIndex, onEndTurn]);
+    }, [mode, isRunning, isTurnResolving, gameState, playOrderIndex, onEndTurn, logViewMode]);
     
     const handleRemoveShip = useCallback((shipId: string) => {
         const shipToRemove = setupState.ships.find(s => s.id === shipId);
@@ -306,7 +315,7 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         setPlayOrderIndex(-1);
     };
     
-    const handleStep = useCallback((direction: number) => {
+    const handleStepTurn = useCallback((direction: number) => {
         setIsRunning(false);
         setPlayOrderIndex(-1);
     
@@ -321,13 +330,37 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         }
     }, [historyIndex, replayHistory.length, isTurnResolving, onEndTurn, goToHistoryTurn, setIsRunning]);
 
-    const handleSliderChange = useCallback((index: number) => {
+    const handleTurnSliderChange = useCallback((index: number) => {
         setIsRunning(false);
         setPlayOrderIndex(-1);
         goToHistoryTurn(index);
     }, [goToHistoryTurn, setIsRunning]);
 
-    const currentGameState = useMemo(() => historyIndex >= 0 && historyIndex < replayHistory.length ? replayHistory[historyIndex] : null, [historyIndex, replayHistory]);
+    const handleStepEvent = useCallback((direction: number) => {
+        setIsRunning(false);
+        setPlayOrderIndex(prev => {
+            const eventCount = currentGameState?.turnEvents?.length || 0;
+            if (eventCount === 0) return -1;
+            const newIndex = prev + direction;
+            return Math.max(-1, Math.min(eventCount - 1, newIndex));
+        });
+    }, [currentGameState, setIsRunning]);
+    
+    const handleEventSliderChange = useCallback((index: number) => {
+        setIsRunning(false);
+        setPlayOrderIndex(index);
+    }, [setIsRunning]);
+
+    const handleToggleEventPlay = useCallback(() => {
+        if (isRunning) {
+            setIsRunning(false);
+        } else {
+            if (playOrderIndex >= ((currentGameState?.turnEvents?.length || 0) - 1)) {
+                setPlayOrderIndex(-1);
+            }
+            setIsRunning(true);
+        }
+    }, [isRunning, playOrderIndex, currentGameState, setIsRunning]);
 
     const playerShip = useMemo(() => currentGameState?.player.ship, [currentGameState]);
 
@@ -491,6 +524,11 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         onEnterOrbit: () => {}, onWarp: () => {}, onDockWithStarbase: () => {}, onUndock: () => {},
         newGame: () => {}, handleNewGame: () => {}, handleLoadGame: () => {}, handleImportSaveFromFile: () => {},
         handleFileChange: () => {}, handleImportClick: () => {}, handleStartSimulator: () => {},
+        // FIX: Add stub functions to satisfy the context type.
+        onSetView: () => {},
+        onScanTarget: () => {},
+        onInitiateRetreat: () => {},
+        onCancelRetreat: () => {},
     }), [logic, onExit]);
 
     const uiStateValue = useMemo(() => ({
@@ -727,16 +765,18 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                         />
                                     </div>
                                 </div>
-                                <PlaybackControls
-                                    currentIndex={historyIndex}
-                                    maxIndex={replayHistory.length - 1}
-                                    isPlaying={isRunning}
-                                    isTurnResolving={isTurnResolving}
-                                    onTogglePlay={togglePause}
-                                    onStep={handleStep}
-                                    onSliderChange={handleSliderChange}
-                                    allowStepPastEnd={true}
-                                />
+                                {logViewMode !== 'order' && (
+                                    <PlaybackControls
+                                        currentIndex={historyIndex}
+                                        maxIndex={replayHistory.length - 1}
+                                        isPlaying={isRunning}
+                                        isTurnResolving={isTurnResolving}
+                                        onTogglePlay={togglePause}
+                                        onStep={handleStepTurn}
+                                        onSliderChange={handleTurnSliderChange}
+                                        allowStepPastEnd={true}
+                                    />
+                                )}
                             </div>
                             <aside className="flex flex-col gap-2 min-h-0">
                                 {logic.targetEntity ? (
@@ -746,18 +786,31 @@ const ScenarioSimulator: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                                 ) : null}
                                 <div className={`flex-grow min-h-0 ${logic.targetEntity ? 'basis-1/2' : ''}`}>
                                     <LogPanel
-                                        logs={logViewMode === 'log' ? currentGameState.logs : []}
+                                        logs={currentGameState.logs}
                                         allShips={currentGameState.currentSector.entities.filter(e => e.type === 'ship') as Ship[]}
                                         isSpectateMode={true}
                                         turn={currentGameState.turn}
-                                        playOrderEvents={logViewMode === 'order' ? (currentGameState.turnEvents || []) : undefined}
+                                        playOrderEvents={currentGameState.turnEvents || []}
                                         playOrderIndex={playOrderIndex}
+                                        onViewModeChange={setLogViewMode}
+                                        playbackControls={{
+                                            currentIndex: historyIndex,
+                                            maxIndex: replayHistory.length - 1,
+                                            isPlaying: isRunning,
+                                            isTurnResolving: isTurnResolving,
+                                            onTogglePlay: togglePause,
+                                            onStep: handleStepTurn,
+                                            onSliderChange: handleTurnSliderChange,
+                                        }}
+                                        eventPlaybackControls={{
+                                            currentIndex: playOrderIndex,
+                                            maxIndex: (currentGameState.turnEvents?.length || 1) - 1,
+                                            isPlaying: isRunning,
+                                            onTogglePlay: handleToggleEventPlay,
+                                            onStep: handleStepEvent,
+                                            onSliderChange: handleEventSliderChange,
+                                        }}
                                     />
-                                </div>
-                                <div className="flex-shrink-0 panel-style p-2">
-                                    <button onClick={() => setLogViewMode(prev => prev === 'log' ? 'order' : 'log')} className="btn btn-primary w-full">
-                                        {logViewMode === 'log' ? `Show Execution Order (Turn ${currentGameState.turn})` : 'Show Full Combat Log'}
-                                    </button>
                                 </div>
                             </aside>
                         </>

@@ -175,10 +175,12 @@ const CommandConsole: React.FC = () => {
                         <CloakIcon className="w-5 h-5" /> {isCloaked ? 'Decloak' : (isCloakingOrDecloaking ? 'Engaging...' : 'Cloak')}
                     </CommandButton>
                  )}
-                <CommandButton onClick={() => onSendAwayTeam('boarding')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
+                {/* FIX: Pass targetEntity.id as the first argument to onSendAwayTeam. */}
+                <CommandButton onClick={() => onSendAwayTeam(targetEntity!.id, 'boarding')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="purple">
                     <BoardingIcon className="w-5 h-5" /> Board
                 </CommandButton>
-                <CommandButton onClick={() => onSendAwayTeam('strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
+                {/* FIX: Pass targetEntity.id as the first argument to onSendAwayTeam. */}
+                <CommandButton onClick={() => onSendAwayTeam(targetEntity!.id, 'strike')} disabled={!canBoardOrStrike || actionDisabled || isCloaked || playerTurnActions.hasUsedAwayTeam} accentColor="orange">
                     <StrikeTeamIcon className="w-5 h-5" /> Strike
                 </CommandButton>
                  {isRetreating ? (

@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useRef, useReducer } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { GameState, QuadrantPosition, ActiveHail, ActiveAwayMission, PlayerTurnActions, EventTemplate, EventTemplateOption, EventBeacon, AwayMissionResult, LogEntry, AwayMissionTemplate, Ship, ShipSubsystems, TorpedoProjectile, ProjectileWeapon, Planet } from '../types';
@@ -570,6 +571,8 @@ export const useGameLogic = (mode: 'new' | 'load' = 'load') => {
         onSelectRepairTarget, onScanTarget, onInitiateRetreat, onCancelRetreat, onStartAwayMission, onChooseAwayMissionOption,
         onHailTarget, onCloseHail, onSelectSubsystem, onChooseEventOption, saveGame, loadGame, exportSave, importSave, onDistributeEvenly, onSendAwayTeam,
         onToggleRedAlert, onCloseAwayMissionResult, onCloseEventResult, onScanQuadrant, onEnterOrbit, onToggleCloak, onTogglePointDefense,
-        newGame, onUndock
+        newGame, onUndock,
+        // FIX: Export dispatch to satisfy the context type.
+        dispatch,
     };
 };

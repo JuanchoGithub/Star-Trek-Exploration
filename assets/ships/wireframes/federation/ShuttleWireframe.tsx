@@ -1,15 +1,8 @@
 import React from 'react';
-
-const WireframeSVG: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 96 96" className="w-full h-full wireframe-glow">
-        <g stroke="#fde047" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            {children}
-        </g>
-    </svg>
-);
+import { BaseWireframe } from '../UnknownShipWireframe';
 
 export const FederationShuttleWireframe: React.FC = () => (
-    <WireframeSVG>
+    <BaseWireframe viewBox="0 0 96 96">
         <path d="M41.0 0.0L55.0 0.0 58.0 5.0 66.0 34.0 66.0 63.0 69.0 66.0 76.0 60.0 76.0 41.0 77.0 39.0 81.0 41.0 80.0 92.0 74.0 91.0 69.0 94.0 60.0 94.0 52.0 88.0 45.0 88.0 37.0 94.0 28.0 94.0 23.0 91.0 17.0 92.0 16.0 90.0 16.0 41.0 17.0 39.0 21.0 41.0 21.0 60.0 28.0 66.0 31.0 63.0 30.0 43.0 32.0 28.0 41.0 1.0ZM46.0 5.0L42.0 9.0 35.0 36.0 36.0 78.0 39.0 85.0 43.0 84.0 46.0 80.0 46.0 50.0 50.0 48.0 51.0 80.0 54.0 84.0 58.0 85.0 60.0 83.0 62.0 67.0 62.0 37.0 56.0 12.0 51.0 5.0 47.0 5.0ZM47.0 13.0L50.0 13.0 52.0 21.0 52.0 36.0 50.0 38.0 45.0 36.0 47.0 14.0ZM23.0 71.0L21.0 73.0 21.0 81.0 26.0 87.0 31.0 88.0 33.0 86.0 32.0 74.0 29.0 71.0 24.0 71.0ZM68.0 71.0L65.0 74.0 64.0 81.0 66.0 88.0 71.0 87.0 76.0 81.0 76.0 73.0 69.0 71.0Z"/>
-    </WireframeSVG>
+    </BaseWireframe>
 );

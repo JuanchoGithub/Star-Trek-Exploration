@@ -1,4 +1,5 @@
-
+// NOTE: This file exports several shared components (subsystemAbbr, ReadOnlyStatusIndicator, etc.)
+// used by other parts of the UI to avoid code duplication.
 import React, { useRef } from 'react';
 import type { GameState, Ship, ShipSubsystems, TorpedoProjectile, BeamWeapon, Entity, StatusEffect, ProjectileWeapon } from '../types';
 import { getFactionIcons } from '../assets/ui/icons/getFactionIcons';
@@ -11,7 +12,7 @@ import { useGameState } from '../contexts/GameStateContext';
 import { useGameActions } from '../contexts/GameActionsContext';
 import { useUIState } from '../contexts/UIStateContext';
 
-const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
+export const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
     weapons: 'WPN',
     engines: 'ENG',
     shields: 'SHD',
@@ -102,14 +103,14 @@ const TacticalButton: React.FC<{
     </button>
 );
 
-const ReadOnlyStatusIndicator: React.FC<{ label: string; status: string; colorClass: string; }> = ({ label, status, colorClass }) => (
+export const ReadOnlyStatusIndicator: React.FC<{ label: string; status: string; colorClass: string; }> = ({ label, status, colorClass }) => (
     <div className="flex justify-between items-center text-xs p-1 bg-bg-paper-lighter rounded">
         <span className="font-bold text-text-secondary uppercase tracking-wider pl-1">{label}</span>
         <span className={`font-bold px-2 py-0.5 rounded ${colorClass}`}>{status}</span>
     </div>
 );
 
-const PhaserArrayStatus: React.FC<{ ship: Ship, gameState: GameState, targetEntity: Entity | null }> = ({ ship, gameState, targetEntity }) => {
+export const PhaserArrayStatus: React.FC<{ ship: Ship, gameState: GameState, targetEntity: Entity | null }> = ({ ship, gameState, targetEntity }) => {
     const primaryPhaser = ship.weapons.find(w => w.type === 'beam') as BeamWeapon | undefined;
     
     if (ship.cloakState !== 'visible') {
@@ -235,7 +236,7 @@ const PhaserArrayStatus: React.FC<{ ship: Ship, gameState: GameState, targetEnti
     );
 };
 
-const TorpedoSystemStatus: React.FC<{ ship: Ship, gameState: GameState }> = ({ ship, gameState }) => {
+export const TorpedoSystemStatus: React.FC<{ ship: Ship, gameState: GameState }> = ({ ship, gameState }) => {
     const primaryLauncher = ship.weapons.find(w => w.type === 'projectile') as ProjectileWeapon | undefined;
 
     if (ship.cloakState !== 'visible') {

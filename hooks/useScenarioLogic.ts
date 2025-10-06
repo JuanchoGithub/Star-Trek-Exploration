@@ -378,6 +378,18 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         setIsTurnResolving(false);
     }, []);
 
+    const targetEntity = useMemo(() => {
+        if (!gameState || !selectedTargetId) {
+            return undefined;
+        }
+        // Check player ship first
+        if (gameState.player.ship && gameState.player.ship.id === selectedTargetId) {
+            return gameState.player.ship;
+        }
+        // Then check other entities
+        return gameState.currentSector.entities.find(e => e.id === selectedTargetId);
+    }, [gameState, selectedTargetId]);
+
     return {
         gameState,
         isRunning,
@@ -392,7 +404,7 @@ export const useScenarioLogic = (initialShips: Ship[], initialSector: SectorStat
         playerTurnActions,
         isTurnResolving,
         desperationMoveAnimation: gameState?.desperationMoveAnimations[0] || null,
-        targetEntity: gameState?.currentSector.entities.find(e => e.id === selectedTargetId),
+        targetEntity,
         onFireWeapon,
         onSelectSubsystem, onEnergyChange, onToggleCloak, onTogglePointDefense,
         onEvasiveManeuvers, onSelectRepairTarget, onToggleRedAlert,

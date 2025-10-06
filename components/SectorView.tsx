@@ -15,6 +15,7 @@ import { canShipSeeEntity } from '../game/utils/visibility';
 import { isDeepNebula, isDeepIonStorm } from '../game/utils/sector';
 import { asteroidIcons } from '../assets/asteroids/icons';
 import { cyrb53 } from '../game/utils/helpers';
+import { getPath } from '../game/utils/ai';
 import { PlasmaMineIcon } from '../assets/projectiles/icons';
 import { useGameState } from '../contexts/GameStateContext';
 import { useGameActions } from '../contexts/GameActionsContext';
@@ -36,29 +37,6 @@ interface SectorViewProps {
   onSelectTarget?: (id: string | null) => void;
   onSetNavigationTarget?: (pos: Position | null) => void;
 }
-
-const getPath = (start: { x: number; y: number }, end: { x: number; y: number } | null): { x: number; y: number }[] => {
-  if (!end) return [];
-  const path: { x: number; y: number }[] = [];
-  let current = { ...start };
-
-  let safety = 0;
-  while ((current.x !== end.x || current.y !== end.y) && safety < 30) {
-    const dx = end.x - current.x;
-    const dy = end.y - current.y;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      current.x += Math.sign(dx);
-    } else if (dy !== 0) {
-      current.y += Math.sign(dy);
-    } else if (dx !== 0) {
-      current.x += Math.sign(dx);
-    }
-    path.push({ ...current });
-    safety++;
-  }
-  return path;
-};
 
 const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
     if (containerSize.width === 0 || containerSize.height === 0 || !gridPos) {
@@ -571,7 +549,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                         }}
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (isPlayer) {
+                            if (isPlayer && !spectatorMode) {
                                 if(navigationTarget) onSetNavigationTarget(null);
                                 return;
                             }

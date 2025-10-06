@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { GameStateProvider } from './GameStateContext';
@@ -10,7 +11,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // === FROM useGameLogic and App.tsx ===
     const [view, setView] = useState<'main-menu' | 'game' | 'simulator'>('main-menu');
     const gameLogic = useGameLogic();
-    const { gameState, newGame, loadGame, importSave } = gameLogic;
+    const { gameState, newGame, loadGame, importSave, dispatch } = gameLogic;
 
     const [showGameMenu, setShowGameMenu] = useState(false);
     const [showPlayerManual, setShowPlayerManual] = useState(false);
@@ -94,7 +95,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, []);
 
     // Memoize context values to prevent unnecessary re-renders
-    const gameStateValue = useMemo(() => ({ ...gameLogic }), [gameLogic]);
+    const gameStateValue = useMemo(() => ({ ...gameLogic, dispatch }), [gameLogic, dispatch]);
 
     const gameActionsValue = useMemo(() => ({
         ...gameLogic,

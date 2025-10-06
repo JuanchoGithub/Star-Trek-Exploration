@@ -1,6 +1,8 @@
+
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import type { LogEntry, Ship, LogCategory } from '../types';
 import PlaybackControls from './PlaybackControls';
+import { ListIcon, LogIcon } from '../assets/ui/icons';
 
 const MaximizeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -32,6 +34,8 @@ interface LogPanelProps {
   playOrderEvents?: string[];
   playOrderIndex?: number;
   turn?: number;
+  onViewModeChange?: (mode: 'log' | 'order') => void;
+  eventPlaybackControls?: PlaybackControlsProps;
 }
 
 const TurnSeparator: React.FC<{ turn: number }> = ({ turn }) => (
@@ -42,20 +46,24 @@ const TurnSeparator: React.FC<{ turn: number }> = ({ turn }) => (
     </div>
 );
 
-const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectateMode, playbackControls, playOrderEvents, playOrderIndex, turn }) => {
+const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectateMode, playbackControls, playOrderEvents, playOrderIndex, turn, onViewModeChange, eventPlaybackControls }) => {
     const logContainerRef = useRef<HTMLDivElement>(null);
     const [isMaximized, setIsMaximized] = useState(false);
+    const [viewMode, setViewMode] = useState<'log' | 'order'>('log');
     const [selectedFaction, setSelectedFaction] = useState<string>('all');
     const [selectedShipId, setSelectedShipId] = useState<string>('all');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedShipClass, setSelectedShipClass] = useState<string>('all');
 
+    useEffect(() => {
+        onViewModeChange?.(viewMode);
+    }, [viewMode, onViewModeChange]);
 
     useEffect(() => {
         if (logContainerRef.current) {
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
         }
-    }, [logs, isMaximized, selectedFaction, selectedShipId, selectedCategory, selectedShipClass, playOrderEvents, playOrderIndex]);
+    }, [logs, isMaximized, selectedFaction, selectedShipId, selectedCategory, selectedShipClass, playOrderEvents, playOrderIndex, viewMode]);
 
     // Memoized filter options
     const factions = useMemo(() => ['all', ...Array.from(new Set(logs.map(l => l.sourceFaction).filter((f): f is string => !!f)))], [logs]);
@@ -115,19 +123,21 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectate
         });
     }, [logs, selectedFaction, selectedShipId, selectedCategory, selectedShipClass, allShips]);
 
+    const isExecutionOrderView = viewMode === 'order';
+
     const logView = (
         <div ref={logContainerRef} className="bg-black p-2 rounded-inner overflow-y-auto flex-grow min-h-0">
-            {playOrderEvents ? (
+            {isExecutionOrderView ? (
                 <>
                     {turn && <TurnSeparator turn={turn} />}
                     <ol className="list-decimal list-inside text-sm font-mono text-text-primary space-y-1">
-                        {playOrderEvents.map((event, index) => (
+                        {playOrderEvents && playOrderEvents.map((event, index) => (
                             <li key={index} className={index === playOrderIndex ? 'text-accent-yellow font-bold bg-bg-paper-lighter rounded' : ''}>
                                 {index === playOrderIndex && <span className="inline-block w-6 text-center">-&gt;</span>}
                                 <span className={index === playOrderIndex ? 'ml-0' : 'ml-6'}>{event}</span>
                             </li>
                         ))}
-                         {playOrderEvents.length === 0 && (
+                         {playOrderEvents && playOrderEvents.length === 0 && (
                             <li className="list-none italic text-text-disabled">No significant events this turn.</li>
                         )}
                     </ol>
@@ -180,7 +190,7 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectate
     }
 
     const getSimulatorTitle = () => {
-        if (playOrderEvents) return `Execution Order: Turn ${turn}`;
+        if (isExecutionOrderView) return `Execution Order: Turn ${turn}`;
         return 'Simulator Log';
     };
 
@@ -188,13 +198,22 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectate
         <>
             <div className="flex justify-between items-center flex-shrink-0">
                 <h2 className="text-xl font-bold text-secondary-light">{getSimulatorTitle()}</h2>
-                {!playOrderEvents && (
-                    <button onClick={() => setIsMaximized(!isMaximized)} className="btn btn-tertiary p-2">
-                        {isMaximized ? <MinimizeIcon className="w-5 h-5" /> : <MaximizeIcon className="w-5 h-5" />}
+                <div className="flex items-center gap-2">
+                    {!isExecutionOrderView && (
+                        <button onClick={() => setIsMaximized(!isMaximized)} className="btn btn-tertiary p-2">
+                            {isMaximized ? <MinimizeIcon className="w-5 h-5" /> : <MaximizeIcon className="w-5 h-5" />}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setViewMode(prev => prev === 'log' ? 'order' : 'log')}
+                        className="btn btn-primary p-2"
+                        title={viewMode === 'log' ? `Show Execution Order (Turn ${turn})` : 'Show Full Combat Log'}
+                    >
+                        {viewMode === 'log' ? <ListIcon className="w-5 h-5" /> : <LogIcon className="w-5 h-5" />}
                     </button>
-                )}
+                </div>
             </div>
-            {!playOrderEvents && (
+            {!isExecutionOrderView && (
                 <div className="flex flex-wrap gap-2 items-center flex-shrink-0 border-b border-border-dark pb-2">
                     <select value={selectedFaction} onChange={e => setSelectedFaction(e.target.value)} className="bg-bg-paper p-1 rounded border border-border-dark text-sm">
                         {factions.map(f => <option key={f} value={f}>{f === 'all' ? 'All Factions' : f}</option>)}
@@ -213,9 +232,18 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, onClose, allShips, isSpectate
                 </div>
             )}
             {logView}
-            {isMaximized && isSpectateMode && playbackControls && (
+            {isMaximized && !isExecutionOrderView && isSpectateMode && playbackControls && (
                 <div className="flex-shrink-0 mt-2">
                     <PlaybackControls {...playbackControls} allowStepPastEnd={true} />
+                </div>
+            )}
+            {isExecutionOrderView && isSpectateMode && eventPlaybackControls && (
+                <div className="flex-shrink-0 mt-2">
+                    <PlaybackControls
+                        {...eventPlaybackControls}
+                        isTurnResolving={playbackControls?.isTurnResolving}
+                        label="Event"
+                    />
                 </div>
             )}
         </>

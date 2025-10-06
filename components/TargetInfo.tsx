@@ -1,20 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Entity, Ship, ShipSubsystems, Planet, Weapon, BeamWeapon, ProjectileWeapon } from '../types';
+import type { Entity, Ship, ShipSubsystems, Planet, Weapon, BeamWeapon, ProjectileWeapon } from '../../types';
 import WireframeDisplay from './WireframeDisplay';
 import { useGameState } from '../contexts/GameStateContext';
 import { useGameActions } from '../contexts/GameActionsContext';
 import { useUIState } from '../contexts/UIStateContext';
-
-const subsystemAbbr: Record<keyof ShipSubsystems, string> = {
-    weapons: 'WPN',
-    engines: 'ENG',
-    shields: 'SHD',
-    transporter: 'TRN',
-    pointDefense: 'LPD',
-    computer: 'CPU',
-    lifeSupport: 'LFS',
-    shuttlecraft: 'SHTL',
-};
+import { subsystemAbbr } from './ShipStatus';
 
 const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
     weapons: 'Weapons',
