@@ -3,13 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/icon-192.png" />
-    <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="theme-color" content="#000000"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Star Trek: Vibe Exploration</title>
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon.svg" />
+    <title>Star Trek: Space Exploration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
@@ -1116,6 +1114,7 @@
           pointer-events: none;
           z-index: 5;
           animation: nebula-cell-swirl 15s ease-in-out infinite alternate;
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
       }
 
       @keyframes nebula-cell-swirl {
@@ -1138,6 +1137,7 @@
           z-index: 6; /* Above regular nebula cells */
           pointer-events: none;
           animation: deep-nebula-pulse 5s ease-in-out infinite;
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
       }
 
       /* Ion Storm Styles */
@@ -1187,6 +1187,7 @@
           pointer-events: none;
           z-index: 5;
           animation: ion-storm-cell-swirl 7s ease-in-out infinite alternate;
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
       }
       @keyframes ion-storm-cell-swirl {
           from {
@@ -1207,6 +1208,7 @@
           z-index: 6;
           pointer-events: none;
           animation: deep-nebula-pulse 2s ease-in-out infinite; /* reuse deep nebula pulse */
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
       }
 
       @keyframes deep-nebula-pulse {
@@ -1356,7 +1358,27 @@
         height: 0.375rem; /* h-1.5 */
         border-radius: 9999px; /* rounded-full */
       }
-
+      
+      /* New Hex Grid Styles */
+      .hex-grid-bg polygon {
+        fill: transparent;
+        stroke: var(--color-border-dark);
+        stroke-opacity: 0.5;
+        stroke-width: 1px;
+      }
+      .hex-cell {
+        fill: transparent;
+        stroke: transparent;
+        transition: fill 0.2s ease-in-out;
+      }
+      .hex-cell.navigable:hover {
+        fill: var(--color-secondary-light);
+        fill-opacity: 0.2;
+        cursor: pointer;
+      }
+      .hex-cell.occupied {
+        cursor: default;
+      }
     </style>
     <script>
       tailwind.config = {
@@ -1418,10 +1440,10 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js').then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          }, err => {
-            console.log('ServiceWorker registration failed: ', err);
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
           });
         });
       }

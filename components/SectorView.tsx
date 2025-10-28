@@ -21,6 +21,73 @@ import { useGameState } from '../contexts/GameStateContext';
 import { useGameActions } from '../contexts/GameActionsContext';
 import { useUIState } from '../contexts/UIStateContext';
 
+// Hex Grid Geometry & Coordinate Conversion
+const getHexProps = (q: number, r: number, size: number) => {
+    const isOdd = q & 1;
+    const cx = size * 1.5 * q;
+    const cy = Math.sqrt(3) * size * (r + 0.5 * isOdd);
+
+    const points = [];
+    for (let i = 0; i < 6; i++) {
+        const angle = Math.PI / 180 * (60 * i);
+        points.push(`${cx + size * Math.cos(angle)},${cy + size * Math.sin(angle)}`);
+    }
+
+    return { cx, cy, points: points.join(' ') };
+};
+
+const pixelToHex = (x: number, y: number, size: number) => {
+    const q = x * (2/3) / size;
+    const r = (-x / 3 + Math.sqrt(3)/3 * y) / size;
+    
+    // Convert axial to cube
+    const cx = q;
+    const cz = r;
+    const cy = -cx - cz;
+
+    // Round cube coordinates
+    let rx = Math.round(cx);
+    let ry = Math.round(cy);
+    let rz = Math.round(cz);
+
+    const x_diff = Math.abs(rx - cx);
+    const y_diff = Math.abs(ry - cy);
+    const z_diff = Math.abs(rz - cz);
+
+    if (x_diff > y_diff && x_diff > z_diff) {
+        rx = -ry - rz;
+    } else if (y_diff > z_diff) {
+        ry = -rx - rz;
+    } else {
+        rz = -rx - ry;
+    }
+    
+    // Convert cube back to odd-q offset
+    const col = rx;
+    const row = rz + (rx - (rx & 1)) / 2;
+    return { x: col, y: row };
+};
+
+const Hexagon: React.FC<{
+    q: number;
+    r: number;
+    points: string;
+    className: string;
+    onClick: () => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent) => void;
+    title?: string;
+}> = React.memo((props) => (
+    <polygon {...props} />
+));
+
+const getHexPixelCoords = (pos: { x: number, y: number }, hexSize: number) => {
+    const hexHeight = Math.sqrt(3) * hexSize;
+    const x = hexSize * 1.5 * pos.x;
+    const y = hexHeight * (pos.y + 0.5 * (pos.x & 1));
+    return { x, y };
+};
+
 interface SectorViewProps {
   onCellClick?: (pos: { x: number; y: number }) => void;
   spectatorMode?: boolean;
@@ -37,55 +104,6 @@ interface SectorViewProps {
   onSelectTarget?: (id: string | null) => void;
   onSetNavigationTarget?: (pos: Position | null) => void;
 }
-
-const getPixelCoords = (gridPos: { x: number, y: number }, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
-    if (containerSize.width === 0 || containerSize.height === 0 || !gridPos) {
-        return { x: 0, y: 0 };
-    }
-    const cellWidth = containerSize.width / sectorSize.width;
-    const cellHeight = containerSize.height / sectorSize.height;
-
-    const x = gridPos.x * cellWidth + cellWidth / 2;
-    const y = gridPos.y * cellHeight + cellHeight / 2;
-    return { x, y };
-};
-
-const getTorpedoPixelCoords = (torpedo: TorpedoProjectile, sectorSize: { width: number, height: number }, containerSize: { width: number, height: number }) => {
-    const { position: currentPos, path } = torpedo;
-    
-    if (!currentPos) {
-        return { x: 0, y: 0 };
-    }
-
-    const cellWidth = containerSize.width / sectorSize.width;
-    const cellHeight = containerSize.height / sectorSize.height;
-    
-    const getCenterCoords = () => ({
-        x: currentPos.x * cellWidth + cellWidth / 2,
-        y: currentPos.y * cellHeight + cellHeight / 2
-    });
-
-    if (!path || path.length < 2) {
-        return getCenterCoords();
-    }
-
-    const prevPos = path[path.length - 2];
-
-    if (!prevPos) {
-        return getCenterCoords();
-    }
-
-    const dx = currentPos.x - prevPos.x; // -1, 0, or 1
-    const dy = currentPos.y - prevPos.y; // -1, 0, or 1
-
-    // Calculate position on the border
-    // (1 - dx) / 2 gives: 0 for dx=1 (left), 0.5 for dx=0 (center), 1 for dx=-1 (right)
-    const x = (currentPos.x * cellWidth) + ((1 - dx) * cellWidth / 2);
-    const y = (currentPos.y * cellHeight) + ((1 - dy) * cellHeight / 2);
-
-    return { x, y };
-  };
-
 
 const SectorView: React.FC<SectorViewProps> = (props) => {
   const { onCellClick, spectatorMode = false, onMoveShip, isResizing = false, showTacticalOverlay = false } = props;
@@ -118,20 +136,18 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
 
   const { themeName, entityRefs } = contextUIState;
 
-  if (!sector) return null;
-  
-  const sectorSize = { width: 11, height: 10 };
-  const gridCells = Array.from({ length: sectorSize.width * sectorSize.height });
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [hexSize, setHexSize] = useState(30);
 
   useEffect(() => {
     const updateSize = () => {
         if (containerRef.current) {
-            setContainerSize({
-                width: containerRef.current.offsetWidth,
-                height: containerRef.current.offsetHeight,
-            });
+            const { offsetWidth, offsetHeight } = containerRef.current;
+            const sizeFromWidth = (offsetWidth / (11 * 1.5 + 0.5)) / 1.05;
+            const sizeFromHeight = (offsetHeight / (10 * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
+            setHexSize(Math.min(sizeFromWidth, sizeFromHeight));
+            setContainerSize({ width: offsetWidth, height: offsetHeight });
         }
     };
     updateSize();
@@ -141,6 +157,25 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
     }
     return () => resizeObserver.disconnect();
   }, []);
+
+  if (!sector) return null;
+  
+  const sectorSize = { width: 11, height: 10 };
+
+  const hexGridProps = useMemo(() => {
+    const grid: { q: number, r: number, points: string, cx: number, cy: number }[] = [];
+    for (let q = 0; q < sectorSize.width; q++) {
+        for (let r = 0; r < sectorSize.height; r++) {
+            grid.push({ q, r, ...getHexProps(q, r, hexSize) });
+        }
+    }
+    return grid;
+  }, [hexSize, sectorSize.width, sectorSize.height]);
+
+  const totalPixelWidth = (sectorSize.width * 1.5 + 0.5) * hexSize;
+  const totalPixelHeight = (sectorSize.height * Math.sqrt(3) + Math.sqrt(3)/2) * hexSize;
+  const xOffset = (containerSize.width - totalPixelWidth) / 2;
+  const yOffset = (containerSize.height - totalPixelHeight) / 2;
 
   const computerHealthPercent = playerShip ? (playerShip.subsystems.computer.health / playerShip.subsystems.computer.maxHealth) * 100 : 100;
   const isNavDisabled = computerHealthPercent < 100;
@@ -199,38 +234,39 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
     )
   , [allEntities]);
 
+  const groupTransformX = xOffset + hexSize;
+  const groupTransformY = yOffset + hexSize * Math.sqrt(3) / 2;
+  
 const tacticalOverlayElements = useMemo(() => {
     const shouldShow = spectatorMode || showTacticalOverlay;
-    if (!shouldShow || !selectedTargetId) return null;
+    if (!shouldShow || !selectedTargetId || containerSize.width === 0) return null;
 
     const selectedShip = allEntities.find(e => e.id === selectedTargetId && e.type === 'ship') as Ship | undefined;
     if (!selectedShip) return null;
 
     const allShips = allEntities.filter(e => e.type === 'ship') as Ship[];
-    
     const shipsTargetingSelected = allShips.filter(s => s.id !== selectedShip.id && s.currentTargetId === selectedTargetId);
     const selectedShipTarget = allShips.find(s => s.id === selectedShip.currentTargetId);
-
-    const selectedCoords = getPixelCoords(selectedShip.position, sectorSize, containerSize);
+    const selectedCoords = getHexPixelCoords(selectedShip.position, hexSize);
 
     return (
-        <>
+        <g transform={`translate(${groupTransformX}, ${groupTransformY})`}>
             {shipsTargetingSelected.map(ship => {
-                const attackerCoords = getPixelCoords(ship.position, sectorSize, containerSize);
+                const attackerCoords = getHexPixelCoords(ship.position, hexSize);
                 return <line key={`in-${ship.id}`} x1={attackerCoords.x} y1={attackerCoords.y} x2={selectedCoords.x} y2={selectedCoords.y}
                     stroke="var(--color-accent-red)" strokeWidth="1.5" strokeDasharray="4 4"
                 />;
             })}
 
             {selectedShipTarget && (() => {
-                const targetCoords = getPixelCoords(selectedShipTarget.position, sectorSize, containerSize);
+                const targetCoords = getHexPixelCoords(selectedShipTarget.position, hexSize);
                 return <line key={`out-${selectedShipTarget.id}`} x1={selectedCoords.x} y1={selectedCoords.y} x2={targetCoords.x} y2={targetCoords.y}
                     stroke="var(--color-accent-sky)" strokeWidth="1.5" strokeDasharray="5 2"
                 />;
             })()}
-        </>
+        </g>
     );
-}, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities, sectorSize, containerSize]);
+}, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities, hexSize, containerSize, groupTransformX, groupTransformY]);
 
 const torpedoesTargetingSelectedIds = useMemo(() => {
     const shouldShow = spectatorMode || showTacticalOverlay;
@@ -239,55 +275,69 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
     return new Set(torpedoes.filter(t => t.targetId === selectedTargetId).map(t => t.id));
 }, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities]);
 
-
   return (
-    <div ref={containerRef} className="bg-black border-2 border-border-light p-2 rounded-r-md h-full relative">
+    <div ref={containerRef} className="bg-black border-2 border-border-light p-2 rounded-r-md h-full w-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
+
+      <svg width="100%" height="100%">
+        <g transform={`translate(${groupTransformX}, ${groupTransformY})`}>
+            {/* Background Grid */}
+            <g className="hex-grid-bg">
+                {hexGridProps.map(hex => (
+                    <polygon key={`bg-${hex.q}-${hex.r}`} points={hex.points} />
+                ))}
+            </g>
+
+            {/* Interactive Cells */}
+            <g>
+                {hexGridProps.map(hex => {
+                    const isOccupied = occupiedPositions.has(`${hex.q},${hex.r}`);
+                    const canNavigateTo = !isOccupied && !isNavDisabled && !spectatorMode;
+                    const className = `hex-cell ${canNavigateTo ? 'navigable' : 'occupied'}`;
+                    
+                    return (
+                        <Hexagon
+                            key={`cell-${hex.q}-${hex.r}`}
+                            q={hex.q}
+                            r={hex.r}
+                            points={hex.points}
+                            className={className}
+                            onClick={() => handleGridInteraction(hex.q, hex.r)}
+                            onDragOver={(e) => { if (onMoveShip) e.preventDefault(); }}
+                            onDrop={(e) => {
+                                if (onMoveShip) {
+                                    e.preventDefault();
+                                    const shipId = e.dataTransfer.getData("shipId");
+                                    if (shipId) onMoveShip(shipId, { x: hex.q, y: hex.r });
+                                }
+                            }}
+                            title={isNavDisabled ? "Navigation computer is damaged" : isOccupied ? "Cell is occupied" : ""}
+                        />
+                    );
+                })}
+            </g>
+            
+            {tacticalOverlayElements}
+        </g>
+      </svg>
       
-      <div className="grid grid-cols-11 grid-rows-10 h-full gap-0 relative z-0">
-        {gridCells.map((_, index) => {
-          const x = index % sectorSize.width;
-          const y = Math.floor(index / sectorSize.width);
-          const isOccupied = occupiedPositions.has(`${x},${y}`);
-          const canNavigateTo = !isOccupied && !isNavDisabled && !spectatorMode;
-
-          return (
-            <div
-              key={`cell-${x}-${y}`}
-              className={`border border-border-dark border-opacity-50 ${canNavigateTo ? 'hover:bg-secondary-light hover:bg-opacity-20 cursor-pointer' : 'cursor-default'}`}
-              onClick={() => handleGridInteraction(x, y)}
-              onDragOver={(e) => { if (onMoveShip) e.preventDefault(); }}
-              onDrop={(e) => {
-                  if (onMoveShip) {
-                      e.preventDefault();
-                      const shipId = e.dataTransfer.getData("shipId");
-                      if (shipId) {
-                          onMoveShip(shipId, { x, y });
-                      }
-                  }
-              }}
-              title={isNavDisabled ? "Navigation computer is damaged" : isOccupied ? "Cell is occupied" : ""}
-            />
-          );
-        })}
-      </div>
-
       <div className="absolute inset-0 z-10 pointer-events-none">
         {sector.nebulaCells.map(pos => {
           const isDeep = isDeepNebula(pos, sector);
-          const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
-          const cellWidth = containerSize.width / sectorSize.width;
-          const cellHeight = containerSize.height / sectorSize.height;
+          const { x, y } = getHexPixelCoords(pos, hexSize);
+          const cellWidth = hexSize * 2;
+          const cellHeight = hexSize * Math.sqrt(3);
 
           return (
             <div
               key={`nebula-${pos.x}-${pos.y}`}
               className="absolute"
               style={{
-                top: `${y - cellHeight / 2}px`,
-                left: `${x - cellWidth / 2}px`,
+                top: `${y + groupTransformY}px`,
+                left: `${x + groupTransformX}px`,
                 width: `${cellWidth}px`,
                 height: `${cellHeight}px`,
+                transform: `translate(-${hexSize}px, -${hexSize * Math.sqrt(3) / 2}px)`
               }}
             >
               <div className="nebula-cell" />
@@ -297,19 +347,20 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
         })}
         {sector.ionStormCells.map(pos => {
           const isDeep = isDeepIonStorm(pos, sector);
-          const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
-          const cellWidth = containerSize.width / sectorSize.width;
-          const cellHeight = containerSize.height / sectorSize.height;
+          const { x, y } = getHexPixelCoords(pos, hexSize);
+          const cellWidth = hexSize * 2;
+          const cellHeight = hexSize * Math.sqrt(3);
 
           return (
             <div
               key={`ionstorm-${pos.x}-${pos.y}`}
               className="absolute"
               style={{
-                top: `${y - cellHeight / 2}px`,
-                left: `${x - cellWidth / 2}px`,
+                top: `${y + groupTransformY}px`,
+                left: `${x + groupTransformX}px`,
                 width: `${cellWidth}px`,
                 height: `${cellHeight}px`,
+                transform: `translate(-${hexSize}px, -${hexSize * Math.sqrt(3) / 2}px)`
               }}
             >
               <div className="ion-storm-cell" />
@@ -320,68 +371,68 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
       </div>
 
        {containerSize.width > 0 && (
-          <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-20 overflow-visible">
-              {tacticalOverlayElements}
-          </svg>
-      )}
-
-      {containerSize.width > 0 && (
-        <>
-            {navigationTarget && (
-                <>
-                {path.map((pos, i) => {
-                    const { x, y } = getPixelCoords(pos, sectorSize, containerSize);
-                    return (
-                        <div key={`path-${i}`}
-                            className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
-                            style={{
-                                left: `${x}px`,
-                                top: `${y}px`,
-                                transform: 'translate(-50%, -50%)',
-                                zIndex: 20
-                            }}
-                        />
-                    )
-                })}
-                {(() => {
-                    const { x, y } = getPixelCoords(navigationTarget, sectorSize, containerSize);
-                    return (
-                        <div
-                            className="absolute flex items-center justify-center text-accent-yellow cursor-pointer"
-                            style={{
-                                left: `${x}px`,
-                                top: `${y}px`,
-                                transform: 'translate(-50%, -50%)',
-                                zIndex: 20
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSetNavigationTarget(null);
-                            }}
-                            title="Cancel Navigation"
-                        >
-                            <NavigationTargetIcon className="w-8 h-8 animate-pulse" />
-                        </div>
-                    );
-                })()}
-                </>
-            )}
+          <div className="absolute inset-0 pointer-events-none z-20 overflow-visible">
+              <div style={{ transform: `translate(${groupTransformX}px, ${groupTransformY}px)` }}>
+                {navigationTarget && (
+                    <>
+                    {path.map((pos, i) => {
+                        const { x, y } = getHexPixelCoords(pos, hexSize);
+                        return (
+                            <div key={`path-${i}`}
+                                className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
+                                style={{
+                                    left: `${x}px`,
+                                    top: `${y}px`,
+                                    transform: `translate(-50%, -50%)`,
+                                }}
+                            />
+                        )
+                    })}
+                    {(() => {
+                        const { x, y } = getHexPixelCoords(navigationTarget, hexSize);
+                        return (
+                            <div
+                                className="absolute flex items-center justify-center text-accent-yellow cursor-pointer pointer-events-auto"
+                                style={{
+                                    left: `${x}px`,
+                                    top: `${y}px`,
+                                    transform: `translate(-50%, -50%)`,
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSetNavigationTarget(null);
+                                }}
+                                title="Cancel Navigation"
+                            >
+                                <NavigationTargetIcon className="w-8 h-8 animate-pulse" />
+                            </div>
+                        );
+                    })()}
+                    </>
+                )}
 
             {visibleEntities.map((entity) => {
-                const { x: pixelX, y: pixelY } = entity.type === 'torpedo_projectile'
-                    ? getTorpedoPixelCoords(entity as TorpedoProjectile, sectorSize, containerSize)
-                    : getPixelCoords(entity.position, sectorSize, containerSize);
+                const { x: pixelX, y: pixelY } = getHexPixelCoords(entity.position, hexSize);
 
-                let transformValue = `translate3d(${pixelX}px, ${pixelY}px, 0) translate3d(-50%, -50%, 0)`;
+                let transformValue = `translate(-50%, -50%)`;
+
+                if (entity.type === 'torpedo_projectile') {
+                    const target = allEntities.find(e => e.id === (entity as TorpedoProjectile).targetId);
+                    if (target) {
+                        const { x: targetX, y: targetY } = getHexPixelCoords(target.position, hexSize);
+                        const angle = Math.atan2(targetY - pixelY, targetX - pixelX) * 180 / Math.PI;
+                        transformValue += ` rotate(${angle}deg)`;
+                    }
+                }
 
                 const style: React.CSSProperties = {
                     position: 'absolute',
-                    left: 0,
-                    top: 0,
+                    left: `${pixelX}px`,
+                    top: `${pixelY}px`,
                     transform: transformValue,
-                    transition: isResizing ? 'none' : 'transform 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
+                    transition: isResizing ? 'none' : 'left 750ms ease-in-out, top 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
                 };
-
+                
                 const isSelected = entity.id === selectedTargetId;
                 const isPlayer = playerShip && entity.id === playerShip.id;
 
@@ -412,40 +463,19 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 
                 if (entity.type === 'torpedo_projectile') {
                     const torpedo = entity as TorpedoProjectile;
-                    const target = allEntities.find(e => e.id === torpedo.targetId);
-                    if (target) {
-                        const angle = Math.atan2(target.position.y - entity.position.y, target.position.x - entity.position.x) * 180 / Math.PI;
-                        style.transform += ` rotate(${angle}deg)`;
-                    }
-                    
                     const torpedoConfig = torpedoStats[torpedo.torpedoType];
                     const TorpedoIcon = torpedoConfig.icon;
                     const isTargetingSelected = torpedoesTargetingSelectedIds.has(torpedo.id);
 
                     return (
-                        <React.Fragment key={torpedo.id}>
-                            {torpedo.path.map((pos, i) => {
-                                const {x, y} = getPixelCoords(pos, sectorSize, containerSize);
-                                return (
-                                <div key={`trail-${torpedo.id}-${i}`}
-                                    className="absolute w-1.5 h-1.5 torpedo-trail-dot"
-                                    style={{
-                                        opacity: 0.1 + (i / torpedo.path.length) * 0.5,
-                                        left: `${x}px`,
-                                        top: `${y}px`,
-                                        transform: 'translate(-50%, -50%)',
-                                        zIndex: 25
-                                    }}
-                                />
-                            )})}
-                            <div
-                                className={`absolute z-40 cursor-pointer ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''} ${isTargetingSelected ? 'animate-pulse' : ''}`}
-                                style={style}
-                                onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
-                            >
-                                <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
-                            </div>
-                        </React.Fragment>
+                        <div
+                            key={torpedo.id}
+                            className={`absolute z-40 cursor-pointer pointer-events-auto ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''} ${isTargetingSelected ? 'animate-pulse' : ''}`}
+                            style={style}
+                            onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
+                        >
+                            <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
+                        </div>
                     );
                 }
                 if (entity.type === 'mine') {
@@ -539,7 +569,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     <div
                         key={entity.id}
                         ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }}
-                        className="absolute flex flex-col items-center justify-center z-30"
+                        className="absolute flex flex-col items-center justify-center z-30 pointer-events-auto"
                         style={style}
                         draggable={spectatorMode && onMoveShip && entity.type === 'ship'}
                         onDragStart={(e) => {
@@ -582,7 +612,8 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     </div>
                 );
             })}
-        </>
+              </div>
+          </div>
       )}
     </div>
   );

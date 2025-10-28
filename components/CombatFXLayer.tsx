@@ -1,18 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CombatEffect, Entity, Ship, TorpedoType } from '../types';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../assets/configs/gameConstants';
-
-interface CombatFXLayerProps {
-    effects: CombatEffect[];
-    entities: Entity[];
-    entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
-}
-
-const getPercentageCoords = (gridPos: { x: number; y: number }) => {
-    const x = (gridPos.x / SECTOR_WIDTH) * 100 + (100 / SECTOR_WIDTH / 2);
-    const y = (gridPos.y / SECTOR_HEIGHT) * 100 + (100 / SECTOR_HEIGHT / 2);
-    return { x: `${x}%`, y: `${y}%` };
-};
 
 const getPointDefenseClass = (faction: string): string => {
     const factionClass = faction.toLowerCase();
@@ -189,10 +177,57 @@ const AnimatedPulsePhaser: React.FC<{
     );
 };
 
+interface CombatFXLayerProps {
+    effects: CombatEffect[];
+    entities: Entity[];
+    entityRefs: React.RefObject<Record<string, HTMLDivElement | null>>;
+}
 
 const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entityRefs }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const entityMap = new Map<string, Entity>(entities.map(e => [e.id, e]));
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const [hexSize, setHexSize] = useState(30);
+
+    useEffect(() => {
+        const updateSize = () => {
+            if (containerRef.current) {
+                const { offsetWidth, offsetHeight } = containerRef.current;
+                // THIS CALCULATION MUST MATCH SectorView.tsx EXACTLY
+                const sizeFromWidth = (offsetWidth / (SECTOR_WIDTH * 1.5 + 0.5)) / 1.05;
+                const sizeFromHeight = (offsetHeight / (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
+                setHexSize(Math.min(sizeFromWidth, sizeFromHeight));
+                setContainerSize({ width: offsetWidth, height: offsetHeight });
+            }
+        };
+        updateSize();
+        const resizeObserver = new ResizeObserver(updateSize);
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    const getPixelCoords = useCallback((gridPos: { x: number; y: number }) => {
+        if (containerSize.width === 0 || hexSize === 0) return { x: 0, y: 0 };
+        // These calculations must match SectorView exactly.
+        const totalPixelWidth = (SECTOR_WIDTH * 1.5 + 0.5) * hexSize;
+        const totalPixelHeight = (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3)/2) * hexSize;
+        const xOffset = (containerSize.width - totalPixelWidth) / 2;
+        const yOffset = (containerSize.height - totalPixelHeight) / 2;
+
+        // Calculate the center of the hex cell. This must match getHexProps in SectorView.
+        const isOdd = gridPos.x & 1;
+        const cx = hexSize * 1.5 * gridPos.x;
+        const cy = Math.sqrt(3) * hexSize * (gridPos.y + 0.5 * isOdd);
+        
+        // Apply the same group transform as in SectorView SVG.
+        const finalX = cx + xOffset + hexSize;
+        const finalY = cy + yOffset + hexSize * Math.sqrt(3) / 2;
+
+        return { x: finalX, y: finalY };
+    }, [containerSize.width, containerSize.height, hexSize]);
+
 
     return (
         <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
@@ -231,16 +266,16 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                            />
                         );
                     }
-                    if (effect.type === 'point_defense') {
+                    if (effect.type === 'point_defense' && containerSize.width > 0) {
                         const source = entityMap.get(effect.sourceId);
                         if (!source) return null;
 
-                        const start = getPercentageCoords(source.position);
-                        const end = getPercentageCoords(effect.targetPosition);
+                        const start = getPixelCoords(source.position);
+                        const end = getPixelCoords(effect.targetPosition);
                         
-                        const width = 2; // width of the triangle base in %
-                        const sourceCoords = { x: parseFloat(start.x), y: parseFloat(start.y) };
-                        const targetCoords = { x: parseFloat(end.x), y: parseFloat(end.y) };
+                        const width = containerSize.width * 0.02; // width of the triangle base
+                        const sourceCoords = { x: start.x, y: start.y };
+                        const targetCoords = { x: end.x, y: end.y };
 
                         const vec_x = targetCoords.x - sourceCoords.x;
                         const vec_y = targetCoords.y - sourceCoords.y;
@@ -249,9 +284,9 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                         const perp_x = -vec_y / vec_mag;
                         const perp_y = vec_x / vec_mag;
 
-                        const p1 = `${sourceCoords.x}%,${sourceCoords.y}%`;
-                        const p2 = `${targetCoords.x + perp_x * width}%,${targetCoords.y + perp_y * width}%`;
-                        const p3 = `${targetCoords.x - perp_x * width}%,${targetCoords.y - perp_y * width}%`;
+                        const p1 = `${sourceCoords.x},${sourceCoords.y}`;
+                        const p2 = `${targetCoords.x + perp_x * width},${targetCoords.y + perp_y * width}`;
+                        const p3 = `${targetCoords.x - perp_x * width},${targetCoords.y - perp_y * width}`;
                         
                         const pointDefenseClass = getPointDefenseClass(effect.faction);
 
@@ -268,7 +303,7 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                 })}
             </svg>
             {/* Non-SVG effects like explosions go here */}
-            {effects.map((effect, index) => {
+            {containerSize.width > 0 && effects.map((effect, index) => {
                 if (effect.type === 'phaser' && effect.animationType === 'pulse') {
                     const source = entityMap.get(effect.sourceId);
                     const target = entityMap.get(effect.targetId);
@@ -287,15 +322,15 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                     );
                 }
                  if (effect.type === 'torpedo_hit') {
-                    const coords = getPercentageCoords(effect.position);
+                    const coords = getPixelCoords(effect.position);
                     const [color1, color2, color3] = getExplosionColors(effect.torpedoType);
                     return (
                         <div
                             key={`explosion-${index}`}
                             className="torpedo-explosion"
                             style={{
-                                left: coords.x,
-                                top: coords.y,
+                                left: `${coords.x}px`,
+                                top: `${coords.y}px`,
                                 width: '5vw',
                                 height: '5vw',
                                 animationDelay: `${effect.delay}ms`,
@@ -306,14 +341,14 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
                     );
                 }
                 if (effect.type === 'phaser_impact') {
-                    const coords = getPercentageCoords(effect.position);
+                    const coords = getPixelCoords(effect.position);
                     return (
                         <div
                             key={`phaser-impact-${index}`}
                             className={`phaser-impact ${effect.hitType}`}
                             style={{
-                                left: coords.x,
-                                top: coords.y,
+                                left: `${coords.x}px`,
+                                top: `${coords.y}px`,
                                 animationDelay: `${effect.delay}ms`,
                             }}
                         />

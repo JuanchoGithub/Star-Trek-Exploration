@@ -2,14 +2,29 @@ import { Position, SectorState } from '../../types';
 
 const posToString = (pos: Position) => `${pos.x},${pos.y}`;
 
+// Directions for a pointy-top, odd-q vertical layout hex grid
+const oddq_directions = [
+    // even cols (q is even)
+    [{ x: +1, y: 0 }, { x: +1, y: -1 }, { x: 0, y: -1 }, 
+     { x: -1, y: -1 }, { x: -1, y: 0 }, { x: 0, y: +1 }],
+    // odd cols (q is odd)
+    [{ x: +1, y: +1 }, { x: +1, y: 0 }, { x: 0, y: -1 }, 
+     { x: -1, y: 0 }, { x: -1, y: +1 }, { x: 0, y: +1 }]
+];
+
 export const getNeighboringPositions = (pos: Position, depth: number = 1): Position[] => {
-    const neighbors: Position[] = [];
-    for (let dy = -depth; dy <= depth; dy++) {
-        for (let dx = -depth; dx <= depth; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            neighbors.push({ x: pos.x + dx, y: pos.y + dy });
-        }
+    if (depth !== 1) {
+        console.warn("getNeighboringPositions for hex grids currently only supports depth=1");
     }
+
+    const neighbors: Position[] = [];
+    const parity = pos.x & 1; // 0 for even, 1 for odd
+    const directions = oddq_directions[parity];
+
+    for (const dir of directions) {
+        neighbors.push({ x: pos.x + dir.x, y: pos.y + dir.y });
+    }
+    
     return neighbors;
 };
 
@@ -30,8 +45,8 @@ export const isDeepNebula = (pos: Position, sector: SectorState): boolean => {
     }
     
     const neighbors = getNeighboringPositions(pos, 1);
-    // A cell must have all 8 neighbors to be considered "deep".
-    if (neighbors.length !== 8) return false; 
+    // A cell must have all 6 neighbors to be considered "deep".
+    if (neighbors.length !== 6) return false; 
     
     return neighbors.every(n => nebulaCellSet.has(posToString(n)));
 };
@@ -52,7 +67,7 @@ export const isDeepIonStorm = (pos: Position, sector: SectorState): boolean => {
     }
     
     const neighbors = getNeighboringPositions(pos, 1);
-    if (neighbors.length !== 8) return false; 
+    if (neighbors.length !== 6) return false; 
     
     return neighbors.every(n => ionStormCellSet.has(posToString(n)));
 };
