@@ -20,6 +20,7 @@ import { PlasmaMineIcon } from '../assets/projectiles/icons';
 import { useGameState } from '../contexts/GameStateContext';
 import { useGameActions } from '../contexts/GameActionsContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../assets/configs/gameConstants';
 
 // Hex Grid Geometry & Coordinate Conversion
 const getHexProps = (q: number, r: number, size: number) => {
@@ -34,38 +35,6 @@ const getHexProps = (q: number, r: number, size: number) => {
     }
 
     return { cx, cy, points: points.join(' ') };
-};
-
-const pixelToHex = (x: number, y: number, size: number) => {
-    const q = x * (2/3) / size;
-    const r = (-x / 3 + Math.sqrt(3)/3 * y) / size;
-    
-    // Convert axial to cube
-    const cx = q;
-    const cz = r;
-    const cy = -cx - cz;
-
-    // Round cube coordinates
-    let rx = Math.round(cx);
-    let ry = Math.round(cy);
-    let rz = Math.round(cz);
-
-    const x_diff = Math.abs(rx - cx);
-    const y_diff = Math.abs(ry - cy);
-    const z_diff = Math.abs(rz - cz);
-
-    if (x_diff > y_diff && x_diff > z_diff) {
-        rx = -ry - rz;
-    } else if (y_diff > z_diff) {
-        ry = -rx - rz;
-    } else {
-        rz = -rx - ry;
-    }
-    
-    // Convert cube back to odd-q offset
-    const col = rx;
-    const row = rz + (rx - (rx & 1)) / 2;
-    return { x: col, y: row };
 };
 
 const Hexagon: React.FC<{
@@ -143,11 +112,11 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
   useEffect(() => {
     const updateSize = () => {
         if (containerRef.current) {
-            const { offsetWidth, offsetHeight } = containerRef.current;
-            const sizeFromWidth = (offsetWidth / (11 * 1.5 + 0.5)) / 1.05;
-            const sizeFromHeight = (offsetHeight / (10 * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
+            const { clientWidth, clientHeight } = containerRef.current;
+            const sizeFromWidth = (clientWidth / (SECTOR_WIDTH * 1.5 + 0.5)) / 1.05;
+            const sizeFromHeight = (clientHeight / (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
             setHexSize(Math.min(sizeFromWidth, sizeFromHeight));
-            setContainerSize({ width: offsetWidth, height: offsetHeight });
+            setContainerSize({ width: clientWidth, height: clientHeight });
         }
     };
     updateSize();
@@ -159,23 +128,42 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
   }, []);
 
   if (!sector) return null;
-  
-  const sectorSize = { width: 11, height: 10 };
 
   const hexGridProps = useMemo(() => {
     const grid: { q: number, r: number, points: string, cx: number, cy: number }[] = [];
-    for (let q = 0; q < sectorSize.width; q++) {
-        for (let r = 0; r < sectorSize.height; r++) {
+    for (let q = 0; q < SECTOR_WIDTH; q++) {
+        for (let r = 0; r < SECTOR_HEIGHT; r++) {
             grid.push({ q, r, ...getHexProps(q, r, hexSize) });
         }
     }
     return grid;
-  }, [hexSize, sectorSize.width, sectorSize.height]);
+  }, [hexSize]);
 
-  const totalPixelWidth = (sectorSize.width * 1.5 + 0.5) * hexSize;
-  const totalPixelHeight = (sectorSize.height * Math.sqrt(3) + Math.sqrt(3)/2) * hexSize;
+  // Layout Calculations
+  const totalPixelWidth = (SECTOR_WIDTH * 1.5 + 0.5) * hexSize;
+  const totalPixelHeight = (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3)/2) * hexSize;
+  
+  // Center the grid in the container
   const xOffset = (containerSize.width - totalPixelWidth) / 2;
   const yOffset = (containerSize.height - totalPixelHeight) / 2;
+
+  // Transform to move (0,0) of hex grid (which is centered at 0,0) to correct position
+  // The leftmost point of hex (0,0) is at x = -hexSize.
+  // We want the leftmost point of the grid to start at xOffset.
+  // So we translate by xOffset + hexSize.
+  const groupTransformX = xOffset + hexSize;
+  
+  // The topmost point of hex (0,0) is at y = -hexHeight/2 = -hexSize * sqrt(3) / 2.
+  // We want the top of the grid to start at yOffset.
+  // So we translate by yOffset + hexSize * sqrt(3) / 2.
+  const groupTransformY = yOffset + hexSize * Math.sqrt(3) / 2;
+  
+  // Helper to calculate absolute pixel coordinates for an entity on the screen
+  // This removes ambiguity from nested transforms
+  const getAbsoluteCoords = (pos: {x: number, y: number}) => {
+      const { x, y } = getHexPixelCoords(pos, hexSize);
+      return { x: x + groupTransformX, y: y + groupTransformY };
+  };
 
   const computerHealthPercent = playerShip ? (playerShip.subsystems.computer.health / playerShip.subsystems.computer.maxHealth) * 100 : 100;
   const isNavDisabled = computerHealthPercent < 100;
@@ -234,9 +222,6 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
     )
   , [allEntities]);
 
-  const groupTransformX = xOffset + hexSize;
-  const groupTransformY = yOffset + hexSize * Math.sqrt(3) / 2;
-  
 const tacticalOverlayElements = useMemo(() => {
     const shouldShow = spectatorMode || showTacticalOverlay;
     if (!shouldShow || !selectedTargetId || containerSize.width === 0) return null;
@@ -250,7 +235,7 @@ const tacticalOverlayElements = useMemo(() => {
     const selectedCoords = getHexPixelCoords(selectedShip.position, hexSize);
 
     return (
-        <g transform={`translate(${groupTransformX}, ${groupTransformY})`}>
+        <g transform={`translate(${groupTransformX}, ${groupTransformY})`} className="pointer-events-none">
             {shipsTargetingSelected.map(ship => {
                 const attackerCoords = getHexPixelCoords(ship.position, hexSize);
                 return <line key={`in-${ship.id}`} x1={attackerCoords.x} y1={attackerCoords.y} x2={selectedCoords.x} y2={selectedCoords.y}
@@ -276,7 +261,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
 }, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities]);
 
   return (
-    <div ref={containerRef} className="bg-black border-2 border-border-light p-2 rounded-r-md h-full w-full relative">
+    <div ref={containerRef} className="bg-black border-2 border-border-light rounded-r-md h-full w-full relative overflow-hidden">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
 
       <svg width="100%" height="100%">
@@ -316,15 +301,14 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     );
                 })}
             </g>
-            
-            {tacticalOverlayElements}
         </g>
+        {tacticalOverlayElements}
       </svg>
       
-      <div className="absolute inset-0 z-10 pointer-events-none">
+      <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
         {sector.nebulaCells.map(pos => {
           const isDeep = isDeepNebula(pos, sector);
-          const { x, y } = getHexPixelCoords(pos, hexSize);
+          const { x, y } = getAbsoluteCoords(pos);
           const cellWidth = hexSize * 2;
           const cellHeight = hexSize * Math.sqrt(3);
 
@@ -333,11 +317,11 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
               key={`nebula-${pos.x}-${pos.y}`}
               className="absolute"
               style={{
-                top: `${y + groupTransformY}px`,
-                left: `${x + groupTransformX}px`,
+                top: `${y}px`,
+                left: `${x}px`,
                 width: `${cellWidth}px`,
                 height: `${cellHeight}px`,
-                transform: `translate(-${hexSize}px, -${hexSize * Math.sqrt(3) / 2}px)`
+                transform: `translate(-50%, -50%)`
               }}
             >
               <div className="nebula-cell" />
@@ -347,7 +331,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
         })}
         {sector.ionStormCells.map(pos => {
           const isDeep = isDeepIonStorm(pos, sector);
-          const { x, y } = getHexPixelCoords(pos, hexSize);
+          const { x, y } = getAbsoluteCoords(pos);
           const cellWidth = hexSize * 2;
           const cellHeight = hexSize * Math.sqrt(3);
 
@@ -356,11 +340,11 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
               key={`ionstorm-${pos.x}-${pos.y}`}
               className="absolute"
               style={{
-                top: `${y + groupTransformY}px`,
-                left: `${x + groupTransformX}px`,
+                top: `${y}px`,
+                left: `${x}px`,
                 width: `${cellWidth}px`,
                 height: `${cellHeight}px`,
-                transform: `translate(-${hexSize}px, -${hexSize * Math.sqrt(3) / 2}px)`
+                transform: `translate(-50%, -50%)`
               }}
             >
               <div className="ion-storm-cell" />
@@ -372,11 +356,10 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
 
        {containerSize.width > 0 && (
           <div className="absolute inset-0 pointer-events-none z-20 overflow-visible">
-              <div style={{ transform: `translate(${groupTransformX}px, ${groupTransformY}px)` }}>
                 {navigationTarget && (
                     <>
                     {path.map((pos, i) => {
-                        const { x, y } = getHexPixelCoords(pos, hexSize);
+                        const { x, y } = getAbsoluteCoords(pos);
                         return (
                             <div key={`path-${i}`}
                                 className="absolute w-1 h-1 bg-accent-yellow rounded-full opacity-60"
@@ -389,7 +372,7 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                         )
                     })}
                     {(() => {
-                        const { x, y } = getHexPixelCoords(navigationTarget, hexSize);
+                        const { x, y } = getAbsoluteCoords(navigationTarget);
                         return (
                             <div
                                 className="absolute flex items-center justify-center text-accent-yellow cursor-pointer pointer-events-auto"
@@ -412,14 +395,14 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 )}
 
             {visibleEntities.map((entity) => {
-                const { x: pixelX, y: pixelY } = getHexPixelCoords(entity.position, hexSize);
+                const { x: pixelX, y: pixelY } = getAbsoluteCoords(entity.position);
 
                 let transformValue = `translate(-50%, -50%)`;
 
                 if (entity.type === 'torpedo_projectile') {
                     const target = allEntities.find(e => e.id === (entity as TorpedoProjectile).targetId);
                     if (target) {
-                        const { x: targetX, y: targetY } = getHexPixelCoords(target.position, hexSize);
+                        const { x: targetX, y: targetY } = getAbsoluteCoords(target.position);
                         const angle = Math.atan2(targetY - pixelY, targetX - pixelX) * 180 / Math.PI;
                         transformValue += ` rotate(${angle}deg)`;
                     }
@@ -612,7 +595,6 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     </div>
                 );
             })}
-              </div>
           </div>
       )}
     </div>

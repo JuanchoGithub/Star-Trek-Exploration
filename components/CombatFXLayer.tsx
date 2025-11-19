@@ -192,12 +192,12 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
     useEffect(() => {
         const updateSize = () => {
             if (containerRef.current) {
-                const { offsetWidth, offsetHeight } = containerRef.current;
+                const { clientWidth, clientHeight } = containerRef.current;
                 // THIS CALCULATION MUST MATCH SectorView.tsx EXACTLY
-                const sizeFromWidth = (offsetWidth / (SECTOR_WIDTH * 1.5 + 0.5)) / 1.05;
-                const sizeFromHeight = (offsetHeight / (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
+                const sizeFromWidth = (clientWidth / (SECTOR_WIDTH * 1.5 + 0.5)) / 1.05;
+                const sizeFromHeight = (clientHeight / (SECTOR_HEIGHT * Math.sqrt(3) + Math.sqrt(3) / 2)) / 1.05;
                 setHexSize(Math.min(sizeFromWidth, sizeFromHeight));
-                setContainerSize({ width: offsetWidth, height: offsetHeight });
+                setContainerSize({ width: clientWidth, height: clientHeight });
             }
         };
         updateSize();
@@ -216,14 +216,18 @@ const CombatFXLayer: React.FC<CombatFXLayerProps> = ({ effects, entities, entity
         const xOffset = (containerSize.width - totalPixelWidth) / 2;
         const yOffset = (containerSize.height - totalPixelHeight) / 2;
 
-        // Calculate the center of the hex cell. This must match getHexProps in SectorView.
+        // Group transform matching SectorView
+        const groupTransformX = xOffset + hexSize;
+        const groupTransformY = yOffset + hexSize * Math.sqrt(3) / 2;
+
+        // Calculate the center of the hex cell.
         const isOdd = gridPos.x & 1;
         const cx = hexSize * 1.5 * gridPos.x;
         const cy = Math.sqrt(3) * hexSize * (gridPos.y + 0.5 * isOdd);
         
-        // Apply the same group transform as in SectorView SVG.
-        const finalX = cx + xOffset + hexSize;
-        const finalY = cy + yOffset + hexSize * Math.sqrt(3) / 2;
+        // Apply the transform offset
+        const finalX = cx + groupTransformX;
+        const finalY = cy + groupTransformY;
 
         return { x: finalX, y: finalY };
     }, [containerSize.width, containerSize.height, hexSize]);
