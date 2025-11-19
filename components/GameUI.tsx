@@ -77,7 +77,8 @@ const GameUI: React.FC = () => {
                                 </div>
                                 <div className="relative flex-grow flex justify-center items-center min-h-0">
                                     {isWarping && <WarpAnimation />}
-                                    <div className="w-full h-full relative">
+                                    {/* Map Container with shared border and styling */}
+                                    <div className="w-full h-full relative border-2 border-border-light rounded-r-md overflow-hidden bg-black">
                                         {currentView === 'sector' ? (
                                             <>
                                                 <CombatFXLayer effects={gameState.combatEffects} entities={[player.ship, ...sector.entities]} entityRefs={entityRefs} />

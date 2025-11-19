@@ -147,19 +147,10 @@ const SectorView: React.FC<SectorViewProps> = (props) => {
   const xOffset = (containerSize.width - totalPixelWidth) / 2;
   const yOffset = (containerSize.height - totalPixelHeight) / 2;
 
-  // Transform to move (0,0) of hex grid (which is centered at 0,0) to correct position
-  // The leftmost point of hex (0,0) is at x = -hexSize.
-  // We want the leftmost point of the grid to start at xOffset.
-  // So we translate by xOffset + hexSize.
   const groupTransformX = xOffset + hexSize;
-  
-  // The topmost point of hex (0,0) is at y = -hexHeight/2 = -hexSize * sqrt(3) / 2.
-  // We want the top of the grid to start at yOffset.
-  // So we translate by yOffset + hexSize * sqrt(3) / 2.
   const groupTransformY = yOffset + hexSize * Math.sqrt(3) / 2;
   
   // Helper to calculate absolute pixel coordinates for an entity on the screen
-  // This removes ambiguity from nested transforms
   const getAbsoluteCoords = (pos: {x: number, y: number}) => {
       const { x, y } = getHexPixelCoords(pos, hexSize);
       return { x: x + groupTransformX, y: y + groupTransformY };
@@ -260,8 +251,9 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
     return new Set(torpedoes.filter(t => t.targetId === selectedTargetId).map(t => t.id));
 }, [spectatorMode, showTacticalOverlay, selectedTargetId, allEntities]);
 
+  // Removed borders and styling here; moved to GameUI wrapper to ensure exact content box matching with CombatFXLayer
   return (
-    <div ref={containerRef} className="bg-black border-2 border-border-light rounded-r-md h-full w-full relative overflow-hidden">
+    <div ref={containerRef} className="w-full h-full relative">
       {themeName === 'klingon' && <div className="klingon-sector-grid-overlay" />}
 
       <svg width="100%" height="100%">
@@ -397,8 +389,8 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
             {visibleEntities.map((entity) => {
                 const { x: pixelX, y: pixelY } = getAbsoluteCoords(entity.position);
 
+                // Special rotation logic for torpedoes
                 let transformValue = `translate(-50%, -50%)`;
-
                 if (entity.type === 'torpedo_projectile') {
                     const target = allEntities.find(e => e.id === (entity as TorpedoProjectile).targetId);
                     if (target) {
@@ -408,12 +400,15 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     }
                 }
 
-                const style: React.CSSProperties = {
+                const wrapperStyle: React.CSSProperties = {
                     position: 'absolute',
                     left: `${pixelX}px`,
                     top: `${pixelY}px`,
-                    transform: transformValue,
-                    transition: isResizing ? 'none' : 'left 750ms ease-in-out, top 750ms ease-in-out, opacity 500ms ease-in-out, filter 500ms ease-in-out',
+                    width: 0,
+                    height: 0,
+                    overflow: 'visible',
+                    zIndex: entity.type === 'torpedo_projectile' ? 40 : 30,
+                    transition: isResizing ? 'none' : 'left 750ms ease-in-out, top 750ms ease-in-out',
                 };
                 
                 const isSelected = entity.id === selectedTargetId;
@@ -423,22 +418,24 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                 let factionColor = 'text-gray-400';
                 let entityName = entity.name;
                 let isDestroyed = false;
+                let opacity = 1;
+                let filter = 'none';
                 
                 if (entity.type === 'ship') {
                     const ship = entity as Ship;
                     isDestroyed = ship.hull <= 0;
 
                     if (isDestroyed) {
-                        style.opacity = 0.4;
-                        style.filter = 'grayscale(1) brightness(0.5)';
+                        opacity = 0.4;
+                        filter = 'grayscale(1) brightness(0.5)';
                         entityName = `${entity.name} (Destroyed)`;
                     } else {
                         if (ship.cloakState === 'cloaked' || ship.cloakState === 'cloaking') {
-                            style.opacity = 0.5;
+                            opacity = 0.5;
                         }
                         if (ship.isDerelict) {
-                            style.opacity = 0.6;
-                            style.filter = 'grayscale(1)';
+                            opacity = 0.6;
+                            filter = 'grayscale(1)';
                             entityName = `${entity.name} (Derelict)`;
                         }
                     }
@@ -451,13 +448,14 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     const isTargetingSelected = torpedoesTargetingSelectedIds.has(torpedo.id);
 
                     return (
-                        <div
-                            key={torpedo.id}
-                            className={`absolute z-40 cursor-pointer pointer-events-auto ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''} ${isTargetingSelected ? 'animate-pulse' : ''}`}
-                            style={style}
-                            onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
-                        >
-                            <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
+                        <div key={torpedo.id} style={wrapperStyle} className="pointer-events-none">
+                            <div
+                                className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto ${isSelected ? 'ring-2 ring-accent-yellow rounded-full' : ''} ${isTargetingSelected ? 'animate-pulse' : ''}`}
+                                style={{ transform: transformValue, opacity, filter, transition: 'opacity 500ms, filter 500ms' }}
+                                onClick={(e) => { e.stopPropagation(); onSelectTarget(entity.id); }}
+                            >
+                                <TorpedoIcon className={`w-6 h-6 ${torpedoConfig.colorClass} ${isTargetingSelected ? 'drop-shadow-[0_0_5px_#fff]' : ''}`} />
+                            </div>
                         </div>
                     );
                 }
@@ -465,14 +463,11 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     const mine = entity as Mine;
                     const isVisible = playerShip && mine.visibleTo.includes(playerShip.shipModel);
                     return (
-                        <div
-                            key={entity.id}
-                            ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }}
-                            className="absolute z-30"
-                            style={style}
-                        >
-                            <div className="relative">
-                                <PlasmaMineIcon className={`w-8 h-8 text-green-400 ${isVisible ? 'animate-pulse' : ''}`} style={{ filter: 'drop-shadow(0 0 5px var(--color-plasma-green))' }} />
+                        <div key={entity.id} style={wrapperStyle} ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }} className="pointer-events-none">
+                            <div className="absolute transform -translate-x-1/2 -translate-y-1/2">
+                                <div className="relative">
+                                    <PlasmaMineIcon className={`w-8 h-8 text-green-400 ${isVisible ? 'animate-pulse' : ''}`} style={{ filter: 'drop-shadow(0 0 5px var(--color-plasma-green))' }} />
+                                </div>
                             </div>
                         </div>
                     );
@@ -552,46 +547,57 @@ const torpedoesTargetingSelectedIds = useMemo(() => {
                     <div
                         key={entity.id}
                         ref={el => { if (entityRefs.current) { entityRefs.current[entity.id] = el; } }}
-                        className="absolute flex flex-col items-center justify-center z-30 pointer-events-auto"
-                        style={style}
-                        draggable={spectatorMode && onMoveShip && entity.type === 'ship'}
-                        onDragStart={(e) => {
-                            if (spectatorMode && onMoveShip && entity.type === 'ship') {
-                                e.dataTransfer.setData("shipId", entity.id);
-                            }
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (isPlayer && !spectatorMode) {
-                                if(navigationTarget) onSetNavigationTarget(null);
-                                return;
-                            }
-                            handleGridInteraction(entity.position.x, entity.position.y);
-                        }}
+                        style={wrapperStyle}
+                        className="pointer-events-none"
                     >
-                        <div className={`relative ${factionColor}`}>
-                            {icon}
-                            {isSelected && !isDestroyed && (
-                                <>
-                                    {themeName === 'federation' ? (
-                                        <LcarsTargetingReticle />
-                                    ) : themeName === 'klingon' ? (
-                                        <KlingonTargetingReticle />
-                                    ) : themeName === 'romulan' ? (
-                                        <RomulanTargetingReticle />
-                                    ) : (
-                                        <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
-                                    )}
-                                </>
-                            )}
-                            <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
-                        </div>
-                        {!isPlayer && entity.type !== 'asteroid_field' && <span className={`text-xs mt-1 font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>}
-                        {entity.type === 'ship' && !isDestroyed && (
-                            <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-1 overflow-hidden">
-                                <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
+                        <div 
+                            className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-auto cursor-pointer"
+                            style={{ opacity, filter, transition: 'opacity 500ms, filter 500ms' }}
+                            draggable={spectatorMode && onMoveShip && entity.type === 'ship'}
+                            onDragStart={(e) => {
+                                if (spectatorMode && onMoveShip && entity.type === 'ship') {
+                                    e.dataTransfer.setData("shipId", entity.id);
+                                }
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isPlayer && !spectatorMode) {
+                                    if(navigationTarget) onSetNavigationTarget(null);
+                                    return;
+                                }
+                                handleGridInteraction(entity.position.x, entity.position.y);
+                            }}
+                        >
+                            <div className={`relative ${factionColor}`}>
+                                {icon}
+                                {isSelected && !isDestroyed && (
+                                    <>
+                                        {themeName === 'federation' ? (
+                                            <LcarsTargetingReticle />
+                                        ) : themeName === 'klingon' ? (
+                                            <KlingonTargetingReticle />
+                                        ) : themeName === 'romulan' ? (
+                                            <RomulanTargetingReticle />
+                                        ) : (
+                                            <div className="absolute inset-0 border-2 border-accent-yellow rounded-full animate-ping"></div>
+                                        )}
+                                    </>
+                                )}
+                                <div className="absolute inset-0 border-2 border-transparent group-hover:border-yellow-300 rounded-full"></div>
                             </div>
-                        )}
+                            
+                            {/* Label absolutely positioned below the centered icon */}
+                            {!isPlayer && entity.type !== 'asteroid_field' && (
+                                <div className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 whitespace-nowrap flex flex-col items-center">
+                                    <span className={`text-xs font-bold ${factionColor} ${isSelected ? 'text-accent-yellow' : ''}`}>{entityName}</span>
+                                    {entity.type === 'ship' && !isDestroyed && (
+                                        <div className="w-10 h-1 bg-bg-paper-lighter rounded-full mt-0.5 overflow-hidden">
+                                            <div className="h-full bg-accent-green" style={{width: `${(entity.hull / entity.maxHull) * 100}%`}}></div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 );
             })}
