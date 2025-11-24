@@ -17,7 +17,11 @@ const subsystemFullNames: Record<keyof ShipSubsystems, string> = {
     shuttlecraft: 'Shuttlecraft',
 };
 
-const TargetInfo: React.FC = () => {
+interface TargetInfoProps {
+    className?: string;
+}
+
+const TargetInfo: React.FC<TargetInfoProps> = ({ className = '' }) => {
     const { gameState, targetEntity, playerTurnActions, isTurnResolving } = useGameState();
     const { onSelectSubsystem, onScanTarget, onHailTarget, onStartAwayMission, onEnterOrbit } = useGameActions();
     const { themeName } = useUIState();
@@ -42,7 +46,7 @@ const TargetInfo: React.FC = () => {
 
     if (!targetEntity) {
         return (
-            <div className="panel-style p-3 flex flex-col justify-center text-center h-full">
+            <div className={`panel-style p-3 flex flex-col justify-center text-center h-full ${className}`}>
                 <h3 className="text-lg font-bold text-text-secondary">No Target Selected</h3>
                 <p className="text-sm text-text-disabled">Click an object on the map to select it.</p>
             </div>
@@ -104,7 +108,7 @@ const TargetInfo: React.FC = () => {
     }
 
     return (
-        <div className="panel-style p-3 h-full flex flex-col">
+        <div className={`panel-style p-3 h-full flex flex-col ${className}`}>
             <div className="grid grid-cols-[auto_1fr] gap-3 items-start mb-2 pb-2 border-b border-border-dark flex-shrink-0">
                 <div className="h-24 w-24 flex-shrink-0">
                     <WireframeDisplay target={target} />

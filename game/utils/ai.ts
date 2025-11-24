@@ -2,60 +2,23 @@ import type { Position, Ship, BeamWeapon } from '../../types';
 
 export const uniqueId = () => `id_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
 
-// HELPER for distance and movement: Converts odd-q vertical offset coordinates to axial coordinates
-const offsetToAxial = (pos: Position) => {
-    const q = pos.x;
-    const r = pos.y - (pos.x - (pos.x & 1)) / 2;
-    return { q, r };
-};
-
 export const calculateDistance = (pos1: Position, pos2: Position): number => {
-    const a = offsetToAxial(pos1);
-    const b = offsetToAxial(pos2);
-    const dq = Math.abs(a.q - b.q);
-    const dr = Math.abs(a.r - b.r);
-    // ds is the change in the implicit 's' coordinate in a cube system (q+r+s=0)
-    const ds = Math.abs((-a.q - a.r) - (-b.q - b.r));
-    return (dq + dr + ds) / 2;
+    return Math.max(Math.abs(pos1.x - pos2.x), Math.abs(pos1.y - pos2.y));
 };
-
-// HELPER for moveOneStep: Converts axial coordinates back to odd-q vertical offset
-const axialToOffset = (q: number, r: number): Position => {
-    const x = q;
-    const y = r + (q - (q & 1)) / 2;
-    return { x, y };
-};
-
-// All 6 directions on a hex grid in axial coordinates
-const axialDirections = [
-    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
-];
-
 
 export const moveOneStep = (start: Position, end: Position): Position => {
-    if (start.x === end.x && start.y === end.y) {
-        return start;
-    }
+    const newPos = { ...start };
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
 
-    const startAxial = offsetToAxial(start);
-    const endAxial = offsetToAxial(end);
-    
-    // Find the direction vector that is closest to the vector from start to end.
-    let bestDir = axialDirections[0];
-    let minDistance = Infinity;
-
-    for (const dir of axialDirections) {
-        const nextHex = { q: startAxial.q + dir.q, r: startAxial.r + dir.r };
-        const dist = Math.hypot(nextHex.q - endAxial.q, nextHex.r - endAxial.r);
-        if (dist < minDistance) {
-            minDistance = dist;
-            bestDir = dir;
-        }
+    if (Math.abs(dx) > Math.abs(dy)) {
+        newPos.x += Math.sign(dx);
+    } else if (dy !== 0) {
+        newPos.y += Math.sign(dy);
+    } else if (dx !== 0) {
+        newPos.x += Math.sign(dx);
     }
-    
-    const nextAxial = { q: startAxial.q + bestDir.q, r: startAxial.r + bestDir.r };
-    return axialToOffset(nextAxial.q, nextAxial.r);
+    return newPos;
 };
 
 export const findClosestTarget = (source: Ship, potentialTargets: Ship[]): Ship | null => {
@@ -163,7 +126,16 @@ export const getPath = (start: Position, end: Position | null): Position[] => {
 
     let safety = 0;
     while ((current.x !== end.x || current.y !== end.y) && safety < 30) {
-        current = moveOneStep(current, end);
+        const dx = end.x - current.x;
+        const dy = end.y - current.y;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            current.x += Math.sign(dx);
+        } else if (dy !== 0) {
+            current.y += Math.sign(dy);
+        } else if (dx !== 0) {
+            current.x += Math.sign(dx);
+        }
         path.push({ ...current });
         safety++;
     }

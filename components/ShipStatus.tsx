@@ -1,3 +1,4 @@
+
 // NOTE: This file exports several shared components (subsystemAbbr, ReadOnlyStatusIndicator, etc.)
 // used by other parts of the UI to avoid code duplication.
 import React, { useRef } from 'react';
@@ -297,8 +298,11 @@ export const TorpedoSystemStatus: React.FC<{ ship: Ship, gameState: GameState }>
     );
 };
 
+interface ShipStatusProps {
+    className?: string;
+}
 
-const ShipStatus: React.FC = () => {
+const ShipStatus: React.FC<ShipStatusProps> = ({ className = '' }) => {
     const { gameState, targetEntity } = useGameState();
     const { onEnergyChange, onToggleRedAlert, onEvasiveManeuvers, onSelectRepairTarget, onToggleCloak, onTogglePointDefense } = useGameActions();
     const { themeName } = useUIState();
@@ -357,13 +361,13 @@ const ShipStatus: React.FC = () => {
 
 
     return (
-        <div className="panel-style p-3 flex flex-col h-full">
+        <div className={`panel-style p-3 flex flex-col h-full ${className}`}>
         <h3 className="text-lg font-bold text-secondary-light mb-2 flex-shrink-0">Ship Status</h3>
         <div 
             ref={scrollContainerRef}
             className="flex-grow space-y-2 overflow-y-auto pr-2"
         >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-1">
+            <div className="flex flex-col gap-1">
                  <ResourceBar 
                     theme={themeName}
                     label={themeName === 'federation' ? 'Hull' : 'Hull'} 

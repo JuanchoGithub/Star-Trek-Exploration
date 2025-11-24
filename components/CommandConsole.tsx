@@ -31,8 +31,11 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
     <h4 className="text-sm font-bold text-text-secondary uppercase tracking-wider mt-2 mb-1 px-1">{title}</h4>
 );
 
+interface CommandConsoleProps {
+    showEndTurnButton?: boolean;
+}
 
-const CommandConsole: React.FC = () => {
+const CommandConsole: React.FC<CommandConsoleProps> = ({ showEndTurnButton = true }) => {
   const { gameState, playerTurnActions, navigationTarget, targetEntity, isTurnResolving } = useGameState();
   const { onEndTurn, onFireWeapon, onToggleCloak, onInitiateRetreat, onCancelRetreat, onSendAwayTeam, onUndock } = useGameActions();
   const { themeName } = useUIState();
@@ -115,7 +118,7 @@ const CommandConsole: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-        <div className="flex-grow space-y-1">
+        <div className="flex-grow space-y-1 overflow-y-auto pr-2">
             <SectionHeader title="Tactical Actions" />
             <div className="grid grid-cols-2 gap-2 tactical-grid">
                 {playerShip.weapons.map(weapon => {
@@ -204,15 +207,17 @@ const CommandConsole: React.FC = () => {
                 )}
             </div>
         </div>
-      <div className="flex items-center gap-2 mt-auto flex-shrink-0 pt-2">
-            <button
-                onClick={() => onEndTurn()}
-                disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
-                className="flex-grow btn btn-primary w-full"
-            >
-                {getEndTurnButtonText()}
-            </button>
-      </div>
+        {showEndTurnButton && (
+          <div className="flex items-center gap-2 mt-auto flex-shrink-0 pt-2">
+                <button
+                    onClick={() => onEndTurn()}
+                    disabled={isTurnResolving || (!!navigationTarget && playerShip.subsystems.engines.health < playerShip.subsystems.engines.maxHealth * 0.5) || playerShip.isStunned}
+                    className="flex-grow btn btn-primary w-full"
+                >
+                    {getEndTurnButtonText()}
+                </button>
+          </div>
+        )}
     </div>
   );
 };

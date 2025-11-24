@@ -2,7 +2,7 @@ import type { GameState, Ship, Position, Mine } from '../../types';
 import { AIStance } from './FactionAI';
 import { calculateDistance } from '../utils/ai';
 import { SECTOR_WIDTH, SECTOR_HEIGHT } from '../../assets/configs/gameConstants';
-import { isPosInNebula, isDeepNebula, getNeighboringPositions } from '../utils/sector';
+import { isPosInNebula, isDeepNebula } from '../utils/sector';
 
 // Exported interfaces for use in logger
 export interface MoveScoreDetails {
@@ -58,7 +58,13 @@ export function findOptimalMove(
     );
     visibleMines.forEach(mine => occupiedPositions.add(`${mine.position.x},${mine.position.y}`));
 
-    const candidateMoves = getNeighboringPositions(ship.position);
+    const candidateMoves: Position[] = [];
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            candidateMoves.push({ x: ship.position.x + dx, y: ship.position.y + dy });
+        }
+    }
     
     const validCandidates = candidateMoves.filter(p => 
         p.x >= 0 && p.x < SECTOR_WIDTH &&
